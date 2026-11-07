@@ -6,6 +6,8 @@ import type { Profile } from '../shared/profiles';
 import type { CoachClientMessage, CoachServerMessage, CoachStateMessage } from '../shared/coach-protocol';
 import { suggestProfile } from '../shared/garmin-profile';
 import { Coach } from './coach';
+import { readRide } from '../service/recorder';
+import { cleanSamples } from './metrics';
 import { GarminLink } from './garmin';
 import { GarminDb } from './garmin-db';
 import { healthData } from './garmin-health';
@@ -39,6 +41,7 @@ import { manualRuns } from './run/runs';
 import { CoachTasks, type CoachId, type TaskFrom } from './coach-tasks';
 import { statsContent } from './stats/stats-content';
 import { exportStats } from './tracking/stats-export';
+import { exportBike } from './tracking/bike-export';
 import { mirrorExercises } from './tracking/mirror-exercises';
 import { ChatCoach } from './chat/chat-coach';
 import { planHint, type TodayContext } from './chat/plan-hint';
@@ -693,6 +696,8 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       if (weeklyMailer) for (const p of list) { try { void weeklyMailer.tick(p.id, contactOfProfile(records, p.id), weeklyMailOf(p.id)).catch(() => {}); } catch { /* next scan */ } }
       // The stats record for every profile coached here, linked or not: written only when it changes, never with a ride open. Never throws.
       if (free) mealsChanged(exportStats({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: statsDue }));
+      // The bike plan and the counted rides for the web, only on change, never with a ride open. Never throws.
+      if (free) mealsChanged(exportBike({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, state: (id) => { try { return coach.state(id); } catch { return null; } }, samples: (rideId) => cleanSamples(readRide(dir, rideId).samples).samples }));
       // Separate safeguard: the account sync must never disturb a ride or the coach, and is not awaited here.
       for (const p of all) { try { void accountSync.tick(p.id).finally(publish); } catch { /* try again on the next run */ } }
       // Separate safeguard: the fetch must never disturb the coach run.
