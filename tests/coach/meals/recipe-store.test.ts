@@ -81,6 +81,25 @@ describe('the recipe store', () => {
   });
 });
 
+describe('only AI-confirmed recipes are planned', () => {
+  it('does not find a recipe from before the AI vegetarian check until it is checked', async () => {
+    const dir = tmp();
+    const s = new RecipeStore(dir);
+    await addTagged(s, 1);
+    expect(s.search({}).length).toBe(1);
+    s.close();
+    const { DatabaseSync } = await import('node:sqlite');
+    const file = fs.readdirSync(dir, { recursive: true }).map(String).find((f) => f.endsWith('recipes.db'))!;
+    const db = new DatabaseSync(path.join(dir, file));
+    db.prepare("UPDATE recipes SET json = json_remove(json, '$.vegCheckedBy')").run();
+    db.close();
+    const again = new RecipeStore(dir);
+    expect(again.search({})).toEqual([]);
+    expect(again.collectionCount()).toBe(0);
+    again.close();
+  });
+});
+
 describe('the AI classification', () => {
   it('tags a batch with vocabulary ids and merges the rules on top', async () => {
     const s = new RecipeStore(tmp());

@@ -200,7 +200,7 @@ export class RecipeStore {
   collectionFor(slot: string, limit = 2000, seed = 0): StoredRecipe[] { return this.search({ source: 'collection', tags: [`mahlzeit:${slot}`], limit, order: 'sample', seed }); }
 
   /** Collection recipes that can be planned (tagged, with a meal slot, not counting link imports). */
-  collectionCount(): number { return this.count("SELECT COUNT(*) AS n FROM recipes WHERE source = 'collection' AND state = 'ok' AND flagged = 0"); }
+  collectionCount(): number { return this.count("SELECT COUNT(*) AS n FROM recipes WHERE source = 'collection' AND state = 'ok' AND flagged = 0 AND json_extract(json, '$.vegCheckedBy') = 'ai'"); }
   stats(): RecipeStats {
     return {
       collection: this.collectionCount(), links: this.count("SELECT COUNT(*) AS n FROM recipes WHERE source = 'link' AND state != 'pending'"),
