@@ -53,3 +53,13 @@ test('fetch_timeout_budget_covers_wait_and_run', () => {
 test('ok_without_output_is_invalid', async () => {
   expect(await kindOf(askRemote(input, cfg(respond(200, { status: 'ok' }) as unknown as typeof fetch)))).toBe('invalid');
 });
+
+test('carries_http_status_code_and_reset_for_the_gate', async () => {
+  const reset = Date.parse('2026-11-08T03:00:00Z');
+  try { await askRemote(input, cfg(respond(429, { status: 'plan_limit', reset_at: new Date(reset).toISOString() }) as unknown as typeof fetch)); } catch (e) {
+    expect((e as ClaudeError).info).toEqual({ http: 429, code: 'plan_limit', resetAtMs: reset });
+  }
+  try { await askRemote(input, cfg((async () => { throw new Error('down'); }) as unknown as typeof fetch)); } catch (e) {
+    expect((e as ClaudeError).info).toEqual({ network: true });
+  }
+});

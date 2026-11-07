@@ -527,3 +527,45 @@ describe('the AI decides whether a recipe is vegetarian', () => {
     s.close();
   });
 });
+
+describe('a failing AI', () => {
+  it('counts a failed tagging batch, backs off, and does not try the next batch in the same scan', async () => {
+    let now = 1_000_000;
+    const s = new RecipeStore(tmp(), () => now);
+    for (let n = 1; n <= 25; n++) await s.add({ source: 'collection', url: `https://rezepte.example/r${n}`, recipe: recipe(n) });
+    let calls = 0;
+    const failing: TagAsk = async () => { calls++; throw new Error('HTTP 429'); };
+    expect(await s.tagWaiting(failing, 3)).toBe(0);
+    expect(calls).toBe(1);
+    // The failed batch waits; the other batches are asked, but not the same recipes again.
+    const ai = taggingAi();
+    await s.tagWaiting(ai, 3);
+    expect(ai.batches).toEqual([10, 5]);
+    s.close();
+  });
+
+  it('does not penalise recipes while the gate is blocked and asks nothing more in the scan', async () => {
+    const s = new RecipeStore(tmp(), () => 1_000_000);
+    for (let n = 1; n <= 25; n++) await s.add({ source: 'collection', url: `https://rezepte.example/r${n}`, recipe: recipe(n) });
+    let calls = 0;
+    const blocked: TagAsk = async () => { calls++; throw Object.assign(new Error('paused'), { info: { blocked: true } }); };
+    await s.tagWaiting(blocked, 3);
+    expect(calls).toBe(1);
+    const ai = taggingAi();
+    expect(await s.tagWaiting(ai, 3)).toBe(25);
+    s.close();
+  });
+
+  it('scanInbox marks its AI calls as background work and stops asking after one failure', async () => {
+    const dir = tmp();
+    const s = new RecipeStore(dir);
+    put(dir, 'a.jsonl', jsonl([recipe(1), recipe(2), recipe(3)]));
+    const seen: unknown[] = [];
+    const ask = vi.fn(async (i: { background?: boolean }) => { seen.push(i.background); throw new Error('HTTP 429'); });
+    await s.scanInbox({ noOpenRide: open, ask: ask as never });
+    expect(ask.mock.calls.length).toBeLessThanOrEqual(1);
+    expect(seen.every((b) => b === true)).toBe(true);
+    expect(ask).toHaveBeenCalledTimes(1);
+    s.close();
+  });
+});

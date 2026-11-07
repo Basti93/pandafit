@@ -383,7 +383,7 @@ export class RecipeStore {
   }
 
   /** Classifies these recipes in batches. A cached classification (same input, same prompt version) costs no call. Returns how many are tagged now. */
-  private async tagRows(rows: ReturnType<RecipeStore['rowsToTag']>, ask: TagAsk, calls: { left: number }): Promise<number> {
+  private async tagRows(rows: ReturnType<RecipeStore['rowsToTag']>, ask: TagAsk, calls: { left: number; stop?: boolean }): Promise<number> {
     const key = currentTagKey();
     let done = 0;
     const todo: { row: (typeof rows)[number]; input: ReturnType<typeof tagInputOf>; hash: string }[] = [];
@@ -396,10 +396,15 @@ export class RecipeStore {
     }
     const size = tagAi().batch!;
     for (let i = 0; i < todo.length; i += size) {
-      if (calls.left <= 0) break;
+      if (calls.left <= 0 || calls.stop) break;
       calls.left--;
       const batch = todo.slice(i, i + size);
-      const got = await classify(batch.map((b) => b.input), ask);
+      // The AI is unavailable (a limit, the daily budget): nothing is penalised and nothing is asked again in this scan.
+      let blocked = false;
+      const got = await classify(batch.map((b) => b.input), async (x) => { try { return await ask(x); } catch (e) { blocked = !!(e as { info?: { blocked?: boolean } }).info?.blocked; throw e; } });
+      if (blocked) { calls.stop = true; break; }
+      // A failed call counts and backs off (later() below); the scan does not try the next batch against the same trouble.
+      if (got.size === 0) calls.stop = true;
       for (const b of batch) {
         const ai = got.get(b.row.id);
         if (ai?.vegetarisch === false) this.rejectVeg(b.row.id);
@@ -416,16 +421,17 @@ export class RecipeStore {
   }
 
   /** Recipes waiting for tags whose backoff is over, and recipes classified under an older prompt or vocabulary, within `calls` AI calls. */
-  async tagWaiting(ask: TagAsk, calls: number): Promise<number> {
-    const budget = { left: calls };
+  async tagWaiting(ask: TagAsk, calls: number, shared?: { left: number; stop?: boolean }): Promise<number> {
+    const budget: { left: number; stop?: boolean } = { left: calls };
     const A = tagAi();
     const waiting = this.rowsToTag("state = 'pending-tags' AND tag_next_ms <= ?", [this.nowMs()], A.batch! * calls);
     let done = await this.tagRows(waiting, ask, budget);
-    if (budget.left > 0) {
+    if (budget.left > 0 && !budget.stop) {
       // The stale ones keep serving their old tags until the new ones arrive.
       const stale = this.rowsToTag("state = 'ok' AND tag_key != ? AND tag_next_ms <= ?", [currentTagKey(), this.nowMs()], Math.min(A.retagPerScan!, A.batch! * budget.left));
       done += await this.tagRows(stale, ask, budget);
     }
+    if (budget.stop && shared) shared.stop = true;
     return done;
   }
 
@@ -466,13 +472,13 @@ export class RecipeStore {
   /** Pending recipes (unclear ingredient lines) get another go with the AI, at most `max`. */
   async retryPending(ask: Structure | undefined, max: number): Promise<number> {
     if (!ask || max <= 0) return 0;
-    const rows = this.open().prepare("SELECT id, scope, url, source, owner, raw FROM recipes WHERE state = 'pending' ORDER BY imported_ms LIMIT ?").all(max) as { id: string; scope: string; url: string; source: 'collection' | 'link'; owner: string | null; raw: string }[];
+    const rows = this.open().prepare("SELECT id, scope, url, source, owner, raw, tag_tries FROM recipes WHERE state = 'pending' AND tag_next_ms <= ? ORDER BY imported_ms LIMIT ?").all(this.nowMs(), max) as { id: string; scope: string; url: string; source: 'collection' | 'link'; owner: string | null; raw: string; tag_tries: number }[];
     let done = 0;
     for (const row of rows) {
       let raw: { recipe?: unknown; fetchedAtMs?: number };
       try { raw = JSON.parse(row.raw) as typeof raw; } catch { this.deleteRow(row.id); continue; }
       const r = await importRecipe(raw.recipe, { ask });
-      if (r.status === 'pending') continue;
+      if (r.status === 'pending') { this.later(row.id, row.tag_tries); continue; }
       this.deleteRow(row.id);
       done++;
       if (r.status === 'rejected') { this.bump('rejected'); continue; }
@@ -502,10 +508,15 @@ export class RecipeStore {
     try { names = fs.readdirSync(inbox).filter((n) => /^\w[\w.-]*\.jsonl$/.test(n)).sort(); } catch { /* no inbox yet */ }
     const L = limits();
     let budget = L.perScan!;
-    const calls = { left: L.aiPerScan! };
+    const calls: { left: number; stop?: boolean } = { left: L.aiPerScan! };
     const downloads = { left: L.imagesPerScan! };
     const getPicture = o.fetchPicture ?? fetchPicture;
-    const askLimited: Ask | undefined = o.ask ? async (i) => { if (calls.left <= 0) throw new Error('ai budget'); calls.left--; return o.ask!(i); } : undefined;
+    // Everything the scan asks is background work (it counts against the daily budget); one failed call ends the AI work of this scan.
+    const askLimited: Ask | undefined = o.ask ? async (i) => {
+      if (calls.left <= 0 || calls.stop) throw new Error('ai budget');
+      calls.left--;
+      try { return await o.ask!({ ...i, background: true } as Parameters<Ask>[0]); } catch (e) { calls.stop = true; throw e; }
+    } : undefined;
     for (const name of names) {
       if (budget <= 0 || !o.noOpenRide()) break;
       const file = path.join(inbox, name);
@@ -560,8 +571,8 @@ export class RecipeStore {
     }
     // Upkeep, batched and within the AI budget; the ride may have started meanwhile.
     if (o.noOpenRide()) await this.rederive(L.perScan!);
-    if (askLimited && o.noOpenRide()) total.tagged += await this.tagWaiting(askLimited, calls.left);
-    if (askLimited && o.noOpenRide() && calls.left > 0) await this.retryPending(askLimited, Math.min(calls.left, 10));
+    if (askLimited && o.noOpenRide()) total.tagged += await this.tagWaiting(askLimited, calls.left, calls);
+    if (askLimited && o.noOpenRide() && calls.left > 0 && !calls.stop) await this.retryPending(askLimited, Math.min(calls.left, 10));
     if (o.noOpenRide()) { try { total.pictures += await this.backfillImages({ noOpenRide: o.noOpenRide, fetch: getPicture }, downloads); } catch { /* the next scan tries again */ } }
     return total;
   }

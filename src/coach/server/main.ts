@@ -6,6 +6,7 @@ import { askRemote } from '../remote-claude-client';
 import { secretKeyFrom } from '../secrets/secret-box';
 import { buildCoachServer } from './http';
 import type { FastifyInstance } from 'fastify';
+import { AiGate } from '../ai-gate';
 import { mailConfigOf, type MailConfig } from '../mail-client';
 import { Household, type HouseholdOptions } from './household';
 
@@ -50,6 +51,14 @@ export const readCoachServerConfig = (env: Record<string, string | undefined>): 
   };
 };
 
+const gates = new Map<string, AiGate>();
+/** One gate per data root, shared by every caller of the process (the options may be built more than once). */
+const gateOf = (root: string): AiGate => {
+  let g = gates.get(root);
+  if (!g) { g = new AiGate(path.join(root, 'ai-gate.json')); gates.set(root, g); }
+  return g;
+};
+
 /** The household's options. In the dry run Claude, Garmin and Hevy refuse at once, so nothing reaches the network. */
 export const householdOptions = (config: CoachServerConfig): HouseholdOptions => {
   const workDir = path.join(config.root, 'work');
@@ -62,8 +71,8 @@ export const householdOptions = (config: CoachServerConfig): HouseholdOptions =>
     ...(config.mail && !config.dry ? { mail: config.mail } : {}),
     // askClaude ends every call at its timeout, so the household's one-at-a-time lock never stays held.
     ask: config.dry ? async () => refuse('Claude')()
-      : config.aiUrl ? async (input) => askRemote(input, { url: config.aiUrl as string, token: config.aiToken as string })
-      : async (input) => askClaude({ ...input, workDir, bin: config.claudeBin ?? (await findClaude()) }),
+      : gateOf(config.root).wrap(config.aiUrl ? async (input) => askRemote(input, { url: config.aiUrl as string, token: config.aiToken as string })
+        : async (input) => askClaude({ ...input, workDir, bin: config.claudeBin ?? (await findClaude()) })),
     ...(config.dry ? { spawnFn: refuse('Garmin') as never, fetchFn: (async () => refuse('Hevy')()) as never } : {}),
   };
 };
