@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { estimateProtein, importRecipe, isoMinutes, meatWord, parseIngredientLine, parseInstructions, parseYield, sectionOf, slotsOf } from '../../../src/coach/meals/recipe-import';
+import { estimateProtein, importRecipe, isoMinutes, meatWord, parseIngredientLine, parseInstructions, parseYield, sectionOf } from '../../../src/coach/meals/recipe-import';
 
 const lineOf = (s: string) => { const p = parseIngredientLine(s); return p.ok ? p.ingredients.map((i) => `${i.amount} ${i.unit} ${i.name}`) : null; };
 
@@ -107,7 +107,7 @@ describe('the whole import', () => {
     const lentils = r.recipe.ingredients.find((i) => i.name === 'Rote Linsen')!;
     expect(lentils).toMatchObject({ amount: 75, unit: 'g', section: 'Vorrat' });
     expect(r.recipe.ingredients.find((i) => i.name === 'Zwiebeln')).toMatchObject({ amount: 0.5, unit: 'Stk', section: 'Obst und Gemüse' });
-    expect(r.recipe).toMatchObject({ title: 'Linsen-Gemüse-Topf', minutes: 40, slots: ['mittag', 'abend'], keepsDays: 2, vegan: true });
+    expect(r.recipe).toMatchObject({ title: 'Linsen-Gemüse-Topf', minutes: 40, slots: [], keepsDays: 2, vegan: true });
     expect(r.recipe.steps).toHaveLength(2);
     expect(r.recipe.proteinG).toBeGreaterThan(10);
   });
@@ -117,14 +117,12 @@ describe('the whole import', () => {
     const b = await importRecipe(base({ recipeIngredient: ['300 g Lupinenschrot', '200 g Dinkelgrieß', '150 g Quittenmus', '2 Zwiebeln'] }));
     expect(b.status === 'ok' && b.recipe.proteinG).toBe(-1);
   });
-  it('derives slots and keeping time', async () => {
-    const breakfast = await importRecipe(base({ name: 'Beeren-Porridge', recipeCategory: 'Frühstück' }));
-    expect(breakfast.status === 'ok' && breakfast.recipe.slots).toEqual(['fruehstueck']);
-    const dessert = await importRecipe(base({ name: 'Apfelkuchen', recipeCategory: 'Dessert' }));
-    expect(dessert.status === 'ok' && dessert.recipe.slots).toEqual([]);
+  it('derives the keeping time, the canonical ingredients and the quality; the tags wait for the AI', async () => {
     const salad = await importRecipe(base({ name: 'Bunter Bohnensalat' }));
     expect(salad.status === 'ok' && salad.recipe.keepsDays).toBe(0);
-    expect(slotsOf('Eintopf', ['Abendessen'])).toEqual(['abend']);
+    const r = await importRecipe(base({ keywords: 'vegetarisch, einfach', recipeIngredient: ['2 Paradeiser', '1 Dose Kichererbsen', '1 Zwiebel', '1 EL Öl'] }));
+    expect(r.status === 'ok' && r.recipe).toMatchObject({ slots: [], tags: null, parseQuality: 1, deriveVersion: 1, category: ['Hauptgericht'], keywords: ['vegetarisch', 'einfach'] });
+    expect(r.status === 'ok' && r.recipe.canon).toEqual(['tomate', 'kichererbse', 'zwiebel', 'oel']);
   });
   it('stores rating and count when there are some, and ignores rubbish', async () => {
     const r = await importRecipe(base({ aggregateRating: { '@type': 'AggregateRating', ratingValue: '4,6', ratingCount: 123 }, suitableForDiet: 'https://schema.org/VegetarianDiet' }));

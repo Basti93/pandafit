@@ -4,6 +4,7 @@ import { policyRule, ruleNumber, ruleValues } from '../../shared/training-policy
 import { fitsDiet } from './check';
 import { dataBlock } from './prompt';
 import type { Recipe } from './recipes';
+import { canonicalIngredient, deriveVersion, parseQualityMin, type Tags } from './recipe-tags';
 
 /**
  * Turns one schema.org Recipe object (as found in a page's JSON-LD) into a Recipe of ours, per portion. Pure code: parsing, a strict
@@ -12,7 +13,18 @@ import type { Recipe } from './recipes';
 
 export type Rating = { value: number; count: number };
 /** A recipe in the collection or from a person's link. `source: 'collection'` comes from the inbox, `'link'` from a person. */
-export type StoredRecipe = Recipe & { source: 'collection' | 'link'; sourceUrl: string; importedAtMs: number; owner?: string; rating?: Rating };
+export type StoredRecipe = Recipe & {
+  source: 'collection' | 'link'; sourceUrl: string; importedAtMs: number; owner?: string; rating?: Rating;
+  /** The classification; null until the AI has given a complete one. Such a recipe is stored and searchable by title but never planned. */
+  tags: Tags | null;
+  /** Canonical ingredient names, for search. */
+  canon: string[];
+  /** The source's own category and keywords, kept raw and never shown as tags. */
+  category: string[]; keywords: string[];
+  /** Share of ingredient lines the parser read cleanly (1 when the AI structured them). */
+  parseQuality: number;
+  deriveVersion: number;
+};
 
 export type Rejected = { status: 'rejected'; reason: string };
 export type Failed = { status: 'failed'; reason: string };
@@ -279,21 +291,6 @@ export async function structureWithAi(lines: string[], ask: Structure): Promise<
 
 // ---- Derived values ----
 
-const SLOT_WORDS: [Slot, RegExp][] = [['fruehstueck', /fruehstueck|brunch|porridge|muesli|overnight|fruehstuecks/], ['abend', /abendessen|abendbrot|abendgericht/], ['mittag', /mittagessen|mittagsgericht|mittag/]];
-const NOT_A_MEAL = /dessert|nachtisch|kuchen|torte|gebaeck|plaetzchen|kekse|getraenk|cocktail|drink|likoer|marmelade|konfituere|smoothie|saft|sauce|sosse|dip|brotaufstrich|beilage|vorspeise|snack|suesspeise/;
-
-/** Frühstück / Mittag / Abend from category, keywords and title; the default is Mittag and Abend, and none for what is not a meal. */
-export function slotsOf(title: string, extra: string[]): Slot[] {
-  const t = norm([...extra].join(' '));
-  const ti = norm(title);
-  if (NOT_A_MEAL.test(t.replace(/hauptgericht|hauptspeise/g, '')) && !/hauptgericht|hauptspeise|mittag|abendessen/.test(t)) return [];
-  const slots = new Set<Slot>();
-  for (const [slot, re] of SLOT_WORDS) if (re.test(t) || (slot === 'fruehstueck' && re.test(ti))) slots.add(slot);
-  if (slots.has('fruehstueck')) return ['fruehstueck'];
-  if (slots.size === 0) return ['mittag', 'abend'];
-  return (['mittag', 'abend'] as Slot[]).filter((s) => slots.has(s));
-}
-
 export const keepsDaysOf = (title: string): number => {
   const zero = policyRule('meals.keeps-zero-words').lists!.words!;
   const tokens = norm(title).split(' ');
@@ -387,10 +384,13 @@ export async function importRecipe(obj: unknown, opts: ImportOptions = {}): Prom
     const parsed = lines.map(parseIngredientLine);
     const unclear = parsed.flatMap((p, i) => (p.ok ? [] : [i]));
     let totals: Ingredient[];
-    if (unclear.length / lines.length > ruleNumber('meals.unclear-share')) {
+    // The share of lines read cleanly; the AI's structured lines (checked) count as clean.
+    let quality = 1 - unclear.length / lines.length;
+    if (unclear.length / lines.length > ruleNumber('meals.unclear-share') || quality < parseQualityMin()) {
       const ai = opts.ask ? await structureWithAi(lines, opts.ask) : null;
       if (!ai) return { status: 'pending', reason: `${unclear.length} of ${lines.length} lines unclear` };
       totals = ai;
+      quality = 1;
     } else {
       totals = parsed.flatMap((p) => (p.ok ? p.ingredients : []));
     }
@@ -401,13 +401,14 @@ export async function importRecipe(obj: unknown, opts: ImportOptions = {}): Prom
     const withRaw = ingredients.map((i) => raw(i, lines.find((l) => norm(l).includes(norm(i.name)))));
 
     const minutes = (isoMinutes(obj.totalTime) ?? ((isoMinutes(obj.prepTime) ?? 0) + (isoMinutes(obj.cookTime) ?? 0))) || 30;
-    const slots = slotsOf(title, extra);
     const proteinG = nutritionProtein(obj.nutrition) ?? estimateProtein(ingredients);
     const rating = parseRating(obj.aggregateRating);
+    const category = words(obj.recipeCategory), keywords = [...words(obj.keywords), ...words(obj.recipeCuisine)];
     return {
       status: 'ok',
       recipe: {
-        title, slots, vegan: veganFlag(title, withRaw), minutes: Math.min(600, Math.max(1, minutes)), proteinG: proteinG ?? PROTEIN_UNKNOWN, keepsDays: keepsDaysOf(title),
+        title, slots: [], tags: null, canon: [...new Set(withRaw.map((i) => canonicalIngredient(i.name)))], category, keywords,
+        parseQuality: quality, deriveVersion: deriveVersion(), vegan: veganFlag(title, withRaw), minutes: Math.min(600, Math.max(1, minutes)), proteinG: proteinG ?? PROTEIN_UNKNOWN, keepsDays: keepsDaysOf(title),
         ingredients: withRaw, steps, sourceUrl: '', ...(rating ? { rating } : {}),
       },
     };

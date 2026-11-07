@@ -63,6 +63,25 @@ The meal plan should use real, vegetarian recipes from a recipe collection on th
 5. **Store**, and count imported, rejected (non-veg) and failed.
    - If the recipe carries `aggregateRating` (`ratingValue`, `ratingCount`), store both. The importer never filters by rating (the external fetcher does); the shortlist uses a higher rating only as a tie-breaker.
 
+### Source, categories, tags and search (from day one)
+
+- **Raw source kept:** the original schema.org object, `url` and `fetchedAt` are stored next to the normalized recipe. Every derived row carries `deriveVersion`; raising it (register `meals.tag-thresholds`) derives all recipes again from the source on the next scans, batched, never with a ride open.
+- **Controlled vocabulary** (register `meals.vocabulary`, stable ASCII ids, German labels):
+  - `mahlzeit`: fruehstueck, mittag, abend, snack, dessert, backen, getraenk;
+  - `art`: suppe, salat, pfanne, ofen-auflauf, pasta, reis-getreide, curry-eintopf, bowl, brot-sandwich, wrap-taco, pizza-flammkuchen, aufstrich-dip, sonstiges;
+  - `kueche`: deutsch, italienisch, mediterran, orientalisch, indisch, asiatisch, mexikanisch, international;
+  - `eiweiss` (main protein source by weight): huelsenfruechte, tofu-tempeh, seitan, ei, milchprodukte-kaese, nuesse-samen, wenig;
+  - `ernaehrung`: vegetarisch (always), vegan;
+  - `eigenschaft`: proteinreich, schnell, meal-prep, ohne-kochen, nur-ofen, eine-pfanne, guenstig, kalt-essbar;
+  - `saison`: fruehling, sommer, herbst, winter, ganzjaehrig.
+  - Each recipe has exactly one `art`, one `eiweiss`, at least one `mahlzeit`, at most one `kueche`, any `eigenschaft` and `saison`.
+- **Classification:** the coach's AI classifies `mahlzeit`, `art`, `kueche`, `eiweiss` and the soft `eigenschaft` ids (ohne-kochen, nur-ofen, eine-pfanne, kalt-essbar, guenstig), 10 recipes per call, from title, canonical ingredients with amounts, the first steps and the source's raw category and keywords. Only vocabulary ids are accepted; unknown ids are dropped; a recipe missing a required facet stays `pending-tags` (stored, never planned) and is retried with a growing wait.
+- **Rules win:** vegetarisch/vegan (word lists), minutes, protein, proteinreich (>= 25 g), schnell (<= 20 min), meal-prep (keeps >= 2 days) and saison (ingredient list) come from rules only. The AI result is cached per recipe with the prompt version and a hash of its input; raising `tagPromptVersion` (or a changed vocabulary) classifies again in the background while the old tags keep serving.
+- **Source keywords** are kept raw in their own field and never shown as tags.
+- **Canonical ingredients:** names are reduced to one canonical form (lower case, singular, synonyms such as Paradeiser to tomate, Kichererbsen (Dose) to kichererbse) by a register table plus simple stemming.
+- **Search:** SQLite FTS5 over title, canonical ingredients and tag labels, plus facet filters (tags, max minutes, min protein, vegan, ingredient include/exclude), in one pure function `searchRecipes(db, query)`. The meal planner's shortlist uses it.
+- **Quality:** rating value and count (if present) and `parseQuality` (share of ingredient lines read cleanly; below 0.8 the recipe is stored but flagged and never planned).
+
 ### Unlock
 
 - Register value `meals.collection-unlock` = 1000 (the number of stored collection recipes, not counting link imports).
@@ -100,6 +119,7 @@ The meal plan should use real, vegetarian recipes from a recipe collection on th
 **Work:** schema.org parsing, the vegetarian check, the ingredient parser, the derive step, the AI fallback for unclear lines, the store with dedupe, the inbox processing with done/failed, and the register entries.
 
 **Tests:**
+- the tagging with a fake AI client (valid batch, unknown ids dropped, a missing facet leaves the recipe pending-tags, rule overrides such as vegan, a cache hit that costs no call, a version bump that classifies again), canonical ingredient names, search with facets and full text, and deriving again after a version bump;
 - parsing all instruction shapes and ISO durations;
 - the veg word list, including tricky ones ("Hähnchenbrustfilet", "Speckwürfel", "vegetarischer Speck", "Gemüsebrühe", "Fischsauce", "Sojahack");
 - ingredient lines ("1 ½ EL", "2-3 Zwiebeln", "Salz, Pfeffer", "1 Dose (400 g) Tomaten");
