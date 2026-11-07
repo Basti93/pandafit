@@ -164,7 +164,7 @@ describe('planning with real recipes', () => {
       const restore = unlockAt(5);
       try {
         const { coach } = setup({ ask: async (i) => (isMealPrompt(i.prompt) ? AI_PLAN() : { auswahl: [] }) });
-        await fill(coach, 10, 'collection', (i) => (i <= 5 ? { nutrition: { proteinContent: '5 g' } } : i === 6 ? { nutrition: undefined, recipeIngredient: ['300 g Quittenmus', '200 g Hanfschrot'] } : {}));
+        await fill(coach, 10, 'collection', (i) => (i <= 5 ? { nutrition: undefined, recipeIngredient: ['300 g Kartoffeln', '1 Zwiebel', '1 EL Öl'] } : i === 6 ? { nutrition: undefined, recipeIngredient: ['300 g Quittenmus', '200 g Hanfschrot'] } : {}));
         await coach.replan('max', week);
         const plan = coach.view('max').weeks.find((w) => w.plan.week === week)!.plan;
         // Monday and Wednesday are training days: only recipes with 28 g are chosen there.

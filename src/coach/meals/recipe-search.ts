@@ -72,7 +72,8 @@ export function searchRecipes(db: DatabaseSync, q: SearchQuery): StoredRecipe[] 
     where.push(`r.id IN (${q.ids.map(() => '?').join(',')})`);
     args.push(...q.ids);
   }
-  const rating = 'COALESCE(r.rating, 0) DESC, COALESCE(r.rating_n, 0) DESC, r.id';
+  // A balanced meal comes first, only implicitly: nothing about it is shown.
+  const rating = "COALESCE(json_extract(r.json, '$.ausgewogen') = 'gut', 0) DESC, COALESCE(r.rating, 0) DESC, COALESCE(r.rating_n, 0) DESC, r.id";
   const order = q.order === 'sample' ? `((r.rowid * 2654435761 + ?) & 4294967295), r.id` : fts ? `f.rank, ${rating}` : rating;
   const orderArgs: SQLInputValue[] = q.order === 'sample' ? [Math.abs(Math.floor(q.seed ?? 0)) % 4294967295] : [];
   const limit = Math.max(1, Math.min(MAX_LIMIT, Math.floor(q.limit ?? 50)));
