@@ -819,4 +819,36 @@ describe('Rad on the phone', () => {
     await boot({ account: 'anna', seed: [bikeRec(), runStatus()], flags: { 'pandafit.ausdauer.anna': 'laufen' }, startTab: 'ausdauer' });
     expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
   });
+
+  const bikeWeek = async (): Promise<TrackedRecord> => {
+    const { mondayOf, weekDates } = await import('../../src/shared/week-plan');
+    const { dateKey } = await import('../../src/shared/day-rating');
+    const monday = mondayOf(dateKey(NOW));
+    return { kind: 'weekplan', id: monday, updatedMs: 1, deleted: false, body: { weekStart: monday, fromMessage: 'm', acceptedMs: 1, days: weekDates(monday).map((date) => ({ date, sport: 'bike', hardness: 'moderate', fixed: false })) } };
+  };
+
+  it('Heute on a bike day names the session and Ansehen opens Rad', async () => {
+    await boot({ account: 'anna', seed: [bikeRec(), await bikeWeek()] });
+    await waitFor(() => expect(screen.getByRole('region', { name: /^Heute/ }).textContent).toContain('Schwellen-Intervalle · 60 Min'));
+    const card = screen.getByRole('region', { name: /^Heute/ });
+    expect(card.textContent).not.toContain('am Mac');
+    fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
+    expect(await screen.findByRole('heading', { name: 'Rad' })).toBeTruthy();
+  });
+
+  it('Heute on a bike day without a published plan keeps the note about the Mac', async () => {
+    await boot({ account: 'anna', seed: [await bikeWeek()] });
+    await waitFor(() => expect(screen.getByRole('region', { name: /^Heute/ }).textContent).toContain('am Mac'));
+    const card = screen.getByRole('region', { name: /^Heute/ });
+    expect(within(card).queryByRole('button', { name: 'Ansehen' })).toBeNull();
+  });
+
+  it('Woche marks the days with a ride as gefahren', async () => {
+    const rode = rideRec('r1', 0);
+    await boot({ account: 'anna', seed: [bikeRec(), await bikeWeek(), rode] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    const week = await screen.findByRole('list', { name: 'Wochenplan diese Woche' });
+    const rows = within(week).getAllByRole('listitem').filter((li) => li.textContent?.includes('gefahren'));
+    expect(rows.length).toBe(1);
+  });
 });

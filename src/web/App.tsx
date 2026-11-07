@@ -114,11 +114,12 @@ const todayTitle = (ms: number): string => new Date(ms).toLocaleDateString('de-D
 /** "14:05", or with the day when it was not today. */
 const sinceText = (ms: number, now: number): string => (localDayKey(ms) === localDayKey(now) ? timeLabel(ms) : `${shortDate(ms)} ${timeLabel(ms)}`);
 
-function Heute({ port, env, account, goTraining, goRun, goCoach }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goCoach: () => void }) {
+function Heute({ port, env, account, goTraining, goRun, goBike, goCoach }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void }) {
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
   const weekplans = usePortRecords(port, 'weekplan').records;
   const runs = usePortRecords(port, 'run').records;
+  const bikePlan = bikeOf(usePortRecords(port, 'bike').records)?.next ?? null;
   // Only when the Mac sent one for this account: without a link Heute stays as it was.
   const together = togetherOf(usePortRecords(port, 'together').records);
   const [showTogether, setShowTogether] = useState(false);
@@ -162,6 +163,13 @@ function Heute({ port, env, account, goTraining, goRun, goCoach }: { port: WebPo
     </>
   );
 
+  // On a bike day: the planned session, and a way to look at it. The ride itself starts on the Mac.
+  const bike = bikePlan && goBike ? (
+    <>
+      <p className="muted">{bikePlan.name} · {bikePlan.minutes} Min</p>
+      <button type="button" className="secondary" onClick={goBike}>Ansehen</button>
+    </>
+  ) : undefined;
   if (together && showTogether) return <TogetherPage t={together} now={now} onBack={() => setShowTogether(false)} />;
   return (
     <div className="tk-screen">
@@ -173,9 +181,9 @@ function Heute({ port, env, account, goTraining, goRun, goCoach }: { port: WebPo
         </section>
       )}
       {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
-      {today ? <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} quiet={!!open} /> : (
+      {today ? <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} quiet={!!open} /> : (
         <>
-          <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} quiet={!!open} />
+          <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} quiet={!!open} />
           <section className="card">{gym}</section>
           <section className="card">
             <p className="muted">Noch kein Wochenplan für heute. Mit dem Coach plant ihr die Woche über alle Sportarten.</p>
@@ -472,7 +480,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         {push.msg && <div className="tk-screen"><p role="status" className="tk-note">{push.msg}</p></div>}
         {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
-          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} />}
+          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} />}
           {tab === 'training' && <Training port={port} env={env} resume={resume} />}
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}

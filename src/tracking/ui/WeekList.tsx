@@ -8,7 +8,7 @@ export const dayName = (date: string) => WEEKDAY_LABEL[(new Date(`${date}T12:00:
 const dayText = (d: PlanDay) => planDayText(d, { legs: true });
 
 /** Seven day rows, Mo–So: sport and hardness on one line, today marked. The run coach's runs sit on their days. */
-export function Week({ days, label, today, runs = [] }: { days: PlanDay[]; label: string; today?: string; runs?: PlannedRun[] }) {
+export function Week({ days, label, today, runs = [], rode }: { days: PlanDay[]; label: string; today?: string; runs?: PlannedRun[]; /** Dates with a ride the coach published: the day says "gefahren". */ rode?: ReadonlySet<string> }) {
   return (
     <ul className="tk-week" aria-label={label}>
       {days.map((d) => (
@@ -16,7 +16,7 @@ export function Week({ days, label, today, runs = [] }: { days: PlanDay[]; label
           <b>{dayName(d.date)}</b>
           <span>
             {d.sport === 'run' && runs.some((r) => r.date === d.date) ? runs.filter((r) => r.date === d.date).map(runText).join(' · ') : dayText(d)}
-            {d.fixed && <span className="muted"> · fest</span>}{d.note && <span className="muted"> · {d.note}</span>}
+            {rode?.has(d.date) && <span className="muted"> · gefahren</span>}{d.fixed && <span className="muted"> · fest</span>}{d.note && <span className="muted"> · {d.note}</span>}
             {d.sport !== 'run' && runs.filter((r) => r.date === d.date).map((r) => <span key={r.kind}> · {runText(r)}</span>)}
           </span>
         </li>

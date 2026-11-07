@@ -41,7 +41,7 @@ import { manualRuns } from './run/runs';
 import { CoachTasks, type CoachId, type TaskFrom } from './coach-tasks';
 import { statsContent } from './stats/stats-content';
 import { exportStats } from './tracking/stats-export';
-import { exportBike } from './tracking/bike-export';
+import { exportBike, radForChat } from './tracking/bike-export';
 import { mirrorExercises } from './tracking/mirror-exercises';
 import { ChatCoach } from './chat/chat-coach';
 import { planHint, type TodayContext } from './chat/plan-hint';
@@ -321,11 +321,11 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
   });
   /** What the three coaches have planned next, short, for the week chat. */
   const sessionsOf = (id: string): object => {
-    const bike = coach.state(id).next;
+    const bikeState = coach.state(id);
     const g = gym.enabled(id) ? gym.state(id).next : null;
     const runWeek = runView(records.all(id, 'run'), nowMs()).week;
     return {
-      rad: bike ? { name: bike.session.name, minuten: Math.round(bike.session.steps.reduce((a, st) => a + st.durationS, 0) / 60), begruendung: bike.reason } : null,
+      ...(bikeState.next ? radForChat(bikeState) : { rad: null, radFahrten: [] }),
       kraft: g ? {
         name: g.workout.name, begruendung: g.reason,
         uebungen: g.workout.exercises.map((e) => {

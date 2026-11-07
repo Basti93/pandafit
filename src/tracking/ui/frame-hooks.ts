@@ -5,10 +5,12 @@ import { frameOf, frameRecord, type Frame, type FrameBody } from '../../shared/f
 import { addDays, planFor } from '../../shared/week-plan';
 import { todayAdvice, type TodayAdvice } from '../../shared/today';
 import type { RunWeekBody } from '../../shared/run';
+import type { RideBody } from '../../shared/bike';
 import type { LoggedWorkout } from '../../shared/records';
 import type { TrackingPort } from '../ports';
 import { readStats } from '../../shared/stats';
 import { finishedWorkouts, useCatalog, useGoal, usePortRecords } from './hooks';
+import { ridesOf } from './bike-view';
 
 const LEG_MUSCLES = ['quadriceps', 'hamstrings', 'glutes', 'calves'];
 const DAYS_BACK = 7;
@@ -33,14 +35,15 @@ export function useFrame(port: TrackingPort, nowMs: number) {
   };
 }
 
-/** The past days as the app knows them: finished workouts and done runs (the bike runs on the Mac). */
-export function ratingsFromRecords(workouts: LoggedWorkout[], runWeeks: RunWeekBody[], catalog: readonly Exercise[], dates: string[]): Record<string, DayRating> {
+/** The past days as the app knows them: finished workouts, done runs and the rides the coach published (counted like the coach counts them: no tired legs from the bike). */
+export function ratingsFromRecords(workouts: LoggedWorkout[], runWeeks: RunWeekBody[], catalog: readonly Exercise[], dates: string[], rides: readonly RideBody[] = []): Record<string, DayRating> {
   const entries: RatingEntry[] = [];
   for (const w of workouts) {
     const legs = w.exercises.some((e) => LEG_MUSCLES.includes(catalog.find((c) => c.id === e.exerciseId)?.primaryMuscle ?? ''));
     entries.push({ date: dateKey(w.startMs), hardness: legs ? 'hard' : 'moderate', legs, minutes: ((w.endMs ?? w.startMs) - w.startMs) / 60_000, sport: 'gym' });
   }
   for (const wk of runWeeks) for (const r of wk.runs) if (r.done !== null) entries.push({ date: r.date, hardness: RUN_HARDNESS[r.kind], legs: false, minutes: r.minutes, sport: 'run' });
+  for (const r of rides) entries.push({ date: dateKey(r.startedAtMs), hardness: r.hardness, legs: false, minutes: r.durationS / 60, sport: 'bike' });
   return ratingsFromEntries(entries, dates);
 }
 
@@ -53,11 +56,12 @@ export function useTodayAdvice(port: TrackingPort, nowMs: number): { advice: Tod
   const runs = usePortRecords(port, 'run').records;
   const weekplans = usePortRecords(port, 'weekplan').records;
   const stats = usePortRecords(port, 'stats').records;
+  const rideRecords = usePortRecords(port, 'ride').records;
   const date = dateKey(nowMs);
   const ratings = useMemo(() => {
     const weeks = (runs ?? []).map((r) => r.body as RunWeekBody).filter((b) => b && b.type === 'week' && Array.isArray(b.runs));
-    return ratingsFromRecords(finishedWorkouts(workouts), weeks, catalog, Array.from({ length: DAYS_BACK + 1 }, (_, i) => addDays(date, -i)));
-  }, [workouts, runs, catalog, date]);
+    return ratingsFromRecords(finishedWorkouts(workouts), weeks, catalog, Array.from({ length: DAYS_BACK + 1 }, (_, i) => addDays(date, -i)), ridesOf(rideRecords).map((r) => r.body));
+  }, [workouts, runs, catalog, date, rideRecords]);
   // The coach's advice for today counts when it is there (it knows the bike rides); else the app's own.
   const published = useMemo(() => {
     const r = (stats ?? []).find((x) => x.kind === 'stats' && x.id === 'stats' && !x.deleted);

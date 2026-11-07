@@ -78,3 +78,14 @@ describe('the bike and ride records', () => {
     expect(bad).toEqual(['pa']); // the plan was still written
   });
 });
+
+describe('what the week chat sees of the bike', () => {
+  it('names the plan, FTP, phase and the last five rides, newest first', async () => {
+    const { radForChat } = await import('../../../src/coach/tracking/bike-export');
+    const many = Array.from({ length: 7 }, (_, i) => ({ ...summary(`r${i}`), startedAtMs: NOW - (7 - i) * 86_400_000, sessionName: `Fahrt ${i}` }));
+    const d = radForChat(state(many));
+    expect(d.rad).toEqual({ name: 'Locker, 45 Min', minuten: 45, begruendung: 'weil', ftp: 200, phase: 'Aufbau' });
+    expect(d.radFahrten).toHaveLength(5);
+    expect(d.radFahrten[0]).toEqual({ datum: '2026-11-03', name: 'Fahrt 6', minuten: 50, haerte: 'locker' });
+  });
+});

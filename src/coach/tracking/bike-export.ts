@@ -6,6 +6,7 @@ import type { RideSummary } from '../metrics';
 import type { CoachState } from '../state';
 import type { RecordStore } from './store';
 import type { Sample } from '../../shared/sample';
+import { HARDNESS_LABEL } from '../../shared/week-plan';
 
 const DAY_MS = 86_400_000;
 const WEEKS = 12;
@@ -117,4 +118,11 @@ export function exportBike(d: Deps): string[] {
     }
     return out;
   } catch { return []; }
+}
+
+/** What the week chat sees of the bike: the plan, FTP and phase, and the last rides in a few words. */
+export function radForChat(s: CoachState): { rad: { name: string; minuten: number; begruendung: string; ftp: number; phase: string }; radFahrten: { datum: string; name: string; minuten: number; haerte: string }[] } {
+  const radFahrten = [...s.summaries].sort((a, b) => b.startedAtMs - a.startedAtMs).slice(0, 5)
+    .map((r) => ({ datum: dateKey(r.startedAtMs), name: r.sessionName ?? 'Fahrt', minuten: Math.round(r.durationS / 60), haerte: HARDNESS_LABEL[rateIntensity(r.intensityFactor)] }));
+  return { rad: { name: s.next.session.name, minuten: sessionMinutes(s.next.session), begruendung: s.next.reason, ftp: Math.round(s.ftpW), phase: s.phase.name }, radFahrten };
 }
