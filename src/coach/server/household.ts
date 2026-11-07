@@ -299,6 +299,8 @@ export class Household {
   }
 
   /** The shared MealCoach once `household/meals/moved.json` exists, else null. Made on first use, so nothing is read before the move. */
+  /** The household's meal coach, once its meals moved; null before. */
+  meals(): MealCoach | null { return this.openMeals(); }
   private openMeals(): MealCoach | null {
     if (!fs.existsSync(path.join(this.mealsDir(), 'moved.json'))) return null;
     if (this.mealCoach) return this.mealCoach;

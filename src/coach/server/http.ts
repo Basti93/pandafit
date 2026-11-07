@@ -139,6 +139,26 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
     return { sha256: out.sha256, same: out.same };
   });
 
+  // ---- Recipe pictures ----
+
+  // Only for an account that moved, and only a recipe the household can plan from. The picture is served as stored.
+  app.get('/recipes/:id/image', async (req, reply) => {
+    const accountId = authorised(req.raw)!;
+    const id = (req.params as { id: string }).id;
+    if (!household.account(accountId)) return reply.code(404).send({ error: 'not moved' });
+    const store = household.meals()?.recipes() ?? null;
+    let found: ReturnType<NonNullable<typeof store>['imageOf']> = null;
+    try { found = store && /^[cl]-[0-9a-f]{14}$/.test(id) && store.plannable(id) ? store.imageOf(id) : null; } catch { found = null; }
+    if (!found) return reply.code(404).send({ error: 'no picture' });
+    let stat: fs.Stats;
+    let bytes: Buffer;
+    try { stat = fs.statSync(found.file); bytes = fs.readFileSync(found.file); } catch { return reply.code(404).send({ error: 'no picture' }); }
+    const etag = `"${createHash('sha1').update(bytes).digest('hex').slice(0, 20)}"`;
+    reply.header('Cache-Control', 'private, max-age=604800').header('ETag', etag).header('X-Content-Type-Options', 'nosniff').header('Last-Modified', stat.mtime.toUTCString());
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return reply.type(found.type).send(bytes);
+  });
+
   // ---- The move from the Mac ----
 
   // Answers name only states, item names and ride ids: never content, never a secret.

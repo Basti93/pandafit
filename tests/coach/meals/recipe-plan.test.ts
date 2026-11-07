@@ -24,7 +24,7 @@ const recipe = (n: number, over: Record<string, unknown> = {}) => ({
   recipeIngredient: [`${100 + n} g Linsen`, '1 Zwiebel', '1 EL Öl', `${n} Karotten`], recipeInstructions: ['Alles braten.'], nutrition: { proteinContent: '28 g' }, ...over,
 });
 
-const setup = (o: { ask?: (i: { prompt: string }) => Promise<unknown>; fetchPage?: (url: string) => Promise<Page>; linked?: string[]; now?: () => number; noRecipes?: boolean } = {}) => {
+const setup = (o: { ask?: (i: { prompt: string }) => Promise<unknown>; fetchPage?: (url: string) => Promise<Page>; fetchPicture?: (url: string) => Promise<{ bytes: Buffer; type: 'image/jpeg' } | null>; linked?: string[]; now?: () => number; noRecipes?: boolean } = {}) => {
   const dir = tmp();
   let r = 0;
   const store = new RecordStore({ dir: path.join(dir, 'tracking') });
@@ -32,7 +32,7 @@ const setup = (o: { ask?: (i: { prompt: string }) => Promise<unknown>; fetchPage
   const clock = { now: at(7, 6) };
   const coach = new MealCoach({
     dir: path.join(dir, 'meals'), ...(o.noRecipes ? {} : { recipesDir: path.join(dir, 'recipes') }), nowMs: o.now ?? (() => clock.now), profiles: () => PEOPLE, noOpenRide: () => true, ask,
-    ...(o.fetchPage ? { fetchPage: o.fetchPage } : {}), store, linked: (id) => (o.linked ?? []).includes(id), trainingDays: () => [0, 2], random: () => ((r = (r * 9301 + 49297) % 233280) / 233280),
+    ...(o.fetchPage ? { fetchPage: o.fetchPage } : {}), ...(o.fetchPicture ? { fetchPicture: o.fetchPicture } : {}), store, linked: (id) => (o.linked ?? []).includes(id), trainingDays: () => [0, 2], random: () => ((r = (r * 9301 + 49297) % 233280) / 233280),
   });
   coach.setSettings('max', ON());
   coach.setSettings('lena', ON());
@@ -194,6 +194,23 @@ describe('adding a recipe by link', () => {
     // Asked once: a second tick does not fetch again.
     await coach.tick();
     expect(pages).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes the page\'s own picture (string, list or ImageObject), and a failing download never fails the import', async () => {
+    const jpg = { bytes: Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(9)]), type: 'image/jpeg' as const };
+    const get = vi.fn(async (url: string) => (url.endsWith('ok.jpg') ? jpg : null));
+    const pages: Record<string, object> = {
+      'https://rezepte.example/a': recipe(1, { image: { '@type': 'ImageObject', url: 'https://bilder.example/ok.jpg' } }),
+      'https://rezepte.example/b': recipe(2, { image: ['https://bilder.example/kaputt.jpg'] }),
+      'https://rezepte.example/c': recipe(3),
+    };
+    const { coach, store } = setup({ ask: answer, fetchPage: async (url) => ({ ok: true, html: html(pages[url]!), url }), fetchPicture: get, linked: ['max'] });
+    store.putMany('max', [request('link-aaaa0010', 'https://rezepte.example/a'), request('link-aaaa0011', 'https://rezepte.example/b'), request('link-aaaa0012', 'https://rezepte.example/c')], 'remote');
+    await coach.tick();
+    expect(['link-aaaa0010', 'link-aaaa0011', 'link-aaaa0012'].map((id) => result(store, id)?.state)).toEqual(['saved', 'saved', 'saved']);
+    const mine = coach.recipes()!.mine('max');
+    const withPicture = mine.filter((r) => coach.recipes()!.imageOf(r.id));
+    expect(withPicture.map((r) => r.sourceUrl)).toEqual(['https://rezepte.example/a']);
   });
 
   it('answers a recipe with meat as not vegetarian and stores nothing', async () => {

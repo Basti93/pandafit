@@ -10,6 +10,7 @@ import { buildCoachServer } from '../../../src/coach/server/http';
 import type { CoachServerMessage } from '../../../src/shared/coach-protocol';
 import type { Profile } from '../../../src/shared/profiles';
 import { DEFAULT_MEAL_SETTINGS } from '../../../src/shared/meals';
+import { taggingAi } from '../meals/fake-ai';
 
 const KEY = Buffer.alloc(32, 7);
 const TOKEN = 'b'.repeat(64);
@@ -530,4 +531,52 @@ test('live: the running ride of one account reaches only that account\'s other c
   const late = await t.as(1);
   t.send(late, { type: 'live-watch' });
   await vi.waitFor(() => expect(late.frames.some((f) => f.type === 'live-state')).toBe(true));
+});
+
+describe('GET /recipes/:id/image', () => {
+  const H = (account: number, token = TOKEN) => ({ 'x-pandafit-internal': token, 'x-pandafit-account': String(account) });
+  const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(16, 1)]);
+  const seed = async (t: Awaited<ReturnType<typeof start>>, check: boolean) => {
+    const store = t.household.meals()!.recipes()!;
+    const rec = (n: number) => ({ '@type': 'Recipe', name: `Erfundener Topf ${n}`, recipeYield: '2', recipeIngredient: [`${100 + n} g Linsen`, '1 Zwiebel', '1 EL Öl'], recipeInstructions: ['Alles kochen.'] });
+    const a = await store.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: rec(1) });
+    const b = await store.add({ source: 'collection', url: 'https://rezepte.example/b', recipe: rec(2) });
+    if (a.status !== 'saved' || b.status !== 'saved') throw new Error('seed');
+    if (check) await store.tagIds([a.recipe.id], taggingAi());
+    store.setImage(a.recipe.id, { bytes: JPEG, type: 'image/jpeg' });
+    store.setImage(b.recipe.id, { bytes: JPEG, type: 'image/jpeg' });
+    return { withPicture: a.recipe.id, unchecked: b.recipe.id, store };
+  };
+
+  test('needs the internal token and a moved account, and serves the picture with caching headers and an ETag', async () => {
+    const t = await start({ meals: true, accounts: [[1, P1], [3, { id: 'pc', name: 'C', ftpW: 150 }, false]] });
+    const { withPicture } = await seed(t, true);
+    const url = `/recipes/${withPicture}/image`;
+    expect((await app!.inject({ method: 'GET', url })).statusCode).toBe(401);
+    expect((await app!.inject({ method: 'GET', url, headers: H(1, 'c'.repeat(64)) })).statusCode).toBe(401);
+    expect((await app!.inject({ method: 'GET', url, headers: H(3) })).statusCode).toBe(404);
+    const ok = await app!.inject({ method: 'GET', url, headers: H(1) });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.headers['content-type']).toBe('image/jpeg');
+    expect(ok.headers['cache-control']).toBe('private, max-age=604800');
+    expect(ok.rawPayload.equals(JPEG)).toBe(true);
+    const etag = String(ok.headers.etag);
+    expect(etag).toMatch(/^"[0-9a-f]{20}"$/);
+    const again = await app!.inject({ method: 'GET', url, headers: { ...H(1), 'if-none-match': etag } });
+    expect(again.statusCode).toBe(304);
+  });
+
+  test('answers 404 without a picture, for an unknown or malformed id, and for a recipe the AI has not confirmed', async () => {
+    const t = await start({ meals: true });
+    const { withPicture, unchecked, store } = await seed(t, true);
+    for (const id of [unchecked, 'c-00000000000000', '..%2F..%2Fetc%2Fpasswd', 'x']) expect((await app!.inject({ method: 'GET', url: `/recipes/${id}/image`, headers: H(1) })).statusCode).toBe(404);
+    store.database().prepare('DELETE FROM images WHERE recipe_id = ?').run(withPicture);
+    expect((await app!.inject({ method: 'GET', url: `/recipes/${withPicture}/image`, headers: H(1) })).statusCode).toBe(404);
+  });
+
+  test('is a 404 before the household\'s meals moved', async () => {
+    const t = await start();
+    expect((await app!.inject({ method: 'GET', url: '/recipes/c-00000000000000/image', headers: H(1) })).statusCode).toBe(404);
+    void t;
+  });
 });

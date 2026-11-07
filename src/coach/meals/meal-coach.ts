@@ -9,6 +9,7 @@ import type { TrackedRecord } from '../../shared/records';
 import type { RecordStore } from '../tracking/store';
 import { fitsEveryone } from './check';
 import { sanitizeUrl, type StoredRecipe } from './recipe-import';
+import { fetchPicture, imageUrlOf, type Picture } from './recipe-image';
 import { extractRecipe, fetchPage, type Page } from './recipe-link';
 import { planFromRecipes } from './recipe-plan';
 import { RecipeStore } from './recipe-store';
@@ -57,6 +58,8 @@ type Deps = {
   recipesDir?: string;
   /** Fetches the page of a link recipe; the guarded fetch unless a test gives its own. */
   fetchPage?: (url: string) => Promise<Page>;
+  /** Downloads a recipe's picture; the guarded download unless a test gives its own. */
+  fetchPicture?: (url: string) => Promise<Picture | null>;
 };
 type FileData = {
   settings: Record<string, MealSettings>; plans: Record<string, MealPlan>; states: Record<string, MealState>; notices: Record<string, string | null>; lastAuto: string | null;
@@ -155,7 +158,7 @@ export class MealCoach {
     try {
       const store = this.recipes();
       if (!store || !this.deps.noOpenRide()) return;
-      await store.scanInbox({ noOpenRide: this.deps.noOpenRide, ...(this.deps.ask ? { ask: this.deps.ask } : {}) });
+      await store.scanInbox({ noOpenRide: this.deps.noOpenRide, ...(this.deps.fetchPicture ? { fetchPicture: this.deps.fetchPicture } : {}), ...(this.deps.ask ? { ask: this.deps.ask } : {}) });
     } catch { /* the next scan tries again */ }
   }
 
@@ -175,7 +178,14 @@ export class MealCoach {
       const found = extractRecipe(page.html);
       if (!found) return { state: 'none' };
       const out = await store.add({ source: 'link', owner, url: clean, recipe: found, ...(this.deps.ask ? { ask: this.deps.ask, tagAsk: this.deps.ask } : {}) });
-      if (out.status === 'saved' || out.status === 'duplicate') return { state: 'saved', title: out.recipe.title };
+      if (out.status === 'saved' || out.status === 'duplicate') {
+        // The page's own picture, when the recipe has none: a failed download never fails the import.
+        try {
+          const address = imageUrlOf((found as { image?: unknown }).image);
+          if (address && !store.imageOf(out.recipe.id)) { const pic = await (this.deps.fetchPicture ?? fetchPicture)(address); if (pic) store.setImage(out.recipe.id, pic); }
+        } catch { /* the recipe stays without a picture */ }
+        return { state: 'saved', title: out.recipe.title };
+      }
       if (out.status === 'pending') return { state: 'wait', title: String((found as { name?: unknown }).name ?? '').slice(0, 120) || 'Rezept' };
       return { state: out.status === 'rejected' ? 'veg' : 'none' };
     } catch { return { state: 'fetch' }; }
