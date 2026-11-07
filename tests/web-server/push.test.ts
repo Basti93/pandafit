@@ -211,6 +211,28 @@ describe('version notification', () => {
     await three.app.close();
   });
 
+  it('skips accounts that switched the notice off, but other types still reach them', async () => {
+    const one = await server({ version: 'v1' });
+    const a = (await login(one.app, 'anna', PW_A)).cookie!, b = (await login(one.app, 'ben', PW_B)).cookie!;
+    await subscribe(one.app, a, sub('anna'));
+    await subscribe(one.app, b, sub('ben'));
+    const off = { kind: 'contact', id: 'contact', updatedMs: NOW, deleted: false, body: { email: null, weekly: false, atMs: NOW, updates: false } };
+    expect((await post(one.app, H(a), [off])).statusCode).toBe(200);
+    await one.app.close();
+
+    const two = await server({ db: one.dbPath, version: 'v2' });
+    await two.app.ready();
+    await vi.waitFor(() => expect(two.sent).toHaveLength(1));
+    await settle();
+    expect(two.sent.map((s) => s.endpoint)).toEqual([sub('ben').endpoint]);
+    // A meal plan push still goes to the opted-out account.
+    const a2 = (await login(two.app, 'anna', PW_A)).cookie!;
+    await subscribe(two.app, a2, sub('anna'));
+    await post(two.app, H(a2), [week(NEXT)]);
+    await vi.waitFor(() => expect(two.sent.some((s) => s.type === 'meal' && s.endpoint === sub('anna').endpoint)).toBe(true));
+    await two.app.close();
+  });
+
   it('the build version is a hash of the built files', () => {
     const d = mkdtempSync(join(tmpdir(), 'pf-web-'));
     writeFileSync(join(d, 'index.html'), 'a');

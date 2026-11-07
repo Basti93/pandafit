@@ -25,6 +25,24 @@ async function fresh() {
   return { dbPath, out, cli, stored };
 }
 
+describe('set-updates', () => {
+  it('writes updates, keeps email and weekly, and refuses bad input', async () => {
+    const { dbPath, cli, stored, out } = await fresh();
+    const upd = (...a: string[]) => run(['set-updates', ...a], dbPath, { readPassword: async () => '', out: (s) => out.push(s) });
+    expect(await upd('anna', 'off')).toBe(0);
+    expect(stored()?.body).toMatchObject({ email: null, weekly: false, updates: false });
+    await cli('anna', 'a@example.org', 'weekly', 'on');
+    expect(stored()?.body).toMatchObject({ email: 'a@example.org', weekly: true, updates: false });
+    const before = stored()!.updatedMs;
+    expect(await upd('anna', 'on')).toBe(0);
+    expect(stored()?.body).toMatchObject({ email: 'a@example.org', weekly: true, updates: true });
+    expect(stored()!.updatedMs).toBeGreaterThan(before);
+    expect(await upd('anna', 'maybe')).toBe(1);
+    expect(await upd('nobody', 'off')).toBe(1);
+    expect(await upd('anna')).toBe(1);
+  });
+});
+
 describe('set-contact', () => {
   it('writes the contact record, with the switch off unless asked', async () => {
     const { cli, stored, out } = await fresh();

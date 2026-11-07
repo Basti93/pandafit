@@ -2,6 +2,7 @@ import { createCipheriv, createECDH, createHash, createHmac, createPrivateKey, s
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { readContact } from '../src/shared/contact';
 
 /**
  * Web Push with Node's own crypto: VAPID (RFC 8292, ES256 JWT) and aes128gcm payload encryption (RFC 8291).
@@ -143,15 +144,24 @@ export type Push = {
   notifyEndpoint(accountId: number, endpoint: string, type: PushType): Promise<void>;
 };
 
+/** Accounts whose contact record says `updates: false` (a missing value means on). */
+const updatesOff = (db: DatabaseSync): Set<number> => {
+  const rows = db.prepare("SELECT account_id, body FROM records WHERE kind = 'contact' AND id = 'contact' AND deleted = 0").all() as { account_id: number; body: string }[];
+  const off = new Set<number>();
+  for (const r of rows) { try { if (readContact(JSON.parse(r.body))?.updates === false) off.add(r.account_id); } catch { /* unreadable: stays on */ } }
+  return off;
+};
+
 export function createPush(db: DatabaseSync, send: Sender | null, now: () => number): Push {
   const run = async (type: PushType, accountId: number | null, endpoint?: string): Promise<void> => {
     if (!send) return;
     try {
       db.prepare(`DELETE FROM push_subs AS s WHERE NOT ${LIVE}`).run({ now: now() });
+      const optedOut = type === 'version' && accountId === null ? updatesOff(db) : new Set<number>();
       const subs = (endpoint !== undefined
         ? db.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE account_id = ? AND endpoint = ?').all(accountId, endpoint)
         : accountId === null
-        ? db.prepare('SELECT endpoint, p256dh, auth FROM push_subs').all()
+        ? db.prepare('SELECT endpoint, p256dh, auth, account_id FROM push_subs').all().filter((s) => type !== 'version' || !optedOut.has((s as { account_id: number }).account_id))
         : db.prepare('SELECT endpoint, p256dh, auth FROM push_subs WHERE account_id = ?').all(accountId)) as Subscription[];
       const payload = JSON.stringify({ type, ...MESSAGES[type] });
       await Promise.all(subs.map(async (s) => {
