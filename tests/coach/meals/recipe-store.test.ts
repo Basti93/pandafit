@@ -569,3 +569,12 @@ describe('a failing AI', () => {
     s.close();
   });
 });
+
+describe('links of own inbox recipes', () => {
+  it('shows no link for an own recipe from the inbox, but keeps a link import\'s', async () => {
+    const { shownLink, OWN_OWNER } = await import('../../../src/coach/meals/recipe-store');
+    expect(shownLink({ sourceUrl: 'https://rezepte.example/a', owner: OWN_OWNER })).toBe('');
+    expect(shownLink({ sourceUrl: 'https://rezepte.example/a', owner: 'p1' })).toBe('https://rezepte.example/a');
+    expect(shownLink({ sourceUrl: 'https://rezepte.example/a' })).toBe('https://rezepte.example/a');
+  });
+});

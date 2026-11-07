@@ -39,7 +39,8 @@ type Ask = Structure & TagAsk;
 const fingerprint = (title: string, ingredients: { name: string }[]): string =>
   crypto.createHash('sha1').update(`${norm(title)}|${[...new Set(ingredients.map((i) => norm(i.name)))].sort().join(',')}`).digest('hex').slice(0, 20);
 /** The owner of own recipes delivered through the inbox: they belong to the household, so every person sees and may delete them. */
-export const OWN_OWNER = '~own';
+export { OWN_OWNER, shownLink } from './recipe-import';
+import { OWN_OWNER } from './recipe-import';
 const scopeOf = (source: 'collection' | 'link', owner: string | undefined): string => (source === 'collection' ? 'c' : `l:${owner ?? ''}`);
 const idOf = (scope: string, url: string): string => `${scope[0]}-${crypto.createHash('sha1').update(`${scope}|${url}`).digest('hex').slice(0, 14)}`;
 const dayKey = (ms: number): string => new Date(ms).toISOString().slice(0, 10);

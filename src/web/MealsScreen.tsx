@@ -67,7 +67,7 @@ function OwnRecipesSheet({ recipes, onDelete, onClose }: { recipes: OwnRecipe[];
       {recipes.length === 0 ? <p className="muted">Noch keine eigenen Rezepte.</p> : (
         <RowList label="Eigene Rezepte">
           {recipes.map((r) => (
-            <Row key={r.id} title={<span className="pm-rowtitle">{r.title}<small className="muted"><a href={r.sourceUrl} target="_blank" rel="noopener noreferrer">Rezept ›</a></small></span>} value={`${r.minutes} Min`}>
+            <Row key={r.id} title={<span className="pm-rowtitle">{r.title}{r.sourceUrl && <small className="muted"><a href={r.sourceUrl} target="_blank" rel="noopener noreferrer">Rezept ›</a></small>}</span>} value={`${r.minutes} Min`}>
               <ConfirmLink label="Löschen" onConfirm={() => onDelete(r.id)} />
             </Row>
           ))}
