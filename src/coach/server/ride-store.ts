@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { exportFit } from '../../service/export/fit';
 import { readRide } from '../../service/recorder';
-import { RIDE_FILE_NAMES, RIDE_ID, readRideFiles, rideHash, type RideFiles } from '../ride-upload-format';
+import { RIDE_FILE_NAMES, RIDE_ID, readRideFiles, readRideUpload, rideHash, type RideFiles, type RideUpload } from '../ride-upload-format';
 
 export type StoreResult = { ok: true; sha256: string; same: boolean } | { ok: false; reason: 'invalid' | 'hash' | 'open' | 'profile' };
 
@@ -84,4 +84,35 @@ export const storeRide = (opts: { ridesDir: string; profileId: string; upload: u
     throw e;
   }
   return { ok: true, sha256: u.sha256, same: false };
+};
+
+export type StoredRide = { rideId: string; sha256: string; status: 'finished' | 'aborted'; startedAtMs: number };
+
+/** The closed ride of this profile in the folder, or null: not there, not closed, another profile's, or unreadable. */
+const closedMeta = (ridesDir: string, rideId: string, profileId: string): { status: 'finished' | 'aborted'; startedAtMs: number } | null => {
+  try {
+    const meta = JSON.parse(fs.readFileSync(path.join(ridesDir, rideId, 'meta.json'), 'utf8')) as unknown;
+    if (!isObj(meta) || meta.rideId !== rideId || meta.profileId !== profileId) return null;
+    if (meta.status !== 'finished' && meta.status !== 'aborted') return null;
+    return { status: meta.status, startedAtMs: typeof meta.startedAtMs === 'number' ? meta.startedAtMs : 0 };
+  } catch { return null; }
+};
+
+/** The profile's closed rides the server holds, oldest first. Folders like `.replaced-<ms>` and `.incoming-` do not count. */
+export const listRides = (ridesDir: string, profileId: string): StoredRide[] => {
+  let names: string[] = [];
+  try { names = fs.readdirSync(ridesDir); } catch { return []; }
+  const out: StoredRide[] = [];
+  for (const rideId of names.filter((n) => RIDE_ID.test(n)).sort()) {
+    const m = closedMeta(ridesDir, rideId, profileId);
+    if (!m) continue;
+    try { out.push({ rideId, sha256: rideHash(readRideFiles(path.join(ridesDir, rideId))), ...m }); } catch { /* unreadable: not listed */ }
+  }
+  return out;
+};
+
+/** One closed ride of this profile in the upload format, or null. */
+export const loadRide = (ridesDir: string, rideId: string, profileId: string): RideUpload | null => {
+  if (!RIDE_ID.test(rideId) || !closedMeta(ridesDir, rideId, profileId)) return null;
+  try { return readRideUpload(ridesDir, rideId); } catch { return null; }
 };

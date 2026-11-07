@@ -127,7 +127,7 @@ const trickle = (host: string, path: string, headers: Record<string, string>, o:
 describe('coach proxy', () => {
   it('without login every /coach route answers 401 and the socket upgrade is refused', async () => {
     const { coach, host, a } = await world();
-    for (const [method, path] of [['GET', '/coach/status'], ['PUT', '/coach/rides/r1'], ['POST', '/coach/migrate/begin'], ['PUT', '/coach/migrate/item/x'], ['POST', '/coach/migrate/meals'], ['DELETE', '/coach/anything']] as const) {
+    for (const [method, path] of [['GET', '/coach/status'], ['GET', '/coach/rides'], ['GET', '/coach/rides/r1'], ['PUT', '/coach/rides/r1'], ['POST', '/coach/migrate/begin'], ['PUT', '/coach/migrate/item/x'], ['POST', '/coach/migrate/meals'], ['DELETE', '/coach/anything']] as const) {
       expect((await call(host, method, path, { 'content-type': 'application/json' }, Buffer.from('{}'))).status, path).toBe(401);
       expect((await call(host, method, path, { cookie: 'pf_session=' + '0'.repeat(64), origin: `http://${host}` }, Buffer.from('{}'))).status, path).toBe(401);
       expect((await call(host, method, path, { authorization: `Bearer ${'1'.repeat(64)}` }, Buffer.from('{}'))).status, path).toBe(401);
@@ -172,7 +172,7 @@ describe('coach proxy', () => {
 
   it("account A cannot reach account B's coach data on any coach route", async () => {
     const { coach, host, a, own } = await world();
-    const routes: [string, string][] = [['GET', '/coach/status'], ['PUT', '/coach/rides/2026-01-01T10-00-00'], ['POST', '/coach/migrate/begin'], ['PUT', '/coach/migrate/item/x'],
+    const routes: [string, string][] = [['GET', '/coach/status'], ['GET', '/coach/rides'], ['GET', '/coach/rides/ride-1'], ['PUT', '/coach/rides/2026-01-01T10-00-00'], ['POST', '/coach/migrate/begin'], ['PUT', '/coach/migrate/item/x'],
       ['POST', '/coach/migrate/finish'], ['POST', '/coach/migrate/meals'], ['GET', '/coach/accounts/2/status'], ['GET', '/coach/status?account=2']];
     for (const [method, path] of routes)
       expect((await call(host, method, path, { ...own(a), 'x-pandafit-account': '2', 'content-type': 'application/json' }, Buffer.from('{"accountId":2}'))).status, path).toBe(201);

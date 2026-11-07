@@ -471,3 +471,37 @@ test('the default idle limit is 60 s, with no total time limit', async () => {
   expect(app!.server.requestTimeout).toBe(0);
   expect(app!.server.timeout).toBe(60_000);
 });
+
+const seedRide = (dir: string, rideId: string, profileId: string, status: string, folder = rideId) => {
+  const d = path.join(dir, 'rides', folder);
+  fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, 'meta.json'), JSON.stringify({ rideId, profileId, sessionId: 'ki', startedAtMs: 5, status }));
+  fs.writeFileSync(path.join(d, 'session.json'), JSON.stringify({ session: { id: 'ki', name: 'KI', steps: [] }, ftpW: 200 }));
+  fs.writeFileSync(path.join(d, 'samples.jsonl'), '{"seq":0}\n');
+};
+
+test('GET /rides and /rides/:id need the login and show only the account\'s own closed rides', async () => {
+  const t = await start();
+  const a1 = path.join(t.root, 'accounts', '1'), a2 = path.join(t.root, 'accounts', '2');
+  seedRide(a1, 'ride-10', 'pa', 'finished');
+  seedRide(a1, 'ride-11', 'pa', 'aborted');
+  seedRide(a1, 'ride-12', 'pa', 'open');
+  seedRide(a1, 'ride-13', 'pb', 'finished');
+  seedRide(a1, 'ride-10', 'pa', 'finished', 'ride-10.replaced-99');
+  seedRide(a2, 'ride-20', 'pb', 'finished');
+  const h = (account: string) => ({ 'x-pandafit-internal': TOKEN, 'x-pandafit-account': account });
+  for (const url of ['/rides', '/rides/ride-10']) {
+    expect((await app!.inject({ method: 'GET', url })).statusCode).toBe(401);
+    expect((await app!.inject({ method: 'GET', url, headers: { 'x-pandafit-internal': 'c'.repeat(64), 'x-pandafit-account': '1' } })).statusCode).toBe(401);
+  }
+  const list = (await app!.inject({ method: 'GET', url: '/rides', headers: h('1') })).json() as { rides: { rideId: string; sha256: string; status: string; startedAtMs: number }[] };
+  expect(list.rides.map((r) => [r.rideId, r.status, r.startedAtMs])).toEqual([['ride-10', 'finished', 5], ['ride-11', 'aborted', 5]]);
+  const one = await app!.inject({ method: 'GET', url: '/rides/ride-10', headers: h('1') });
+  expect(one.statusCode).toBe(200);
+  expect(one.json()).toMatchObject({ v: 1, rideId: 'ride-10', sha256: list.rides[0]!.sha256 });
+  // Not open, not another profile's, not another account's, no traversal.
+  for (const id of ['ride-12', 'ride-13', 'ride-20', 'ride-10.replaced-99', '..%2F2', 'nope'])
+    expect((await app!.inject({ method: 'GET', url: `/rides/${id}`, headers: h('1') })).statusCode, id).toBe(404);
+  expect((await app!.inject({ method: 'GET', url: '/rides/ride-20', headers: h('2') })).statusCode).toBe(200);
+  expect((await app!.inject({ method: 'GET', url: '/rides', headers: h('9') })).statusCode).toBe(404);
+});
