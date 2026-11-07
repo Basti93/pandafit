@@ -176,6 +176,41 @@ records.push(rec('stats', 'stats', {
   ],
 }, NOW - 1800_000));
 
+// ---------- the bike plan and rides as the server coach publishes them ----------
+{
+  const kinds = [
+    { name: 'Grundlage', min: 55, f: 0.62, hardness: 'easy' as Hardness },
+    { name: 'Schwellen-Intervalle', min: 60, f: 0.86, hardness: 'hard' as Hardness },
+    { name: 'Locker', min: 35, f: 0.55, hardness: 'easy' as Hardness },
+  ];
+  const agos = [2, 6, 9, 13, 16, 20, 27, 33, 41, 55, 62, 70];
+  agos.forEach((ago, i) => {
+    const k = kinds[i % 3]!;
+    const durationS = (k.min + (i % 4) * 3) * 60;
+    const curve = Array.from({ length: 120 }, (_, j) => {
+      const t = Math.round((j / 119) * durationS);
+      const hard = k.hardness === 'hard' && j > 20 && j < 100 && Math.floor((j - 20) / 20) % 2 === 0;
+      const base = 200 * (hard ? 0.95 : k.f * 0.85);
+      return { t, powerW: Math.round(base + rnd() * 12), hrBpm: Math.round(105 + (hard ? 45 : 20) + j * 0.15 + rnd() * 3) };
+    });
+    records.push(rec('ride', `ride-demo${i}`, {
+      type: 'ride', startedAtMs: at(ago, 18), sessionName: k.name, durationS, hardness: k.hardness,
+      avgPowerW: Math.round(200 * k.f * 0.9), normalizedPowerW: Math.round(200 * k.f), avgHrBpm: 128 + (k.hardness === 'hard' ? 15 : 0), maxHrBpm: 150 + (k.hardness === 'hard' ? 20 : 0),
+      tss: Math.round((durationS / 3600) * k.f ** 2 * 100), completedFraction: 1,
+      ...(i < 3 ? { debrief: i === 0 ? 'Ruhig und gleichmäßig, der Puls blieb schön niedrig.' : 'Alle Intervalle geschafft, die letzten waren die stärksten.' } : {}), curve,
+    }, at(ago, 19)));
+  });
+  records.push(rec('bike', 'bike', {
+    type: 'bike', atMs: NOW - 3600_000, ftpW: 205,
+    ftpHistory: [{ atMs: NOW - 150 * DAY, ftpW: 190, source: 'manual' }, { atMs: NOW - 70 * DAY, ftpW: 195, source: 'coach' }, { atMs: NOW - 14 * DAY, ftpW: 205, source: 'coach' }],
+    phase: { name: 'Aufbau', weeksLeft: 3, goal: 'Die Ausdauer solide aufbauen, ein Intervalltag pro Woche' },
+    next: { name: 'Schwellen-Intervalle', reason: 'Die letzten beiden Tage waren locker, die Beine sind frisch.', minutes: 60, hardness: 'hard', blocks: [
+      { label: '10 Min locker', minutes: 10, pct: 55 }, { label: '3 × 8 Min bei 95 %, dazwischen 4 Min locker', minutes: 32, pct: 95 }, { label: '8 Min locker', minutes: 8, pct: 50 }] },
+    alternatives: [{ name: 'Grundlage, 50 Min', minutes: 50, why: 'Falls die Beine müde sind.' }],
+    weekHours: Array.from({ length: 12 }, (_, w) => ({ week: addDays(monday, -7 * (11 - w)), hours: Math.round((1.5 + ((w * 5) % 4) * 0.6 + rnd()) * 10) / 10 })),
+  }, NOW - 3600_000));
+}
+
 // ---------- the meal plan ----------
 const dish = (t: string, min: number, prot: number, ing: [string, number, string, string][]) => ({ title: t, minutes: min, proteinG: prot, keepsDays: 2, source: 'coach', steps: ['Alles vorbereiten.', 'Zusammen garen und abschmecken.'], ingredients: ing.map(([name, amount, unit, section]) => ({ name, amount, unit, section })) });
 const DISHES = [
@@ -413,7 +448,7 @@ async function main() {
   await step('essen-mahlzeit-offen', async () => { await page.locator('.tk-rowbtn[aria-expanded]').first().click(); await shot('essen-tage-mahlzeit-offen'); });
   await step('essen-wunsch', async () => { await page.getByRole('button', { name: 'Änderung wünschen' }).click(); await shot('essen-aenderung-wuenschen'); await page.keyboard.press('Escape'); });
   await step('essen-einkauf', async () => { await page.getByRole('button', { name: /^Einkauf/ }).click(); await shot('essen-einkauf'); });
-  await step('essen-einkauf-haben-wir', async () => { await page.locator('.pm-amount').first().click(); await shot('essen-einkauf-haben-wir'); await page.locator('.pm-amount').first().click(); });
+  await step('essen-einkauf-haben-wir', async () => { await page.locator('.pm-have').first().click(); await shot('essen-einkauf-haben-wir'); await page.locator('.pm-have').first().click(); });
   await step('essen-einkauf-eigenes', async () => {
     await page.getByLabel('Etwas dazuschreiben').fill('Kaffee');
     await page.getByLabel('Menge (optional)').fill('2 Pakete');
@@ -422,12 +457,21 @@ async function main() {
     await page.waitForTimeout(400);
     await shot('essen-einkauf-eigenes');
   });
-  await nav('Laufen');
+  // Ausdauer: Rad first (the default), then the switch to Laufen.
+  await nav('Ausdauer');
   await page.waitForTimeout(500);
+  await shot('rad');
+  await step('rad-aufbau', async () => { await page.getByRole('button', { name: /^Aufbau/ }).click(); await shot('rad-aufbau'); await closeDialog(); });
+  await step('rad-fahrt', async () => { await page.getByRole('button', { name: /Grundlage|Locker|Schwellen/ }).first().click(); await shot('rad-fahrt'); await closeDialog(); });
+  await step('rad-entwicklung', async () => { await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('rad-entwicklung'); await closeDialog(); });
+  await step('rad-fahrten', async () => { await page.getByRole('button', { name: /^Fahrten/ }).click(); await shot('rad-fahrten'); await closeDialog(); });
+  const enduranceSeg = (label: string) => page.getByRole('group', { name: 'Ausdauer' }).getByRole('button', { name: label, exact: true }).click().then(() => page.waitForTimeout(400));
+  await enduranceSeg('Laufen');
+  await shot('ausdauer-umschalter');
   await shot('laufen');
   await step('laufen-eintragen', async () => { await page.getByRole('button', { name: 'Lauf eintragen' }).click(); await shot('laufen-lauf-eintragen'); await page.getByRole('button', { name: /^Mehr/ }).click(); await shot('laufen-lauf-eintragen-mehr'); await page.keyboard.press('Escape'); });
-  await step('laufen-entwicklung', async () => { await fresh('Laufen'); await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('laufen-entwicklung'); await page.keyboard.press('Escape'); });
-  await step('laufen-einstellungen', async () => { await fresh('Laufen'); await page.getByRole('button', { name: /^Lauftage und Angaben/ }).click(); await shot('laufen-lauftage-aendern'); await page.keyboard.press('Escape'); });
+  await step('laufen-entwicklung', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('laufen-entwicklung'); await page.keyboard.press('Escape'); });
+  await step('laufen-einstellungen', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Lauftage und Angaben/ }).click(); await shot('laufen-lauftage-aendern'); await page.keyboard.press('Escape'); });
   await nav('Statistik');
   await page.waitForTimeout(500);
   await shot('statistik');

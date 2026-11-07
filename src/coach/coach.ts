@@ -7,6 +7,7 @@ import type { RideDetail } from '../shared/coach-protocol';
 import { DUTCH_WORDS, recordAnswer } from '../shared/language';
 import { PASSES } from '../shared/passes';
 import type { Session } from '../shared/session';
+import { thinSamples } from '../shared/bike';
 import { ClaudeError } from './claude-client';
 import { readTasks, TASKS_GUIDE, zTasks, type CoachId } from './coach-tasks';
 import { checkSession, RAMP_ID, type CoachContext } from './guardrails';
@@ -359,13 +360,7 @@ export class Coach {
   rideDetail(profileId: string, rideId: string): RideDetail | null {
     if (!this.state(profileId).summaries.some((r) => r.rideId === rideId)) return null;
     const { samples } = cleanSamples(readRide(this.deps.ridesDir, rideId).samples);
-    const size = Math.max(1, Math.ceil(samples.length / DETAIL_POINTS));
-    const avg = (xs: (number | null)[]) => { const k = xs.filter((x): x is number => x !== null); return k.length ? Math.round(k.reduce((a, b) => a + b, 0) / k.length) : null; };
-    const points = [];
-    for (let i = 0; i < samples.length; i += size) {
-      const part = samples.slice(i, i + size);
-      points.push({ t: part.at(-1)!.rideElapsedS, powerW: avg(part.map((x) => x.powerW)), hrBpm: avg(part.map((x) => x.hrBpm)), cadenceRpm: avg(part.map((x) => x.cadenceRpm)) });
-    }
+    const points = thinSamples(samples, DETAIL_POINTS);
     return { rideId, points };
   }
 

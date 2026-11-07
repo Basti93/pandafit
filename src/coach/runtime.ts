@@ -6,6 +6,8 @@ import type { Profile } from '../shared/profiles';
 import type { CoachClientMessage, CoachServerMessage, CoachStateMessage } from '../shared/coach-protocol';
 import { suggestProfile } from '../shared/garmin-profile';
 import { Coach } from './coach';
+import { readRide } from '../service/recorder';
+import { cleanSamples } from './metrics';
 import { GarminLink } from './garmin';
 import { GarminDb } from './garmin-db';
 import { healthData } from './garmin-health';
@@ -39,6 +41,7 @@ import { manualRuns } from './run/runs';
 import { CoachTasks, type CoachId, type TaskFrom } from './coach-tasks';
 import { statsContent } from './stats/stats-content';
 import { exportStats } from './tracking/stats-export';
+import { exportBike, radForChat } from './tracking/bike-export';
 import { mirrorExercises } from './tracking/mirror-exercises';
 import { ChatCoach } from './chat/chat-coach';
 import { planHint, type TodayContext } from './chat/plan-hint';
@@ -318,11 +321,11 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
   });
   /** What the three coaches have planned next, short, for the week chat. */
   const sessionsOf = (id: string): object => {
-    const bike = coach.state(id).next;
+    const bikeState = coach.state(id);
     const g = gym.enabled(id) ? gym.state(id).next : null;
     const runWeek = runView(records.all(id, 'run'), nowMs()).week;
     return {
-      rad: bike ? { name: bike.session.name, minuten: Math.round(bike.session.steps.reduce((a, st) => a + st.durationS, 0) / 60), begruendung: bike.reason } : null,
+      ...(bikeState.next ? radForChat(bikeState) : { rad: null, radFahrten: [] }),
       kraft: g ? {
         name: g.workout.name, begruendung: g.reason,
         uebungen: g.workout.exercises.map((e) => {
@@ -693,6 +696,8 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       if (weeklyMailer) for (const p of list) { try { void weeklyMailer.tick(p.id, contactOfProfile(records, p.id), weeklyMailOf(p.id)).catch(() => {}); } catch { /* next scan */ } }
       // The stats record for every profile coached here, linked or not: written only when it changes, never with a ride open. Never throws.
       if (free) mealsChanged(exportStats({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: statsDue }));
+      // The bike plan and the counted rides for the web, only on change, never with a ride open. Never throws.
+      if (free) mealsChanged(exportBike({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, state: (id) => { try { return coach.state(id); } catch { return null; } }, samples: (rideId) => cleanSamples(readRide(dir, rideId).samples).samples }));
       // Separate safeguard: the account sync must never disturb a ride or the coach, and is not awaited here.
       for (const p of all) { try { void accountSync.tick(p.id).finally(publish); } catch { /* try again on the next run */ } }
       // Separate safeguard: the fetch must never disturb the coach run.

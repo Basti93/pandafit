@@ -421,3 +421,18 @@
 .tk-reorder-title { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; user-select: none; -webkit-user-select: none; }
 .tk-reorder-mark { font-size: .8rem; }
 .tk-screen button.tk-reorder-step, .tk-sheet button.tk-reorder-step { flex: none; width: 44px; min-height: 48px; padding: 0; font-size: 1.3rem; text-decoration: none; }
+
+/* Rad: the ride chart and the hours per week (milestone O). */
+.tk-ridechart { margin: 1rem 0 0; }
+.tk-ridechart svg { display: block; width: 100%; height: 6rem; background: var(--field, #101b16); border-radius: .5rem; }
+.tk-ridehead { display: flex; flex-direction: column; gap: .5rem; }
+.tk-ridehead p { margin: 0; }
+.tk-ridehead .tk-ridefacts { font-size: .9rem; }
+.tk-chart-legend { margin: 0 0 .25rem; }
+.tk-chart-key-power { color: var(--accent, #e8964a); }
+.tk-chart-key-hr { color: var(--tk-muted, #aebba9); }
+.tk-chart-power { stroke: var(--accent, #e8964a); stroke-linejoin: round; }
+.tk-chart-hr { stroke: var(--tk-muted, #aebba9); opacity: .6; stroke-linejoin: round; }
+.tk-ridechart figcaption, .tk-hourdates { display: flex; justify-content: space-between; margin: .25rem 0 0; }
+.tk-hourbars { display: flex; align-items: flex-end; gap: 4px; height: 5rem; margin-top: .5rem; }
+.tk-hourbar { flex: 1; min-height: 3px; border-radius: 3px 3px 0 0; background: var(--accent, #e8964a); opacity: .85; }

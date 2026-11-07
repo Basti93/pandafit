@@ -6,7 +6,9 @@ import { readStats, STATS_ID } from '../../shared/stats';
 import { newestNotes } from '../../shared/change-notes';
 import { dateLabel } from './labels';
 import { localDayKey, timeLabel } from '../../shared/dates';
+import { dateKey } from '../../shared/day-rating';
 import { useTodayAdvice } from './frame-hooks';
+import { ridesOf } from './bike-view';
 import { CoachPrefs } from './CoachPrefs';
 import { CoachChat } from './CoachChat';
 import { GoalSheet, goalSummary, RulesSheet, useRuleList } from './GoalRules';
@@ -23,6 +25,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const changeRecs = usePortRecords(port, 'change').all;
   const ruleRecs = usePortRecords(port, 'rule').all;
   const runRecords = usePortRecords(port, 'run').all;
+  const rode = new Set(ridesOf(usePortRecords(port, 'ride').records).map((r) => dateKey(r.body.startedAtMs)));
   const statsRecords = usePortRecords(port, 'stats').all;
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | null>(null);
@@ -80,7 +83,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
         </section>
       ) : (
         <section className="card" aria-label="Wochenplan">
-          {current ? <Week days={current.days} label="Wochenplan diese Woche" today={today} runs={runs} /> : <p className="muted">Noch kein Wochenplan. Schreib dem Coach, wie deine Woche aussehen soll.</p>}
+          {current ? <Week days={current.days} label="Wochenplan diese Woche" today={today} runs={runs} rode={rode} /> : <p className="muted">Noch kein Wochenplan. Schreib dem Coach, wie deine Woche aussehen soll.</p>}
           {!current && runs.length > 0 && (
             <ul className="tk-week" aria-label="Läufe diese Woche">
               {runs.map((r) => <li key={r.date + r.kind}><b>{runDay(r.date)}</b> <span>{runText(r)}</span></li>)}
