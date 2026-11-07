@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MealCoach } from '../../../src/coach/meals/meal-coach';
 import { RecipeStore } from '../../../src/coach/meals/recipe-store';
 import { policyRule } from '../../../src/shared/training-policy';
-import { taggingAi } from './fake-ai';
+import type { TagAsk } from '../../../src/coach/meals/recipe-tags';
+import { itemsOf, taggingAi } from './fake-ai';
 
 const dirs: string[] = [];
 const tmp = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'recipes-')); dirs.push(d); return d; };
@@ -38,7 +39,7 @@ describe('the recipe store', () => {
 
   it('counts rejected and failed, and stores neither', async () => {
     const s = new RecipeStore(tmp());
-    expect((await s.add({ source: 'collection', url: 'https://rezepte.example/m', recipe: recipe(1, { recipeIngredient: ['200 g Speckwürfel'] }) })).status).toBe('rejected');
+    expect((await s.add({ source: 'collection', url: 'https://rezepte.example/m', recipe: recipe(1, { name: 'Hähnchen-Topf' }) })).status).toBe('rejected');
     expect((await s.add({ source: 'collection', url: 'https://rezepte.example/n', recipe: { name: 'Leer' } })).status).toBe('failed');
     expect((await s.add({ source: 'collection', url: 'ftp://nope', recipe: recipe(2) })).status).toBe('failed');
     expect(s.stats()).toMatchObject({ collection: 0, untagged: 0, rejected: 1, failed: 2 });
@@ -77,6 +78,25 @@ describe('the recipe store', () => {
     expect(policyRule('meals.collection-unlock').value).toBe(1000);
     expect(s.unlocked()).toBe(false);
     s.close();
+  });
+});
+
+describe('only AI-confirmed recipes are planned', () => {
+  it('does not find a recipe from before the AI vegetarian check until it is checked', async () => {
+    const dir = tmp();
+    const s = new RecipeStore(dir);
+    await addTagged(s, 1);
+    expect(s.search({}).length).toBe(1);
+    s.close();
+    const { DatabaseSync } = await import('node:sqlite');
+    const file = fs.readdirSync(dir, { recursive: true }).map(String).find((f) => f.endsWith('recipes.db'))!;
+    const db = new DatabaseSync(path.join(dir, file));
+    db.prepare("UPDATE recipes SET json = json_remove(json, '$.vegCheckedBy')").run();
+    db.close();
+    const again = new RecipeStore(dir);
+    expect(again.search({})).toEqual([]);
+    expect(again.collectionCount()).toBe(0);
+    again.close();
   });
 });
 
@@ -206,8 +226,8 @@ describe('deriving again', () => {
     const s = new RecipeStore(dir);
     await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: recipe(1) });
     const db = s.database();
-    const raw = JSON.parse((db.prepare('SELECT raw FROM recipes').get() as { raw: string }).raw) as { recipe: { recipeIngredient: string[] } };
-    raw.recipe.recipeIngredient.push('50 g Speck');
+    const raw = JSON.parse((db.prepare('SELECT raw FROM recipes').get() as { raw: string }).raw) as { recipe: { name: string } };
+    raw.recipe.name = 'Speck-Topf';
     db.prepare('UPDATE recipes SET raw = ?, derive_version = 0').run(JSON.stringify(raw));
     await s.rederive(10);
     expect(s.stats()).toMatchObject({ untagged: 0, collection: 0, rejected: 1 });
@@ -287,7 +307,7 @@ describe('the inbox', () => {
 
   it('lets a bad line fail without stopping the rest', async () => {
     const dir = tmp();
-    put(dir, 'x.jsonl', jsonl([recipe(1), '{kaputt', { name: 'ohne Adresse' }, recipe(2, { recipeIngredient: ['1 Schinken'] }), recipe(3)]));
+    put(dir, 'x.jsonl', jsonl([recipe(1), '{kaputt', { name: 'ohne Adresse' }, recipe(2, { name: 'Schinken-Topf' }), recipe(3)]));
     const s = new RecipeStore(dir);
     expect(await s.scanInbox({ noOpenRide: open, ask: taggingAi() })).toMatchObject({ imported: 2, failed: 2, rejected: 1 });
     expect(s.stats()).toMatchObject({ collection: 2, failed: 2, rejected: 1 });
@@ -406,5 +426,104 @@ describe('the inbox', () => {
     expect(coach.recipes()!.collectionCount()).toBe(1);
     expect(fs.existsSync(path.join(dir, 'recipes', 'inbox', 'done', 't.jsonl'))).toBe(true);
     coach.recipes()!.close();
+  });
+});
+
+describe('the AI decides whether a recipe is vegetarian', () => {
+  const withHint = (n: number) => recipe(n, { recipeIngredient: ['200 g Speckwürfel', '1 Zwiebel', '100 g Linsen'] });
+  const bumped = async (f: () => Promise<void>) => {
+    const was = policyRule('meals.tag-ai').values!.tagPromptVersion!;
+    (policyRule('meals.tag-ai').values as Record<string, number>).tagPromptVersion = was + 1;
+    try { await f(); } finally { (policyRule('meals.tag-ai').values as Record<string, number>).tagPromptVersion = was; }
+  };
+
+  it('keeps a list hit the AI calls vegetarian, and gives the AI the hint', async () => {
+    const s = new RecipeStore(tmp());
+    await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: withHint(1) });
+    let seen: { vegHint?: string; zutatenzeilen?: string[] } | undefined;
+    const ai = taggingAi((i) => { seen = i; return { vegetarisch: true, grund: 'Räuchertofu-Speck' }; });
+    expect(await s.tagWaiting(ai, 1)).toBe(1);
+    expect(seen?.vegHint).toContain('Speckwürfel');
+    expect(seen?.zutatenzeilen).toContain('Speckwürfel');
+    const r = s.search({})[0]!;
+    expect(r).toMatchObject({ vegCheckedBy: 'ai', vegReason: 'Räuchertofu-Speck' });
+    s.close();
+  });
+
+  it('removes a list hit the AI calls not vegetarian, counts it, and does not take the page again', async () => {
+    const s = new RecipeStore(tmp());
+    await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: withHint(1) });
+    await s.tagWaiting(taggingAi(() => ({ vegetarisch: false, grund: 'echter Speck' })), 1);
+    expect(s.stats()).toMatchObject({ collection: 0, untagged: 0, rejected: 1 });
+    expect(s.search({})).toHaveLength(0);
+    expect((await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: withHint(1) })).status).toBe('rejected');
+    expect(s.stats().untagged).toBe(0);
+    // A new prompt version judges the page again.
+    await bumped(async () => {
+      expect((await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: withHint(1) })).status).toBe('saved');
+    });
+    s.close();
+  });
+
+  it('rejects a hard keyword without asking the AI', async () => {
+    const s = new RecipeStore(tmp());
+    const out = await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: recipe(1, { keywords: 'main_ingredient_meat' }), tagAsk: taggingAi() });
+    expect(out.status).toBe('rejected');
+    const ai = taggingAi();
+    expect(await s.tagWaiting(ai, 1)).toBe(0);
+    expect(ai.calls).toBe(0);
+    expect(s.stats()).toMatchObject({ rejected: 1, untagged: 0 });
+    s.close();
+  });
+
+  it('removes a recipe without any list hit when the AI says it is not vegetarian', async () => {
+    const s = new RecipeStore(tmp());
+    await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: recipe(1) });
+    await s.add({ source: 'collection', url: 'https://rezepte.example/b', recipe: recipe(2) });
+    await s.tagWaiting(taggingAi((i) => (i.title.endsWith('1') ? { vegetarisch: false, grund: 'Fischsauce' } : {})), 1);
+    expect(s.stats()).toMatchObject({ collection: 1, rejected: 1, untagged: 0 });
+    s.close();
+  });
+
+  it('rejects a link recipe at once when the AI says no', async () => {
+    const s = new RecipeStore(tmp());
+    const out = await s.add({ source: 'link', owner: 'max', url: 'https://rezepte.example/x', recipe: recipe(1), tagAsk: taggingAi(() => ({ vegetarisch: false, grund: 'Gelatine' })) });
+    expect(out.status).toBe('rejected');
+    expect(s.links()).toHaveLength(0);
+    s.close();
+  });
+
+  it('keeps a recipe without a (valid) verdict pending and never plans it, then retries with the backoff', async () => {
+    let t = 1_000_000;
+    const s = new RecipeStore(tmp(), () => t);
+    await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: recipe(1) });
+    const silent = (async (input: { prompt: string }) => ({ rezepte: itemsOf(input.prompt).map((i) => ({ id: i.id, mahlzeit: ['mittag'], art: 'curry-eintopf', kueche: null, eiweiss: 'huelsenfruechte', eigenschaft: [] })) })) as unknown as TagAsk;
+    expect(await s.tagWaiting(silent, 1)).toBe(0);
+    expect(s.stats()).toMatchObject({ untagged: 1, collection: 0 });
+    expect(s.search({})).toHaveLength(0);
+    expect(s.collectionFor('mittag')).toHaveLength(0);
+    // Inside the backoff nothing is asked; after it the next try with a verdict works.
+    const ai = taggingAi();
+    expect(await s.tagWaiting(ai, 1)).toBe(0);
+    expect(ai.calls).toBe(0);
+    t += 24 * 3_600_000;
+    expect(await s.tagWaiting(ai, 1)).toBe(1);
+    expect(s.search({})[0]!.vegCheckedBy).toBe('ai');
+    s.close();
+  });
+
+  it('asks again after a prompt version bump and removes a stored recipe the AI now rejects', async () => {
+    const s = new RecipeStore(tmp());
+    await s.add({ source: 'collection', url: 'https://rezepte.example/a', recipe: recipe(1) });
+    await s.tagWaiting(taggingAi(), 1);
+    expect(s.search({})).toHaveLength(1);
+    await bumped(async () => {
+      const again = taggingAi(() => ({ vegetarisch: false, grund: 'tierische Brühe' }));
+      expect(await s.tagWaiting(again, 1)).toBe(0);
+      expect(again.calls).toBe(1);
+      expect(s.search({})).toHaveLength(0);
+      expect(s.stats().rejected).toBe(1);
+    });
+    s.close();
   });
 });

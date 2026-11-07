@@ -42,7 +42,8 @@ export function ftsQuery(text: string): string | null {
 }
 
 export function searchRecipes(db: DatabaseSync, q: SearchQuery): StoredRecipe[] {
-  const where: string[] = ["r.state = 'ok'", 'r.flagged = 0'];
+  // Only what the AI has confirmed as vegetarian is found (and so planned); older rows wait for their re-check.
+  const where: string[] = ["r.state = 'ok'", 'r.flagged = 0', "json_extract(r.json, '$.vegCheckedBy') = 'ai'"];
   const args: SQLInputValue[] = [];
   let join = '';
   const fts = q.text ? ftsQuery(q.text) : null;

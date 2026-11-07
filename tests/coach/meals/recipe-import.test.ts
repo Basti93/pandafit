@@ -134,11 +134,21 @@ describe('the whole import', () => {
     const bad = await importRecipe(base({ aggregateRating: { ratingValue: 'viel' } }));
     expect(bad.status === 'ok' && bad.recipe.rating).toBeUndefined();
   });
-  it('rejects meat in the title, an ingredient or a keyword, not because of a step', async () => {
-    expect((await importRecipe(base({ recipeIngredient: ['200 g Speckwürfel', '1 Zwiebel'] }))).status).toBe('rejected');
+  it('rejects at once only a meat word in the title or an explicit meat/fish marker, not because of a step', async () => {
     expect((await importRecipe(base({ name: 'Hähnchen-Topf' }))).status).toBe('rejected');
     expect((await importRecipe(base({ recipeInstructions: ['Die Zwiebel fein hacken.'] }))).status).toBe('ok');
     expect((await importRecipe(base({ keywords: 'Fleisch, schnell' }))).status).toBe('rejected');
+    expect((await importRecipe(base({ keywords: 'main_ingredient_pork, schnell' }))).status).toBe('rejected');
+    expect((await importRecipe(base({ recipeCategory: 'red_meat' }))).status).toBe('rejected');
+    expect((await importRecipe(base({ recipeCategory: 'Fish' }))).status).toBe('rejected');
+  });
+  it('keeps a recipe with a softer word-list hit, with the word and its line as a hint for the AI', async () => {
+    const r = await importRecipe(base({ recipeIngredient: ['200 g Speckwürfel', '1 Zwiebel'] }));
+    expect(r.status === 'ok' && r.recipe.vegHint).toContain('Speckwürfel');
+    const k = await importRecipe(base({ keywords: 'Pork-Style, schnell' }));
+    expect(k.status).toBe('ok');
+    const clean = await importRecipe(base());
+    expect(clean.status === 'ok' && clean.recipe.vegHint).toBeUndefined();
   });
   it('fails what is incomplete', async () => {
     expect((await importRecipe(null)).status).toBe('failed');

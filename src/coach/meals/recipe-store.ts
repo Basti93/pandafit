@@ -76,6 +76,7 @@ export class RecipeStore {
       CREATE TABLE IF NOT EXISTS counters (key TEXT PRIMARY KEY, n INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS progress (file TEXT PRIMARY KEY, done INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS forgotten (url TEXT PRIMARY KEY);
+      CREATE TABLE IF NOT EXISTS vegRejected (url TEXT PRIMARY KEY, prompt_version INTEGER NOT NULL);
     `);
     this.db = db;
     return db;
@@ -106,6 +107,12 @@ export class RecipeStore {
       const upgraded = this.upgradeToOwn(url);
       if (upgraded) { this.bump('duplicates'); return { status: 'duplicate', recipe: upgraded }; }
     }
+    // A page the AI judged not vegetarian is not brought back, until the prompt version changes (then it is judged again).
+    const vr = this.open().prepare('SELECT prompt_version AS v FROM vegRejected WHERE url = ?').get(url) as { v: number } | undefined;
+    if (vr) {
+      if (vr.v === tagPromptVersion()) return { status: 'rejected', reason: 'ai: not vegetarian' };
+      this.open().prepare('DELETE FROM vegRejected WHERE url = ?').run(url);
+    }
     const scope = scopeOf(input.source, input.owner);
     const known = this.byUrl(scope, url);
     if (known) { this.bump('duplicates'); return { status: 'duplicate', recipe: known }; }
@@ -129,7 +136,9 @@ export class RecipeStore {
     try { this.insertUntagged(stored, scope, raw); } catch { this.bump('duplicates'); return { status: 'duplicate', recipe: this.byUrl(scope, url) ?? stored }; }
     this.bump('imported');
     if (input.tagAsk) await this.tagIds([id], input.tagAsk);
-    return { status: 'saved', recipe: this.any(id) ?? stored };
+    const now_ = this.any(id);
+    if (!now_ && input.tagAsk) return { status: 'rejected', reason: 'ai: not vegetarian' };
+    return { status: 'saved', recipe: now_ ?? stored };
   }
 
   private upgradeToOwn(url: string): StoredRecipe | null {
@@ -191,7 +200,7 @@ export class RecipeStore {
   collectionFor(slot: string, limit = 2000, seed = 0): StoredRecipe[] { return this.search({ source: 'collection', tags: [`mahlzeit:${slot}`], limit, order: 'sample', seed }); }
 
   /** Collection recipes that can be planned (tagged, with a meal slot, not counting link imports). */
-  collectionCount(): number { return this.count("SELECT COUNT(*) AS n FROM recipes WHERE source = 'collection' AND state = 'ok' AND flagged = 0"); }
+  collectionCount(): number { return this.count("SELECT COUNT(*) AS n FROM recipes WHERE source = 'collection' AND state = 'ok' AND flagged = 0 AND json_extract(json, '$.vegCheckedBy') = 'ai'"); }
   stats(): RecipeStats {
     return {
       collection: this.collectionCount(), links: this.count("SELECT COUNT(*) AS n FROM recipes WHERE source = 'link' AND state != 'pending'"),
@@ -233,6 +242,8 @@ export class RecipeStore {
     const hard = hardTags({ minutes: r.minutes, proteinG: r.proteinG === PROTEIN_UNKNOWN ? null : r.proteinG, keepsDays: r.keepsDays, vegan: r.vegan, ingredients: r.ingredients });
     const tags = mergeTags(ai, hard);
     const next: StoredRecipe = { ...r, tags, slots: slotsFrom(tags.mahlzeit) };
+    // Only the AI's own `true` is a verdict; an old classification without one keeps serving until it is asked again.
+    if (ai.vegetarisch === true) { next.vegCheckedBy = 'ai'; next.vegReason = ai.grund; }
     const rid = (o.prepare('SELECT rowid AS r FROM recipes WHERE id = ?').get(r.id) as { r: number } | undefined)?.r;
     if (rid === undefined) return;
     o.prepare('DELETE FROM recipes_fts WHERE rowid = ?').run(rid);
@@ -242,6 +253,15 @@ export class RecipeStore {
     for (const c of next.canon) o.prepare('INSERT OR IGNORE INTO recipe_ingredients (recipe_id, canon) VALUES (?, ?)').run(r.id, c);
     o.prepare('INSERT INTO recipes_fts (rowid, title, ingredients, tags) VALUES (?, ?, ?, ?)').run(rid, norm(r.title), next.canon.join(' '), norm(tagLabels(tags).join(' ')));
     o.prepare("UPDATE recipes SET state = 'ok', json = ?, ai_json = ?, tag_hash = ?, tag_key = ?, tag_tries = 0, tag_next_ms = 0 WHERE id = ?").run(JSON.stringify(next), JSON.stringify(ai), hash, currentTagKey(), r.id);
+  }
+
+  /** The AI says: not vegetarian. The recipe is removed and counted as rejected, its url remembered for this prompt version. */
+  private rejectVeg(id: string): void {
+    const o = this.open();
+    const row = o.prepare('SELECT url FROM recipes WHERE id = ?').get(id) as { url: string } | undefined;
+    if (row) o.prepare('INSERT OR REPLACE INTO vegRejected (url, prompt_version) VALUES (?, ?)').run(row.url, tagPromptVersion());
+    this.deleteRow(id);
+    this.bump('rejected');
   }
 
   private later(id: string, tries: number): void {
@@ -257,9 +277,9 @@ export class RecipeStore {
     const todo: { row: (typeof rows)[number]; input: ReturnType<typeof tagInputOf>; hash: string }[] = [];
     for (const row of rows) {
       const r = row.json;
-      const input = tagInputOf({ id: r.id, title: r.title, ingredients: r.ingredients, steps: r.steps, category: r.category, keywords: r.keywords });
+      const input = tagInputOf({ id: r.id, title: r.title, ingredients: r.ingredients, steps: r.steps, category: r.category, keywords: r.keywords, ...(r.vegHint ? { vegHint: r.vegHint } : {}) });
       const hash = tagInputHash(input);
-      if (row.ai && row.hash === hash && row.key === key) { this.finalize(r, row.ai, hash); done++; continue; }
+      if (row.ai && typeof row.ai.vegetarisch === 'boolean' && row.hash === hash && row.key === key) { this.finalize(r, row.ai, hash); done++; continue; }
       todo.push({ row, input, hash });
     }
     const size = tagAi().batch!;
@@ -270,7 +290,8 @@ export class RecipeStore {
       const got = await classify(batch.map((b) => b.input), ask);
       for (const b of batch) {
         const ai = got.get(b.row.id);
-        if (ai) { this.finalize(b.row.json, ai, b.hash); done++; } else this.later(b.row.id, b.row.tries);
+        if (ai?.vegetarisch === false) this.rejectVeg(b.row.id);
+        else if (ai) { this.finalize(b.row.json, ai, b.hash); done++; } else this.later(b.row.id, b.row.tries);
       }
     }
     return done;
@@ -322,7 +343,7 @@ export class RecipeStore {
       try { ai = row.ai_json ? (JSON.parse(row.ai_json) as AiTags) : null; } catch { ai = null; }
       if (ai && old.tags) {
         // The old classification stays; when the AI's input changed it is asked again in the background (tag_key emptied).
-        const hash = tagInputHash(tagInputOf({ id: next.id, title: next.title, ingredients: next.ingredients, steps: next.steps, category: next.category, keywords: next.keywords }));
+        const hash = tagInputHash(tagInputOf({ id: next.id, title: next.title, ingredients: next.ingredients, steps: next.steps, category: next.category, keywords: next.keywords, ...(next.vegHint ? { vegHint: next.vegHint } : {}) }));
         this.finalize(next, ai, row.tag_hash ?? hash);
         if (hash !== row.tag_hash) o.prepare("UPDATE recipes SET tag_key = '' WHERE id = ?").run(row.id);
       }

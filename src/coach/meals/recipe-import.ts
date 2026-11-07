@@ -24,6 +24,10 @@ export type StoredRecipe = Recipe & {
   /** Share of ingredient lines the parser read cleanly (1 when the AI structured them). */
   parseQuality: number;
   deriveVersion: number;
+  /** A word-list hit that did not reject at once (the word and its line): the AI sees it and decides. */
+  vegHint?: string;
+  /** Who judged the recipe vegetarian. A recipe is plannable only with the AI's `true`, and its reason (at most 80 characters). */
+  vegCheckedBy?: 'ai'; vegReason?: string;
 };
 
 export type Rejected = { status: 'rejected'; reason: string };
@@ -122,12 +126,12 @@ function parseRating(x: unknown): Rating | undefined {
 
 // ---- The vegetarian check: strict, deterministic ----
 
-type VegLists = { contains: string[]; startsWith: string[]; exact: string[]; harmless: string[]; harmlessExact: string[]; plant: string[] };
+type VegLists = { contains: string[]; startsWith: string[]; exact: string[]; harmless: string[]; harmlessExact: string[]; plant: string[]; hardMarkers: string[] };
 let vegLists: VegLists | null = null;
 const veg = (): VegLists => {
   if (vegLists) return vegLists;
   const l = policyRule('meals.vegetarian-words').lists!;
-  vegLists = { contains: l.contains!, startsWith: l.startsWith!, exact: l.exact!, harmless: l.harmless!, harmlessExact: l.harmlessExact!, plant: l.plant! };
+  vegLists = { contains: l.contains!, startsWith: l.startsWith!, exact: l.exact!, harmless: l.harmless!, harmlessExact: l.harmlessExact!, plant: l.plant!, hardMarkers: l.hardMarkers! };
   return vegLists;
 };
 const MARKER = /^(vegan|vegetar|veggie|pflanz|fleischlos|fleischfrei|meatless|plant|free|frei)$|^(vegan|vegetar|veggie|pflanz|fleischlos|fleischfrei|meatless|plant)/;
@@ -169,6 +173,23 @@ export function notVegetarian(r: { title: string; ingredients: string[]; steps: 
   // The word lists cover every word of the older dish check (`check.ts`), with markers ("veganes Hack") and harmless words on top,
   // so that check is not repeated here: it would refuse "Fleischtomate" or "Flammkuchen".
   for (const t of [r.title, ...r.ingredients, ...r.extra]) { const w = meatWord(t); if (w) return w; }
+  return null;
+}
+
+export type VegCheck = { kind: 'hard'; word: string } | { kind: 'hint'; hint: string };
+
+/**
+ * The word list as a pre-filter. A hard hit rejects at once: a title with a meat word, or a category/keyword that is an explicit
+ * meat or fish marker (`main_ingredient_meat`, "Fleisch" ...). Any other hit (an ingredient line, a loose keyword) is only a hint
+ * for the AI, which decides. Null when nothing was found.
+ */
+export function vegCheck(r: { title: string; ingredients: string[]; extra: string[] }): VegCheck | null {
+  const markers = veg().hardMarkers;
+  const title = meatWord(r.title);
+  if (title) return { kind: 'hard', word: title };
+  for (const e of r.extra) if (markers.includes(norm(e))) return { kind: 'hard', word: e };
+  for (const line of r.ingredients) { const w = meatWord(line); if (w) return { kind: 'hint', hint: `${w} (${line})`.slice(0, 160) }; }
+  for (const e of r.extra) { const w = meatWord(e); if (w) return { kind: 'hint', hint: `${w} (${e})`.slice(0, 160) }; }
   return null;
 }
 
@@ -378,9 +399,9 @@ export async function importRecipe(obj: unknown, opts: ImportOptions = {}): Prom
     const steps = parseInstructions(obj.recipeInstructions);
     if (steps.length === 0) return { status: 'failed', reason: 'no steps' };
     const extra = [...words(obj.recipeCategory), ...words(obj.keywords), ...words(obj.recipeCuisine)];
-    // Vegetarian first, on the raw text: nothing else matters for a recipe with meat.
-    const hit = notVegetarian({ title, ingredients: lines, steps, extra });
-    if (hit) return { status: 'rejected', reason: hit };
+    // A hard meat hit first, on the raw text: nothing else matters for it. Softer hits go to the AI as a hint.
+    const check = vegCheck({ title, ingredients: lines, extra });
+    if (check?.kind === 'hard') return { status: 'rejected', reason: check.word };
     const portions = parseYield(obj.recipeYield);
     if (portions === null) return { status: 'failed', reason: 'no yield' };
 
@@ -412,7 +433,7 @@ export async function importRecipe(obj: unknown, opts: ImportOptions = {}): Prom
       recipe: {
         title, slots: [], tags: null, canon: [...new Set(withRaw.map((i) => canonicalIngredient(i.name)))], category, keywords,
         parseQuality: quality, deriveVersion: deriveVersion(), vegan: veganFlag(title, withRaw), minutes: Math.min(600, Math.max(1, minutes)), proteinG: proteinG ?? PROTEIN_UNKNOWN, keepsDays: keepsDaysOf(title),
-        ingredients: withRaw, steps, sourceUrl: '', ...(rating ? { rating } : {}),
+        ingredients: withRaw, steps, sourceUrl: '', ...(rating ? { rating } : {}), ...(check?.kind === 'hint' ? { vegHint: check.hint } : {}),
       },
     };
   } catch (e) { return { status: 'failed', reason: e instanceof Error ? e.message.slice(0, 80) : 'error' }; }

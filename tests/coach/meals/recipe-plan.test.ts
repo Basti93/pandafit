@@ -197,7 +197,8 @@ describe('adding a recipe by link', () => {
   });
 
   it('answers a recipe with meat as not vegetarian and stores nothing', async () => {
-    const { coach, store } = setup({ ask: answer, fetchPage: async (url) => ({ ok: true, html: html(recipe(1, { recipeIngredient: ['200 g Hähnchenbrust'] })), url }), linked: ['max'] });
+    const noMeat = async (i: { prompt: string }) => (i.prompt.includes('rezepte-nur-daten') ? taggingAi((x) => ({ vegetarisch: !x.vegHint, grund: 'Hähnchen' }))(i as never) : { zutaten: [] });
+    const { coach, store } = setup({ ask: noMeat, fetchPage: async (url) => ({ ok: true, html: html(recipe(1, { recipeIngredient: ['200 g Hähnchenbrust'] })), url }), linked: ['max'] });
     store.putMany('max', [request('link-aaaa0002', 'https://rezepte.example/huhn')], 'remote');
     await coach.tick();
     expect(result(store, 'link-aaaa0002')).toEqual({ state: 'veg' });

@@ -32,7 +32,7 @@ describe('rules for the hard facts', () => {
     expect(saisonOf([ing('Paprikapulver'), ing('Reis')])).toEqual(['ganzjaehrig']);
   });
   it('lets the rules win over the AI in the merge', () => {
-    const t = mergeTags({ mahlzeit: ['mittag'], art: 'pasta', kueche: null, eiweiss: 'ei', soft: ['schnell', 'vegan', 'eine-pfanne'] }, hardTags({ minutes: 50, proteinG: 5, keepsDays: 0, vegan: false, ingredients: [] }));
+    const t = mergeTags({ mahlzeit: ['mittag'], art: 'pasta', kueche: null, eiweiss: 'ei', soft: ['schnell', 'vegan', 'eine-pfanne'], vegetarisch: true, grund: 'ok' }, hardTags({ minutes: 50, proteinG: 5, keepsDays: 0, vegan: false, ingredients: [] }));
     expect(t.eigenschaft).toEqual(['eine-pfanne']);
     expect(t.ernaehrung).toEqual(['vegetarisch']);
   });
@@ -51,9 +51,9 @@ describe('canonical ingredient names', () => {
 });
 
 describe('reading the AI answer', () => {
-  const ok = { id: 'a', mahlzeit: ['mittag'], art: 'pasta', kueche: 'italienisch', eiweiss: 'ei', eigenschaft: ['eine-pfanne'] };
+  const ok = { id: 'a', mahlzeit: ['mittag'], art: 'pasta', kueche: 'italienisch', eiweiss: 'ei', eigenschaft: ['eine-pfanne'], vegetarisch: true, grund: 'nur Pflanzliches und Ei' };
   it('keeps a complete valid classification', () => {
-    expect(readTagAnswer({ rezepte: [ok] }, ['a']).get('a')).toEqual({ mahlzeit: ['mittag'], art: 'pasta', kueche: 'italienisch', eiweiss: 'ei', soft: ['eine-pfanne'] });
+    expect(readTagAnswer({ rezepte: [ok] }, ['a']).get('a')).toEqual({ mahlzeit: ['mittag'], art: 'pasta', kueche: 'italienisch', eiweiss: 'ei', soft: ['eine-pfanne'], vegetarisch: true, grund: 'nur Pflanzliches und Ei' });
   });
   it('drops unknown ids, ids that were not asked, and soft ids that are rule ids', () => {
     const got = readTagAnswer({ rezepte: [{ ...ok, kueche: 'mars', eigenschaft: ['eine-pfanne', 'schnell', 'x'], mahlzeit: ['mittag', 'x'] }, { ...ok, id: 'zzz' }] }, ['a']);
@@ -66,10 +66,25 @@ describe('reading the AI answer', () => {
     expect(readTagAnswer({ rezepte: [{ ...ok, mahlzeit: [] }] }, ['a']).size).toBe(0);
     expect(readTagAnswer('nein', ['a']).size).toBe(0);
   });
+  it('needs a valid vegetarian verdict with a reason: missing or invalid leaves the recipe out', () => {
+    const { vegetarisch: _v, ...noVerdict } = ok;
+    const { grund: _g, ...noReason } = ok;
+    expect(readTagAnswer({ rezepte: [noVerdict] }, ['a']).size).toBe(0);
+    expect(readTagAnswer({ rezepte: [noReason] }, ['a']).size).toBe(0);
+    expect(readTagAnswer({ rezepte: [{ ...ok, vegetarisch: 'ja' }] }, ['a']).size).toBe(0);
+    // One bad item does not spoil the others.
+    expect([...readTagAnswer({ rezepte: [noVerdict, { ...ok, id: 'b' }] }, ['a', 'b']).keys()]).toEqual(['b']);
+  });
+  it('cuts the reason to 80 characters and takes a "no" even without valid tags', () => {
+    expect(readTagAnswer({ rezepte: [{ ...ok, grund: 'x'.repeat(200) }] }, ['a']).get('a')!.grund).toHaveLength(80);
+    const no = readTagAnswer({ rezepte: [{ id: 'a', mahlzeit: [], art: null, kueche: null, eiweiss: null, eigenschaft: [], vegetarisch: false, grund: 'enthält Speck' }] }, ['a']).get('a');
+    expect(no).toMatchObject({ vegetarisch: false, grund: 'enthält Speck' });
+  });
   it('hashes the input, so the same input is the same key', () => {
     const i = { id: 'a', title: 't', ingredients: ['x 1 g'], steps: [], category: [], keywords: [] };
     expect(tagInputHash(i)).toBe(tagInputHash({ ...i }));
     expect(tagInputHash(i)).not.toBe(tagInputHash({ ...i, title: 'u' }));
+    expect(tagInputHash(i)).not.toBe(tagInputHash({ ...i, vegHint: 'speck (Speck)' }));
   });
 });
 
