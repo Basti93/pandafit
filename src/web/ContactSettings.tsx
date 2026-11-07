@@ -1,8 +1,21 @@
 import { useState } from 'react';
-import { contactOf, contactRecord, isEmail } from '../shared/contact';
+import { contactOf, contactRecord, isEmail, updatesOf } from '../shared/contact';
 import { Row, RowList, Sheet, Switch } from '../tracking/ui/kit';
 import { usePortRecords } from '../tracking/ui/hooks';
 import type { WebPort } from './webPort';
+
+/** The sub switch for the new-version notice; it keeps email and weekly as they are. */
+export function UpdatesSwitch({ port, now }: { port: WebPort; now: () => number }) {
+  const all = usePortRecords(port, 'contact').all;
+  const have = (all ?? []).find((r) => r.kind === 'contact' && r.id === 'contact');
+  const contact = contactOf(all ?? []);
+  return (
+    <div className="tk-group tk-indent">
+      <Switch label="Neue Version" hint="Hinweis, wenn Pandafit aktualisiert wurde" checked={updatesOf(all ?? [])}
+        onChange={(updates) => void port.put(contactRecord({ ...contact, updates }, now(), have))} />
+    </div>
+  );
+}
 
 /** The address for the weekly overview, and its switch. Writes go through the normal record put, stamped above the stored one. */
 export function ContactSettings({ port, now }: { port: WebPort; now: () => number }) {

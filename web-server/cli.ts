@@ -55,7 +55,17 @@ export const run = async (args: string[], dbPath: string, io: Io): Promise<numbe
       const res = putRecords(db, account.id, [contactRecord(next, Date.now(), have)], Date.now());
       if (res.accepted !== 1) throw new Error('the record was not accepted');
       io.out(next.email === null ? 'contact removed' : `contact saved; weekly mail ${next.weekly ? 'on' : 'off'}`);
-    } else throw new Error('commands: create-account --name <n> [--force], set-password --name <n>, list-devices, revoke-device --id <id>, list-kept --name <n>, set-contact <profileName> <email|-> [weekly on|off], new-generation');
+    } else if (cmd === 'set-updates') {
+      const [, name, state] = args;
+      if (!name || (state !== 'on' && state !== 'off')) throw new Error('set-updates <profileName> on|off');
+      const account = db.prepare('SELECT id FROM accounts WHERE name = ?').get(name) as { id: number } | undefined;
+      if (!account) throw new Error('no such account');
+      const have = storedContact(db, account.id);
+      const was = have && !have.deleted ? contactOf([have]) : { email: null, weekly: false };
+      const res = putRecords(db, account.id, [contactRecord({ ...was, updates: state === 'on' }, Date.now(), have)], Date.now());
+      if (res.accepted !== 1) throw new Error('the record was not accepted');
+      io.out(`new-version notice ${state}`);
+    } else throw new Error('commands: create-account --name <n> [--force], set-password --name <n>, list-devices, revoke-device --id <id>, list-kept --name <n>, set-contact <profileName> <email|-> [weekly on|off], set-updates <profileName> on|off, new-generation');
     return 0;
   } catch (e) {
     io.out(`error: ${(e as Error).message}`);

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/web/App';
+import { openIdb } from '../../src/web/idbStore';
 import { pushSupport, type PushEnv } from '../../src/web/push';
 
 afterEach(cleanup);
@@ -38,12 +39,13 @@ async function boot(o: { push: PushEnv; storage?: Map<string, string>; loggedIn?
     if (init.method === 'POST') return json(200, { accepted: 0, refused: [] });
     return json(200, { records: [], cursor: 0, more: false, reset: false });
   }) as unknown as typeof fetch;
+  const factory = new IDBFactory();
   render(<App env={{
-    fetchFn, idbFactory: new IDBFactory(), now: () => NOW, newId: () => Math.random().toString(36).slice(2),
+    fetchFn, idbFactory: factory, now: () => NOW, newId: () => Math.random().toString(36).slice(2),
     storage: { getItem: (k) => storage.get(k) ?? null, setItem: (k, v) => { storage.set(k, v); }, removeItem: (k) => { storage.delete(k); } },
     persist: async () => true, ua: 'Mozilla/5.0 Android', standalone: true, push: o.push,
   }} />);
-  return { storage, calls };
+  return { storage, calls, factory };
 }
 const doLogin = async () => {
   fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'anna' } });
@@ -109,6 +111,27 @@ describe('push notifications on the phone', () => {
     expect(a.storage.get('pandafit.push.anna')).toBe('off');
   });
 
+  it('Profil: the new-version sub switch shows only when notifications are on and writes the contact record', async () => {
+    const push = fakePush();
+    const a = await boot({ push });
+    await doLogin();
+    fireEvent.click(screen.getByRole('button', { name: 'Nicht jetzt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
+    fireEvent.click(await screen.findByRole('switch', { name: 'Benachrichtigungen' }));
+    const sub = await screen.findByRole('switch', { name: 'Neue Version' }) as HTMLInputElement;
+    expect(sub.checked).toBe(true);
+    fireEvent.click(sub);
+    await waitFor(() => expect((screen.getByRole('switch', { name: 'Neue Version' }) as HTMLInputElement).checked).toBe(false));
+    await waitFor(async () => {
+      const s = await openIdb('anna', a.factory);
+      const rec = (await s.list('contact')).find((r) => r.id === 'contact');
+      s.close();
+      expect(rec?.body).toMatchObject({ email: null, weekly: false, updates: false });
+    });
+    fireEvent.click(screen.getByRole('switch', { name: 'Benachrichtigungen' }));
+    await waitFor(() => expect(screen.queryByRole('switch', { name: 'Neue Version' })).toBeNull());
+  });
+
   it('when on, the subscription is sent again at the start, so it follows the current login', async () => {
     const push = fakePush({ permission: 'granted' });
     const storage = new Map([['pandafit.push.anna', 'on'], ['pandafit.pushCard.anna', '1']]);
@@ -145,6 +168,6 @@ describe('push notifications on the phone', () => {
     const push = fakePush();
     await boot({ push, loggedIn: true });
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
-    expect(await screen.findByText('Neue Version, Essens- und Laufplan, Antworten vom Coach.')).toBeTruthy();
+    expect(await screen.findByText('Essens- und Laufplan, Antworten vom Coach, neue Version.')).toBeTruthy();
   });
 });

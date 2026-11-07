@@ -21,7 +21,7 @@ import { createWebPort, type WebPort } from './webPort';
 import { MealsScreen, mealWeeks } from './MealsScreen';
 import { TogetherCard, TogetherPage, togetherOf } from './TogetherScreen';
 import type { PushEnv, SubJson } from './push';
-import { ContactSettings } from './ContactSettings';
+import { ContactSettings, UpdatesSwitch } from './ContactSettings';
 import { ConnectionSettings } from './ConnectionSettings';
 import { CoachLink } from './coachLink';
 import { LiveClient, type LiveSocket } from './live';
@@ -307,7 +307,7 @@ function PushCard({ push }: { push: PushState }) {
   );
 }
 
-function PushSettings({ push }: { push: PushState }) {
+function PushSettings({ push, port, now }: { push: PushState; port: WebPort; now: () => number }) {
   const p = push.env;
   const granted = p.support === 'ok' && p.permission() === 'granted';
   return (
@@ -316,8 +316,9 @@ function PushSettings({ push }: { push: PushState }) {
       {p.support === 'none' && <p className="muted">In diesem Browser gibt es keine Benachrichtigungen.</p>}
       {p.support === 'ok' && (
         <>
-          <Switch label="Benachrichtigungen" hint="Neue Version, Essens- und Laufplan, Antworten vom Coach." checked={push.on && granted} disabled={push.busy}
+          <Switch label="Benachrichtigungen" hint="Essens- und Laufplan, Antworten vom Coach, neue Version." checked={push.on && granted} disabled={push.busy}
             onChange={(on) => void (on ? push.enable() : push.disable())} />
+          {push.on && granted && <UpdatesSwitch port={port} now={now} />}
           {push.on && !granted && <p className="muted">{PUSH_DENIED}</p>}
         </>
       )}
@@ -384,7 +385,7 @@ function Profil({ account, port, now, status, onLogout, onBack, push, persistRef
       <RunSettingsCard port={port} now={now} />
       <ContactSettings port={port} now={now} />
       {link && <ConnectionSettings link={link} />}
-      {push && <PushSettings push={push} />}
+      {push && <PushSettings push={push} port={port} now={now} />}
       {/* The coach's timing is about notifications: it shows under them once they are on (always where the shell has no push at all). */}
       {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
       {persistRefused && <p role="status" className="muted">Dein Browser kann Daten löschen – sie sind aber auf dem Server gesichert.</p>}
