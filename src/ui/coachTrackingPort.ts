@@ -2,6 +2,10 @@ import type { CoachClientMessage, CoachServerMessage } from '../shared/coach-pro
 import { applyRecord, type RecordKind, type TrackedRecord } from '../shared/records';
 import type { TrackingPort } from '../tracking/ports';
 
+/**
+ * The Mac renderer shows no screen that writes records any more (milestone Q), so the app does not use this port.
+ * It stays only because tests/tracking (base-rule, lost-write) check the never-lose-a-write rules against it as a second port.
+ */
 /** `seenMs`: the version the first write of this chain stood on. */
 type Entry = { record: TrackedRecord; seenMs?: number };
 type Answer = Extract<CoachServerMessage, { type: 'records-put-result' | 'records' }>;

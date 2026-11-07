@@ -124,6 +124,17 @@ describe('AccountLinks', () => {
     expect(w.links.status(ID).state).toBe('linked');
   });
 
+  it('the account status carries the web app origin for https links only, never a path', async () => {
+    const w = world();
+    expect(w.sync.status(ID).webOrigin).toBeNull();
+    const file = path.join(tmp, 'accounts', ID);
+    const store = (url: string) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, JSON.stringify({ url, name: 'anna', token: TOKEN })); };
+    store('https://pandafit.example.org/app');
+    expect(w.sync.status(ID).webOrigin).toBe('https://pandafit.example.org');
+    store('http://localhost:8080');
+    expect(w.sync.status(ID).webOrigin).toBeNull();
+  });
+
   it('a wrong password stores nothing and the error does not carry it', async () => {
     const w = world();
     const err = await w.links.link(ID, URL_, 'anna', 'wrong-pw-123').catch((e: unknown) => e as LinkError);

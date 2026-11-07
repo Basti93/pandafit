@@ -69,7 +69,7 @@ const ProfileForm = ({ onAdd }: { onAdd: (p: Profile) => void }) => {
   );
 };
 
-export const ProfileView = ({ profiles, onPick, onAdd, onTogether }: { profiles: Profile[]; onPick: (p: Profile) => void; onAdd: (p: Profile) => void; onTogether?: () => void }) => {
+export const ProfileView = ({ profiles, onPick, onAdd }: { profiles: Profile[]; onPick: (p: Profile) => void; onAdd: (p: Profile) => void }) => {
   const [adding, setAdding] = useState(false);
   const showForm = adding || profiles.length === 0;
   return (
@@ -84,7 +84,6 @@ export const ProfileView = ({ profiles, onPick, onAdd, onTogether }: { profiles:
         ? <ProfileForm onAdd={(p) => { onAdd(p); setAdding(false); }} />
         : (
           <div className="row">
-            {onTogether && profiles.length > 1 && <button className="ghost" onClick={onTogether}>Gemeinsame Übersicht</button>}
             <button className="ghost" onClick={() => setAdding(true)}>Neues Profil</button>
           </div>
         )}

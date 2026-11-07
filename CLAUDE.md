@@ -23,5 +23,6 @@ The user is on the bike and dictates feedback into the terminal using macOS dict
 
 ## Mac app
 
+- The Mac is for riding (pair, choose, start, ride, short summary, ride settings); everything else is in the web app ("Web-App öffnen" opens the linked server).
 - Build and install to `/Applications`: `npm run app`, never during an open ride. The app uses the same data folder as `npm run dev`; the single-instance lock prevents both running at the same time.
 - Live improvement of the interface during a ride only works with `npm run dev`. In the packaged app, Claude can read live data and use `live:adjust`, but cannot change the interface.

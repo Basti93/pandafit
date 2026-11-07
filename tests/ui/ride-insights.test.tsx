@@ -5,11 +5,9 @@ import type { CoachState } from '../../src/coach/state';
 import type { StateMessage } from '../../src/shared/protocol';
 import { beepsAt, SOUND_KEY } from '../../src/ui/countdown';
 import { FeedbackView } from '../../src/ui/views/FeedbackView';
-import { HistoryView } from '../../src/ui/views/HistoryView';
+import { backupLine } from '../../src/ui/views/backup-line';
 import { RideView } from '../../src/ui/views/RideView';
 import { StatusBar } from '../../src/ui/views/StatusBar';
-import { TogetherCard } from '../../src/ui/views/TogetherCard';
-import { TogetherView } from '../../src/ui/views/TogetherView';
 
 const DAY = 86_400_000;
 const summary = (rideId: string, day: number, over: Partial<RideSummary> = {}): RideSummary => ({
@@ -90,43 +88,16 @@ describe('problem report', () => {
 
 const coachState = (summaries: RideSummary[]) => ({ profileId: 'A', summaries, feedback: {} }) as unknown as CoachState;
 
-describe('history', () => {
-  test('shows the best values per duration', () => {
-    render(<HistoryView state={coachState([summary('a', 3), summary('b', 1, { powerCurve: { 60: 150 } })])} detail={null} send={vi.fn()} onBack={vi.fn()} />);
-    const tiles = screen.getByTestId('best-powers').textContent;
-    expect(tiles).toContain('5 Sek.'); expect(tiles).toContain('300 W');
-    expect(tiles).toContain('1 Min.'); expect(tiles).toContain('150 W');
-    expect(tiles).not.toContain('20 Min.');
-  });
-  test('shows fitness and fatigue with a legend, and explains the form', () => {
-    render(<HistoryView state={coachState([summary('a', 3), summary('b', 1)])} detail={null} send={vi.fn()} onBack={vi.fn()} />);
-    const card = screen.getByTestId('load-chart').textContent;
-    expect(card).toContain('Fitness'); expect(card).toContain('Ermüdung'); expect(card).toContain('Form');
-  });
+describe('backup line', () => {
   test('one muted line says whether all rides are backed up; nothing for a profile that has not moved', () => {
     const server = (pendingRides?: number) => ({ where: 'server' as const, online: true, sinceMs: null, session: 'server' as const, queued: 0, full: false, ...(pendingRides === undefined ? {} : { pendingRides }) });
-    const line = (home?: Parameters<typeof HistoryView>[0]['coachHome']) => {
-      cleanup();
-      render(<HistoryView coachHome={home} state={coachState([summary('a', 3)])} detail={null} send={vi.fn()} />);
-      return screen.queryByTestId('ride-backup')?.textContent ?? null;
-    };
-    expect(line(server(0))).toBe('Alle Fahrten gesichert');
-    expect(line(server(1))).toBe('1 Fahrt wartet auf Upload');
-    expect(line(server(3))).toBe('3 Fahrten warten auf Upload');
-    expect(line(server())).toBeNull();
-    expect(line({ where: 'local' })).toBeNull();
-    expect(line({ where: 'moving', done: 1, total: 2, problem: null })).toBeNull();
-    expect(line(undefined)).toBeNull();
-  });
-  test('stays calm without rides', () => {
-    render(<HistoryView state={coachState([])} detail={null} send={vi.fn()} onBack={vi.fn()} />);
-    expect(screen.queryByTestId('best-powers')).toBeNull();
-    expect(screen.queryByTestId('load-chart')).toBeNull();
-  });
-  test('an opened ride shows its progress', () => {
-    render(<HistoryView state={coachState([summary('a', 8), summary('b', 1, { avgHrBpm: 136 })])} detail={null} send={vi.fn()} onBack={vi.fn()} />);
-    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
-    expect(screen.getByTestId('progress').textContent).toContain('gleiche Watt, 4 bpm weniger Puls');
+    expect(backupLine(server(0))).toBe('Alle Fahrten gesichert');
+    expect(backupLine(server(1))).toBe('1 Fahrt wartet auf Upload');
+    expect(backupLine(server(3))).toBe('3 Fahrten warten auf Upload');
+    expect(backupLine(server())).toBeNull();
+    expect(backupLine({ where: 'local' })).toBeNull();
+    expect(backupLine({ where: 'moving', done: 1, total: 2, problem: null })).toBeNull();
+    expect(backupLine(undefined)).toBeNull();
   });
 });
 
@@ -147,36 +118,9 @@ describe('together', () => {
     people: [{ profileId: 'a', name: 'Anna', ridesThisWeek: 1, minutesThisWeek: 30, streakWeeks: 0, wordsLearned: 3, weeks: [30], onTargetPct: 60 }],
     ...over,
   });
-  test('names the next mountain and leaves time on target out of the comparison', () => {
-    render(<TogetherCard together={together()} />);
-    expect(screen.getByText(/Danach: Stilfser Joch/)).toBeTruthy();
-    expect(screen.queryByText('Im Ziel')).toBeNull();
-    expect(screen.queryByText('60 %')).toBeNull();
-  });
-  test('a streak of zero is not shown as a zero', () => {
-    render(<TogetherCard together={together()} />);
-    expect(screen.queryByText(/^0 Wochen/)).toBeNull();
-  });
-  test('the overview shows the summit book, newest first', () => {
-    render(<TogetherView onBack={vi.fn()} together={together({ summits: [{ name: 'Alpe d’Huez', atMs: Date.UTC(2026, 2, 12, 12) }, { name: 'Mont Ventoux', atMs: Date.UTC(2026, 9, 3, 12) }], climbed: [] })} />);
-    const items = screen.getByTestId('summits').querySelectorAll('li');
-    expect(items[0].textContent).toContain('Mont Ventoux');
-    expect(items[1].textContent).toContain('12. März');
-  });
   test('a ride that reached the top says so after the ride', () => {
     const s = summary('b', 1);
     render(<FeedbackView profileId="A" rideId="b" send={vi.fn()} detail={null} summary={s} together={together({ summits: [{ name: 'Alpe d’Huez', atMs: s.startedAtMs }], climbed: [] })} />);
     expect(screen.getByTestId('summit').textContent).toContain('Alpe d’Huez');
-  });
-  test('time on target stays visible in your own history', () => {
-    render(<HistoryView state={coachState([summary('b', 1, { onTargetPct: 94 })])} detail={null} send={vi.fn()} onBack={vi.fn()} />);
-    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
-    expect(screen.getByText(/94 % der Zeit nah an der Vorgabe/)).toBeTruthy();
-  });
-  it('shows who is on the way up which mountain', () => {
-    render(<TogetherView onBack={vi.fn()} together={together({ climbing: [{ who: 'Anna', name: 'Brocken', pct: 50 }] })} />);
-    const box = screen.getByTestId('climbing');
-    expect(box.textContent).toContain('Brocken');
-    expect(box.textContent).toContain('Anna, 50 %');
   });
 });

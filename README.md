@@ -4,7 +4,7 @@
 
 Training for two people across cycling, strength, running and mobility. A Mac app rides the smart trainer, a phone web app tracks strength workouts and runs, and an AI coach plans the week across all sports and can be talked to in a chat.
 
-- **Mac app:** controls the smart trainer over Bluetooth, records every ride crash-safe and plans the next ride.
+- **Mac app:** only for the bike: controls the smart trainer over Bluetooth, records every ride crash-safe and shows the next ride and a short summary. Everything else (strength, running, meals, statistics, history, settings) is in the web app.
 - **Phone web app (PWA):** strength workouts in the gym, the week plan with the coach chat, runs, meals and stats. Works offline and syncs when it can.
 - **Home server (optional):** the sync API for the phone, plus the coach in its own container, so the coach answers while the Mac is off.
 
@@ -111,7 +111,7 @@ The app does not back up the Mac's local data. The scripts under `web-server/mac
 | `src/main` | Electron main process, monitors the services and restarts them |
 | `src/service` | Ride service: Bluetooth, recording, ride logic |
 | `src/coach` | Coaches (bike, strength, run, mobility, meals, week chat), Garmin and Hevy, analysis |
-| `src/ui` | Mac interface (React) |
+| `src/ui` | Mac interface (React): pairing, ride, summary, profile |
 | `src/tracking` | Screens shared by the Mac and the phone: strength, week, running, stats |
 | `src/web` | Phone web app (PWA, service worker, offline storage) |
 | `src/shared` | Shared types and rules |

@@ -24,7 +24,9 @@ export type HevyStatus =
   | { state: 'failed'; reason: 'invalid' | 'expired' | 'failed' };
 
 /** The link to a Pandafit account. Never carries the token or the password. */
-export type AccountStatus = { state: 'idle' | 'linking' | 'linked' | 'rejected' | 'failed'; name: string | null; reason: 'invalid' | 'limited' | 'url' | 'failed' | null; refused: number; offline: boolean; lastSyncMs: number | null };
+export type AccountStatus = { state: 'idle' | 'linking' | 'linked' | 'rejected' | 'failed'; name: string | null; reason: 'invalid' | 'limited' | 'url' | 'failed' | null; refused: number; offline: boolean; lastSyncMs: number | null;
+  /** The origin of the linked server's web app (https only), for "Web-App öffnen". Absent without a link or on an old coach. */
+  webOrigin?: string | null };
 
 export type CoachClientMessage =
   | { type: 'account-link'; profileId: string; url: string; name: string; password: string }

@@ -1,3 +1,4 @@
+import { webOrigin } from '../../shared/web-origin';
 import type { AccountStatus } from '../../shared/coach-protocol';
 import type { RecordKind, TrackedRecord } from '../../shared/records';
 import { syncRecords, type Refusal } from '../../tracking/sync';
@@ -89,7 +90,7 @@ export class AccountSync {
     const l = this.deps.links.status(profileId);
     const s = this.st(profileId);
     const state: AccountStatus['state'] = s.linking ? 'linking' : s.failure && l.state === 'idle' ? 'failed' : l.state;
-    return { state, name: l.name, reason: s.failure, refused: s.refused.size, offline: s.offline, lastSyncMs: s.lastSyncMs };
+    return { state, name: l.name, reason: s.failure, refused: s.refused.size, offline: s.offline, lastSyncMs: s.lastSyncMs, webOrigin: l.state === 'idle' ? null : webOrigin(this.deps.links.url(profileId)) };
   }
 
   /**

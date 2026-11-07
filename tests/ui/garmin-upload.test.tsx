@@ -6,7 +6,6 @@ import { FeedbackView } from '../../src/ui/views/FeedbackView';
 import { FilmView } from '../../src/ui/views/FilmView';
 import { GarminCard } from '../../src/ui/views/GarminCard';
 import { GarminUploadButton } from '../../src/ui/views/GarminUploadButton';
-import { HistoryView } from '../../src/ui/views/HistoryView';
 
 afterEach(cleanup);
 const ride = { rideId: 'r1', startedAtMs: 1, status: 'finished', sessionId: 's', ftpW: 200, durationS: 1800, avgPowerW: 100, normalizedPowerW: 100, intensityFactor: 0.5, tss: 10, avgHrBpm: 100, maxHrBpm: 120, bestMinutePowerW: 120, completedFraction: 1 } as RideSummary;
@@ -81,16 +80,6 @@ test('the feedback screen offers the upload when asking is chosen', () => {
   expect(send).toHaveBeenCalledWith({ type: 'garmin-upload', profileId: 'p', rideId: 'r1', repoLink: false });
 });
 
-test('the history offers the upload even while automatic uploading is off', () => {
-  const send = vi.fn();
-  const state = { profileId: 'p', summaries: [ride], feedback: {}, ftpW: 200 } as unknown as CoachState;
-  render(<HistoryView state={state} detail={null} send={send} onBack={vi.fn()} garminConnected />);
-  fireEvent.click(screen.getByRole('button', { expanded: false, name: /Min\./ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Zu Garmin hochladen' }));
-  confirm();
-  expect(send).toHaveBeenCalledWith({ type: 'garmin-upload', profileId: 'p', rideId: 'r1', repoLink: false });
-});
-
 const card = (upload?: Parameters<typeof GarminCard>[0]['upload']) => {
   const send = vi.fn();
   render(<GarminCard profileId="p" status={{ state: 'connected' }} send={send} upload={upload} />);
@@ -119,13 +108,8 @@ test('after the ride the film window leads back to the main window', () => {
   expect(open).toHaveBeenCalledWith('#main', 'main');
   open.mockRestore();
 });
-test('without a Garmin connection the feedback screen and history show no upload at all', () => {
+test('without a Garmin connection the feedback screen shows no upload at all', () => {
   feedback('ask', false);
-  expect(screen.queryByRole('button', { name: 'Zu Garmin hochladen' })).toBeNull();
-  cleanup();
-  const state = { profileId: 'p', summaries: [ride], feedback: {}, ftpW: 200 } as unknown as CoachState;
-  render(<HistoryView state={state} detail={null} send={vi.fn()} onBack={vi.fn()} />);
-  fireEvent.click(screen.getByRole('button', { expanded: false, name: /Min\./ }));
   expect(screen.queryByRole('button', { name: 'Zu Garmin hochladen' })).toBeNull();
 });
 describe('repo link', () => {

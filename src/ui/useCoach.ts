@@ -1,17 +1,12 @@
 import type { Profile } from '../shared/profiles';
-import type { MobilityView } from '../coach/mobility/mobility';
-import type { MealsView } from '../coach/meals/meal-coach';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { settleServerProfile, type PendingEdit } from './useServerProfile';
-import { createTrackingPorts } from './coachTrackingPort';
 import type { CoachState } from '../coach/state';
 import type { Together } from '../coach/together';
 import type { GarminHealth, GarminReadiness } from '../shared/garmin';
 import type { GarminSuggestion } from '../shared/garmin-profile';
-import type { GymPublic } from '../coach/gym/public';
 import type { StrengthHealth } from '../coach/strength';
-import type { GymWorkout } from '../coach/gym/types';
-import { COACH_PORT, type CoachClientMessage, type AccountStatus, type GymConfirmResult, type GarminStatus, type GarminSyncInfo, type HevyStatus, type RideDetail, type CoachHome } from '../shared/coach-protocol';
+import { COACH_PORT, type CoachClientMessage, type AccountStatus, type GarminStatus, type GarminSyncInfo, type HevyStatus, type RideDetail, type CoachHome } from '../shared/coach-protocol';
 
 const IDLE_ACCOUNT: AccountStatus = { state: 'idle', name: null, reason: null, refused: 0, offline: false, lastSyncMs: null };
 
@@ -32,23 +27,10 @@ export const useCoach = (profileId: string | null) => {
   const [garminReadiness, setGarminReadiness] = useState<GarminReadiness | null>(null);
   const [garminSuggestion, setGarminSuggestion] = useState<GarminSuggestion | null>(null);
   const [garminHealth, setGarminHealth] = useState<GarminHealth | null>(null);
-  const [gym, setGym] = useState<GymPublic | null>(null);
-  const [mobility, setMobility] = useState<MobilityView | null>(null);
-  const [meals, setMeals] = useState<MealsView | null>(null);
-  const [statusArrived, setStatusArrived] = useState(false);
   const [strengthHealth, setStrengthHealth] = useState<StrengthHealth | null>(null);
-  const [gymPreview, setGymPreview] = useState<{ workout: GymWorkout; edited: boolean; leftOut?: string[] } | null>(null);
-  const [gymConfirmResult, setGymConfirmResult] = useState<GymConfirmResult | null>(null);
-  const [gymPreviewFailed, setGymPreviewFailed] = useState(false);
   const [connected, setConnected] = useState(false);
   const socket = useRef<WebSocket | null>(null);
   const edit = useRef<PendingEdit | null>(null);
-  // One tracking port per profile, kept after a switch: a workout store of the old profile still writes through its own.
-  const ports = useMemo(() => createTrackingPorts({
-    send: (m) => { if (socket.current?.readyState !== WebSocket.OPEN) return false; socket.current.send(JSON.stringify(m)); return true; },
-  }), []);
-  useEffect(() => () => ports.dispose(), [ports]);
-  const tracking = profileId ? ports.get(profileId) : null;
 
   useEffect(() => {
     setState(null);
@@ -56,15 +38,8 @@ export const useCoach = (profileId: string | null) => {
     setServerProfile(null);
     edit.current = null;
     setGarminHealth(null);
-    setGym(null);
-    setMobility(null);
-    setMeals(null);
     setHevy({ state: 'idle' });
     setStrengthHealth(null);
-    setStatusArrived(false);
-    setGymPreview(null);
-    setGymConfirmResult(null);
-    setGymPreviewFailed(false);
     if (!profileId) return undefined;
     let closed = false;
     let timer: ReturnType<typeof setTimeout>;
@@ -74,34 +49,25 @@ export const useCoach = (profileId: string | null) => {
       ws.onopen = () => {
         setConnected(true);
         ws.send(JSON.stringify({ type: 'subscribe', profileId }));
-        ports.opened();
       };
       ws.onmessage = (e) => {
         const m = JSON.parse(String(e.data));
-        if (m.type === 'records' || m.type === 'records-put-result' || m.type === 'records-changed') { ports.handle(m); return; }
         if (m.type === 'ride-detail') setDetail(m.detail);
         if (m.type === 'garmin-health') setGarminHealth(m.data);
-        if (m.type === 'gym-preview') { setGymPreview(m.preview); setGymPreviewFailed(m.preview === null); }
-        if (m.type === 'gym-confirm-result') setGymConfirmResult(m.result);
-        if (m.type === 'coach-state') { setStatusArrived(true); setState(m.state); setThinking(m.thinking); setDebriefing(m.debriefing ?? false); setHevy(m.hevy ?? { state: 'idle' }); setTogether(m.together ?? null); setGarmin(m.garmin ?? { state: 'idle' }); setGarminSync(m.garminSync ?? null); setGarminReadiness(m.garminReadiness ?? null); setGarminSuggestion(m.garminSuggestion ?? null); setGym(m.gym ?? null); setStrengthHealth(m.strengthHealth ?? null); setMobility(m.mobility ?? null); setMeals(m.meals ?? null); setAccount(m.account ?? IDLE_ACCOUNT); setCoachHome(m.coachHome ?? LOCAL_HOME); if (m.coachHome?.where !== 'server' || !m.profile) { edit.current = null; setServerProfile(null); } else { const settled = settleServerProfile(edit.current, m.profile, Date.now()); edit.current = settled.pending; if (settled.accept) setServerProfile(m.profile); } }
+        if (m.type === 'coach-state') { setState(m.state); setThinking(m.thinking); setDebriefing(m.debriefing ?? false); setHevy(m.hevy ?? { state: 'idle' }); setTogether(m.together ?? null); setGarmin(m.garmin ?? { state: 'idle' }); setGarminSync(m.garminSync ?? null); setGarminReadiness(m.garminReadiness ?? null); setGarminSuggestion(m.garminSuggestion ?? null); setStrengthHealth(m.strengthHealth ?? null); setAccount(m.account ?? IDLE_ACCOUNT); setCoachHome(m.coachHome ?? LOCAL_HOME); if (m.coachHome?.where !== 'server' || !m.profile) { edit.current = null; setServerProfile(null); } else { const settled = settleServerProfile(edit.current, m.profile, Date.now()); edit.current = settled.pending; if (settled.accept) setServerProfile(m.profile); } }
       };
       ws.onclose = () => {
         setConnected(false);
-        ports.closed();
         if (!closed) timer = setTimeout(open, 1000);
       };
     };
     open();
     return () => { closed = true; clearTimeout(timer); socket.current?.close(); };
-  }, [profileId, ports]);
+  }, [profileId]);
 
   const send = (m: CoachClientMessage) => {
     if (m.type === 'profile-update') edit.current = { profile: m.profile, atMs: Date.now() };
     if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(m));
   };
-  const clearGym = (what: 'preview' | 'result' | 'all') => {
-    if (what !== 'result') { setGymPreview(null); setGymPreviewFailed(false); }
-    if (what !== 'preview') setGymConfirmResult(null);
-  };
-  return { coachHome, serverProfile, account, tracking, mobility, meals, gym, strengthHealth, statusArrived, gymPreview, gymPreviewFailed, clearGym, setGymPreview, gymConfirmResult, setGymConfirmResult, debriefing, hevy, detail, garmin, garminHealth, garminReadiness, garminSuggestion, garminSync, state, together, thinking, connected, send };
+  return { coachHome, serverProfile, account, strengthHealth, debriefing, hevy, detail, garmin, garminHealth, garminReadiness, garminSuggestion, garminSync, state, together, thinking, connected, send };
 };

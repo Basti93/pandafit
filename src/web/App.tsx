@@ -22,6 +22,8 @@ import { MealsScreen, mealWeeks } from './MealsScreen';
 import { TogetherCard, TogetherPage, togetherOf } from './TogetherScreen';
 import type { PushEnv, SubJson } from './push';
 import { ContactSettings } from './ContactSettings';
+import { ConnectionSettings } from './ConnectionSettings';
+import { CoachLink } from './coachLink';
 import { LiveClient, type LiveSocket } from './live';
 import { LiveRide } from './LiveRide';
 
@@ -364,7 +366,7 @@ const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; last
 };
 
 /** The account on this device, a few switches, the coach's timing, and the way out. Rows, not cards. */
-function Profil({ account, port, now, status, onLogout, onBack, push, persistRefused }: { account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; onBack: () => void; push: PushState | null; persistRefused: boolean }) {
+function Profil({ account, port, now, status, onLogout, onBack, push, persistRefused, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; onBack: () => void; push: PushState | null; persistRefused: boolean }) {
   const [confirming, setConfirming] = useState(false);
   usePortRecords(port, 'workout'); // re-renders when the port changes
   const c = port.syncState();
@@ -381,6 +383,7 @@ function Profil({ account, port, now, status, onLogout, onBack, push, persistRef
       {!quiet && <p role="status" className="muted">{sync}</p>}
       <RunSettingsCard port={port} now={now} />
       <ContactSettings port={port} now={now} />
+      {link && <ConnectionSettings link={link} />}
       {push && <PushSettings push={push} />}
       {/* The coach's timing is about notifications: it shows under them once they are on (always where the shell has no push at all). */}
       {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
@@ -414,6 +417,13 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   // The ride companion: optional, a socket of its own, and nothing else in the app depends on it.
   const live = useMemo(() => (env.openLive ? new LiveClient({ open: env.openLive, now: env.now, newId: env.newId }) : null), [env]);
   useEffect(() => { live?.start(); return () => live?.stop(); }, [live]);
+  // Hevy, Garmin, Krafttraining and the meal plan are set on the coach's socket; it opens only while Profil is shown.
+  const link = useMemo(() => (env.openLive ? new CoachLink({ open: env.openLive, status: async () => {
+    const res = await get(env, '/coach/status');
+    if (!res.ok) return null;
+    const j = await res.json() as { profileId?: unknown; moved?: unknown };
+    return { profileId: typeof j.profileId === 'string' ? j.profileId : null, moved: j.moved === true };
+  } }) : null), [env]);
   useEffect(() => env.onOpenTab?.((t) => { const next = tabFor(t); if (!next) return; if (t === 'rad' || t === 'laufen') saveEndurance(env, account, t); setTab(next); }), [env, account]);
   const [persistRefused, setPersistRefused] = useState(false);
   const [hint, setHint] = useState(false);
@@ -494,7 +504,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
           {tab === 'statistik' && hasStats && <StatsScreen port={port} now={env.now} />}
-          {tab === 'profil' && <Profil account={account} port={port} now={env.now} status={status} onLogout={onLogout} onBack={() => setTab(back)} push={push.state} persistRefused={persistRefused} />}
+          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} onBack={() => setTab(back)} push={push.state} persistRefused={persistRefused} />}
         </ErrorBoundary>
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
