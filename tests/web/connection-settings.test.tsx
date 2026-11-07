@@ -86,6 +86,19 @@ describe('ConnectionSettings on the web Profil', () => {
     expect(ws.sent.at(-1)).toMatchObject({ type: 'meals-settings', settings: { on: true, dislikes: ['Pilze', 'Oliven'] } });
   });
 
+  it('shows how big the recipe collection is: before and after it is used for planning', async () => {
+    const { ws } = await setup();
+    act(() => { ws.onopen?.(); ws.say(coachState({ meals: { settings: meals(false), recipes: { collection: 734, unlock: 1000 } } })); });
+    // Only with the meal plan on.
+    expect(screen.queryByText(/Rezeptsammlung/)).toBeNull();
+    act(() => ws.say(coachState({ meals: { settings: meals(true), recipes: { collection: 734, unlock: 1000 } } })));
+    expect(screen.getByText('Rezeptsammlung: 734 von 1.000')).toBeTruthy();
+    act(() => ws.say(coachState({ meals: { settings: meals(true), recipes: { collection: 1512, unlock: 1000 } } })));
+    expect(screen.getByText('Rezeptsammlung: 1.512 Rezepte')).toBeTruthy();
+    act(() => ws.say(coachState({ meals: { settings: meals(true), recipes: null } })));
+    expect(screen.queryByText(/Rezeptsammlung/)).toBeNull();
+  });
+
   it('closes the socket when Profil goes away', async () => {
     const { ws } = await setup();
     cleanup();

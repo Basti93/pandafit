@@ -76,6 +76,8 @@ export type MealsView = {
   chat: MealChat[];
   /** False while a ride is open. */
   canPlan: boolean;
+  /** How big the recipe collection is against the number it is planned from; null without a collection. */
+  recipes: { collection: number; unlock: number } | null;
 };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -134,6 +136,18 @@ export class MealCoach {
     if (!this.deps.recipesDir) return null;
     this.store ??= new RecipeStore(this.deps.recipesDir, this.deps.nowMs);
     return this.store;
+  }
+
+  private counted: { atMs: number; value: { collection: number; unlock: number } } | null = null;
+  /** The collection's size for the view, read at most once a minute (the view is built often). */
+  private recipeCount(): { collection: number; unlock: number } | null {
+    try {
+      const store = this.recipes();
+      if (!store) return null;
+      const now = this.deps.nowMs();
+      if (!this.counted || now - this.counted.atMs > 60_000 || now < this.counted.atMs) { const s = store.stats(); this.counted = { atMs: now, value: { collection: s.collection, unlock: s.unlock } }; }
+      return this.counted.value;
+    } catch { return null; }
   }
 
   /** Takes recipes waiting in the inbox. Never while a ride is open; never throws. */
@@ -247,7 +261,7 @@ export class MealCoach {
     const current = weekOf(now);
     const weeks = [current, addWeeks(current, 1)].flatMap((w) => (d.plans[w] ? [{ plan: d.plans[w]!, state: d.states[w] ?? EMPTY_STATE, notice: d.notices[w] ?? null }] : []));
     const on = this.enabled(id);
-    return { settings: this.settings(id), weeks: on ? weeks : [], currentWeek: current, today: dayIndex(now), planning: this.planning, canPlan: this.deps.noOpenRide(), chat: on ? d.chats[id] ?? [] : [] };
+    return { settings: this.settings(id), weeks: on ? weeks : [], currentWeek: current, today: dayIndex(now), planning: this.planning, canPlan: this.deps.noOpenRide(), chat: on ? d.chats[id] ?? [] : [], recipes: on ? this.recipeCount() : null };
   }
 
   /**

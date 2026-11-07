@@ -253,3 +253,15 @@ describe('adding a recipe by link', () => {
     expect(pages).not.toHaveBeenCalled();
   });
 });
+
+describe('the collection size in the view', () => {
+  it('shows the tagged collection against the unlock, only with the plan on, and null without a collection', async () => {
+    const { coach } = setup({ ask: async () => ({ rezepte: [] }) });
+    await fill(coach, 4, 'collection');
+    await fill(coach, 2, 'link');
+    expect(coach.view('max').recipes).toEqual({ collection: 4, unlock: 1000 });
+    coach.setSettings('lena', ON({ on: false }));
+    expect(coach.view('lena').recipes).toBeNull();
+    expect(setup({ noRecipes: true }).coach.view('max').recipes).toBeNull();
+  });
+});

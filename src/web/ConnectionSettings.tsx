@@ -100,6 +100,11 @@ function MealsSheet({ settings, save, onClose }: { settings: MealSettings; save:
  * What the Mac app used to hold and the server coach uses: Hevy, Garmin, Krafttraining and the meal plan. Rows plus sheets.
  * Nothing shows while the account has no coach on the server, or while it is not reached.
  */
+const n = (x: number) => x.toLocaleString('de-DE');
+/** "Rezeptsammlung: 734 von 1.000" until the collection is used for planning, then "Rezeptsammlung: 1.512 Rezepte". */
+export const collectionLine = (r: { collection: number; unlock: number }): string =>
+  r.collection >= r.unlock ? `Rezeptsammlung: ${n(r.collection)} ${r.collection === 1 ? 'Rezept' : 'Rezepte'}` : `Rezeptsammlung: ${n(r.collection)} von ${n(r.unlock)}`;
+
 export function ConnectionSettings({ link }: { link: CoachLink }) {
   const snap = useSyncExternalStore(link.subscribe, link.snapshot);
   const [sheet, setSheet] = useState<'hevy' | 'garmin' | 'meals' | null>(null);
@@ -117,6 +122,7 @@ export function ConnectionSettings({ link }: { link: CoachLink }) {
       <Switch label="Krafttraining planen" hint="Auch ohne Hevy" checked={v.gymOn} disabled={v.gymOn} onChange={() => send({ type: 'gym-start' })} />
       <Switch label="Essensplan" hint="Wochenplan mit Einkaufsliste" checked={meals.on} onChange={(on) => send({ type: 'meals-settings', settings: { ...meals, on } })} />
       {meals.on && <RowList><Row title="Essen anpassen" onClick={() => setSheet('meals')} /></RowList>}
+      {meals.on && v.recipes && <p className="muted" role="status">{collectionLine(v.recipes)}</p>}
       {sheet === 'hevy' && <HevySheet v={v} send={send} onClose={() => setSheet(null)} />}
       {sheet === 'garmin' && <GarminSheet v={v} send={send} onClose={() => setSheet(null)} />}
       {sheet === 'meals' && <MealsSheet settings={meals} save={(settings) => send({ type: 'meals-settings', settings })} onClose={() => setSheet(null)} />}

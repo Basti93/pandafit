@@ -12,6 +12,8 @@ export type CoachSettingsView = {
   upload: GarminUploadSettings | undefined;
   gymOn: boolean;
   meals: MealSettings | null;
+  /** The recipe collection's size and the size it is planned from; null when there is none. */
+  recipes: { collection: number; unlock: number } | null;
 };
 export type CoachLinkSnapshot = { view: CoachSettingsView | null; /** The account has no coach on the server (yet): nothing to show. */ unavailable: boolean };
 type Without<T> = T extends { profileId: string } ? Omit<T, 'profileId'> : never;
@@ -89,6 +91,7 @@ export class CoachLink {
       upload: m.state?.garminUpload,
       gymOn: m.gym != null,
       meals: m.meals?.settings ?? null,
+      recipes: m.meals?.recipes ?? null,
     } });
   }
 
