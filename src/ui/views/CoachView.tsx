@@ -1,9 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { hrMaxFor } from '../../shared/hr-zones';
-import { CoachLog } from './CoachLog';
-import { Encouragement, MotivationCard } from './MotivationCard';
 import type { CoachState } from '../../coach/state';
-import type { Together } from '../../coach/together';
 import { CoachHomeNote } from './CoachHomeNote';
 import type { CoachHome, CoachClientMessage, GarminStatus, GarminSyncInfo } from '../../shared/coach-protocol';
 import type { Profile } from '../../shared/profiles';
@@ -16,10 +13,9 @@ import type { GarminSuggestion } from '../../shared/garmin-profile';
 import { ReadinessNote } from './ReadinessNote';
 import type { GarminReadiness } from '../../shared/garmin';
 import { SessionFacts, StepList, TrainingCard } from './TrainingCard';
-import { TogetherCard } from './TogetherCard';
 import { WorkoutBar } from './WorkoutBar';
-import { MobilityCard } from './MobilityCard';
-import type { MobilityView } from '../../coach/mobility/mobility';
+import { backupLine } from './backup-line';
+import { openWebApp } from './WebLink';
 
 const NOTICE: Record<string, string> = {
   limit: 'Das Limit deines Claude-Plans ist gerade erreicht. Diese Einheit stammt vom Regelwerk, der Coach versucht es später erneut.',
@@ -43,29 +39,24 @@ const greeting = (): string => {
 type Choice = { session: Session; why: string; tag: string };
 
 type Props = {
-  together?: Together | null; coachHome?: CoachHome;
+  coachHome?: CoachHome; /** The linked server's web app, for "Web-App öffnen". */ webOrigin?: string | null;
   profile: Profile; state: CoachState | null; thinking: boolean; coachConnected: boolean;
   sendRide: (m: ClientMessage) => void; sendCoach: (m: CoachClientMessage) => void; passCard?: ReactNode;
   /** Only for a Garmin login that has run out: the connections themselves live on the profile page. */
   garmin?: GarminStatus; garminSync?: GarminSyncInfo | null; onProfile?: () => void;
-  garminReadiness?: GarminReadiness | null; garminSuggestion?: GarminSuggestion | null; onReviewGarmin?: () => void; mobility?: MobilityView | null;
+  garminReadiness?: GarminReadiness | null; garminSuggestion?: GarminSuggestion | null; onReviewGarmin?: () => void;
 };
 
-export const CoachView = ({ coachHome, together, profile, state, thinking, coachConnected, sendRide, sendCoach, passCard, garmin, garminSync, onProfile, garminReadiness, garminSuggestion, onReviewGarmin, mobility }: Props) => {
-  const [note, setNote] = useState('');
+export const CoachView = ({ coachHome, webOrigin, profile, state, thinking, coachConnected, sendRide, sendCoach, passCard, garmin, garminSync, onProfile, garminReadiness, garminSuggestion, onReviewGarmin }: Props) => {
   const [picked, setPicked] = useState<Choice | null>(null);
   const ftpW = state?.ftpW ?? profile.ftpW;
   const hrMax = hrMaxFor(profile, Date.now());
+  const backup = backupLine(coachHome);
   const reauth = garmin?.state === 'connected' && garminSync?.problem === 'reauth';
   const start = (session: Session) => sendRide({ type: 'start', profileId: profile.id, session, ftpW, ...(profile.maxHrBpm ? { maxHrBpm: profile.maxHrBpm } : {}), ...(hrMax ? { hrMaxBpm: hrMax.bpm } : {}) });
   const next = state?.next;
   const isRamp = next?.session.id === 'ramp-test';
   const adjust = (how: 'easier' | 'harder' | 'shorter') => sendCoach({ type: 'adjust', profileId: profile.id, how });
-  const sendNote = () => {
-    if (!note.trim()) return;
-    sendCoach({ type: 'note', profileId: profile.id, text: note.trim() });
-    setNote('');
-  };
   const library: Choice[] = [
     ...(state?.alternatives ?? []).map((a) => ({ session: a.session, why: a.why, tag: 'Vom Coach' })),
     ...STARTER_SESSIONS.map((session) => ({ session, why: session.description ?? '', tag: 'Standard' })),
@@ -80,15 +71,7 @@ export const CoachView = ({ coachHome, together, profile, state, thinking, coach
       </div>
       {coachHome && <CoachHomeNote coachHome={coachHome} />}
       {!state && <p className="notice" role="status">{coachConnected ? 'Coach lädt…' : 'Der Coach ist gerade nicht erreichbar. Du kannst trotzdem fahren.'}</p>}
-      {state && (
-        <Encouragement state={state}>
-          <form className="note-form" onSubmit={(e) => { e.preventDefault(); sendNote(); }}>
-            <input aria-label="Hinweis an den Coach" placeholder="Sag deinem Coach etwas, z. B. Knie zwickt" value={note} onChange={(e) => setNote(e.target.value)} />
-            <button type="submit" className="secondary">Senden</button>
-          </form>
-          <CoachLog notes={state.notes} changes={state.changes} />
-        </Encouragement>
-      )}
+      {backup && <p className="muted" data-testid="ride-backup">{backup}</p>}
       <ReadinessNote readiness={garminReadiness} />
       {reauth && coachConnected && (
         <p className="notice row" role="status">
@@ -124,7 +107,6 @@ export const CoachView = ({ coachHome, together, profile, state, thinking, coach
               </div>
             </section>
           )}
-          <MobilityCard profileId={profile.id} mobility={mobility} send={sendCoach} />
           <section className="library">
             <h3>Andere Trainings</h3>
             <div className="trainings">
@@ -137,8 +119,6 @@ export const CoachView = ({ coachHome, together, profile, state, thinking, coach
         </div>
         {state && (
           <div className="stack">
-            <MotivationCard state={state} send={sendCoach} />
-            {together && <TogetherCard together={together} />}
             <section className="card">
               <h3>Dein Plan</h3>
               <p className="note"><b>{state.phase.name}</b>{state.phase.weeksLeft > 0 ? `, noch etwa ${state.phase.weeksLeft} Wochen` : ''}. {state.phase.goal}</p>
@@ -148,6 +128,7 @@ export const CoachView = ({ coachHome, together, profile, state, thinking, coach
           </div>
         )}
       </div>
+      {webOrigin && <div className="row"><button type="button" className="secondary" onClick={() => openWebApp(webOrigin)}>Web-App öffnen</button></div>}
     </main>
   );
 };

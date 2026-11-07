@@ -12,7 +12,6 @@ import type { StrengthWorkout } from '../../../src/coach/hevy';
 import { RecordStore } from '../../../src/coach/tracking/store';
 import { EXERCISES } from '../../../src/shared/exercises';
 import type { LoggedWorkout, TrackedRecord } from '../../../src/shared/records';
-import { homeScreen } from '../../../src/ui/views/OverviewView';
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 2, 12);
@@ -195,12 +194,6 @@ describe('own history', () => {
     expect(p?.leftOut).toEqual(['Bauchroller']);
     expect(await h.coach.confirm(ID, 'T')).toBe('failed');
     expect(calls).toHaveLength(0);
-  });
-
-  it('the overview home screen rule holds for an enabled profile', () => {
-    expect(homeScreen({ state: 'idle' })).toBe('bike');
-    expect(homeScreen({ state: 'idle' }, true)).toBe('overview');
-    expect(homeScreen({ state: 'idle' }, false)).toBe('bike');
   });
 
   it('a workout deleted in Hevy is gone from history after Hevy is removed', () => {

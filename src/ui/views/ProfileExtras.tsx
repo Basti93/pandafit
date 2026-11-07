@@ -13,35 +13,43 @@ type Props = {
   hevy?: HevyStatus; account?: AccountStatus; coachHome?: CoachHome;
   /** The language toggle and anything else that only concerns this profile. */
   settings?: ReactNode;
-  /** A calm line under the settings, for example what "Krafttraining starten" does. */
-  settingsNote?: string;
-  /** The meal plan section, between the settings and the connections. */
-  meals?: ReactNode;
+  /** Opens the Garmin health page; only given while Garmin is connected. */
+  onHealth?: () => void;
 };
 
-/** The profile page's own sections: small settings, then every connection, each optional and shown whether connected or not. */
-export const ProfileExtras = ({ profileId, coachConnected, send, garmin, garminSync, upload, hevy, account, coachHome, settings, settingsNote, meals }: Props) => (
-  <>
-    {settings && (
-      <section className="card profile-settings">
-        <h3>Einstellungen</h3>
-        <div className="row">{settings}</div>
-        {settingsNote && <p className="muted">{settingsNote}</p>}
-      </section>
-    )}
-    {meals}
-    <section className="connections" aria-label="Verbindungen">
-      <h2>Verbindungen</h2>
-      <p className="muted">Alles hier ist freiwillig. Pandafit läuft auch ganz ohne, und du kannst jederzeit verbinden oder trennen.</p>
-      {!coachConnected ? <p className="notice" role="status">Der Coach ist gerade nicht erreichbar. Sobald er wieder da ist, kannst du hier verbinden.</p> : (
-        <>
-          {garmin.state === 'idle'
-            ? <details className="card garmin-later"><summary>Garmin verbinden (optional)</summary><GarminCard profileId={profileId} status={garmin} sync={garminSync} send={send} upload={upload} /></details>
-            : <GarminCard profileId={profileId} status={garmin} sync={garminSync} send={send} upload={upload} />}
-          <HevyCard profileId={profileId} status={hevy ?? { state: 'idle' }} send={send} />
-          <AccountCard profileId={profileId} status={account ?? NO_ACCOUNT} send={send} coachHome={coachHome} />
-        </>
+/**
+ * The profile page's own sections. Hevy and Garmin are set here only while this Mac's own coach does the work; for a profile whose
+ * coach runs on the server they are set in the web app (Profil). The account link is always here.
+ */
+export const ProfileExtras = ({ profileId, coachConnected, send, garmin, garminSync, upload, hevy, account, coachHome, settings, onHealth }: Props) => {
+  const onServer = coachHome?.where === 'server';
+  const linked = (account ?? NO_ACCOUNT).state !== 'idle' || coachHome?.where === 'moving';
+  return (
+    <>
+      {settings && (
+        <section className="card profile-settings">
+          <h3>Einstellungen</h3>
+          <div className="row">{settings}</div>
+        </section>
       )}
-    </section>
-  </>
-);
+      <section className="connections" aria-label="Verbindungen">
+        <h2>Verbindungen</h2>
+        {!linked && <p className="muted">Kraft, Laufen, Essen und Statistik gibt es in der Web-App – dafür das Konto verbinden.</p>}
+        {!coachConnected ? <p className="notice" role="status">Der Coach ist gerade nicht erreichbar. Sobald er wieder da ist, kannst du hier verbinden.</p> : (
+          <>
+            {onServer ? <p className="muted">Hevy, Garmin, Krafttraining und Essensplan stellst du in der Web-App unter Profil ein.</p> : (
+              <>
+                {garmin.state === 'idle'
+                  ? <details className="card garmin-later"><summary>Garmin verbinden (optional)</summary><GarminCard profileId={profileId} status={garmin} sync={garminSync} send={send} upload={upload} /></details>
+                  : <GarminCard profileId={profileId} status={garmin} sync={garminSync} send={send} upload={upload} />}
+                <HevyCard profileId={profileId} status={hevy ?? { state: 'idle' }} send={send} />
+              </>
+            )}
+            {onHealth && <div className="row"><button type="button" className="secondary" onClick={onHealth}>Gesundheit (Garmin) ansehen</button></div>}
+            <AccountCard profileId={profileId} status={account ?? NO_ACCOUNT} send={send} coachHome={coachHome} />
+          </>
+        )}
+      </section>
+    </>
+  );
+};

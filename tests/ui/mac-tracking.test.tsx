@@ -2,28 +2,13 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup } from '@testing-library/react';
 import { handleRecords } from '../../src/coach/tracking/records-api';
 import { RecordStore } from '../../src/coach/tracking/store';
-import { createCoachTrackingPort, createTrackingPorts } from '../../src/ui/coachTrackingPort';
-import type { CoachClientMessage, CoachServerMessage } from '../../src/shared/coach-protocol';
+import type { CoachServerMessage } from '../../src/shared/coach-protocol';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
-import { initialGymState } from '../../src/coach/gym/state';
-import { fakePort } from '../tracking/fake-port';
-import { App } from '../../src/ui/App';
 
 afterEach(cleanup);
-
-const h = vi.hoisted(() => ({ gym: null as unknown, ride: false, port: null as unknown }));
-vi.mock('../../src/ui/useCoach', () => ({ useCoach: () => ({ state: null, thinking: false, connected: true, send: () => {}, hevy: { state: 'idle' }, garmin: { state: 'idle' }, together: null, gym: h.gym, tracking: h.port, gymPreview: null, gymPreviewFailed: false, gymConfirmResult: null, clearGym: () => {} }) }));
-vi.mock('../../src/ui/useRide', () => ({ useRide: () => ({
-  state: {
-    type: 'state', session: null, ride: h.ride ? { rideId: 'r', profileId: 'a', sessionId: 's', startedAtMs: 1, status: 'open' } : null,
-    engine: h.ride ? { stepIndex: 0, stepRemainingS: 125, rideElapsedS: 10, targetW: 150, gradePct: null, gear: null, label: 'Warmup', nextLabel: 'Anstieg', secondsToNext: 125, autoReducedPct: 0, paused: false } : null,
-    devices: {}, latest: {}, storageError: false, recovered: false, profiles: [{ id: 'a', name: 'Mia', ftpW: 200 }],
-  },
-  offer: null, clearOffer: () => {}, connected: true, send: () => {}, error: null,
-}) }));
 
 const wk = (over: Partial<LoggedWorkout> = {}): TrackedRecord => ({
   kind: 'workout', id: 'w1', updatedMs: 10, deleted: false,
@@ -31,7 +16,7 @@ const wk = (over: Partial<LoggedWorkout> = {}): TrackedRecord => ({
 });
 
 let tmp: string;
-beforeEach(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mac-tracking-')); localStorage.clear(); h.ride = false; });
+beforeEach(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mac-tracking-')); });
 afterEach(() => fs.rmSync(tmp, { recursive: true, force: true }));
 
 const profiles = () => ['a'];
@@ -126,214 +111,6 @@ describe('server rules', () => {
     expect((list.reply as { records: unknown[] }).records).toEqual([]);
     expect(fs.existsSync(path.join(tmp, 'tracking'))).toBe(false);
     expect(gym.start).not.toHaveBeenCalled();
-  });
-});
-
-describe('port', () => {
-  const rig = (opts: { up?: boolean; timeoutMs?: number } = {}) => {
-    const sent: CoachClientMessage[] = [];
-    const ctl = { up: opts.up ?? true };
-    const port = createCoachTrackingPort({ profileId: 'a', send: (m) => { if (!ctl.up) return false; sent.push(m); return true; }, timeoutMs: opts.timeoutMs ?? 2000 });
-    return { port, sent, ctl };
-  };
-  const putOf = (m: CoachClientMessage | undefined) => m as Extract<CoachClientMessage, { type: 'records-put' }>;
-  const queued = () => JSON.parse(localStorage.getItem('pandafit.tracking.queue.a') ?? '[]') as { record: TrackedRecord }[];
-
-  test('put resolves only after the Mac confirms', async () => {
-    const { port, sent } = rig();
-    let done = false;
-    const p = port.put(wk()).then(() => { done = true; });
-    await Promise.resolve();
-    expect(sent).toHaveLength(1);
-    expect(done).toBe(false);
-    port.handle({ type: 'records-put-result', requestId: putOf(sent[0]).requestId, ok: true });
-    await p;
-    expect(done).toBe(true);
-    expect(queued()).toEqual([]);
-  });
-
-  test('a refused put rejects and is not queued', async () => {
-    const { port, sent } = rig();
-    const p = port.put(wk());
-    port.handle({ type: 'records-put-result', requestId: putOf(sent[0]).requestId, ok: false });
-    await expect(p).rejects.toThrow();
-    expect(queued()).toEqual([]);
-  });
-
-  test('a lost socket queues puts in localStorage and replays them', async () => {
-    const { port, sent, ctl } = rig({ up: false });
-    await port.put(wk({ title: 'alt' }));
-    await port.put({ ...wk({ title: 'neu' }), updatedMs: 20 });
-    await port.put({ ...wk({ title: 'älter' }), updatedMs: 5 });
-    await port.put({ kind: 'routine', id: 'r1', updatedMs: 1, deleted: false, body: {} });
-    expect(queued().map((q) => [q.record.id, q.record.updatedMs])).toEqual([['w1', 20], ['r1', 1]]);
-    expect(port.syncState().pending).toBe(2);
-    // seen by a second port as well: survives a restart
-    ctl.up = true;
-    port.opened();
-    expect(sent).toHaveLength(1);
-    expect(putOf(sent[0]).record.id).toBe('w1');
-    expect(queued()).toHaveLength(2); // not removed before the answer
-    port.handle({ type: 'records-put-result', requestId: putOf(sent[0]).requestId, ok: true });
-    await waitFor(() => expect(sent).toHaveLength(2));
-    expect(putOf(sent[1]).record.id).toBe('r1');
-    expect(queued().map((q) => q.record.id)).toEqual(['r1']);
-    port.handle({ type: 'records-put-result', requestId: putOf(sent[1]).requestId, ok: true });
-    await waitFor(() => expect(queued()).toEqual([]));
-    expect(port.syncState()).toMatchObject({ pending: 0 });
-    expect(port.syncState().lastOkMs).not.toBeNull();
-  });
-
-  test('a refused record on replay is kept apart and shown, and the queue goes on', async () => {
-    localStorage.setItem('pandafit.tracking.queue.a', JSON.stringify([{ record: wk() }, { record: { ...wk(), id: 'w2' } }]));
-    const { port, sent } = rig();
-    port.opened();
-    port.handle({ type: 'records-put-result', requestId: putOf(sent[0]).requestId, ok: false, refused: true });
-    await waitFor(() => expect(sent).toHaveLength(2));
-    expect(JSON.parse(localStorage.getItem('pandafit.tracking.refused.a')!).map((e: { record: TrackedRecord }) => e.record.id)).toEqual(['w1']);
-    expect(queued().map((q) => q.record.id)).toEqual(['w2']);
-    expect(port.syncState()).toMatchObject({ refused: 1 });
-  });
-
-  test('a queue from a previous start is replayed', async () => {
-    localStorage.setItem('pandafit.tracking.queue.a', JSON.stringify([{ record: wk() }]));
-    const { port, sent } = rig();
-    port.opened();
-    expect(putOf(sent[0]).record.id).toBe('w1');
-  });
-
-  test('a put without answer is kept and resolves', async () => {
-    const { port } = rig({ timeoutMs: 20 });
-    await port.put(wk());
-    expect(queued()).toHaveLength(1);
-  });
-
-  test('the queue write failing rejects the put while offline', async () => {
-    const { port } = rig({ up: false });
-    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('voll'); });
-    await expect(port.put(wk())).rejects.toThrow();
-    spy.mockRestore();
-  });
-
-  test('list answers come from the Mac, merged with unsent records, and subscribers hear changes', async () => {
-    const { port, sent, ctl } = rig();
-    const heard = vi.fn();
-    port.subscribe(heard);
-    const p = port.list('workout');
-    const req = sent[0] as Extract<CoachClientMessage, { type: 'records-list' }>;
-    port.handle({ type: 'records', kind: 'workout', requestId: req.requestId, records: [wk({ title: 'Mac' })] });
-    expect((await p).map((r) => r.id)).toEqual(['w1']);
-    ctl.up = false;
-    await port.put({ ...wk({ title: 'lokal' }), updatedMs: 30 });
-    expect(heard).toHaveBeenCalled();
-    const offline = await port.list('workout');
-    expect((offline[0].body as LoggedWorkout).title).toBe('lokal');
-    heard.mockClear();
-    port.handle({ type: 'records-changed', profileId: 'a' });
-    expect(heard).toHaveBeenCalledTimes(1);
-  });
-
-  test('a list without a socket or cache fails', async () => {
-    const { port } = rig({ up: false });
-    await expect(port.list('workout')).rejects.toThrow();
-  });
-});
-
-describe('port lifetime', () => {
-  const putOf = (m: CoachClientMessage | undefined) => m as Extract<CoachClientMessage, { type: 'records-put' }>;
-  test('after a profile switch the old port still delivers under its own profile', async () => {
-    const sent: CoachClientMessage[] = [];
-    const ctl = { up: false };
-    const ports = createTrackingPorts({ send: (m) => { if (!ctl.up) return false; sent.push(m); return true; }, timeoutMs: 2000 });
-    const a = ports.get('a');
-    ports.get('b'); // the rider switched profile
-    expect(ports.get('a')).toBe(a);
-    await a.put(wk());
-    ctl.up = true;
-    ports.opened();
-    expect(putOf(sent[0]).profileId).toBe('a');
-    ports.handle({ type: 'records-put-result', requestId: putOf(sent[0]).requestId, ok: true });
-    await waitFor(() => expect(JSON.parse(localStorage.getItem('pandafit.tracking.queue.a')!)).toEqual([]));
-    ports.dispose();
-  });
-
-  test('a waiting queue is retried on a timer', async () => {
-    vi.useFakeTimers();
-    try {
-      const sent: CoachClientMessage[] = [];
-      const ctl = { up: false };
-      const ports = createTrackingPorts({ send: (m) => { if (!ctl.up) return false; sent.push(m); return true; }, timeoutMs: 2000 });
-      await ports.get('a').put(wk());
-      ctl.up = true;
-      await vi.advanceTimersByTimeAsync(15_000);
-      expect(sent).toHaveLength(1);
-      ports.dispose();
-    } finally { vi.useRealTimers(); }
-  });
-});
-
-describe('screen', () => {
-  const gym = () => ({ ready: true, thinking: false, hevy: false, complaints: [], hasHistory: false, state: { ...initialGymState('a'), emptyReason: 'Noch nichts.' } });
-  const portStub = () => ({ list: async () => [], put: async () => {}, subscribe: () => () => {}, syncState: () => ({ pending: 0, lastOkMs: null }) });
-
-  test('Training starten opens the shared workout screen from the strength page', async () => {
-    h.gym = gym(); h.port = portStub();
-    render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Training starten' }));
-    expect(await screen.findByRole('heading', { name: 'Training starten' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Leeres Training starten' })).toBeTruthy();
-  });
-
-  test('returning from a ride brings back the same in-progress workout', async () => {
-    const open: TrackedRecord = { kind: 'workout', id: 'open1', updatedMs: 5, deleted: false, body: { id: 'open1', title: 'Zuhause', startMs: 1000, endMs: null, source: 'pandafit', exercises: [{ exerciseId: 'pf-bench-press', title: 'Bankdrücken', supersetId: null, notes: '', sets: [{ type: 'normal', weightKg: 62.5, reps: 8, durationS: null, doneMs: null }] }] } };
-    const fp = fakePort([open]);
-    h.gym = gym(); h.port = fp.port;
-    const { rerender } = render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Training starten' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-    expect(((await screen.findByLabelText('Gewicht Satz 1')) as HTMLInputElement).value).toBe('62,5');
-    h.ride = true;
-    rerender(<App />);
-    expect(screen.getByTestId('target')).toBeTruthy();
-    h.ride = false;
-    rerender(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-    expect(((await screen.findByLabelText('Gewicht Satz 1')) as HTMLInputElement).value).toBe('62,5');
-    expect(fp.map.size).toBe(1);
-  });
-
-  test('an open ride shows RideView and does not start planning from it', async () => {
-    h.gym = gym(); h.port = portStub();
-    const { rerender } = render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Training starten' }));
-    h.ride = true;
-    rerender(<App />);
-    expect(screen.getByTestId('target')).toBeTruthy();
-    // opening or leaving a workout screen never asks the server to plan
-    const store = new RecordStore({ dir: tmp });
-    const g = gymSpy();
-    handleRecords({ store, gym: g, profiles }, { type: 'records-put', requestId: 'q', profileId: 'a', record: wk() });
-    expect(g.workoutFinished).not.toHaveBeenCalled();
-  });
-
-  test('losing gym ends the workout screen', async () => {
-    h.gym = gym(); h.port = portStub();
-    const { rerender } = render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Mia' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Training starten' }));
-    h.gym = null;
-    rerender(<App />);
-    h.gym = gym();
-    rerender(<App />);
-    expect(screen.queryByRole('button', { name: 'Training starten' })).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Kraft' })).toBeNull();
   });
 });
 

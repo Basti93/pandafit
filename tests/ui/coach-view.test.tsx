@@ -37,9 +37,20 @@ test('a Garmin login that ran out is mentioned calmly, with the way to the profi
   fireEvent.click(screen.getByRole('button', { name: 'Zum Profil' }));
   expect(onProfile).toHaveBeenCalled();
 });
-test('the note to the coach sits with the coach words, before the next ride', () => {
+test('the start screen has the backup line and, only with a link, the button to the web app', () => {
+  const open = vi.spyOn(window, 'open').mockReturnValue(null);
+  const server = { where: 'server' as const, online: true, sinceMs: null, session: 'server' as const, queued: 0, full: false, pendingRides: 2 };
+  const { rerender } = render(<CoachView profile={profile} state={state} thinking={false} coachConnected coachHome={server} sendRide={vi.fn()} sendCoach={vi.fn()} />);
+  expect(screen.getByTestId('ride-backup').textContent).toBe('2 Fahrten warten auf Upload');
+  expect(screen.queryByRole('button', { name: 'Web-App öffnen' })).toBeNull();
+  rerender(<CoachView profile={profile} state={state} thinking={false} coachConnected coachHome={server} webOrigin="https://pandafit.example.org" sendRide={vi.fn()} sendCoach={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Web-App öffnen' }));
+  expect(open).toHaveBeenCalledWith('https://pandafit.example.org', '_blank', 'noopener');
+  open.mockRestore();
+});
+test('no chat, motivation, mobility or together cards on the Mac start screen', () => {
   view(state);
-  const field = screen.getByRole('textbox', { name: 'Hinweis an den Coach' });
-  expect(field.closest('.encouragement')).toBeTruthy();
-  expect(field.compareDocumentPosition(screen.getByText('Los')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.queryByRole('textbox', { name: 'Hinweis an den Coach' })).toBeNull();
+  expect(screen.queryByText('Dein Coach')).toBeNull();
+  expect(screen.getByText('Los')).toBeTruthy();
 });
