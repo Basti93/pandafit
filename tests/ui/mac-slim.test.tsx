@@ -45,10 +45,10 @@ test('a profile whose coach runs on the Mac keeps Hevy and Garmin here, and a no
   expect(screen.queryByRole('button', { name: 'Web-App öffnen' })).toBeNull();
 });
 
-test('Gesundheit is reached from the profile page while Garmin is connected', () => {
+test('health lives in the web app: no Gesundheit page on the Mac profile page, even with Garmin connected', () => {
   h.garmin = { state: 'connected' };
   enter();
   fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Gesundheit (Garmin) ansehen' }));
   expect(screen.getByRole('button', { name: 'Profil' }).getAttribute('aria-current')).toBe('page');
+  expect(screen.queryByRole('button', { name: /Gesundheit/ })).toBeNull();
 });

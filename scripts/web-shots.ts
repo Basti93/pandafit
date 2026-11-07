@@ -211,6 +211,24 @@ records.push(rec('stats', 'stats', {
   }, NOW - 3600_000));
 }
 
+// ---------- health as the server coach publishes it (invented values) ----------
+const healthBody = (arzt: boolean) => ({
+  type: 'health', atMs: NOW - 1800_000, today: { level: 'normal', reasons: [] },
+  findings: [
+    ...(arzt ? [{ rule: 'health.rhr-persist', tone: 'arzt', text: 'Dein Ruhepuls liegt seit einer Woche deutlich über deinem üblichen Wert. Wenn das anhält, lass es ärztlich abklären.' }] : []),
+    { rule: 'health.vo2-trend', tone: 'gut', text: 'Deine geschätzte Ausdauerfitness ist in den letzten Wochen etwas gestiegen.' },
+    { rule: 'health.steps-band', tone: 'info', text: 'Letzte Woche lagst du im Schnitt bei etwa 7.400 Schritten pro Tag; ein Richtwert aus Studien sind 8.000 bis 10.000.' },
+    { rule: 'health.activity-minutes', tone: 'info', text: 'Die WHO empfiehlt Muskelkräftigung an mindestens 2 Tagen pro Woche; letzte Woche war es ein Tag.' },
+  ],
+  weeks: Array.from({ length: 52 }, (_, w) => ({
+    week: addDays(monday, -7 * (51 - w)), rhr: Math.round(60 - w * 0.08 + Math.sin(w) * 1.5 + (arzt && w > 50 ? 9 : 0)), vo2: Math.round((48 + w * 0.05 + Math.sin(w / 3) * 0.3) * 10) / 10,
+    steps: 7000 + ((w * 370) % 2200), activeMin: 90 + ((w * 37) % 120), strengthDays: w % 3 === 0 ? 2 : 1, sleepH: 7 + Math.round(Math.sin(w / 4) * 5) / 10, hrv: 48 + ((w * 3) % 9),
+  })),
+  days: Array.from({ length: 28 }, (_, d) => ({ date: addDays(monday, d - 27 - 1), rhr: 56 + (d % 4) + (arzt && d > 20 ? 9 : 0), steps: 6000 + ((d * 611) % 5000), sleepH: 6.5 + (d % 5) * 0.3 })),
+  coachText: { week: monday, text: 'Insgesamt eine ruhige Woche: Deine Fitness zeigt leicht nach oben, bei den Schritten ist noch etwas Luft zum Richtwert, und ein zweiter Krafttag würde zu den WHO-Empfehlungen passen.' },
+});
+records.push(rec('health', 'health', healthBody(false), NOW - 1800_000));
+
 // ---------- the meal plan ----------
 const dish = (t: string, min: number, prot: number, ing: [string, number, string, string][]) => ({ title: t, minutes: min, proteinG: prot, keepsDays: 2, source: 'coach', steps: ['Alles vorbereiten.', 'Zusammen garen und abschmecken.'], ingredients: ing.map(([name, amount, unit, section]) => ({ name, amount, unit, section })) });
 const DISHES = [
@@ -522,6 +540,28 @@ async function main() {
   await page.waitForTimeout(500);
   await shot('statistik');
   await step('statistik-muscle', async () => { await page.getByRole('button', { name: 'Muskeln' }).click(); await page.getByRole('dialog', { name: 'Muskeln' }).locator('.tk-rowbtn').first().click(); await shot('statistik-muskel-offen'); await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Details' }).click(); await shot('statistik-details'); await page.keyboard.press('Escape'); });
+  await step('gesundheit', async () => {
+    await page.getByRole('button', { name: 'Gesundheit' }).click();
+    await page.getByRole('dialog', { name: 'Gesundheit' }).waitFor();
+    await shot('gesundheit');
+    await page.getByRole('dialog', { name: 'Gesundheit' }).getByRole('button', { name: /^Ruhepuls/ }).click();
+    await shot('gesundheit-ruhepuls');
+    await page.getByRole('button', { name: /^Quellen/ }).click();
+    await shot('gesundheit-quellen');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+    await closeDialog();
+  });
+  await step('gesundheit-arzt', async () => {
+    const dbh = openDb(dbPath);
+    putRecords(dbh, accountId, [rec('health', 'health', healthBody(true), NOW + 5000)], NOW + 5000);
+    dbh.close();
+    await fresh('Statistik');
+    await page.getByRole('button', { name: 'Gesundheit' }).click();
+    await page.getByRole('dialog', { name: 'Gesundheit' }).waitFor();
+    await shot('gesundheit-arzt');
+    await closeDialog();
+  });
   await page.getByRole('button', { name: 'Profil', exact: true }).click();
   await page.waitForTimeout(500);
   await shot('profil');

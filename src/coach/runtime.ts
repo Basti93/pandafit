@@ -10,7 +10,6 @@ import { readRide } from '../service/recorder';
 import { cleanSamples } from './metrics';
 import { GarminLink } from './garmin';
 import { GarminDb } from './garmin-db';
-import { healthData } from './garmin-health';
 import { readinessFrom, restingHrRaised, type GarminCoachData } from './readiness';
 import { GarminSync } from './garmin-sync';
 import { HevyLinks } from './hevy';
@@ -145,7 +144,7 @@ const GARMIN_DAYS = 60;
 const STATS_EVERY_MS = 5 * 60_000;
 /** The health record reads 52 weeks of Garmin days. */
 const HEALTH_DAYS_BACK = 370;
-const READ_ONLY = new Set<string>(['subscribe', 'records-list', 'ride-detail', 'garmin-health', 'gym-preview']);
+const READ_ONLY = new Set<string>(['subscribe', 'records-list', 'ride-detail', 'gym-preview']);
 
 /** One coach for the profiles of one data root: the Mac's own, or one account's on the server. */
 export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
@@ -485,17 +484,6 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       return data?.body ? suggestProfile(data.body, data.activities, nowMs()) : null;
     } catch { return null; }
   };
-  const healthOf = (profileId: string, rangeDays: number | null) => {
-    if (!/^[A-Za-z0-9-]+$/.test(profileId)) throw new Error('Ungültiges Profil');
-    const now = nowMs();
-    const db = new GarminDb(path.join(garminDir, 'data', profileId, 'garmin.db'));
-    coach.scanRides(coached());
-    const state = coach.state(profileId);
-    const rated = state.summaries.flatMap((r) => { const rating = state.feedback[r.rideId]; return rating ? [{ startedAtMs: r.startedAtMs, rating }] : []; });
-    const from = rangeDays === null ? '0000-01-01' : new Date(now - rangeDays * 86_400_000).toISOString().slice(0, 10);
-    return healthData({ days: db.days(from), activities: db.activities(0), progress: db.progress(new Date(now).toISOString().slice(0, 10)), rated }, rangeDays, now);
-  };
-
   const view = (profileId: string): CoachStateMessage | null => {
     if (!known(profileId) || !coachHere(profileId)) return null;
     try {
@@ -602,7 +590,6 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       if (m.type === 'garmin-mfa') { garmin.mfa(m.profileId, m.code); return; }
       // The profile's sync and upload stop first and keep nothing, so no token of the old login comes back.
       if (m.type === 'garmin-disconnect') { garminSync.stop(m.profileId); uploader.stop(m.profileId); workouts.stop(m.profileId); garmin.disconnect(m.profileId); try { coach.garminDisconnected(m.profileId); } catch { /* unknown profile */ } publish(); return; }
-      if (m.type === 'garmin-health') { send({ type: 'garmin-health', data: healthOf(m.profileId, m.rangeDays) }); return; }
       if (m.type.startsWith('gym-')) { handleGym(m, send); return; }
       if (m.type.startsWith('meals-')) { handleMeals(m, atMs); return; }
       // Local writes only, also with a ride open: no AI, no Hevy, no Garmin.

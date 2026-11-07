@@ -14,7 +14,6 @@ test('the active item follows what is on screen', () => {
   expect(activeItem(HOME)).toBe('start');
   expect(activeItem(open('profil'))).toBe('profil');
   expect(activeItem({ ...HOME, review: true })).toBe('profil');
-  expect(activeItem({ ...HOME, health: 28 })).toBe('profil');
 });
 
 test('never during a ride: the ride screen stays exactly as it is', () => {

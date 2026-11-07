@@ -202,22 +202,6 @@ main > section.card + section.card, main > .together + section.card { margin-top
 .status-action { background: none; border: 1px solid var(--line); color: var(--muted); font-size: .75rem; padding: .1rem .45rem; border-radius: .35rem; cursor: pointer; }
 .status-action:hover { color: var(--text); }
 
-/* Health page: one chart per measure, accent color only for the data */
-.health-ranges { margin-bottom: 1rem; flex-wrap: wrap; }
-.health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-.trend { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: .6rem; padding: .8rem 1rem; }
-.trend figcaption { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
-.trend figcaption b { color: var(--text); font-variant-numeric: tabular-nums; }
-.trend svg { display: block; width: 100%; height: 110px; overflow: visible; }
-.trend-line { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
-.trend-bar { fill: var(--accent); }
-.trend-cross { stroke: var(--muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.trend-plot { position: relative; }
-.trend-dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--card); pointer-events: none; }
-.trend-axis { display: flex; justify-content: space-between; font-size: .8rem; margin-top: .35rem; }
-.health-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.health-table th, .health-table td { text-align: left; padding: .3rem .6rem; border-bottom: 1px solid var(--line); }
-
 main > .notice, main > .garmin { margin: 0 0 1rem; }
 .review-row { display: grid; grid-template-columns: auto minmax(0, 12rem) 1fr; align-items: end; gap: .8rem; }
 .review-row input[type='checkbox'] { width: 1.1rem; height: 1.1rem; margin-bottom: .75rem; }

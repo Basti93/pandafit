@@ -1,5 +1,4 @@
 import type { CoachClientMessage, CoachHome, CoachServerMessage, CoachStateMessage } from '../../shared/coach-protocol';
-import type { GarminHealth } from '../../shared/garmin';
 import type { CoachRuntime } from '../runtime';
 import { clearMoved, driftOf, mealsMoved } from './home';
 import type { RemoteCoach } from './remote-coach';
@@ -31,15 +30,13 @@ export type RouterOptions = {
 type Pending = { reply: (m: CoachServerMessage) => void; done: boolean; connection: number; rideId: string | null; empty: CoachServerMessage };
 /** Requests whose answer the interface waits for, by the type of the answer. */
 const ANSWERS: Partial<Record<CoachClientMessage['type'], CoachServerMessage['type']>> = {
-  'gym-preview': 'gym-preview', 'gym-confirm': 'gym-confirm-result', 'garmin-health': 'garmin-health', 'ride-detail': 'ride-detail',
+  'gym-preview': 'gym-preview', 'gym-confirm': 'gym-confirm-result', 'ride-detail': 'ride-detail',
 };
-const EMPTY_HEALTH: GarminHealth = { points: [], years: [], progress: { activities: 0, activitiesComplete: false, daysDone: 0, daysTotal: 0, filesDone: 0, filesTotal: 0 }, pulseBeforeRides: null };
 /** The answer the interface gets at once when the server cannot be asked, or after the wait, so it never waits for nothing. */
 const emptyAnswer = (m: CoachClientMessage): CoachServerMessage | null => {
   switch (m.type) {
     case 'gym-preview': return { type: 'gym-preview', preview: null };
     case 'gym-confirm': return { type: 'gym-confirm-result', result: 'failed' };
-    case 'garmin-health': return { type: 'garmin-health', data: EMPTY_HEALTH };
     case 'ride-detail': return { type: 'ride-detail', detail: { rideId: m.rideId, points: [] } };
     default: return null;
   }

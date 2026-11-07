@@ -73,7 +73,6 @@ const shots: { name: string; ride: object; coach?: object | null; steps?: (win: 
   { name: 'garmin-review', ride: idle(), coach: coach(GARMIN), pick: true, click: 'Werte aus Garmin prüfen' },
   { name: 'profile-edit', ride: idle(), coach: coach(GARMIN), pick: true, click: 'Profil', height: 1500 },
   { name: 'profile-connections-idle', ride: idle(), coach: coach({ garminMsg: { garmin: { state: 'idle' } } }), pick: true, click: 'Profil', height: 1500 },
-  { name: 'health', ride: idle(), coach: coach(GARMIN), pick: true, click: 'Gesundheit', height: 1300 },
   { name: 'status-off', ride: idle({ devices: { trainer: 'connected', hr: 'searching', clicker: 'off' }, deviceNames: { trainer: 'Zwift Hub' }, latest: {} }) },
   { name: 'mac-start', ride: idle(), coach: coach({ garminMsg: { account: { state: 'linked', name: 'max', reason: null, refused: 0, offline: false, lastSyncMs: Date.now(), webOrigin: 'https://pandafit.example.org' }, coachHome: { where: 'server', online: true, sinceMs: null, session: 'server', queued: 0, full: false, pendingRides: 0 } } }), pick: true, height: 1500 },
   { name: 'mac-profile-server', ride: idle(), coach: coach({ garminMsg: { account: { state: 'linked', name: 'max', reason: null, refused: 0, offline: false, lastSyncMs: Date.now(), webOrigin: 'https://pandafit.example.org' }, coachHome: { where: 'server', online: true, sinceMs: null, session: 'server', queued: 0, full: false, pendingRides: 0 } } }), pick: true, click: 'Profil', height: 1500 },

@@ -13,15 +13,13 @@ type Props = {
   hevy?: HevyStatus; account?: AccountStatus; coachHome?: CoachHome;
   /** The language toggle and anything else that only concerns this profile. */
   settings?: ReactNode;
-  /** Opens the Garmin health page; only given while Garmin is connected. */
-  onHealth?: () => void;
 };
 
 /**
  * The profile page's own sections. Hevy and Garmin are set here only while this Mac's own coach does the work; for a profile whose
  * coach runs on the server they are set in the web app (Profil). The account link is always here.
  */
-export const ProfileExtras = ({ profileId, coachConnected, send, garmin, garminSync, upload, hevy, account, coachHome, settings, onHealth }: Props) => {
+export const ProfileExtras = ({ profileId, coachConnected, send, garmin, garminSync, upload, hevy, account, coachHome, settings }: Props) => {
   const onServer = coachHome?.where === 'server';
   const linked = (account ?? NO_ACCOUNT).state !== 'idle' || coachHome?.where === 'moving';
   return (
@@ -45,7 +43,6 @@ export const ProfileExtras = ({ profileId, coachConnected, send, garmin, garminS
                 <HevyCard profileId={profileId} status={hevy ?? { state: 'idle' }} send={send} />
               </>
             )}
-            {onHealth && <div className="row"><button type="button" className="secondary" onClick={onHealth}>Gesundheit (Garmin) ansehen</button></div>}
             <AccountCard profileId={profileId} status={account ?? NO_ACCOUNT} send={send} coachHome={coachHome} />
           </>
         )}

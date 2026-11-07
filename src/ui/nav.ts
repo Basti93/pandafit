@@ -1,17 +1,12 @@
-import type { HealthRange } from './views/HealthView';
-
 /** Which screen is open besides the start screen. The Mac is for riding: Fahren (start) and Profil. */
 export type Views = {
   profile: boolean;
   review: boolean;
-  /** The Garmin health page, reached from the profile page. */
-  health: HealthRange | undefined;
 };
 export type MenuItem = 'start' | 'profil';
 
-export const HOME: Views = { profile: false, review: false, health: undefined };
+export const HOME: Views = { profile: false, review: false };
 export const MENU_LABEL: Record<MenuItem, string> = { start: 'Fahren', profil: 'Profil' };
-export const DEFAULT_HEALTH_DAYS = 28;
 
 /** The screen a menu item opens, with every other view closed. */
 export function open(item: MenuItem): Views {
@@ -19,7 +14,7 @@ export function open(item: MenuItem): Views {
 }
 
 export function activeItem(v: Views): MenuItem {
-  return v.profile || v.review || v.health !== undefined ? 'profil' : 'start';
+  return v.profile || v.review ? 'profil' : 'start';
 }
 
 /** The items of the left side; Profil sits with the profile name on the right. */
