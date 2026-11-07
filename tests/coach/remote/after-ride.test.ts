@@ -16,14 +16,16 @@ const world = (o: { moved?: string[]; linked?: string[]; outs?: MigrateResult[] 
   const tick = vi.fn(async (_id: string) => {});
   const meals = vi.fn(async () => false);
   const settled = vi.fn((_id: string) => w.settled);
+  const restoreTick = vi.fn(async (_id: string) => {});
+  const restoreReset = vi.fn((_id: string) => {});
   const deps: AfterRideDeps = {
     profileIds: () => ['pa', 'pb'],
     noOpenRide: () => !w.ride,
     onServer: (id) => w.moved.has(id),
     linked: (id) => (o.linked ?? ['pa']).includes(id),
-    settled, backoff, uploads: { tick }, move, meals,
+    settled, backoff, uploads: { tick }, restore: { tick: restoreTick, reset: restoreReset }, move, meals,
   };
-  return { w, deps, move, tick, meals, settled };
+  return { w, deps, move, tick, meals, settled, restoreTick, restoreReset };
 };
 
 test('a linked profile moves; a moved one uploads its rides; an unlinked one is left alone', async () => {
@@ -68,4 +70,18 @@ test('nothing runs with a ride open', async () => {
   expect(t.move).not.toHaveBeenCalled();
   expect(t.tick).not.toHaveBeenCalled();
   expect(t.meals).not.toHaveBeenCalled();
+});
+
+test('a moved profile is restored before its uploads; others are reset; nothing with a ride open', async () => {
+  const t = world({ moved: ['pb'], linked: ['pa'], outs: [{ state: 'failed', reason: 'offline' }] });
+  const order: string[] = [];
+  t.restoreTick.mockImplementation(async (id) => { order.push(`restore ${id}`); });
+  t.tick.mockImplementation(async (id) => { order.push(`upload ${id}`); });
+  await afterRideJob(t.deps);
+  expect(order).toEqual(['restore pb', 'upload pb']);
+  expect(t.restoreReset.mock.calls.map((c) => c[0])).toEqual(['pa']);
+  order.length = 0;
+  t.w.ride = true;
+  await afterRideJob(t.deps);
+  expect(order).toEqual([]);
 });

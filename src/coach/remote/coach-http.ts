@@ -22,9 +22,15 @@ export class CoachHttpError extends Error {
   }
 }
 
+export type ServerRide = { rideId: string; sha256: string; status: 'finished' | 'aborted'; startedAtMs: number };
+
 export type CoachHttp = {
   status(): Promise<{ profileId: string | null; moved: boolean }>;
   putRide(u: RideUpload): Promise<{ sha256: string; same: boolean }>;
+  /** The closed rides the server holds for this account. */
+  listRides(): Promise<ServerRide[]>;
+  /** One ride in the upload format. */
+  getRide(rideId: string): Promise<RideUpload>;
   /** A refusal (another profile holds the account) is an answer, not an error. */
   begin(m: Manifest): Promise<BeginResult>;
   /** Streams the file from disk as it is read; never holds it whole. */
@@ -135,6 +141,16 @@ export const coachHttp = (opts: {
       const bytes = Buffer.from(JSON.stringify(u));
       const d = await call('PUT', `/rides/${encodeURIComponent(u.rideId)}`, { kind: 'stream', chunks: () => pieces(bytes), type: 'application/json' }, { idle: true });
       return answer(d, (x) => typeof x.sha256 === 'string' && typeof x.same === 'boolean');
+    },
+    listRides: async () => {
+      const d = answer<{ rides: unknown }>(await call('GET', '/rides', { kind: 'none' }, { idle: false }), (x) => Array.isArray(x.rides));
+      return (d.rides as unknown[]).filter((r): r is ServerRide => isObj(r) && typeof r.rideId === 'string' && typeof r.sha256 === 'string'
+        && (r.status === 'finished' || r.status === 'aborted') && typeof r.startedAtMs === 'number');
+    },
+    getRide: async (rideId) => {
+      // A ride may weigh 32 MiB: a minute without a byte moving is the limit, not a minute in total.
+      const d = await call('GET', `/rides/${encodeURIComponent(rideId)}`, { kind: 'none' }, { idle: true });
+      return answer<RideUpload>(d, (x) => x.v === 1 && x.rideId === rideId && typeof x.sha256 === 'string' && isObj(x.files));
     },
     begin: async (m) => {
       // A 409 is an answer only as the refusal; any other 409 refuses the request.

@@ -34,6 +34,8 @@ const fakeServer = () => {
   const w = { got: [] as RideUpload[], fail: false, onPut: null as null | ((u: RideUpload) => void) };
   const http: CoachHttp = {
     status: async () => ({ profileId: 'pa', moved: true }),
+    listRides: async () => { throw new Error('not here'); },
+    getRide: async () => { throw new Error('not here'); },
     putRide: async (u) => {
       if (w.fail) throw new CoachHttpError('offline');
       w.got.push(u);

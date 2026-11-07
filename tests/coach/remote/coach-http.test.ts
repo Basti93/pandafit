@@ -80,3 +80,17 @@ test('a server without the coach (404 on /coach) counts as not there yet, not as
   expect(e).toBeInstanceOf(CoachHttpError);
   expect((e as CoachHttpError).kind).toBe('offline');
 });
+
+test('listRides and getRide read the account\'s rides', async () => {
+  const calls: string[] = [];
+  const fetchFn = (async (u: string | URL, init: RequestInit = {}) => {
+    calls.push(`${init.method} ${String(u)}`);
+    if (String(u).endsWith('/rides')) return new Response(JSON.stringify({ rides: [{ rideId: 'ride-1', sha256: 'a', status: 'finished', startedAtMs: 1 }, { rideId: 'x' }] }), { status: 200 });
+    return new Response(JSON.stringify({ v: 1, rideId: 'ride-1', files: {}, fit: null, sha256: 'a' }), { status: 200 });
+  }) as typeof fetch;
+  const http = coachHttp({ url: 'https://coach.test', token: 't', fetchFn });
+  expect(await http.listRides()).toEqual([{ rideId: 'ride-1', sha256: 'a', status: 'finished', startedAtMs: 1 }]);
+  expect((await http.getRide('ride-1')).rideId).toBe('ride-1');
+  await expect(http.getRide('ride-2')).rejects.toBeInstanceOf(CoachHttpError);
+  expect(calls).toEqual(['GET https://coach.test/coach/rides', 'GET https://coach.test/coach/rides/ride-1', 'GET https://coach.test/coach/rides/ride-2']);
+});

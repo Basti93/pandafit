@@ -17,6 +17,7 @@ import { afterRideJob } from './remote/after-ride';
 import { migrate, moveMeals, type MigrateResult } from './remote/migrate';
 import { MoveBackoff } from './remote/move-backoff';
 import { RemoteCoach, ruleFallback } from './remote/remote-coach';
+import { RideRestore } from './remote/ride-restore';
 import { RideUploads } from './remote/ride-upload';
 import { createRouter, mealsStayLocal } from './remote/router';
 
@@ -113,6 +114,7 @@ const httpOf = (id: string): CoachHttp | null => {
   return url && token ? coachHttp({ url, token, reject: () => links.reject(id), mayContinue: noOpenRide }) : null;
 };
 const uploads = new RideUploads({ ridesDir: dir, dir: coachRoot, http: httpOf, noOpenRide });
+const restore = new RideRestore({ ridesDir: dir, uploads, http: httpOf, noOpenRide });
 /** How far a local profile's move got, for its view. */
 const moving = new Map<string, { done: number; total: number }>();
 /** When a profile's move may run again, and what stops it. */
@@ -141,7 +143,7 @@ const afterRide = (): void => {
     profileIds: () => profiles().map((p) => p.id), noOpenRide, onServer,
     linked: (id) => links.status(id).state === 'linked',
     settled: (id) => runtime.accountSync.settled(id),
-    backoff, uploads, move: moveOne,
+    backoff, uploads, restore, move: moveOne,
     meals: async () => {
       const moved = await moveMeals({ coachDir: coachRoot, profileIds: profiles().map((p) => p.id), onServer, http: httpOf });
       if (moved) publish();
