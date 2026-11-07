@@ -103,6 +103,21 @@ describe('history', () => {
     const card = screen.getByTestId('load-chart').textContent;
     expect(card).toContain('Fitness'); expect(card).toContain('Ermüdung'); expect(card).toContain('Form');
   });
+  test('one muted line says whether all rides are backed up; nothing for a profile that has not moved', () => {
+    const server = (pendingRides?: number) => ({ where: 'server' as const, online: true, sinceMs: null, session: 'server' as const, queued: 0, full: false, ...(pendingRides === undefined ? {} : { pendingRides }) });
+    const line = (home?: Parameters<typeof HistoryView>[0]['coachHome']) => {
+      cleanup();
+      render(<HistoryView coachHome={home} state={coachState([summary('a', 3)])} detail={null} send={vi.fn()} />);
+      return screen.queryByTestId('ride-backup')?.textContent ?? null;
+    };
+    expect(line(server(0))).toBe('Alle Fahrten gesichert');
+    expect(line(server(1))).toBe('1 Fahrt wartet auf Upload');
+    expect(line(server(3))).toBe('3 Fahrten warten auf Upload');
+    expect(line(server())).toBeNull();
+    expect(line({ where: 'local' })).toBeNull();
+    expect(line({ where: 'moving', done: 1, total: 2, problem: null })).toBeNull();
+    expect(line(undefined)).toBeNull();
+  });
   test('stays calm without rides', () => {
     render(<HistoryView state={coachState([])} detail={null} send={vi.fn()} onBack={vi.fn()} />);
     expect(screen.queryByTestId('best-powers')).toBeNull();

@@ -68,7 +68,7 @@ let stops: (() => void)[] = [];
 afterEach(() => { for (const s of stops) s(); stops = []; vi.unstubAllGlobals(); });
 
 /** The Mac's coach process as main.ts wires it, with a fake socket. */
-const mac = (o: { moved?: string[]; linked?: string[]; meals?: string[]; mealsMoved?: boolean; timers?: (() => void)[] } = {}) => {
+const mac = (o: { moved?: string[]; linked?: string[]; meals?: string[]; mealsMoved?: boolean; timers?: (() => void)[]; pending?: number } = {}) => {
   const root = temp();
   const rides = path.join(root, 'rides');
   fs.mkdirSync(rides, { recursive: true });
@@ -113,7 +113,7 @@ const mac = (o: { moved?: string[]; linked?: string[]; meals?: string[]; mealsMo
     coachHere: (id) => !onServer(id), mealsHere: mealsLocal,
   });
   const togetherLocal = () => PROFILES.some((p) => !onServer(p.id));
-  const router = createRouter({ local: runtime, remote, mealsLocal, togetherLocal, coachDir, ...(o.timers ? { setTimer: (fn: () => void) => { o.timers!.push(fn); } } : {}) });
+  const router = createRouter({ local: runtime, remote, mealsLocal, togetherLocal, coachDir, ...(o.pending !== undefined ? { pendingRides: () => o.pending! } : {}), ...(o.timers ? { setTimer: (fn: () => void) => { o.timers!.push(fn); } } : {}) });
   const replies: CoachServerMessage[] = [];
   const handle = (m: Parameters<typeof router.handle>[0]) => router.handle(m, (r) => replies.push(r));
   return { root, rides, coachDir, ws, links, runtime, router, remote, ask, spawnFn, hevyFetch, w, replies, handle, onServer };
@@ -397,4 +397,16 @@ test('unlinking sets the cached state and the queue aside, so a later move start
   link(m.root, 'pa');
   markMoved(m.coachDir, 'pa', { atMs: 2, counts: { rides: 0, items: 0 } });
   expect(m.router.view('pa')!.coachHome).toMatchObject({ session: 'rules', queued: 0 });
+});
+
+test('a moved profile\'s home carries the rides waiting for upload; a local profile has none', () => {
+  const m = mac({ moved: ['pa'], pending: 2 });
+  m.handle({ type: 'subscribe', profileId: 'pa' });
+  m.ws.last().open();
+  const state = { ...ruleFallback(temp(), 'pa', 250, Date.now()), ftpW: 250 };
+  m.ws.last().answer({ type: 'coach-state', state, thinking: false, together: { summits: [] } });
+  expect(m.router.view('pa')!.coachHome).toMatchObject({ where: 'server', pendingRides: 2 });
+  const local = mac({ pending: 2 });
+  local.handle({ type: 'subscribe', profileId: 'pa' });
+  expect(JSON.stringify(local.router.view('pa'))).not.toContain('pendingRides');
 });

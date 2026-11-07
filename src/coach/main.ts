@@ -162,7 +162,7 @@ const movingOf = (id: string): CoachHome | null => {
   return { where: 'moving', done: at?.done ?? 0, total: at?.total ?? 0, problem };
 };
 
-const router = createRouter({ local: runtime, remote, mealsLocal, togetherLocal: () => profiles().some((p) => !onServer(p.id)), coachDir: coachRoot, moving: movingOf });
+const router = createRouter({ local: runtime, remote, mealsLocal, togetherLocal: () => profiles().some((p) => !onServer(p.id)), coachDir: coachRoot, moving: movingOf, pendingRides: (id) => uploads.pending(id).length });
 
 const http = createServer();
 const wss = new WebSocketServer({

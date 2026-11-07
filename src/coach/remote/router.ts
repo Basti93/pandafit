@@ -22,6 +22,8 @@ export type RouterOptions = {
   coachDir: string;
   /** A local profile on its way to the server: how far the move is, or why it stops. Null otherwise. */
   moving?: (profileId: string) => CoachHome | null;
+  /** Closed rides of a moved profile that the server does not hold yet. */
+  pendingRides?: (profileId: string) => number;
   /** Default: setTimeout. For tests. */
   setTimer?: (fn: () => void, ms: number) => unknown;
 };
@@ -76,6 +78,9 @@ export const createRouter = (opts: RouterOptions) => {
     // Items changed here after the server took over are shown, never dropped silently.
     const drift = driftOf(opts.coachDir, profileId);
     if (drift.length > 0 && out.coachHome?.where === 'server') out.coachHome = { ...out.coachHome, drift };
+    if (out.coachHome?.where === 'server' && opts.pendingRides) {
+      try { out.coachHome = { ...out.coachHome, pendingRides: opts.pendingRides(profileId) }; } catch { /* no line then */ }
+    }
     if (mealsLocal()) out.meals = local.mealsView(profileId);
     if (togetherLocal()) { try { out.together = local.together(); } catch { /* the server's then */ } }
     return out;
