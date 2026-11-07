@@ -38,17 +38,6 @@ test('trainer drop for 30 s keeps ride running and marks gap', async () => {
   expect(r.events.map((e) => e.type)).toEqual(expect.arrayContaining(['device-lost', 'device-back']));
 }, 40000);
 
-test('server unreachable during whole ride changes nothing', async () => {
-  const dir = tempDir();
-  process.env.BIKE_SYNC_URL = 'http://127.0.0.1:1';
-  process.env.BIKE_SYNC_TOKEN = 't';
-  await begin(dir, 40);
-  delete process.env.BIKE_SYNC_URL;
-  delete process.env.BIKE_SYNC_TOKEN;
-  await waitForStatus(dir, 'finished');
-  expect(readRide(dir, rideId(dir)).samples).toHaveLength(40);
-}, 40000);
-
 test('UI client reconnects 20 times during ride without losing samples', async () => {
   const dir = tempDir();
   await begin(dir);

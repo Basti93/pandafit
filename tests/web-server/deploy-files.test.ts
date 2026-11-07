@@ -8,8 +8,7 @@ const root = resolve(__dirname, '../..');
 const read = (p: string) => readFileSync(resolve(root, p), 'utf8');
 const files = ['Dockerfile', 'Dockerfile.dockerignore', 'Dockerfile.coach', 'Dockerfile.coach.dockerignore', 'backup-coach.sh', 'restore-drill-coach.sh', 'compose.yaml', 'serve.json', '.env.example', 'backup.sh', 'restore-drill.sh', 'mac/install-pull.sh', 'mac/pull-backups.sh', 'README.md'].map((f) => `web-server/${f}`);
 
-test('the sync compose still has no Funnel and the new one has its own node', () => {
-  expect(JSON.parse(read('server/serve.json')).AllowFunnel['${TS_CERT_DOMAIN}:443']).toBe(false);
+test('the compose has its own node with Funnel', () => {
   const serve = JSON.parse(read('web-server/serve.json'));
   expect(serve.AllowFunnel['${TS_CERT_DOMAIN}:443']).toBe(true);
   expect(serve.Web['${TS_CERT_DOMAIN}:443'].Handlers['/'].Proxy).toBe('http://api:8080');

@@ -36,21 +36,6 @@ const profiles = (): Profile[] => {
   try { return JSON.parse(fs.readFileSync(path.join(dir, 'profiles.json'), 'utf8')) as Profile[]; } catch { return []; }
 };
 
-const config = (): { syncUrl?: string; syncToken?: string } => {
-  try { return JSON.parse(fs.readFileSync(path.join(dir, '..', 'config.json'), 'utf8')); } catch { return {}; }
-};
-const syncUrl = process.env.BIKE_SYNC_URL ?? config().syncUrl;
-const syncToken = process.env.BIKE_SYNC_TOKEN ?? config().syncToken;
-const lastSynced = new Map<string, string>();
-const pushToServer = (s: CoachState): void => {
-  if (!syncUrl || !syncToken) return;
-  const body = JSON.stringify(s);
-  if (lastSynced.get(s.profileId) === body) return;
-  fetch(`${syncUrl}/profiles/${encodeURIComponent(s.profileId)}/coach`, {
-    method: 'PUT', body, headers: { authorization: `Bearer ${syncToken}`, 'content-type': 'application/json' }, signal: AbortSignal.timeout(10_000),
-  }).then((r) => { if (r.ok) lastSynced.set(s.profileId, body); }).catch(() => { /* try again on the next run */ });
-};
-
 // Optional and per profile: without a link nothing is sent.
 const links = new AccountLinks({ dir: path.join(root, 'accounts') });
 const coachRoot = path.join(root, 'coach');
@@ -103,7 +88,6 @@ const runtime = createCoachRuntime({
     const all = profiles();
     return computeTogether(all, all.flatMap((p) => { const s = runtime.coachState(p.id) ?? cachedState(p.id); return s ? [s] : []; }), Date.now());
   },
-  legacyPush: pushToServer,
 });
 
 // ---- After the ride: uploads of a moved profile's rides, the move of a linked one, the meal plan once everyone moved ----

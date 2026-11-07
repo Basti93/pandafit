@@ -5,5 +5,5 @@
     "strict": true, "esModuleInterop": true, "skipLibCheck": true,
     "jsx": "react-jsx", "noEmit": true, "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "tests", "scripts", "server", "web-server", "src/web", "vite.web.config.ts"]
+  "include": ["src", "tests", "scripts", "web-server", "src/web", "vite.web.config.ts"]
 }
