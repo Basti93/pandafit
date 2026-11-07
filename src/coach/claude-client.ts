@@ -2,8 +2,10 @@ import { exec as nodeExec, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 
 export type ClaudeErrorKind = 'missing' | 'limit' | 'timeout' | 'invalid' | 'failed';
+/** What the AI service said, for the gate (ai-gate.ts): HTTP status, its error code, a reset time if it gave one, or a network failure. */
+export type ClaudeErrorInfo = { http?: number; code?: string; resetAtMs?: number; network?: boolean; blocked?: boolean };
 export class ClaudeError extends Error {
-  constructor(public kind: ClaudeErrorKind, message: string) { super(message); }
+  constructor(public kind: ClaudeErrorKind, message: string, public info: ClaudeErrorInfo = {}) { super(message); }
 }
 
 const LIMIT = /usage limit|limit reached|hit your .*limit/i;
