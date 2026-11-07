@@ -22,6 +22,8 @@ import { MealsScreen, mealWeeks } from './MealsScreen';
 import { TogetherCard, TogetherPage, togetherOf } from './TogetherScreen';
 import type { PushEnv, SubJson } from './push';
 import { ContactSettings } from './ContactSettings';
+import { LiveClient, type LiveSocket } from './live';
+import { LiveRide } from './LiveRide';
 
 export type Env = {
   fetchFn: typeof fetch;
@@ -41,6 +43,8 @@ export type Env = {
   startTab?: string | null;
   /** A notification tapped while the app is open asks for a tab. Returns the unsubscribe. */
   onOpenTab?: (f: (tab: string) => void) => () => void;
+  /** Opens the account's coach socket for the ride companion; undefined where there is none (tests, dev). */
+  openLive?: () => LiveSocket;
 };
 
 const ACCOUNT_KEY = 'pandafit.account';
@@ -407,6 +411,9 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
     return tabFor(env.startTab) ?? 'heute';
   });
   const push = usePush(env, account);
+  // The ride companion: optional, a socket of its own, and nothing else in the app depends on it.
+  const live = useMemo(() => (env.openLive ? new LiveClient({ open: env.openLive, now: env.now, newId: env.newId }) : null), [env]);
+  useEffect(() => { live?.start(); return () => live?.stop(); }, [live]);
   useEffect(() => env.onOpenTab?.((t) => { const next = tabFor(t); if (!next) return; if (t === 'rad' || t === 'laufen') saveEndurance(env, account, t); setTab(next); }), [env, account]);
   const [persistRefused, setPersistRefused] = useState(false);
   const [hint, setHint] = useState(false);
@@ -479,6 +486,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         {push.state?.showCard && <PushCard push={push.state} />}
         {push.msg && <div className="tk-screen"><p role="status" className="tk-note">{push.msg}</p></div>}
         {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
+        {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} />}
           {tab === 'training' && <Training port={port} env={env} resume={resume} />}

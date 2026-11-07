@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { App, type Env } from './App';
+import type { LiveSocket } from './live';
 import { browserPush, closeRestNotices } from './push';
 import { setupServiceWorker, type OpenState } from './register';
 import './web.css';
@@ -28,6 +29,7 @@ const env: Env = {
   onWorkoutOpen: (state) => { workoutOpen = state; sw?.check(); },
   push: hasWorker ? browserPush({ ua, standalone }) : undefined,
   startTab,
+  openLive: () => new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/coach`) as unknown as LiveSocket,
   onOpenTab: (f) => {
     if (!('serviceWorker' in navigator)) return () => {};
     const on = (e: MessageEvent) => { const d = e.data as { type?: unknown; tab?: unknown } | null; if (d?.type === 'OPEN_TAB' && typeof d.tab === 'string') f(d.tab); };

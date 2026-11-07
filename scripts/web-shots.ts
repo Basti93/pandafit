@@ -5,7 +5,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { chromium, type Browser, type Page } from 'playwright-core';
+import { chromium, type Browser, type Page, type WebSocketRoute } from 'playwright-core';
 import { createAccount } from '../web-server/auth';
 import { openDb } from '../web-server/db';
 import { putRecords } from '../web-server/records';
@@ -343,6 +343,7 @@ const app = buildServer({ dbPath, staticDir: resolve('out/web') });
 await app.listen({ port: 0, host: '127.0.0.1' });
 const base = `http://127.0.0.1:${(app.server.address() as { port: number }).port}`;
 let browser: Browser | null = null;
+let liveTimer: ReturnType<typeof setInterval> | undefined;
 const taken: string[] = [];
 const missed: string[] = [];
 
@@ -369,6 +370,28 @@ async function main() {
   const fresh = async (tab: string) => { await page.reload(); await page.getByRole('navigation').getByRole('button', { name: tab, exact: true }).waitFor(); await page.waitForTimeout(1200); await nav(tab); };
   const closeDialog = () => page.getByRole('button', { name: 'Schließen' }).first().click({ timeout: 1500 }).catch(() => {});
 
+  // The ride companion: no coach runs here, so the coach socket is played by the script. While `liveOn`, a running ride (invented values) comes once per second; every command is acked.
+  let liveOn = false;
+  let liveStep = 0;
+  const liveSockets = new Set<WebSocketRoute>();
+  const liveState = () => ({
+    rideId: 'ride-shots', profileId: 'pa', atMs: Date.now(), elapsedS: 1425 + liveStep, powerW: 187, hrBpm: 142, cadenceRpm: 86, targetW: 190,
+    step: { name: 'Tempo', index: 2, count: 5, remainingS: 200 - liveStep }, nextStep: { label: 'Locker' },
+  });
+  const pushLive = (ws: WebSocketRoute) => { try { ws.send(JSON.stringify({ type: 'live-state', profileId: 'pa', state: liveState() })); } catch { /* closed */ } };
+  await page.routeWebSocket(/\/coach$/, (ws) => {
+    liveSockets.add(ws);
+    ws.onClose(() => { liveSockets.delete(ws); });
+    ws.onMessage((raw) => {
+      try {
+        const m = JSON.parse(String(raw)) as { type?: string; id?: string };
+        if (m.type === 'live-watch' && liveOn) pushLive(ws);
+        if (m.type === 'live-command') ws.send(JSON.stringify({ type: 'live-ack', profileId: 'pa', id: m.id, ok: true }));
+      } catch { /* not ours */ }
+    });
+  });
+  liveTimer = setInterval(() => { if (liveOn) { liveStep++; for (const ws of liveSockets) pushLive(ws); } }, 1000);
+
   // Login screen, then in.
   await page.goto(base);
   await page.getByLabel('Name').waitFor();
@@ -382,6 +405,26 @@ async function main() {
   await page.waitForTimeout(1500);
 
   await shot('heute');
+  await step('fahrt', async () => {
+    liveOn = true;
+    for (const ws of liveSockets) pushLive(ws);
+    await page.getByRole('button', { name: /Fahrt läuft/ }).waitFor();
+    await shot('fahrt-streifen');
+    await page.getByRole('button', { name: /Fahrt läuft/ }).click();
+    await page.getByLabel('Leistung').waitFor();
+    await shot('fahrt-laeuft');
+    await page.getByRole('button', { name: '+5 %' }).click();
+    await page.waitForTimeout(250);
+    await shot('fahrt-laeuft-gesendet');
+    await page.getByRole('button', { name: 'Intervall überspringen' }).click();
+    await shot('fahrt-laeuft-ueberspringen');
+    await page.getByRole('button', { name: 'Abbrechen' }).click();
+    liveOn = false;
+    await page.waitForTimeout(11_500);
+    await shot('fahrt-laeuft-weg');
+    await closeDialog();
+    await page.waitForTimeout(400);
+  });
   await step('heute-anders', async () => { await page.getByRole('button', { name: /^Anders heute/ }).click(); await shot('heute-anders-heute'); await closeDialog(); });
   await step('heute-beweglichkeit', async () => { await page.getByRole('button', { name: /^Beweglichkeit/ }).click(); await page.waitForTimeout(300); await shot('heute-beweglichkeit-sheet'); await closeDialog(); });
 
@@ -539,6 +582,7 @@ try {
   console.error(e instanceof Error ? e.message : e);
   process.exitCode = 1;
 } finally {
+  if (liveTimer) clearInterval(liveTimer);
   await (browser as Browser | null)?.close().catch(() => {});
   await app.close();
   db.close();
