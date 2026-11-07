@@ -16,6 +16,9 @@ import { homeOf } from './remote/home';
 import { afterRideJob } from './remote/after-ride';
 import { migrate, moveMeals, type MigrateResult } from './remote/migrate';
 import { MoveBackoff } from './remote/move-backoff';
+import { LiveRelay } from './remote/live-relay';
+import { LIVE_TYPES } from '../shared/live';
+import { SERVICE_PORT } from '../shared/protocol';
 import { RemoteCoach, ruleFallback } from './remote/remote-coach';
 import { RideRestore } from './remote/ride-restore';
 import { RideUploads } from './remote/ride-upload';
@@ -148,6 +151,15 @@ const movingOf = (id: string): CoachHome | null => {
 
 const router = createRouter({ local: runtime, remote, mealsLocal, togetherLocal: () => profiles().some((p) => !onServer(p.id)), coachDir: coachRoot, moving: movingOf, pendingRides: (id) => uploads.pending(id).length });
 
+// The ride companion: the running ride goes to the server of a moved profile, the phone's checked commands come back. Optional and
+// outside the ride's path: the relay is a plain client of the local service and never throws into anything.
+const relay = new LiveRelay({
+  serviceUrl: `ws://127.0.0.1:${process.env.BIKE_SERVICE_PORT ?? SERVICE_PORT}`,
+  rideOpen: () => !noOpenRide(),
+  target: (id) => { const r = onServer(id) ? remote(id) : null; return r ? (m) => r.sendLive(m) : null; },
+  nowMs: () => Date.now(),
+});
+
 const http = createServer();
 const wss = new WebSocketServer({
   server: http,
@@ -174,6 +186,7 @@ runtime.onChange((profileId) => {
 });
 /** From a moved profile's server coach: a new view, or the answer to a request made through the router. */
 function fromServer(profileId: string, m: CoachServerMessage): void {
+  if (LIVE_TYPES.has(m.type)) { if (m.type === 'live-command' && m.profileId === profileId) relay.onCommand(m); return; }
   if (m.type === 'coach-state') { publish(); return; }
   if (m.type === 'records-changed') { recordsChanged(profileId); return; }
   router.answered(profileId, m);
@@ -203,6 +216,7 @@ const tick = (): void => {
   try { followHomes(); } catch { /* the next run tries again */ }
   runtime.scan();
   try { afterRide(); } catch { /* the next run tries again */ }
+  relay.tick();
 };
 setInterval(tick, SCAN_MS);
 http.on('error', () => setTimeout(() => http.listen(port, '127.0.0.1'), 2000));

@@ -505,3 +505,29 @@ test('GET /rides and /rides/:id need the login and show only the account\'s own 
   expect((await app!.inject({ method: 'GET', url: '/rides/ride-20', headers: h('2') })).statusCode).toBe(200);
   expect((await app!.inject({ method: 'GET', url: '/rides', headers: h('9') })).statusCode).toBe(404);
 });
+
+test('live: the running ride of one account reaches only that account\'s other connections and commands go back to its Mac', async () => {
+  const t = await start();
+  const mac1 = await t.as(1), phone1 = await t.as(1), mac2 = await t.as(2), phone2 = await t.as(2);
+  t.send(phone1, { type: 'live-watch' });
+  t.send(phone2, { type: 'live-watch' });
+  await settle();
+  const state = { rideId: 'ride-1', profileId: 'pa', atMs: NOON, elapsedS: 5, powerW: 150, hrBpm: 120, cadenceRpm: 80, targetW: 160, step: { index: 0, count: 2, remainingS: 55 } };
+  t.send(mac1, { type: 'live-state', profileId: 'pa', state });
+  await vi.waitFor(() => expect(phone1.frames.some((f) => f.type === 'live-state')).toBe(true));
+  expect(phone2.frames.some((f) => f.type === 'live-state')).toBe(false);
+  expect(mac2.frames.some((f) => f.type === 'live-state')).toBe(false);
+  expect(mac1.frames.some((f) => f.type === 'live-state')).toBe(false);
+  t.send(phone1, { type: 'live-command', profileId: 'pa', id: 'x1', rideId: 'ride-1', atMs: NOON, kind: 'skip' });
+  await vi.waitFor(() => expect(mac1.frames.some((f) => f.type === 'live-command')).toBe(true));
+  t.send(mac1, { type: 'live-ack', profileId: 'pa', id: 'x1', ok: true });
+  await vi.waitFor(() => expect(phone1.frames.some((f) => f.type === 'live-ack' && f.ok)).toBe(true));
+  // The other account's phone cannot command the first account's ride.
+  t.send(phone2, { type: 'live-command', profileId: 'pb', id: 'y1', rideId: 'ride-1', atMs: NOON, kind: 'skip' });
+  await vi.waitFor(() => expect(phone2.frames.some((f) => f.type === 'live-ack' && !f.ok)).toBe(true));
+  expect(mac1.frames.filter((f) => f.type === 'live-command')).toHaveLength(1);
+  // A phone that comes later sees the fresh state; after 10 s it would not.
+  const late = await t.as(1);
+  t.send(late, { type: 'live-watch' });
+  await vi.waitFor(() => expect(late.frames.some((f) => f.type === 'live-state')).toBe(true));
+});

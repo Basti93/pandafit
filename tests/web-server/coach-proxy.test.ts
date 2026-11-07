@@ -395,6 +395,25 @@ describe('coach proxy', () => {
   });
 });
 
+describe('ride companion messages', () => {
+  it('pass through the coach socket untouched in both directions', async () => {
+    const { coach, host, device, own, a } = await world();
+    const mac = await opened(connect(host, { authorization: `Bearer ${device}` }));
+    const phone = await opened(connect(host, own(a)));
+    await until(() => coach.sockets.length === 2);
+    const state = JSON.stringify({ type: 'live-state', profileId: 'pa', state: { rideId: 'ride-1', profileId: 'pa', atMs: 1, elapsedS: 5 } });
+    const got: string[] = [];
+    coach.sockets[0]!.ws.on('message', (d) => got.push(String(d)));
+    mac.send(state);
+    await until(() => got.length === 1);
+    expect(got[0]).toBe(state);
+    const command = JSON.stringify({ type: 'live-command', profileId: 'pa', id: 'c1', rideId: 'ride-1', atMs: 1, kind: 'skip' });
+    coach.sockets[1]!.ws.send(command);
+    expect(await nextMessage(phone)).toBe(command);
+    mac.close(); phone.close();
+  });
+});
+
 describe('healthz names whether the coach answers', () => {
   it('coach: true while the coach answers its health route', async () => {
     const { app, coach } = await world();
