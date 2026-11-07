@@ -165,3 +165,44 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .live-note { margin: 1rem 0 0; text-align: center; font-weight: 600; color: var(--danger); }
 .live-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; width: 100%; }
 .tk-screen .live-buttons button { min-height: 56px; font-size: 1.05rem; line-height: 1.2; }
+
+/* Recipes: pictures on meal cards, the browse list, the recipe view. Calm: one line per item, soft colour blocks instead of icons. */
+.pm-titleline { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.pm-thumb { width: 40px; height: 40px; border-radius: .6rem; object-fit: cover; flex: none; background: var(--card); }
+.tk-screen button.pm-viewlink { display: block; padding: 0; min-height: 44px; text-align: left; }
+.rc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.rc-chips { display: flex; flex-wrap: nowrap; gap: .5rem; overflow-x: auto; scrollbar-width: none; padding-bottom: .15rem; }
+.rc-chips::-webkit-scrollbar { display: none; }
+.tk-screen .rc-chips button { flex: none; min-height: 40px; padding: .3rem .85rem; border-radius: 999px; background: transparent; border: 1px solid var(--line); color: var(--text); font-weight: 500; text-decoration: none; white-space: nowrap; }
+.tk-screen .rc-chips button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.rc-list { list-style: none; margin: 0; padding: 0; }
+.rc-row { display: flex; align-items: center; gap: .25rem; border-top: 1px solid var(--line); }
+.rc-row:first-child { border-top: 0; }
+.tk-screen .rc-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: .75rem; min-height: 64px; padding: .4rem 0; background: none; border: 0; border-radius: 0; color: inherit; text-align: left; font-weight: 400; text-decoration: none; }
+.rc-thumb { width: 56px; height: 56px; border-radius: .8rem; object-fit: cover; flex: none; display: block; background: var(--card); }
+.rc-blank { display: flex; align-items: center; justify-content: center; background: hsl(var(--rc-hue) 22% 30%); color: hsl(var(--rc-hue) 35% 82%); font-weight: 700; font-size: 1.3rem; }
+@media (prefers-color-scheme: light) { .rc-blank { background: hsl(var(--rc-hue) 35% 84%); color: hsl(var(--rc-hue) 30% 28%); } }
+.rc-text { display: flex; flex-direction: column; min-width: 0; }
+.rc-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tk-screen button.rc-heart { flex: none; min-width: 44px; min-height: 44px; padding: 0; font-size: 1.35rem; line-height: 1; color: var(--muted); text-decoration: none; }
+.tk-screen button.rc-heart[aria-pressed='true'] { color: var(--accent); }
+.rc-view { display: flex; flex-direction: column; gap: .75rem; }
+.rc-hero { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 1rem; display: block; background: var(--card); }
+.rc-hero.rc-blank { font-size: 3rem; }
+.rc-facts { margin: 0; }
+.rc-tags { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; padding: 0; }
+.rc-tags li { border: 1px solid var(--line); border-radius: 999px; padding: .15rem .65rem; color: var(--muted); font-size: .85rem; }
+.rc-portions { display: flex; align-items: center; gap: .75rem; }
+.tk-screen .rc-portions button { min-width: 44px; min-height: 44px; padding: 0; border-radius: 50%; font-size: 1.2rem; }
+.rc-place { display: flex; flex-direction: column; gap: .75rem; }
+.rc-daypick { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
+.tk-screen .rc-daypick button { display: flex; flex-direction: column; align-items: center; min-width: 0; min-height: 52px; padding: .3rem 0; border-radius: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; text-decoration: none; }
+.rc-daypick button b { color: var(--text); font-size: .95rem; } .rc-daypick button span { font-size: .8rem; }
+.tk-screen .rc-daypick button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+.tk-screen .rc-daypick button[aria-pressed='true'] b { color: var(--ink); }
+.tk-screen .rc-daypick button:disabled { opacity: .4; }
+.rc-slotpick { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+.tk-screen .rc-slotpick button { min-height: 44px; padding: .3rem .4rem; border-radius: 999px; background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 500; text-decoration: none; }
+.tk-screen .rc-slotpick button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.tk-screen .rc-view a { color: var(--accent); text-decoration: none; font-weight: 600; }

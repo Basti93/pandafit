@@ -139,6 +139,53 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
     return { sha256: out.sha256, same: out.same };
   });
 
+  // ---- Browsing recipes ----
+
+  // The logged-in person's view of the household's recipes: only what the AI confirmed, their favourites marked.
+  const noStore = { 'Cache-Control': 'private, no-store' };
+  const list = (v: unknown): string[] => (typeof v === 'string' ? v.split(',').map((x) => x.trim()).filter(Boolean) : []);
+  app.get('/recipes/search', async (req, reply) => {
+    const account = household.account(authorised(req.raw)!);
+    const meals = account ? household.meals() : null;
+    if (!account || !meals) return reply.code(404).send({ error: 'not moved' });
+    const q = req.query as Record<string, unknown>;
+    const num = (v: unknown): number | undefined => { const n = typeof v === 'string' ? Number(v) : NaN; return Number.isFinite(n) ? n : undefined; };
+    const page = meals.browse(account.profileId, {
+      ...(typeof q.q === 'string' ? { q: q.q } : {}), tags: list(q.tags), own: q.own === '1', fav: q.fav === '1',
+      ...(num(q.limit) !== undefined ? { limit: num(q.limit)! } : {}), ...(num(q.offset) !== undefined ? { offset: num(q.offset)! } : {}),
+    });
+    return reply.headers(noStore).send(page);
+  });
+
+  app.get('/recipes/:id', async (req, reply) => {
+    const account = household.account(authorised(req.raw)!);
+    const meals = account ? household.meals() : null;
+    if (!account || !meals) return reply.code(404).send({ error: 'not moved' });
+    const d = meals.recipeDetail(account.profileId, (req.params as { id: string }).id);
+    return d ? reply.headers(noStore).send(d) : reply.code(404).send({ error: 'no such recipe' });
+  });
+
+  // ---- Recipe pictures ----
+
+  // Only for an account that moved, and only a recipe the household can plan from. The picture is served as stored.
+  app.get('/recipes/:id/image', async (req, reply) => {
+    const accountId = authorised(req.raw)!;
+    const id = (req.params as { id: string }).id;
+    const account = household.account(accountId);
+    if (!account) return reply.code(404).send({ error: 'not moved' });
+    const store = household.meals()?.recipes() ?? null;
+    let found: ReturnType<NonNullable<typeof store>['imageOf']> = null;
+    try { found = store && /^[cl]-[0-9a-f]{14}$/.test(id) && store.canSee(id, account.profileId) ? store.imageOf(id) : null; } catch { found = null; }
+    if (!found) return reply.code(404).send({ error: 'no picture' });
+    let stat: fs.Stats;
+    let bytes: Buffer;
+    try { stat = fs.statSync(found.file); bytes = fs.readFileSync(found.file); } catch { return reply.code(404).send({ error: 'no picture' }); }
+    const etag = `"${createHash('sha1').update(bytes).digest('hex').slice(0, 20)}"`;
+    reply.header('Cache-Control', 'private, max-age=604800').header('ETag', etag).header('X-Content-Type-Options', 'nosniff').header('Last-Modified', stat.mtime.toUTCString());
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return reply.type(found.type).send(bytes);
+  });
+
   // ---- The move from the Mac ----
 
   // Answers name only states, item names and ride ids: never content, never a secret.

@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import type { TrackedRecord } from '../shared/records';
 import {
-  addWeeks, changeOwn, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, isRecipeRecordId, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, readOwnRecipe, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealPlan, readMealState, recipeAmount,
+  addWeeks, changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, isRecipeRecordId, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, readOwnRecipe, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealPlan, readMealState, recipeAmount,
   shoppingList, SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf, withEater, withItem,
   type ItemState, type LinkRequest, type Meal, type MealChat, type OwnRecipe, type MealPlan, type MealState, type ShopItem,
 } from '../shared/meals';
@@ -9,6 +9,7 @@ import { weekRangeOfKey } from '../shared/dates';
 import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { ConfirmLink, PageHead, Row, RowList, Sheet } from '../tracking/ui/kit';
+import { placements, RecipesSheet, RecipeView, type RecipeCtx } from './RecipesScreen';
 
 type Week = { plan: MealPlan; state: MealState };
 
@@ -114,7 +115,13 @@ const NEXT: Record<ItemState, ItemState> = { offen: 'gekauft', gekauft: 'offen',
 const listAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]}` : names[0] ?? '');
 
 /** One meal as a row; opened, it shows the recipe, the protein and who eats. A deviation from the plan shows under the title. */
-function MealRow({ week, meal, open, onToggle, onEater }: { week: Week; meal: Meal; open: boolean; onToggle: () => void; onEater: (person: string, on: boolean) => void }) {
+/** A small picture of the recipe behind a dish; nothing at all when it has none. */
+function MealThumb({ recipeId }: { recipeId: string }) {
+  const [failed, setFailed] = useState(false);
+  return failed ? null : <img className="pm-thumb" src={`/coach/recipes/${recipeId}/image`} alt="" loading="lazy" onError={() => setFailed(true)} />;
+}
+
+function MealRow({ week, meal, open, onToggle, onEater, onView }: { week: Week; meal: Meal; open: boolean; onToggle: () => void; onEater: (person: string, on: boolean) => void; onView: (recipeId: string) => void }) {
   const k = mealKey(meal.day, meal.slot);
   const eaters = eatersOf(week.plan, week.state, k);
   const away = week.plan.people.filter((p) => !eaters.includes(p.id));
@@ -125,8 +132,9 @@ function MealRow({ week, meal, open, onToggle, onEater }: { week: Week; meal: Me
   const askedBy = meal.askedBy ? week.plan.people.find((p) => p.id === meal.askedBy) : undefined;
   return (
     <Row
-      title={<><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{note && <small className="pm-dev">{note}</small>}</>}
+      title={<span className="pm-titleline">{meal.dish.recipeId && <MealThumb recipeId={meal.dish.recipeId} />}<span><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{note && <small className="pm-dev">{note}</small>}</span></span>}
       value={meal.reuseOf ? 'Rest' : `${meal.dish.minutes} Min`} expanded={open} onClick={onToggle}>
+      {meal.dish.recipeId && <button type="button" className="link pm-viewlink" onClick={() => onView(meal.dish.recipeId!)}>{meal.dish.title} ansehen ›</button>}
       {!meal.reuseOf && cook.total > 0 && (
         <>
           <h3 className="tk-section">Rezept für {cook.total} {cook.total === 1 ? 'Portion' : 'Portionen'}</h3>
@@ -208,7 +216,7 @@ function Shopping({ week, onSet, onOwn }: { week: Week; onSet: (item: string, st
 }
 
 /** The meal plan on the phone: one day at a time with a day picker, and the shopping list. Ticks and who eats go back to the Mac. */
-export function MealsScreen({ port, now }: { port: WebPort; now: () => number }) {
+export function MealsScreen({ port, now, fetchFn }: { port: WebPort; now: () => number; fetchFn: typeof fetch }) {
   const records = usePortRecords(port, 'mealplan').records;
   const t = now();
   const weeks = useMemo(() => mealWeeks(records, t), [records, t]);
@@ -224,11 +232,14 @@ export function MealsScreen({ port, now }: { port: WebPort; now: () => number })
   const [tab, setTab] = useState<'tage' | 'einkauf'>('tage');
   const [openMeal, setOpenMeal] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
-  const [sheet, setSheet] = useState<'add' | 'own' | null>(null);
+  const [sheet, setSheet] = useState<'add' | 'own' | 'recipes' | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const chat = useMemo(() => mealChats(records), [records]);
   const requests = useMemo(() => linkRequests(records), [records]);
   const own = useMemo(() => ownRecipes(records), [records]);
+  const favs = useMemo(() => favouriteIds(records), [records]);
+  const placed = useMemo(() => placements(records), [records]);
   if (!week) return <div className="tk-screen"><PageHead title="Essen" /><p className="muted">Noch kein Essensplan da. Der Mac plant samstagmorgens die kommende Woche.</p></div>;
 
   /** One at a time, each on the freshest stored state, so quick taps never undo each other. The newer entry wins on the Mac. */
@@ -257,6 +268,21 @@ export function MealsScreen({ port, now }: { port: WebPort; now: () => number })
     const at = now();
     await port.put({ kind: 'mealplan', id: newChatId(at), updatedMs: at, deleted: false, body: { week: week.plan.week, text, atMs: at, reply: null, answeredMs: null, changed: [] } }).catch(() => { /* the field stays empty; nothing else is lost */ });
   };
+  /** A heart: a record of its own per recipe, a tombstone when it is taken back. It syncs like any record, also when made offline. */
+  const toggleFav = (id: string, on: boolean) => {
+    void (async () => {
+      const rid = favRecordId(id);
+      const have = (await port.list('mealplan')).find((r) => r.id === rid);
+      const at = now();
+      await port.put({ kind: 'mealplan', id: rid, updatedMs: Math.max(at, (have?.updatedMs ?? 0) + 1), deleted: !on, body: { atMs: at } }).catch(() => { /* the heart stays as it was */ });
+    })();
+  };
+  /** "In den Plan": a record the coach answers, like a link. */
+  const place = async (w: string, meal: string, recipeId: string) => {
+    const at = now();
+    await port.put({ kind: 'mealplan', id: newPlaceId(at), updatedMs: at, deleted: false, body: { week: w, meal, recipeId, atMs: at, result: null, answeredMs: null } }).catch(() => { /* nothing was sent; try again */ });
+  };
+  const recipeCtx: RecipeCtx = { fetchFn, now, favs, toggleFav, weeks, place, placements: placed };
   const list = shoppingList(week.plan, week.state);
   const openCount = list.open + list.own.filter((o) => o.state === 'offen').length;
   const pick = (w: Week) => { setWeekKey(w.plan.week); setDay(w.plan.week === current ? today : 0); setOpenMeal(null); };
@@ -287,15 +313,18 @@ export function MealsScreen({ port, now }: { port: WebPort; now: () => number })
               const m = week.plan.meals.find((x) => x.day === day && x.slot === slot);
               if (!m) return <Row key={slot} title={SLOT_LABEL[slot]} value="Frei" />;
               const k = mealKey(m.day, m.slot);
-              return <MealRow key={slot} week={week} meal={m} open={openMeal === k} onToggle={() => setOpenMeal(openMeal === k ? null : k)} onEater={(person, on) => void change((s, at) => withEater(s, k, person, on, at))} />;
+              return <MealRow key={slot} week={week} meal={m} open={openMeal === k} onToggle={() => setOpenMeal(openMeal === k ? null : k)} onEater={(person, on) => void change((s, at) => withEater(s, k, person, on, at))} onView={setViewId} />;
             })}
           </RowList>
           <button type="button" className="secondary" onClick={() => setChatOpen(true)}>Änderung wünschen</button>
           {chatOpen && <ChatSheet chat={chat} onSend={say} onClose={() => setChatOpen(false)} />}
           <RowList label="Rezepte">
+            <Row title="Rezepte" value={favs.size > 0 ? `${favs.size} Favoriten` : undefined} onClick={() => setSheet('recipes')} />
             <Row title="Rezept hinzufügen" onClick={() => setSheet('add')} />
             <Row title="Eigene Rezepte" value={own.length > 0 ? String(own.length) : undefined} onClick={() => setSheet('own')} />
           </RowList>
+          {sheet === 'recipes' && <RecipesSheet ctx={recipeCtx} onClose={() => setSheet(null)} />}
+          {viewId && <RecipeView ctx={recipeCtx} id={viewId} onClose={() => setViewId(null)} />}
           {sheet === 'add' && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setSheet(null)} />}
           {sheet === 'own' && <OwnRecipesSheet recipes={own} onDelete={(id) => void deleteRecipe(id)} onClose={() => setSheet(null)} />}
         </>

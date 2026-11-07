@@ -2,15 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   addWeeks, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
-  isLinkRecordId, isRecipeRecordId, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
+  isFavRecordId, isLinkRecordId, isPlaceRecordId, parseMealKey, readPlaceRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
   type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
 import type { RecordStore } from '../tracking/store';
 import { fitsEveryone } from './check';
 import { sanitizeUrl, type StoredRecipe } from './recipe-import';
+import { fetchPicture, imageUrlOf, type Picture } from './recipe-image';
 import { extractRecipe, fetchPage, type Page } from './recipe-link';
-import { planFromRecipes } from './recipe-plan';
+import { browse, detail, type BrowseQuery } from './recipe-browse';
+import { planFromRecipes, recipeDish, type Favourites } from './recipe-plan';
 import { RecipeStore } from './recipe-store';
 import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
@@ -57,6 +59,8 @@ type Deps = {
   recipesDir?: string;
   /** Fetches the page of a link recipe; the guarded fetch unless a test gives its own. */
   fetchPage?: (url: string) => Promise<Page>;
+  /** Downloads a recipe's picture; the guarded download unless a test gives its own. */
+  fetchPicture?: (url: string) => Promise<Picture | null>;
 };
 type FileData = {
   settings: Record<string, MealSettings>; plans: Record<string, MealPlan>; states: Record<string, MealState>; notices: Record<string, string | null>; lastAuto: string | null;
@@ -155,7 +159,7 @@ export class MealCoach {
     try {
       const store = this.recipes();
       if (!store || !this.deps.noOpenRide()) return;
-      await store.scanInbox({ noOpenRide: this.deps.noOpenRide, ...(this.deps.ask ? { ask: this.deps.ask } : {}) });
+      await store.scanInbox({ noOpenRide: this.deps.noOpenRide, ...(this.deps.fetchPicture ? { fetchPicture: this.deps.fetchPicture } : {}), ...(this.deps.ask ? { ask: this.deps.ask } : {}) });
     } catch { /* the next scan tries again */ }
   }
 
@@ -175,7 +179,14 @@ export class MealCoach {
       const found = extractRecipe(page.html);
       if (!found) return { state: 'none' };
       const out = await store.add({ source: 'link', owner, url: clean, recipe: found, ...(this.deps.ask ? { ask: this.deps.ask, tagAsk: this.deps.ask } : {}) });
-      if (out.status === 'saved' || out.status === 'duplicate') return { state: 'saved', title: out.recipe.title };
+      if (out.status === 'saved' || out.status === 'duplicate') {
+        // The page's own picture, when the recipe has none: a failed download never fails the import.
+        try {
+          const address = imageUrlOf((found as { image?: unknown }).image);
+          if (address && !store.imageOf(out.recipe.id)) { const pic = await (this.deps.fetchPicture ?? fetchPicture)(address); if (pic) store.setImage(out.recipe.id, pic); }
+        } catch { /* the recipe stays without a picture */ }
+        return { state: 'saved', title: out.recipe.title };
+      }
       if (out.status === 'pending') return { state: 'wait', title: String((found as { name?: unknown }).name ?? '').slice(0, 120) || 'Rezept' };
       return { state: out.status === 'rejected' ? 'veg' : 'none' };
     } catch { return { state: 'fetch' }; }
@@ -208,6 +219,83 @@ export class MealCoach {
       }
     } catch { /* the next tick tries again */ } finally {
       this.linking = false;
+      if (touched.size > 0) { try { this.deps.onExport?.([...touched]); } catch { /* a listener never matters here */ } }
+    }
+    return any;
+  }
+
+  /** The recipes this person marked as favourites (their `fav-` records). */
+  favourites(profileId: string): Set<string> {
+    try { return favouriteIds(this.deps.store?.all(profileId, 'mealplan') ?? []); } catch { return new Set(); }
+  }
+  /** One page of recipes this person may browse. Empty without a collection. */
+  browse(profileId: string, q: BrowseQuery): RecipePage {
+    try { const store = this.recipes(); return store ? browse(store, profileId, this.favourites(profileId), q) : { items: [], more: false }; } catch { return { items: [], more: false }; }
+  }
+  recipeDetail(profileId: string, id: string): RecipeDetail | null {
+    try { const store = this.recipes(); return store ? detail(store, profileId, this.favourites(profileId), id) : null; } catch { return null; }
+  }
+
+  /**
+   * A person wants a recipe at a meal ("In den Plan"). The same checks as a swap: the week must still be changeable, the day not past,
+   * the recipe one this person may see, and it must fit everyone who eats the meal (diet, dislikes, intolerances). A meal that is not
+   * there yet is added. The recipe replaces the dish like a swap does; the meal's leftovers follow.
+   */
+  private place(id: string, req: { week: string; meal: string; recipeId: string }): PlaceState {
+    const now = this.deps.nowMs();
+    const current = weekOf(now);
+    const d = this.load();
+    const plan = d.plans[req.week];
+    if (!plan || (req.week !== current && req.week !== addWeeks(current, 1))) return 'noplan';
+    const at = parseMealKey(req.meal);
+    if (!at) return 'noplan';
+    if (req.week === current && at.day < dayIndex(now)) return 'past';
+    const recipe = this.recipes()?.canSee(req.recipeId, id) ?? null;
+    if (!recipe) return 'gone';
+    const members = this.members();
+    const state = d.states[req.week] ?? EMPTY_STATE;
+    const existing = plan.meals.find((m) => mealKey(m.day, m.slot) === req.meal);
+    const eaters = existing ? eatersOf(plan, state, req.meal) : plan.people.map((p) => p.id);
+    if (!fitsEveryone(recipe, constraintsFor(members, eaters).map((m) => m.settings))) return 'nofit';
+    let meal = existing;
+    if (!meal) {
+      meal = { day: at.day, slot: at.slot, dish: recipeDish(recipe), reuseOf: null, eaters, takeAlong: false };
+      plan.meals.push(meal);
+      plan.meals.sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+    }
+    delete meal.askedBy;
+    putDish(plan, state, members, req.meal, recipeDish(recipe), this.deps.random ?? Math.random);
+    meal.askedBy = id;
+    this.save();
+    return 'placed';
+  }
+
+  /** Answers waiting "In den Plan" requests, a few per tick, never with a ride open and never next to a planning run. */
+  private answerPlacements(): boolean {
+    const { store } = this.deps;
+    if (!store || this.planning || !this.deps.noOpenRide()) return false;
+    let any = false;
+    const touched = new Set<string>();
+    try {
+      let budget = 5;
+      for (const p of this.deps.profiles()) {
+        if (!this.synced(p.id)) continue;
+        for (const r of store.all(p.id, 'mealplan')) {
+          if (budget <= 0) return any;
+          if (r.deleted || !isPlaceRecordId(r.id)) continue;
+          const req = readPlaceRequest(r.id, r.body);
+          if (!req || req.result) continue;
+          budget--;
+          this.importStates();
+          const result = this.place(p.id, req);
+          const now = this.deps.nowMs();
+          store.putMany(p.id, [{ ...r, updatedMs: Math.max(now, r.updatedMs + 1), body: { ...(isObj(r.body) ? r.body : {}), result, answeredMs: now } }]);
+          any = true;
+          touched.add(p.id);
+        }
+      }
+    } catch { /* the next tick tries again */ } finally {
+      if (any) this.exportAll();
       if (touched.size > 0) { try { this.deps.onExport?.([...touched]); } catch { /* a listener never matters here */ } }
     }
     return any;
@@ -277,6 +365,7 @@ export class MealCoach {
       if (this.members().length === 0) return this.exportAll();
       this.importStates();
       await this.answerLinks();
+      this.answerPlacements();
       let touched = this.exportAll();
       // Messages from phones, and those typed here during a ride, once no ride is open.
       if (await this.answerPending()) touched = [...new Set([...touched, ...this.exportAll()])];
@@ -317,6 +406,8 @@ export class MealCoach {
       const trainingDays = this.training();
       const random = this.deps.random ?? seeded(`${week}-${fromDay}-${this.deps.nowMs()}`);
       const lastIds = new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).flatMap((m) => (m.dish.recipeId ? [m.dish.recipeId] : [])));
+      // What stays in this week (a replan from today keeps the days before) is not planned again.
+      for (const m of d.plans[week]?.meals ?? []) if (m.day < fromDay && m.dish.recipeId) lastIds.add(m.dish.recipeId);
       const lastWeek = [...new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).map((m) => m.dish.title))];
       // Real recipes first: the household's link recipes always, the collection once it is big enough. None at all: exactly the plan of before.
       const real = await this.realMeals({ members, fromDay, trainingDays, random, lastIds, lastWeek, week });
@@ -361,6 +452,9 @@ export class MealCoach {
       const seed = [...i.week].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 4294967291, 7);
       const pool: StoredRecipe[] = [...store.links()];
       if (unlocked) for (const slot of SLOTS) pool.push(...store.collectionFor(slot, 2000, seed));
+      // Favourites are candidates even below the unlock, like the household's own recipes.
+      const favourites: Favourites = new Map(i.members.map((m) => [m.id, this.favourites(m.id)] as const));
+      if (!unlocked) { const have = new Set(pool.map((r) => r.id)); pool.push(...store.getMany([...new Set([...favourites.values()].flatMap((f) => [...f]))]).filter((r) => !have.has(r.id))); }
       if (pool.length === 0) return [];
       const slots = skeleton(i.members, i.fromDay, unlocked);
       const cap = unlocked ? undefined : Math.max(1, Math.floor(slots.length / 3));
@@ -368,7 +462,7 @@ export class MealCoach {
       const order = unlocked ? slots : [...slots].sort(() => i.random() - 0.5);
       const meals = await planFromRecipes({
         members: i.members, slots: order, trainingDays: i.trainingDays, pool, lastIds: i.lastIds, random: i.random, lastWeek: i.lastWeek,
-        ...(cap !== undefined ? { cap } : {}), aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
+        ...(cap !== undefined ? { cap } : {}), favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
       });
       return meals;
     } catch { return []; }
@@ -565,8 +659,11 @@ export class MealCoach {
     try {
       this.removeDeletedRecipes(id, have);
       for (const r of recipes.mine(id)) wanted.set(`recipe-${r.id}`, { title: r.title, sourceUrl: r.sourceUrl, minutes: r.minutes });
+      for (const r of have) if (!r.deleted && isFavRecordId(r.id)) keep.add(r.id);
       const requests = have.flatMap((r) => { const q = !r.deleted && isLinkRecordId(r.id) ? readLinkRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
       for (const q of requests.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
+      const places = have.flatMap((r) => { const q = !r.deleted && isPlaceRecordId(r.id) ? readPlaceRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
+      for (const q of places.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
     } catch { /* the plan's records go on without them */ }
   }
 

@@ -501,7 +501,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} />}
           {tab === 'training' && <Training port={port} env={env} resume={resume} />}
-          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} />}
+          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
           {tab === 'statistik' && hasStats && <StatsScreen port={port} now={env.now} />}

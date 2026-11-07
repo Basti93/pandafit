@@ -21,6 +21,11 @@ export type SearchQuery = {
   /** Only the collection, or only link recipes (of `owner` if given). Default: both. */
   source?: 'collection' | 'link';
   owner?: string;
+  /** The collection plus the link recipes of this person and the household's own ones: what one person may browse. */
+  visibleTo?: string;
+  /** Only these recipes (an empty list finds nothing). */
+  ids?: string[];
+  offset?: number;
   limit?: number;
   /** 'rating' (default; with text the text match comes first), or 'sample': a varied, repeatable order by `seed`. */
   order?: 'rating' | 'sample';
@@ -61,10 +66,16 @@ export function searchRecipes(db: DatabaseSync, q: SearchQuery): StoredRecipe[] 
   for (const name of q.excludeIngredients ?? []) { where.push('NOT EXISTS (SELECT 1 FROM recipe_ingredients i WHERE i.recipe_id = r.id AND i.canon = ?)'); args.push(canonicalIngredient(name)); }
   if (q.source) { where.push('r.source = ?'); args.push(q.source); }
   if (q.owner !== undefined) { where.push('r.owner = ?'); args.push(q.owner); }
+  if (q.visibleTo !== undefined) { where.push("(r.source = 'collection' OR r.owner = ? OR r.owner = '~own')"); args.push(q.visibleTo); }
+  if (q.ids) {
+    if (q.ids.length === 0) return [];
+    where.push(`r.id IN (${q.ids.map(() => '?').join(',')})`);
+    args.push(...q.ids);
+  }
   const rating = 'COALESCE(r.rating, 0) DESC, COALESCE(r.rating_n, 0) DESC, r.id';
   const order = q.order === 'sample' ? `((r.rowid * 2654435761 + ?) & 4294967295), r.id` : fts ? `f.rank, ${rating}` : rating;
   const orderArgs: SQLInputValue[] = q.order === 'sample' ? [Math.abs(Math.floor(q.seed ?? 0)) % 4294967295] : [];
   const limit = Math.max(1, Math.min(MAX_LIMIT, Math.floor(q.limit ?? 50)));
-  const rows = db.prepare(`SELECT r.json AS json FROM recipes r ${join} WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT ?`).all(...args, ...orderArgs, limit) as { json: string }[];
+  const rows = db.prepare(`SELECT r.json AS json FROM recipes r ${join} WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...args, ...orderArgs, limit, Math.max(0, Math.floor(q.offset ?? 0))) as { json: string }[];
   return rows.flatMap((r) => { try { return [JSON.parse(r.json) as StoredRecipe]; } catch { return []; } });
 }

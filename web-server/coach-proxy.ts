@@ -17,7 +17,9 @@ const MAX_QUEUED = 64;
 /** A coach that says nothing for this long is taken as gone. */
 const UPSTREAM_IDLE_MS = 120_000;
 /** The request headers the coach gets from a client. Never its cookie or authorization: the account goes in its own header. */
-const FORWARDED = ['content-type', 'content-length', 'x-sha256'] as const;
+const FORWARDED = ['content-type', 'content-length', 'x-sha256', 'if-none-match'] as const;
+/** The coach's answer headers that go back to the client: the type and what a browser needs to keep a picture. */
+const RETURNED = ['cache-control', 'etag', 'last-modified', 'x-content-type-options'] as const;
 
 export type CoachProxyOptions = {
   /** The coach container on the internal network, e.g. `http://coach:8090`. */
@@ -101,6 +103,8 @@ export function registerCoachProxy(app: FastifyInstance, opts: CoachProxyOptions
       if (res.statusCode === 401) { res.resume(); up.destroy(); resolve(reply.code(503).send({ error: 'coach unavailable' })); return; }
       const type = res.headers['content-type'];
       if (typeof type === 'string') reply.header('Content-Type', type);
+      for (const h of RETURNED) { const v = res.headers[h]; if (typeof v === 'string') reply.header(h, v); }
+      if (res.statusCode === 304) { res.resume(); resolve(reply.code(304).send()); return; }
       resolve(reply.code(res.statusCode ?? 502).send(res));
     });
     // A client that leaves takes the coach's request with it.

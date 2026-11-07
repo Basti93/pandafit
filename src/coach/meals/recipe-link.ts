@@ -107,14 +107,14 @@ export async function vet(raw: string, lookup: Lookup = systemLookup): Promise<{
 
 export type Response = { status: number; headers: Record<string, string | string[] | undefined>; body: Readable };
 /** One GET to exactly `pinned`, over TLS for the URL's host name. */
-export type Transport = (url: URL, pinned: Pinned, o: { timeoutMs: number }) => Promise<Response>;
+export type Transport = (url: URL, pinned: Pinned, o: { timeoutMs: number; accept?: string }) => Promise<Response>;
 
 export const httpsTransport: Transport = (url, pinned, o) => new Promise((resolve, reject) => {
   const req = https.request({
     host: url.hostname.startsWith('[') ? url.hostname.slice(1, -1) : url.hostname, port: 443, path: `${url.pathname}${url.search}`, method: 'GET', servername: net.isIP(url.hostname) ? undefined : url.hostname,
     // The answer of our own check, whatever the name resolves to now.
     lookup: (_h, opts, cb) => { if (opts && (opts as { all?: boolean }).all) (cb as unknown as (e: null, a: { address: string; family: number }[]) => void)(null, [{ address: pinned.address, family: pinned.family }]); else cb(null, pinned.address, pinned.family); },
-    headers: { accept: 'text/html,application/xhtml+xml', 'accept-encoding': 'gzip, deflate, br', 'user-agent': 'PandaFit-Rezeptimport/1.0', host: url.host }, timeout: o.timeoutMs,
+    headers: { accept: o.accept ?? 'text/html,application/xhtml+xml', 'accept-encoding': 'gzip, deflate, br', 'user-agent': 'PandaFit-Rezeptimport/1.0', host: url.host }, timeout: o.timeoutMs,
   }, (res) => resolve({ status: res.statusCode ?? 0, headers: res.headers, body: res }));
   req.on('timeout', () => req.destroy(new Error('timeout')));
   req.on('error', reject);
@@ -124,7 +124,10 @@ export const httpsTransport: Transport = (url, pinned, o) => new Promise((resolv
 export class LimitError extends Error { constructor(readonly kind: 'size' | 'time') { super(kind); } }
 
 /** The body as text, or a LimitError when it is bigger than `maxBytes` (after decompression) or not done by `deadlineMs`. */
-export function readBody(res: Readable, maxBytes: number, deadlineMs: number, encoding?: string): Promise<string> {
+export const readBody = async (res: Readable, maxBytes: number, deadlineMs: number, encoding?: string): Promise<string> => (await readBytes(res, maxBytes, deadlineMs, encoding)).toString('utf8');
+
+/** The body as bytes, with the same limits as `readBody`. */
+export function readBytes(res: Readable, maxBytes: number, deadlineMs: number, encoding?: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let stream: Readable = res;
     if (encoding === 'gzip' || encoding === 'x-gzip') stream = res.pipe(zlib.createGunzip());
@@ -134,9 +137,9 @@ export function readBody(res: Readable, maxBytes: number, deadlineMs: number, en
     const chunks: Buffer[] = [];
     let size = 0;
     let over = false;
-    const finish = (err: Error | null, text?: string) => {
+    const finish = (err: Error | null, bytes?: Buffer) => {
       clearTimeout(timer);
-      if (err) { stream.destroy(); res.destroy(); reject(err); } else resolve(text ?? '');
+      if (err) { stream.destroy(); res.destroy(); reject(err); } else resolve(bytes ?? Buffer.alloc(0));
     };
     const timer = setTimeout(() => finish(new LimitError('time')), Math.max(1, deadlineMs));
     stream.on('data', (c: Buffer) => {
@@ -145,14 +148,14 @@ export function readBody(res: Readable, maxBytes: number, deadlineMs: number, en
       if (size > maxBytes) { over = true; finish(new LimitError('size')); return; }
       chunks.push(c);
     });
-    stream.on('end', () => { if (!over) finish(null, Buffer.concat(chunks).toString('utf8')); });
+    stream.on('end', () => { if (!over) finish(null, Buffer.concat(chunks)); });
     stream.on('error', (e) => { if (!over) finish(e); });
   });
 }
 
 export type Page = { ok: true; html: string; url: string } | { ok: false; reason: Refusal | 'status' | 'type' | 'size' | 'time' | 'redirects' | 'error' };
 export type FetchDeps = { lookup?: Lookup; transport?: Transport; nowMs?: () => number };
-const MAX_REDIRECTS = 3;
+export const MAX_REDIRECTS = 3;
 
 /** The page at `raw`, within the register's size and time limits. Never throws. */
 export async function fetchPage(raw: string, deps: FetchDeps = {}): Promise<Page> {
@@ -192,7 +195,7 @@ export async function fetchPage(raw: string, deps: FetchDeps = {}): Promise<Page
   }
 }
 
-const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> => new Promise((resolve, reject) => {
+export const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T> => new Promise((resolve, reject) => {
   const t = setTimeout(() => reject(new Error('timeout')), Math.max(1, ms));
   p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
 });

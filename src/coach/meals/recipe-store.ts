@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ruleNumber, ruleValues } from '../../shared/training-policy';
+import { EXT, fetchPicture, imageUrlOf, inlinePicture, TYPE_OF_EXT, type ImageType, type Picture } from './recipe-image';
 import { importRecipe, norm, PROTEIN_UNKNOWN, sanitizeUrl, type Structure, type StoredRecipe } from './recipe-import';
 import { searchRecipes, type SearchQuery } from './recipe-search';
 import { allTags, classify, deriveVersion, hardTags, mergeTags, parseQualityMin, slotsFrom, tagAi, tagInputHash, tagInputOf, tagLabels, tagPromptVersion, vocabulary, FACETS, type AiTags, type TagAsk } from './recipe-tags';
@@ -29,7 +30,7 @@ export type AddOutcome =
   | { status: 'failed'; reason: string };
 
 export type RecipeStats = { collection: number; links: number; pending: number; untagged: number; rejected: number; failed: number; duplicates: number; unlock: number };
-export type ScanResult = { files: number; imported: number; rejected: number; failed: number; duplicates: number; pending: number; tagged: number };
+export type ScanResult = { files: number; imported: number; rejected: number; failed: number; duplicates: number; pending: number; tagged: number; /** Pictures attached, including those of recipes delivered again. */ pictures: number };
 
 type Row = { json: string };
 type Ask = Structure & TagAsk;
@@ -77,6 +78,7 @@ export class RecipeStore {
       CREATE TABLE IF NOT EXISTS progress (file TEXT PRIMARY KEY, done INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS forgotten (url TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS vegRejected (url TEXT PRIMARY KEY, prompt_version INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS images (recipe_id TEXT PRIMARY KEY, ext TEXT, tries INTEGER NOT NULL DEFAULT 0, next_ms INTEGER NOT NULL DEFAULT 0);
     `);
     this.db = db;
     return db;
@@ -194,6 +196,15 @@ export class RecipeStore {
   get(id: string): StoredRecipe | null {
     return this.parse(this.open().prepare("SELECT json FROM recipes WHERE id = ? AND state = 'ok'").get(id) as Row | undefined);
   }
+  /** Whether a recipe is stored, classified and confirmed vegetarian by the AI: the ones that may be shown and planned. */
+  plannable(id: string): boolean { return this.get(id)?.vegCheckedBy === 'ai'; }
+  /** The recipe when this person may see it: confirmed by the AI, and from the collection, their own links or the household's own recipes. */
+  canSee(id: string, person: string): StoredRecipe | null {
+    const r = this.get(id);
+    return r && r.vegCheckedBy === 'ai' && (r.source === 'collection' || r.owner === person || r.owner === OWN_OWNER) ? r : null;
+  }
+  /** Recipes by id, confirmed and in the order of the ids; an unknown or unconfirmed one is left out. */
+  getMany(ids: readonly string[]): StoredRecipe[] { return searchRecipes(this.open(), { ids: [...ids], limit: 5000 }); }
   search(q: SearchQuery): StoredRecipe[] { return searchRecipes(this.open(), q); }
 
   /** Collection recipes (tagged, plannable) for a meal: a bounded, varied sample, in an order that depends on `seed`. */
@@ -222,6 +233,72 @@ export class RecipeStore {
     o.prepare('DELETE FROM recipe_tags WHERE recipe_id = ?').run(id);
     o.prepare('DELETE FROM recipe_ingredients WHERE recipe_id = ?').run(id);
     o.prepare('DELETE FROM recipes WHERE id = ?').run(id);
+    this.dropImage(id);
+  }
+
+  // ---- Pictures ----
+
+  imagesDir(): string { return path.join(this.dir, 'images'); }
+  /** The stored picture of a recipe: its file and type, or null. */
+  imageOf(id: string): { file: string; type: ImageType } | null {
+    const ext = (this.open().prepare('SELECT ext FROM images WHERE recipe_id = ?').get(id) as { ext: string | null } | undefined)?.ext;
+    const type = ext ? TYPE_OF_EXT[ext] : undefined;
+    if (!ext || !type) return null;
+    const file = path.join(this.imagesDir(), `${id}.${ext}`);
+    return fs.existsSync(file) ? { file, type } : null;
+  }
+  /** Stores a picture for a recipe that has none (an existing one is never overwritten). The file is written whole under another name and renamed. True when stored. */
+  setImage(id: string, pic: Picture): boolean {
+    if (this.imageOf(id)) return false;
+    const exists = this.open().prepare('SELECT 1 AS x FROM recipes WHERE id = ?').get(id);
+    if (!exists || !/^[cl]-[0-9a-f]{14}$/.test(id)) return false;
+    const ext = EXT[pic.type];
+    const dir = this.imagesDir();
+    const final = path.join(dir, `${id}.${ext}`);
+    const tmp = path.join(dir, `.${id}.${crypto.randomBytes(4).toString('hex')}.tmp`);
+    try {
+      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+      const fd = fs.openSync(tmp, 'w', 0o600);
+      try { fs.writeFileSync(fd, pic.bytes); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+      fs.renameSync(tmp, final);
+    } catch { try { fs.rmSync(tmp, { force: true }); } catch { /* gone */ } return false; }
+    this.open().prepare('INSERT INTO images (recipe_id, ext) VALUES (?, ?) ON CONFLICT(recipe_id) DO UPDATE SET ext = excluded.ext').run(id, ext);
+    return true;
+  }
+  private dropImage(id: string): void {
+    this.open().prepare('DELETE FROM images WHERE recipe_id = ?').run(id);
+    for (const ext of Object.keys(TYPE_OF_EXT)) { try { fs.rmSync(path.join(this.imagesDir(), `${id}.${ext}`), { force: true }); } catch { /* gone */ } }
+  }
+
+  /**
+   * Recipes with no picture whose source names an image address get it downloaded, at most `budget.left` downloads, never with a ride open.
+   * A failed one is tried again later (a day, two days) and given up after three tries. Returns how many pictures were stored.
+   */
+  async backfillImages(o: { noOpenRide: () => boolean; fetch?: (url: string) => Promise<Picture | null> }, budget: { left: number }): Promise<number> {
+    const get = o.fetch ?? fetchPicture;
+    const now = this.nowMs();
+    const rows = this.open().prepare(`SELECT r.id AS id, json_extract(r.raw, '$.recipe.image') AS img FROM recipes r LEFT JOIN images i ON i.recipe_id = r.id
+      WHERE r.state != 'pending' AND r.raw IS NOT NULL AND json_extract(r.raw, '$.recipe.image') IS NOT NULL
+      AND (i.recipe_id IS NULL OR (i.ext IS NULL AND i.tries < 3 AND i.next_ms <= ?)) ORDER BY r.imported_ms, r.id LIMIT 100`).all(now) as { id: string; img: unknown }[];
+    let stored = 0;
+    for (const row of rows) {
+      let value: unknown = row.img;
+      if (typeof value === 'string' && /^\s*[[{]/.test(value)) { try { value = JSON.parse(value); } catch { /* a plain string */ } }
+      const url = imageUrlOf(value);
+      if (!url) { this.noteImageFailure(row.id, 3); continue; }
+      if (budget.left <= 0 || !o.noOpenRide()) break;
+      budget.left--;
+      const pic = await get(url).catch(() => null);
+      if (pic && this.setImage(row.id, pic)) stored++;
+      else if (!pic) this.noteImageFailure(row.id);
+    }
+    return stored;
+  }
+  private noteImageFailure(id: string, tries?: number): void {
+    const prev = (this.open().prepare('SELECT tries FROM images WHERE recipe_id = ?').get(id) as { tries: number } | undefined)?.tries ?? 0;
+    const n = tries ?? prev + 1;
+    this.open().prepare('INSERT INTO images (recipe_id, ext, tries, next_ms) VALUES (?, NULL, ?, ?) ON CONFLICT(recipe_id) DO UPDATE SET tries = excluded.tries, next_ms = excluded.next_ms WHERE ext IS NULL')
+      .run(id, n, this.nowMs() + n * 24 * 3_600_000);
   }
 
   // ---- Tagging ----
@@ -382,8 +459,8 @@ export class RecipeStore {
    * derive again after a version change, tag what waits for the AI, structure what waited for it. Never with a ride open.
    * Only `*.jsonl` files count: the fetcher writes under another name and renames it when complete.
    */
-  async scanInbox(o: { noOpenRide: () => boolean; ask?: Ask }): Promise<ScanResult> {
-    const total: ScanResult = { files: 0, imported: 0, rejected: 0, failed: 0, duplicates: 0, pending: 0, tagged: 0 };
+  async scanInbox(o: { noOpenRide: () => boolean; ask?: Ask; fetchPicture?: (url: string) => Promise<Picture | null> }): Promise<ScanResult> {
+    const total: ScanResult = { files: 0, imported: 0, rejected: 0, failed: 0, duplicates: 0, pending: 0, tagged: 0, pictures: 0 };
     if (!o.noOpenRide()) return total;
     const inbox = this.inboxDir();
     let names: string[] = [];
@@ -391,11 +468,13 @@ export class RecipeStore {
     const L = limits();
     let budget = L.perScan!;
     const calls = { left: L.aiPerScan! };
+    const downloads = { left: L.imagesPerScan! };
+    const getPicture = o.fetchPicture ?? fetchPicture;
     const askLimited: Ask | undefined = o.ask ? async (i) => { if (calls.left <= 0) throw new Error('ai budget'); calls.left--; return o.ask!(i); } : undefined;
     for (const name of names) {
       if (budget <= 0 || !o.noOpenRide()) break;
       const file = path.join(inbox, name);
-      const result = { imported: 0, rejected: 0, failed: 0, duplicates: 0, pending: 0 };
+      const result = { imported: 0, rejected: 0, failed: 0, duplicates: 0, pending: 0, pictures: 0 };
       let lines: string[];
       try {
         const stat = fs.statSync(file);
@@ -414,11 +493,22 @@ export class RecipeStore {
         const url = rec && typeof rec.url === 'string' ? rec.url : rec && typeof rec['@id'] === 'string' ? rec['@id'] : '';
         if (!rec || !url) { result.failed++; this.bump('failed'); continue; }
         let out: AddOutcome;
-        const { pandafitOwn, ...recipe } = rec;
+        const { pandafitOwn, imageData, imageType, ...recipe } = rec;
         const own = pandafitOwn === true;
-        try { out = await this.add({ source: own ? 'link' : 'collection', ...(own ? { owner: OWN_OWNER } : {}), url, recipe: own ? recipe : rec, ...(askLimited ? { ask: askLimited } : {}) }); } catch { result.failed++; this.bump('failed'); continue; }
+        // The inline picture is not kept in the stored source (it would weigh as much as the picture); an `image` address stays.
+        try { out = await this.add({ source: own ? 'link' : 'collection', ...(own ? { owner: OWN_OWNER } : {}), url, recipe, ...(askLimited ? { ask: askLimited } : {}) }); } catch { result.failed++; this.bump('failed'); continue; }
+        // A picture for a recipe just saved, or for one delivered again (same address) that has none yet. Never overwrites.
+        let attached = false;
+        const target = out.status === 'saved' || (out.status === 'duplicate' && out.recipe.sourceUrl === sanitizeUrl(url)) ? out.recipe : null;
+        if (target?.id && !this.imageOf(target.id)) {
+          let pic = inlinePicture(imageData, imageType);
+          const address = imageUrlOf(recipe.image);
+          if (!pic && address && downloads.left > 0 && o.noOpenRide()) { downloads.left--; pic = await getPicture(address).catch(() => null); if (!pic) this.noteImageFailure(target.id); }
+          if (pic) attached = this.setImage(target.id, pic);
+        }
+        if (attached) result.pictures++;
         if (out.status === 'saved') result.imported++;
-        else if (out.status === 'duplicate' || out.status === 'forgotten') result.duplicates++;
+        else if (out.status === 'duplicate' || out.status === 'forgotten') { if (!(attached && out.status === 'duplicate')) result.duplicates++; }
         else if (out.status === 'rejected') result.rejected++;
         else if (out.status === 'pending') result.pending++;
         else result.failed++;
@@ -426,7 +516,7 @@ export class RecipeStore {
       this.open().prepare('INSERT INTO progress (file, done) VALUES (?, ?) ON CONFLICT(file) DO UPDATE SET done = excluded.done').run(name, i);
       for (const k of Object.keys(result) as (keyof typeof result)[]) total[k] += result[k];
       if (i >= lines.length) {
-        const usable = result.imported + result.rejected + result.duplicates + result.pending > 0 || start > 0;
+        const usable = result.imported + result.rejected + result.duplicates + result.pending + result.pictures > 0 || start > 0;
         if (usable) this.moveFile(name, 'done', JSON.stringify({ lines: lines.length, ...result, atMs: this.nowMs() }));
         else this.moveFile(name, 'failed', 'no usable line');
         this.open().prepare('DELETE FROM progress WHERE file = ?').run(name);
@@ -437,6 +527,7 @@ export class RecipeStore {
     if (o.noOpenRide()) await this.rederive(L.perScan!);
     if (askLimited && o.noOpenRide()) total.tagged += await this.tagWaiting(askLimited, calls.left);
     if (askLimited && o.noOpenRide() && calls.left > 0) await this.retryPending(askLimited, Math.min(calls.left, 10));
+    if (o.noOpenRide()) { try { total.pictures += await this.backfillImages({ noOpenRide: o.noOpenRide, fetch: getPicture }, downloads); } catch { /* the next scan tries again */ } }
     return total;
   }
 
