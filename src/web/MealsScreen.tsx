@@ -116,9 +116,12 @@ const listAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).j
 
 /** One meal as a row; opened, it shows the recipe, the protein and who eats. A deviation from the plan shows under the title. */
 /** A small picture of the recipe behind a dish; nothing at all when it has none. */
-export function MealThumb({ recipeId }: { recipeId: string }) {
+/** The dish's picture, or a calm colour block with its first letter, so every row lines up. */
+export function MealThumb({ recipeId, title }: { recipeId?: string; title: string }) {
   const [failed, setFailed] = useState(false);
-  return failed ? null : <img className="pm-thumb" src={`/coach/recipes/${recipeId}/image`} alt="" loading="lazy" onError={() => setFailed(true)} />;
+  if (recipeId && !failed) return <img className="pm-thumb" src={`/coach/recipes/${recipeId}/image`} alt="" loading="lazy" onError={() => setFailed(true)} />;
+  const hue = [...title].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
+  return <span className="pm-thumb rc-blank" style={{ ['--rc-hue' as string]: String(hue) }} aria-hidden="true">{(title.trim()[0] ?? '?').toUpperCase()}</span>;
 }
 
 /** What a meal shows opened, in Essen under its row and on Heute in a sheet: recipe, how long it keeps, who eats. */
@@ -166,7 +169,7 @@ function MealRow({ week, meal, open, onToggle, onEater, onView }: { week: Week; 
   const note = eaters.length === 0 ? 'Niemand isst mit' : away.length > 0 ? `${listAnd(away.map((p) => p.name))} ${away.length > 1 ? 'essen' : 'isst'} nicht mit` : null;
   return (
     <Row
-      title={<span className="pm-titleline">{meal.dish.recipeId && <MealThumb recipeId={meal.dish.recipeId} />}<span><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{note && <small className="pm-dev">{note}</small>}</span></span>}
+      title={<span className="pm-titleline"><MealThumb recipeId={meal.dish.recipeId} title={meal.dish.title} /><span><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{note && <small className="pm-dev">{note}</small>}</span></span>}
       value={meal.reuseOf ? 'Rest' : `${meal.dish.minutes} Min`} expanded={open} onClick={onToggle}>
       <MealDetail week={week} meal={meal} onEater={onEater} onView={onView} />
     </Row>
@@ -289,7 +292,7 @@ export function TodayMeals({ port, now, fetchFn, onOpenPlan }: { port: WebPort; 
       <RowList label="Essen heute">
         {meals.map((m) => (
           <Row key={m.slot} onClick={() => setOpenKey(mealKey(m.day, m.slot))} value={label(m)}
-            title={<span className="pm-titleline">{m.dish.recipeId && <MealThumb recipeId={m.dish.recipeId} />}<span className="pm-rowtitle"><b>{SLOT_SHORT[m.slot]}</b> · {m.dish.title}</span></span>} />
+            title={<span className="pm-titleline"><MealThumb recipeId={m.dish.recipeId} title={m.dish.title} /><span className="pm-rowtitle"><b>{SLOT_SHORT[m.slot]}</b> · {m.dish.title}</span></span>} />
         ))}
         <Row title="Essensplan" onClick={onOpenPlan} />
       </RowList>
