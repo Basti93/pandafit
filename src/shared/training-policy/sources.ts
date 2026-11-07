@@ -64,7 +64,7 @@ export const SOURCES: PolicySource[] = [
     'Ausdauersportler, Herzfrequenzmaße zur Belastungssteuerung', 'Ruhepuls und Herzfrequenzvariabilität zur Beurteilung des Trainingszustands', 'Veränderungen sind an der eigenen normalen Schwankung zu messen; ein einzelner Tag sagt wenig.'),
   s('S28', 'Mishra et al. 2020, Nat Biomed Eng 4:1208, DOI 10.1038/s41551-020-00640-6', 'https://doi.org/10.1038/s41551-020-00640-6', 'Beobachtungsstudie mit Wearables', 'abstract',
     'Personen mit Smartwatch-Daten vor und während Infektionen', 'Erhöhter Ruhepuls vor Erkrankungsbeginn', 'Auffälligkeit im Nachhinein, kein validiertes Frühwarnsystem für einzelne Personen.'),
-  s('S29', 'Alavi et al. 2022, Nat Med 28:175, DOI 10.1038/s41591-022-01683-9', 'https://doi.org/10.1038/s41591-022-01683-9', 'Prospektive Beobachtungsstudie mit Wearables', 'abstract',
+  s('S29', 'Alavi et al. 2022, Nat Med 28:175, DOI 10.1038/s41591-021-01593-2', 'https://doi.org/10.1038/s41591-021-01593-2', 'Prospektive Beobachtungsstudie mit Wearables', 'abstract',
     'Personen mit Smartwatch-Daten und Infektionsverlauf', 'Frühe Veränderungen von Ruhepuls und Aktivität', 'Gruppenbefund; Ruhepuls allein ist keine Diagnose und keine Vorhersage für Einzelne.'),
   s('S30', 'Zhang et al. 2016, CMAJ 188:E53, DOI 10.1503/cmaj.150535', 'https://doi.org/10.1503/cmaj.150535', 'Metaanalyse von Kohortenstudien', 'abstract',
     'Erwachsene in Kohortenstudien', 'Sterblichkeit nach Ruhepuls (RR 1,09 je 10 Schläge pro Minute)', 'Zusammenhang, kein Nachweis einer Ursache; sagt nichts über eine einzelne Person.'),
