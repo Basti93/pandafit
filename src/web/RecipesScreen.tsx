@@ -57,7 +57,12 @@ export function Heart({ on, title, onToggle }: { on: boolean; title: string; onT
   return <button type="button" className="link rc-heart" aria-pressed={on} aria-label={on ? `${title} aus den Favoriten nehmen` : `${title} zu den Favoriten`} onClick={onToggle}>{on ? '♥' : '♡'}</button>;
 }
 
-const minutesLine = (r: RecipeSummary): string => [`${r.minutes} Min`, ...(r.tags[0] ? [r.tags[0].toLowerCase()] : [])].join(' · ');
+/** The one most useful fact besides the time: protein-rich, then quick, then meal-prep, else the first label (as the vocabulary writes it). */
+const MAIN_FACTS = ['Proteinreich', 'Schnell', 'Meal-Prep'];
+const minutesLine = (r: RecipeSummary): string => {
+  const fact = MAIN_FACTS.find((f) => r.tags.includes(f)) ?? r.tags[0];
+  return [`${r.minutes} Min`, ...(fact ? [fact.replace(' und ', ' & ')] : [])].join(' · ');
+};
 
 const season = (ms: number): string => { const m = new Date(ms).getMonth() + 1; return m >= 3 && m <= 5 ? 'fruehling' : m >= 6 && m <= 8 ? 'sommer' : m >= 9 && m <= 11 ? 'herbst' : 'winter'; };
 const MEAL_CHIPS = [['mahlzeit:fruehstueck', 'Frühstück'], ['mahlzeit:mittag', 'Mittag'], ['mahlzeit:abend', 'Abend']] as const;
@@ -171,7 +176,7 @@ export function RecipeView({ ctx, id, onClose }: { ctx: RecipeCtx; id: string; o
         <div className="rc-view">
           <RecipePicture id={d.id} title={d.title} has={d.image} big />
           <p className="muted rc-facts">{factsLine(d)}</p>
-          {d.tags.length > 0 && <ul className="rc-tags" aria-label="Schlagwörter">{d.tags.map((t) => <li key={t}>{t}</li>)}</ul>}
+          {d.tags.length > 0 && <ul className="rc-tags" aria-label="Schlagwörter">{d.tags.map((t) => <li key={t}>{t.replace(' und ', ' & ')}</li>)}</ul>}
           <div className="rc-portions" role="group" aria-label="Portionen">
             <button type="button" className="secondary" aria-label="Eine Portion weniger" disabled={portions <= 1} onClick={() => setPortions(portions - 1)}>−</button>
             <span aria-live="polite">{portions} {portions === 1 ? 'Portion' : 'Portionen'}</span>

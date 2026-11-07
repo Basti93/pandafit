@@ -397,7 +397,9 @@ async function main() {
   const shot = async (name: string) => {
     if (filter && !name.includes(filter)) return;
     await page.waitForTimeout(350);
-    await page.screenshot({ path: join(out, `${name}.png`), fullPage: true });
+    // A sheet is fixed to the viewport: with one open, a full-page capture would stretch it, so only the viewport is taken.
+    const sheetOpen = (await page.locator('[role="dialog"]').count()) > 0;
+    await page.screenshot({ path: join(out, `${name}.png`), fullPage: !sheetOpen });
     taken.push(name);
     console.log(`shot ${name}`);
   };

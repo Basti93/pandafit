@@ -710,7 +710,7 @@ describe('Rezepte on the phone', () => {
     const urls: string[] = [];
     await open({ recipes: route(urls) });
     expect(await screen.findByText('Erfundener Topf 1')).toBeTruthy();
-    expect(screen.getByText('21 Min · proteinreich')).toBeTruthy();
+    expect(screen.getByText('21 Min · Proteinreich')).toBeTruthy();
     const imgs = [...document.querySelectorAll('.rc-open img')] as HTMLImageElement[];
     expect(imgs.map((i) => i.getAttribute('src'))).toEqual([`/coach/recipes/${RID(1)}/image`]);
     // The recipe without a picture shows its first letter instead.
