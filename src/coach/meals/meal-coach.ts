@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   addWeeks, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
-  isLinkRecordId, isRecipeRecordId, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
+  isFavRecordId, isLinkRecordId, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
   type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
@@ -11,7 +11,8 @@ import { fitsEveryone } from './check';
 import { sanitizeUrl, type StoredRecipe } from './recipe-import';
 import { fetchPicture, imageUrlOf, type Picture } from './recipe-image';
 import { extractRecipe, fetchPage, type Page } from './recipe-link';
-import { planFromRecipes } from './recipe-plan';
+import { browse, detail, type BrowseQuery } from './recipe-browse';
+import { planFromRecipes, type Favourites } from './recipe-plan';
 import { RecipeStore } from './recipe-store';
 import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
@@ -223,6 +224,18 @@ export class MealCoach {
     return any;
   }
 
+  /** The recipes this person marked as favourites (their `fav-` records). */
+  favourites(profileId: string): Set<string> {
+    try { return favouriteIds(this.deps.store?.all(profileId, 'mealplan') ?? []); } catch { return new Set(); }
+  }
+  /** One page of recipes this person may browse. Empty without a collection. */
+  browse(profileId: string, q: BrowseQuery): RecipePage {
+    try { const store = this.recipes(); return store ? browse(store, profileId, this.favourites(profileId), q) : { items: [], more: false }; } catch { return { items: [], more: false }; }
+  }
+  recipeDetail(profileId: string, id: string): RecipeDetail | null {
+    try { const store = this.recipes(); return store ? detail(store, profileId, this.favourites(profileId), id) : null; } catch { return null; }
+  }
+
   /** A person deleted a recipe from their list (the record has a tombstone): the recipe goes too. */
   private removeDeletedRecipes(owner: string, have: TrackedRecord[]): void {
     const store = this.recipes();
@@ -327,6 +340,8 @@ export class MealCoach {
       const trainingDays = this.training();
       const random = this.deps.random ?? seeded(`${week}-${fromDay}-${this.deps.nowMs()}`);
       const lastIds = new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).flatMap((m) => (m.dish.recipeId ? [m.dish.recipeId] : [])));
+      // What stays in this week (a replan from today keeps the days before) is not planned again.
+      for (const m of d.plans[week]?.meals ?? []) if (m.day < fromDay && m.dish.recipeId) lastIds.add(m.dish.recipeId);
       const lastWeek = [...new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).map((m) => m.dish.title))];
       // Real recipes first: the household's link recipes always, the collection once it is big enough. None at all: exactly the plan of before.
       const real = await this.realMeals({ members, fromDay, trainingDays, random, lastIds, lastWeek, week });
@@ -371,6 +386,9 @@ export class MealCoach {
       const seed = [...i.week].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 4294967291, 7);
       const pool: StoredRecipe[] = [...store.links()];
       if (unlocked) for (const slot of SLOTS) pool.push(...store.collectionFor(slot, 2000, seed));
+      // Favourites are candidates even below the unlock, like the household's own recipes.
+      const favourites: Favourites = new Map(i.members.map((m) => [m.id, this.favourites(m.id)] as const));
+      if (!unlocked) { const have = new Set(pool.map((r) => r.id)); pool.push(...store.getMany([...new Set([...favourites.values()].flatMap((f) => [...f]))]).filter((r) => !have.has(r.id))); }
       if (pool.length === 0) return [];
       const slots = skeleton(i.members, i.fromDay, unlocked);
       const cap = unlocked ? undefined : Math.max(1, Math.floor(slots.length / 3));
@@ -378,7 +396,7 @@ export class MealCoach {
       const order = unlocked ? slots : [...slots].sort(() => i.random() - 0.5);
       const meals = await planFromRecipes({
         members: i.members, slots: order, trainingDays: i.trainingDays, pool, lastIds: i.lastIds, random: i.random, lastWeek: i.lastWeek,
-        ...(cap !== undefined ? { cap } : {}), aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
+        ...(cap !== undefined ? { cap } : {}), favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
       });
       return meals;
     } catch { return []; }
@@ -575,6 +593,7 @@ export class MealCoach {
     try {
       this.removeDeletedRecipes(id, have);
       for (const r of recipes.mine(id)) wanted.set(`recipe-${r.id}`, { title: r.title, sourceUrl: r.sourceUrl, minutes: r.minutes });
+      for (const r of have) if (!r.deleted && isFavRecordId(r.id)) keep.add(r.id);
       const requests = have.flatMap((r) => { const q = !r.deleted && isLinkRecordId(r.id) ? readLinkRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
       for (const q of requests.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
     } catch { /* the plan's records go on without them */ }

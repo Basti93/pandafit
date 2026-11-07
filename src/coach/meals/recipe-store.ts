@@ -198,6 +198,13 @@ export class RecipeStore {
   }
   /** Whether a recipe is stored, classified and confirmed vegetarian by the AI: the ones that may be shown and planned. */
   plannable(id: string): boolean { return this.get(id)?.vegCheckedBy === 'ai'; }
+  /** The recipe when this person may see it: confirmed by the AI, and from the collection, their own links or the household's own recipes. */
+  canSee(id: string, person: string): StoredRecipe | null {
+    const r = this.get(id);
+    return r && r.vegCheckedBy === 'ai' && (r.source === 'collection' || r.owner === person || r.owner === OWN_OWNER) ? r : null;
+  }
+  /** Recipes by id, confirmed and in the order of the ids; an unknown or unconfirmed one is left out. */
+  getMany(ids: readonly string[]): StoredRecipe[] { return searchRecipes(this.open(), { ids: [...ids], limit: 5000 }); }
   search(q: SearchQuery): StoredRecipe[] { return searchRecipes(this.open(), q); }
 
   /** Collection recipes (tagged, plannable) for a meal: a bounded, varied sample, in an order that depends on `seed`. */

@@ -580,3 +580,57 @@ describe('GET /recipes/:id/image', () => {
     void t;
   });
 });
+
+describe('GET /recipes/search and /recipes/:id', () => {
+  const H = (account: number) => ({ 'x-pandafit-internal': TOKEN, 'x-pandafit-account': String(account) });
+  const rec = (n: number) => ({ '@type': 'Recipe', name: `Erfundener Topf ${n}`, recipeYield: '2', totalTime: 'PT15M', recipeIngredient: [`${100 + n} g Linsen`, '1 Zwiebel', '1 EL Öl'], recipeInstructions: ['Alles kochen.'] });
+  const seed = async (t: Awaited<ReturnType<typeof start>>, n: number) => {
+    const store = t.household.meals()!.recipes()!;
+    for (let i = 1; i <= n; i++) await store.add({ source: 'collection', url: `https://rezepte.example/s${i}`, recipe: rec(i) });
+    await store.add({ source: 'link', owner: 'pb', url: 'https://rezepte.example/pb', recipe: rec(99) });
+    await store.tagWaiting(taggingAi(), 20);
+    return store;
+  };
+
+  test('needs the token and a moved account; answers one page and never caches it', async () => {
+    const t = await start({ meals: true, accounts: [[1, P1], [2, P2], [3, { id: 'pc', name: 'C', ftpW: 150 }, false]] });
+    await seed(t, 25);
+    expect((await app!.inject({ method: 'GET', url: '/recipes/search' })).statusCode).toBe(401);
+    expect((await app!.inject({ method: 'GET', url: '/recipes/search', headers: H(3) })).statusCode).toBe(404);
+    const res = await app!.inject({ method: 'GET', url: '/recipes/search?limit=500', headers: H(1) });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['cache-control']).toBe('private, no-store');
+    const page = res.json() as { items: { id: string; title: string }[]; more: boolean };
+    expect(page.items).toHaveLength(20);
+    expect(page.more).toBe(true);
+    const next = (await app!.inject({ method: 'GET', url: '/recipes/search?offset=20', headers: H(1) })).json() as typeof page;
+    expect(next.items).toHaveLength(5);
+    expect(next.more).toBe(false);
+  });
+
+  test('is the logged-in person\'s view: another person\'s link recipe is not in it, and the filters work', async () => {
+    const t = await start({ meals: true });
+    await seed(t, 3);
+    const titles = async (account: number, q = '') => ((await app!.inject({ method: 'GET', url: `/recipes/search${q}`, headers: H(account) })).json() as { items: { title: string }[] }).items.map((i) => i.title);
+    expect(await titles(1)).toHaveLength(3);
+    expect(await titles(2)).toHaveLength(4);
+    expect(await titles(2, '?own=1')).toEqual(['Erfundener Topf 99']);
+    expect(await titles(1, '?q=Topf%202')).toEqual(['Erfundener Topf 2']);
+    expect(await titles(1, '?tags=mahlzeit%3Aabend,schnell')).toHaveLength(3);
+    expect(await titles(1, '?fav=1')).toEqual([]);
+  });
+
+  test('gives the recipe view to a person who may see it, and 404 otherwise', async () => {
+    const t = await start({ meals: true });
+    const store = await seed(t, 2);
+    const ids = (store.database().prepare('SELECT id, source FROM recipes').all() as { id: string; source: string }[]);
+    const coll = ids.find((r) => r.source === 'collection')!.id, theirs = ids.find((r) => r.source === 'link')!.id;
+    const ok = await app!.inject({ method: 'GET', url: `/recipes/${coll}`, headers: H(1) });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toMatchObject({ id: coll, steps: ['Alles kochen.'], sourceUrl: 'https://rezepte.example/s1', fav: false });
+    expect((await app!.inject({ method: 'GET', url: `/recipes/${theirs}`, headers: H(1) })).statusCode).toBe(404);
+    expect((await app!.inject({ method: 'GET', url: `/recipes/${theirs}`, headers: H(2) })).statusCode).toBe(200);
+    expect((await app!.inject({ method: 'GET', url: '/recipes/c-00000000000000', headers: H(1) })).statusCode).toBe(404);
+    expect((await app!.inject({ method: 'GET', url: '/recipes/nonsense', headers: H(1) })).statusCode).toBe(404);
+  });
+});

@@ -357,4 +357,23 @@ export function readOwnRecipe(id: string, body: unknown): OwnRecipe | null {
   return sourceUrl && body.title.trim() ? { id, title: body.title.trim().slice(0, 120), sourceUrl, minutes: body.minutes } : null;
 }
 
+// ---- Browsing recipes: what the app asks the coach for, and the favourites ----
+
+/** A recipe in the browse list. `tags` are readable labels, the most telling first. */
+export type RecipeSummary = { id: string; title: string; minutes: number; proteinG: number | null; keepsDays: number; own: boolean; fav: boolean; image: boolean; tags: string[] };
+/** The recipe view: ingredients are per portion (scale them with `recipeAmount`). */
+export type RecipeDetail = RecipeSummary & { ingredients: Ingredient[]; steps: string[]; sourceUrl: string };
+export type RecipePage = { items: RecipeSummary[]; more: boolean };
+export const RECIPE_PAGE = 20;
+/**
+ * A favourite is a record of its own per person and recipe: `fav-<recipe id>` in kind `mealplan`, deleted (tombstone) when it is no
+ * longer one. Two devices toggling different recipes never touch the same record, and a toggle made offline syncs like any record.
+ */
+export const RECIPE_ID = /^[cl]-[0-9a-f]{14}$/;
+export const isFavRecordId = (id: string): boolean => /^fav-[cl]-[0-9a-f]{14}$/.test(id);
+export const favRecordId = (recipeId: string): string => `fav-${recipeId}`;
+/** The recipe ids of a person's favourites, from their records. */
+export const favouriteIds = (records: readonly { id: string; deleted: boolean }[] | null): Set<string> =>
+  new Set((records ?? []).filter((r) => !r.deleted && isFavRecordId(r.id)).map((r) => r.id.slice('fav-'.length)));
+
 export const initialOf = (p: Person): string => p.avatar || (p.name.trim()[0] ?? '?').toUpperCase();
