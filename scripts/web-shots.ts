@@ -448,7 +448,7 @@ async function main() {
   await step('essen-mahlzeit-offen', async () => { await page.locator('.tk-rowbtn[aria-expanded]').first().click(); await shot('essen-tage-mahlzeit-offen'); });
   await step('essen-wunsch', async () => { await page.getByRole('button', { name: 'Änderung wünschen' }).click(); await shot('essen-aenderung-wuenschen'); await page.keyboard.press('Escape'); });
   await step('essen-einkauf', async () => { await page.getByRole('button', { name: /^Einkauf/ }).click(); await shot('essen-einkauf'); });
-  await step('essen-einkauf-haben-wir', async () => { await page.locator('.pm-amount').first().click(); await shot('essen-einkauf-haben-wir'); await page.locator('.pm-amount').first().click(); });
+  await step('essen-einkauf-haben-wir', async () => { await page.locator('.pm-have').first().click(); await shot('essen-einkauf-haben-wir'); await page.locator('.pm-have').first().click(); });
   await step('essen-einkauf-eigenes', async () => {
     await page.getByLabel('Etwas dazuschreiben').fill('Kaffee');
     await page.getByLabel('Menge (optional)').fill('2 Pakete');

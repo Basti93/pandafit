@@ -23,6 +23,7 @@ function RideChart({ ride }: { ride: RideBody }) {
   };
   return (
     <figure className="tk-ridechart" aria-label="Verlauf der Fahrt">
+      <p className="tk-chart-legend tk-small"><span className="tk-chart-key-power">Leistung</span> · <span className="tk-chart-key-hr">Puls</span></p>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Leistung und Puls über die Fahrt" preserveAspectRatio="none">
         <polyline className="tk-chart-hr" points={line((p) => p.hrBpm)} fill="none" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
         <polyline className="tk-chart-power" points={line((p) => p.powerW, true)} fill="none" strokeWidth="2" vectorEffect="non-scaling-stroke" />
@@ -36,9 +37,11 @@ function RideSheet({ ride, onClose }: { ride: BikeRide; onClose: () => void }) {
   const r = ride.body;
   return (
     <Sheet title={rideName(r)} onClose={onClose}>
-      <p className="muted">{shortDate(r.startedAtMs)} · {rideValue(r)}</p>
-      <p className="muted tk-small">{rideFacts(r)}</p>
-      {r.debrief && <p>{r.debrief}</p>}
+      <div className="tk-ridehead">
+        <p className="muted">{shortDate(r.startedAtMs)} · {rideValue(r)}</p>
+        <p className="muted tk-ridefacts">{rideFacts(r)}</p>
+        {r.debrief && <p>{r.debrief}</p>}
+      </div>
       <RideChart ride={r} />
     </Sheet>
   );
@@ -106,10 +109,15 @@ export function BikeScreen({ port }: { port: TrackingPort }) {
       ) : <p className="muted">Noch keine Fahrt geplant.</p>}
       <RowList>
         {next && next.blocks.length > 0 && <Row title="Aufbau" onClick={() => setSheet('plan')} />}
-        {last && <Row title={rideTitle(last.body)} value={rideValue(last.body)} onClick={() => setRide(last)} />}
         {bike && <Row title="Entwicklung" onClick={() => setSheet('development')} />}
         {rides.length > 0 && <Row title="Fahrten" onClick={() => setSheet('rides')} />}
       </RowList>
+      {last && (
+        <section aria-label="Letzte Fahrt">
+          <h3 className="tk-section">Letzte Fahrt</h3>
+          <RowList><Row title={rideTitle(last.body)} value={rideValue(last.body)} onClick={() => setRide(last)} /></RowList>
+        </section>
+      )}
       {sheet === 'plan' && next && <PlanSheet name={next.name} blocks={next.blocks} onClose={() => setSheet(null)} />}
       {sheet === 'development' && bike && <DevelopmentSheet bike={bike} onClose={() => setSheet(null)} />}
       {sheet === 'rides' && !ride && <RidesSheet rides={rides} onOpen={setRide} onClose={() => setSheet(null)} />}

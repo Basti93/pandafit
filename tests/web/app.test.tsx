@@ -827,11 +827,11 @@ describe('Rad on the phone', () => {
     return { kind: 'weekplan', id: monday, updatedMs: 1, deleted: false, body: { weekStart: monday, fromMessage: 'm', acceptedMs: 1, days: weekDates(monday).map((date) => ({ date, sport: 'bike', hardness: 'moderate', fixed: false })) } };
   };
 
-  it('Heute on a bike day names the session and Ansehen opens Rad', async () => {
+  it('Heute on a bike day names the session, says it starts on the Mac, and Ansehen opens Rad', async () => {
     await boot({ account: 'anna', seed: [bikeRec(), await bikeWeek()] });
     await waitFor(() => expect(screen.getByRole('region', { name: /^Heute/ }).textContent).toContain('Schwellen-Intervalle · 60 Min'));
     const card = screen.getByRole('region', { name: /^Heute/ });
-    expect(card.textContent).not.toContain('am Mac');
+    expect(card.textContent).toContain('am Mac');
     fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
     expect(await screen.findByRole('heading', { name: 'Rad' })).toBeTruthy();
   });

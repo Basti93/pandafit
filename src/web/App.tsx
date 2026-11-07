@@ -166,7 +166,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach }: { por
   // On a bike day: the planned session, and a way to look at it. The ride itself starts on the Mac.
   const bike = bikePlan && goBike ? (
     <>
-      <p className="muted">{bikePlan.name} · {bikePlan.minutes} Min</p>
+      <p className="muted">{bikePlan.name} · {bikePlan.minutes} Min · gestartet wird am Mac</p>
       <button type="button" className="secondary" onClick={goBike}>Ansehen</button>
     </>
   ) : undefined;
