@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { mealKey, SLOT_LABEL, SLOTS, type Dish, type Meal, type Slot } from '../../shared/meals';
 import { ruleValues } from '../../shared/training-policy';
 import { fitsEveryone } from './check';
+import { planGutBoost } from './recipe-health';
 import { dataBlock, letters } from './prompt';
 import type { StoredRecipe } from './recipe-import';
 import { PROTEIN_UNKNOWN } from './recipe-import';
@@ -55,7 +56,10 @@ export function shortlist(pool: readonly StoredRecipe[], n: Need, random: () => 
   const scored: { r: StoredRecipe; bucket: number }[] = [];
   for (const r of pool) {
     if (avoid.has(r.id) || !fitsCheap(r, n)) continue;
-    scored.push({ r, bucket: Math.floor(random() * 4) + (n.training && r.proteinG >= 24 ? 1 : 0) + likedBy(r, n, favs) * favouriteBoost() });
+    const liked = likedBy(r, n, favs);
+    // An unbalanced own or link recipe is planned only as a favourite of someone eating the meal.
+    if (r.ausgewogen === 'wenig' && liked === 0) continue;
+    scored.push({ r, bucket: Math.floor(random() * 4) + (n.training && r.proteinG >= 24 ? 1 : 0) + liked * favouriteBoost() + (r.ausgewogen === 'gut' ? planGutBoost() : 0) });
   }
   scored.sort((a, b) => b.bucket - a.bucket || ratingOf(b.r) - ratingOf(a.r) || countOf(b.r) - countOf(a.r) || (a.r.id < b.r.id ? -1 : 1));
   const out: StoredRecipe[] = [];

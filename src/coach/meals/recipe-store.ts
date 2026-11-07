@@ -4,9 +4,10 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ruleNumber, ruleValues } from '../../shared/training-policy';
 import { EXT, fetchPicture, imageUrlOf, inlinePicture, TYPE_OF_EXT, type ImageType, type Picture } from './recipe-image';
+import { unhealthyReason } from './recipe-health';
 import { importRecipe, norm, PROTEIN_UNKNOWN, sanitizeUrl, type Structure, type StoredRecipe } from './recipe-import';
 import { searchRecipes, type SearchQuery } from './recipe-search';
-import { allTags, classify, deriveVersion, hardTags, mergeTags, parseQualityMin, slotsFrom, tagAi, tagInputHash, tagInputOf, tagLabels, tagPromptVersion, vocabulary, FACETS, type AiTags, type TagAsk } from './recipe-tags';
+import { allTags, classify, completeTags, deriveVersion, hardTags, mergeTags, parseQualityMin, slotsFrom, tagAi, tagInputHash, tagInputOf, tagLabels, tagPromptVersion, vocabulary, FACETS, type AiTags, type TagAsk } from './recipe-tags';
 
 /**
  * The recipe collection: `<root>/recipes/recipes.db` (node:sqlite), the `inbox/` an outside fetcher fills with JSONL files,
@@ -29,7 +30,7 @@ export type AddOutcome =
   | { status: 'pending'; reason: string }
   | { status: 'failed'; reason: string };
 
-export type RecipeStats = { collection: number; links: number; pending: number; untagged: number; rejected: number; failed: number; duplicates: number; unlock: number };
+export type RecipeStats = { collection: number; links: number; pending: number; untagged: number; rejected: number; /** Collection recipes removed by the healthy-meal gate. */ unhealthy: number; failed: number; duplicates: number; unlock: number };
 export type ScanResult = { files: number; imported: number; rejected: number; failed: number; duplicates: number; pending: number; tagged: number; /** Pictures attached, including those of recipes delivered again. */ pictures: number };
 
 type Row = { json: string };
@@ -78,6 +79,7 @@ export class RecipeStore {
       CREATE TABLE IF NOT EXISTS progress (file TEXT PRIMARY KEY, done INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS forgotten (url TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS vegRejected (url TEXT PRIMARY KEY, prompt_version INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS unhealthyRejected (url TEXT PRIMARY KEY, prompt_version INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS images (recipe_id TEXT PRIMARY KEY, ext TEXT, tries INTEGER NOT NULL DEFAULT 0, next_ms INTEGER NOT NULL DEFAULT 0);
     `);
     this.db = db;
@@ -115,6 +117,14 @@ export class RecipeStore {
       if (vr.v === tagPromptVersion()) return { status: 'rejected', reason: 'ai: not vegetarian' };
       this.open().prepare('DELETE FROM vegRejected WHERE url = ?').run(url);
     }
+    // A collection page the healthy-meal gate removed is not brought back either, until the prompt version changes. Own and link recipes are never blocked.
+    if (input.source === 'collection') {
+      const ur = this.open().prepare('SELECT prompt_version AS v FROM unhealthyRejected WHERE url = ?').get(url) as { v: number } | undefined;
+      if (ur) {
+        if (ur.v === tagPromptVersion()) return { status: 'rejected', reason: 'not a healthy meal' };
+        this.open().prepare('DELETE FROM unhealthyRejected WHERE url = ?').run(url);
+      }
+    }
     const scope = scopeOf(input.source, input.owner);
     const known = this.byUrl(scope, url);
     if (known) { this.bump('duplicates'); return { status: 'duplicate', recipe: known }; }
@@ -139,7 +149,7 @@ export class RecipeStore {
     this.bump('imported');
     if (input.tagAsk) await this.tagIds([id], input.tagAsk);
     const now_ = this.any(id);
-    if (!now_ && input.tagAsk) return { status: 'rejected', reason: 'ai: not vegetarian' };
+    if (!now_ && input.tagAsk) return { status: 'rejected', reason: this.open().prepare('SELECT 1 AS x FROM unhealthyRejected WHERE url = ?').get(url) ? 'not a healthy meal' : 'ai: not vegetarian' };
     return { status: 'saved', recipe: now_ ?? stored };
   }
 
@@ -216,7 +226,7 @@ export class RecipeStore {
     return {
       collection: this.collectionCount(), links: this.count("SELECT COUNT(*) AS n FROM recipes WHERE source = 'link' AND state != 'pending'"),
       pending: this.count("SELECT COUNT(*) AS n FROM recipes WHERE state = 'pending'"), untagged: this.count("SELECT COUNT(*) AS n FROM recipes WHERE state = 'pending-tags'"),
-      rejected: this.counter('rejected'), failed: this.counter('failed'), duplicates: this.counter('duplicates'), unlock: collectionUnlock(),
+      rejected: this.counter('rejected'), unhealthy: this.counter('unhealthy'), failed: this.counter('failed'), duplicates: this.counter('duplicates'), unlock: collectionUnlock(),
     };
   }
   /** Whether the collection may be planned from. */
@@ -319,6 +329,11 @@ export class RecipeStore {
     const hard = hardTags({ minutes: r.minutes, proteinG: r.proteinG === PROTEIN_UNKNOWN ? null : r.proteinG, keepsDays: r.keepsDays, vegan: r.vegan, ingredients: r.ingredients });
     const tags = mergeTags(ai, hard);
     const next: StoredRecipe = { ...r, tags, slots: slotsFrom(tags.mahlzeit) };
+    // The balance verdict stays with the recipe. An own or link recipe that breaks the healthy gate is only marked (never removed).
+    delete next.ausgewogen; delete next.healthNote;
+    if (ai.ausgewogen) next.ausgewogen = ai.ausgewogen;
+    const why = unhealthyReason({ slots: next.slots, ausgewogen: ai.ausgewogen, nutrition: r.nutrition });
+    if (why && r.source !== 'collection') { next.ausgewogen = 'wenig'; next.healthNote = why; }
     // Only the AI's own `true` is a verdict; an old classification without one keeps serving until it is asked again.
     if (ai.vegetarisch === true) { next.vegCheckedBy = 'ai'; next.vegReason = ai.grund; }
     const rid = (o.prepare('SELECT rowid AS r FROM recipes WHERE id = ?').get(r.id) as { r: number } | undefined)?.r;
@@ -341,6 +356,26 @@ export class RecipeStore {
     this.bump('rejected');
   }
 
+  /** The healthy-meal gate removed a collection recipe: counted as unhealthy, its url remembered for this prompt version. */
+  private rejectUnhealthy(id: string): void {
+    const o = this.open();
+    const row = o.prepare('SELECT url FROM recipes WHERE id = ?').get(id) as { url: string } | undefined;
+    if (row) o.prepare('INSERT OR REPLACE INTO unhealthyRejected (url, prompt_version) VALUES (?, ?)').run(row.url, tagPromptVersion());
+    this.deleteRow(id);
+    this.bump('unhealthy');
+  }
+
+  /**
+   * Applies a classification: a collection recipe the gate fails is removed; an incomplete one (an own recipe, or one the AI only
+   * called "wenig") is asked again later; anything else is written. Returns whether the recipe is tagged now.
+   */
+  private settle(r: StoredRecipe, ai: AiTags, hash: string, tries: number): boolean {
+    if (r.source === 'collection' && unhealthyReason({ slots: slotsFrom(ai.mahlzeit), ausgewogen: ai.ausgewogen, nutrition: r.nutrition })) { this.rejectUnhealthy(r.id); return false; }
+    if (!completeTags(ai)) { this.later(r.id, tries); return false; }
+    this.finalize(r, ai, hash);
+    return true;
+  }
+
   private later(id: string, tries: number): void {
     const A = tagAi();
     const wait = Math.min(A.backoffMaxMinutes!, A.backoffMinutes! * 2 ** Math.min(tries, 10)) * 60_000;
@@ -354,9 +389,9 @@ export class RecipeStore {
     const todo: { row: (typeof rows)[number]; input: ReturnType<typeof tagInputOf>; hash: string }[] = [];
     for (const row of rows) {
       const r = row.json;
-      const input = tagInputOf({ id: r.id, title: r.title, ingredients: r.ingredients, steps: r.steps, category: r.category, keywords: r.keywords, ...(r.vegHint ? { vegHint: r.vegHint } : {}) });
+      const input = tagInputOf({ id: r.id, title: r.title, ingredients: r.ingredients, steps: r.steps, category: r.category, keywords: r.keywords, ...(r.vegHint ? { vegHint: r.vegHint } : {}), ...(r.nutrition ? { nutrition: r.nutrition } : {}) });
       const hash = tagInputHash(input);
-      if (row.ai && typeof row.ai.vegetarisch === 'boolean' && row.hash === hash && row.key === key) { this.finalize(r, row.ai, hash); done++; continue; }
+      if (row.ai && typeof row.ai.vegetarisch === 'boolean' && row.hash === hash && row.key === key) { if (this.settle(r, row.ai, hash, row.tries)) done++; continue; }
       todo.push({ row, input, hash });
     }
     const size = tagAi().batch!;
@@ -368,7 +403,7 @@ export class RecipeStore {
       for (const b of batch) {
         const ai = got.get(b.row.id);
         if (ai?.vegetarisch === false) this.rejectVeg(b.row.id);
-        else if (ai) { this.finalize(b.row.json, ai, b.hash); done++; } else this.later(b.row.id, b.row.tries);
+        else if (ai) { if (this.settle(b.row.json, ai, b.hash, b.row.tries)) done++; } else this.later(b.row.id, b.row.tries);
       }
     }
     return done;
@@ -420,8 +455,8 @@ export class RecipeStore {
       try { ai = row.ai_json ? (JSON.parse(row.ai_json) as AiTags) : null; } catch { ai = null; }
       if (ai && old.tags) {
         // The old classification stays; when the AI's input changed it is asked again in the background (tag_key emptied).
-        const hash = tagInputHash(tagInputOf({ id: next.id, title: next.title, ingredients: next.ingredients, steps: next.steps, category: next.category, keywords: next.keywords, ...(next.vegHint ? { vegHint: next.vegHint } : {}) }));
-        this.finalize(next, ai, row.tag_hash ?? hash);
+        const hash = tagInputHash(tagInputOf({ id: next.id, title: next.title, ingredients: next.ingredients, steps: next.steps, category: next.category, keywords: next.keywords, ...(next.vegHint ? { vegHint: next.vegHint } : {}), ...(next.nutrition ? { nutrition: next.nutrition } : {}) }));
+        if (!this.settle(next, ai, row.tag_hash ?? hash, 0)) continue;
         if (hash !== row.tag_hash) o.prepare("UPDATE recipes SET tag_key = '' WHERE id = ?").run(row.id);
       }
     }

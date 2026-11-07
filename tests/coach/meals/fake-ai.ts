@@ -1,7 +1,7 @@
 import type { TagAsk } from '../../../src/coach/meals/recipe-tags';
 
 type Item = { id: string; title: string; ingredients: string[]; steps: string[]; category: string[]; keywords: string[]; zutatenzeilen?: string[]; vegHint?: string };
-export type Answer = { id: string; mahlzeit: string[]; art: string | null; kueche: string | null; eiweiss: string | null; eigenschaft: string[]; vegetarisch: boolean; grund: string };
+export type Answer = { id: string; mahlzeit: string[]; art: string | null; kueche: string | null; eiweiss: string | null; eigenschaft: string[]; vegetarisch: boolean; grund: string; ausgewogen: 'gut' | 'mittel' | 'wenig' };
 
 /** The recipes of a tagging prompt, read back out of its data block. */
 export const itemsOf = (prompt: string): Item[] => {
@@ -15,7 +15,7 @@ export const taggingAi = (decide: (i: Item) => Partial<Answer> = () => ({})): Ta
     fn.calls++;
     const items = itemsOf(input.prompt);
     fn.batches.push(items.length);
-    return { rezepte: items.map((i) => ({ id: i.id, mahlzeit: ['mittag', 'abend'], art: 'curry-eintopf', kueche: null, eiweiss: 'huelsenfruechte', eigenschaft: [], vegetarisch: true, grund: 'pflanzlich', ...decide(i) })) };
+    return { rezepte: items.map((i) => ({ id: i.id, mahlzeit: ['mittag', 'abend'], art: 'curry-eintopf', kueche: null, eiweiss: 'huelsenfruechte', eigenschaft: [], vegetarisch: true, grund: 'pflanzlich', ausgewogen: 'mittel', ...decide(i) })) };
   }) as unknown as TagAsk & { calls: number; batches: number[] };
   fn.calls = 0;
   fn.batches = [];

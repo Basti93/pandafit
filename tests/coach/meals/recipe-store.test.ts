@@ -206,7 +206,7 @@ describe('deriving again', () => {
     await s.tagWaiting(taggingAi(), 1);
     s.close();
     // The source changes under us only in the sense that the code derives differently: simulate by editing the stored raw.
-    const s2 = new RecipeStore(dir, () => 5, { deriveVersion: 2 });
+    const s2 = new RecipeStore(dir, () => 5, { deriveVersion: 3 });
     const db = s2.database();
     const row = db.prepare('SELECT raw FROM recipes').get() as { raw: string };
     const raw = JSON.parse(row.raw) as { recipe: { recipeYield: string } };
@@ -214,7 +214,7 @@ describe('deriving again', () => {
     db.prepare('UPDATE recipes SET raw = ?').run(JSON.stringify(raw));
     expect(await s2.rederive(100)).toBe(1);
     const r = s2.search({})[0]!;
-    expect(r.deriveVersion).toBe(2);
+    expect(r.deriveVersion).toBe(3);
     expect(r.ingredients.find((i) => i.name === 'Linsen')!.amount).toBe(25.25);
     expect(r.tags!.art).toBe('curry-eintopf');
     expect(await s2.rederive(100)).toBe(0);
@@ -240,7 +240,7 @@ describe('searching', () => {
     const mk = (n: number, name: string, ing: string[], over: Record<string, unknown> = {}) => addTagged(s, n, { name, recipeIngredient: ing, ...over });
     await mk(1, 'Kichererbsen-Spinat-Curry', ['200 g Kichererbsen', '300 g Spinat', '1 Zwiebel'], { totalTime: 'PT25M', aggregateRating: { ratingValue: 4.5, ratingCount: 20 } });
     await mk(2, 'Spinat-Lasagne', ['200 g Spinat', '250 g Lasagneplatten', '200 g Ricotta'], { totalTime: 'PT60M', aggregateRating: { ratingValue: 4.9, ratingCount: 50 }, nutrition: { proteinContent: '30 g' } });
-    await mk(3, 'Tomatensuppe', ['500 g Paradeiser', '1 Zwiebel'], { totalTime: 'PT20M', nutrition: { proteinContent: '6 g' } });
+    await mk(3, 'Tomatensuppe', ['500 g Paradeiser', '1 Zwiebel'], { totalTime: 'PT20M', nutrition: { proteinContent: '16 g' } });
     await mk(4, 'Käse-Linsen', ['100 g Käse', '200 g Linsen'], { totalTime: 'PT30M' });
   };
   it('finds by free text in title, canonical ingredients and tag labels', async () => {

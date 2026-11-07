@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalIngredient, facetOf, hardTags, labelOf, mergeTags, readTagAnswer, saisonOf, slotsFrom, tagInputHash, vocabIds } from '../../../src/coach/meals/recipe-tags';
+import { canonicalIngredient, facetOf, hardTags, labelOf, mergeTags, readTagAnswer, saisonOf, slotsFrom, TAG_SYSTEM_PROMPT, tagInputHash, vocabIds } from '../../../src/coach/meals/recipe-tags';
 import { ftsQuery } from '../../../src/coach/meals/recipe-search';
 
 const ing = (name: string, amount = 100, unit: 'g' | 'Stk' = 'g') => ({ name, amount, unit, section: 'Vorrat' as const });
@@ -32,7 +32,7 @@ describe('rules for the hard facts', () => {
     expect(saisonOf([ing('Paprikapulver'), ing('Reis')])).toEqual(['ganzjaehrig']);
   });
   it('lets the rules win over the AI in the merge', () => {
-    const t = mergeTags({ mahlzeit: ['mittag'], art: 'pasta', kueche: null, eiweiss: 'ei', soft: ['schnell', 'vegan', 'eine-pfanne'], vegetarisch: true, grund: 'ok' }, hardTags({ minutes: 50, proteinG: 5, keepsDays: 0, vegan: false, ingredients: [] }));
+    const t = mergeTags({ mahlzeit: ['mittag'], art: 'pasta', kueche: null, eiweiss: 'ei', soft: ['schnell', 'vegan', 'eine-pfanne'], vegetarisch: true, grund: 'ok', ausgewogen: 'mittel' }, hardTags({ minutes: 50, proteinG: 5, keepsDays: 0, vegan: false, ingredients: [] }));
     expect(t.eigenschaft).toEqual(['eine-pfanne']);
     expect(t.ernaehrung).toEqual(['vegetarisch']);
   });
@@ -51,9 +51,9 @@ describe('canonical ingredient names', () => {
 });
 
 describe('reading the AI answer', () => {
-  const ok = { id: 'a', mahlzeit: ['mittag'], art: 'pasta', kueche: 'italienisch', eiweiss: 'ei', eigenschaft: ['eine-pfanne'], vegetarisch: true, grund: 'nur Pflanzliches und Ei' };
+  const ok = { id: 'a', mahlzeit: ['mittag'], art: 'pasta', kueche: 'italienisch', eiweiss: 'ei', eigenschaft: ['eine-pfanne'], vegetarisch: true, grund: 'nur Pflanzliches und Ei', ausgewogen: 'gut' };
   it('keeps a complete valid classification', () => {
-    expect(readTagAnswer({ rezepte: [ok] }, ['a']).get('a')).toEqual({ mahlzeit: ['mittag'], art: 'pasta', kueche: 'italienisch', eiweiss: 'ei', soft: ['eine-pfanne'], vegetarisch: true, grund: 'nur Pflanzliches und Ei' });
+    expect(readTagAnswer({ rezepte: [ok] }, ['a']).get('a')).toEqual({ mahlzeit: ['mittag'], art: 'pasta', kueche: 'italienisch', eiweiss: 'ei', soft: ['eine-pfanne'], vegetarisch: true, grund: 'nur Pflanzliches und Ei', ausgewogen: 'gut' });
   });
   it('drops unknown ids, ids that were not asked, and soft ids that are rule ids', () => {
     const got = readTagAnswer({ rezepte: [{ ...ok, kueche: 'mars', eigenschaft: ['eine-pfanne', 'schnell', 'x'], mahlzeit: ['mittag', 'x'] }, { ...ok, id: 'zzz' }] }, ['a']);
@@ -63,8 +63,22 @@ describe('reading the AI answer', () => {
   it('leaves out a recipe missing a required facet, and rubbish', () => {
     expect(readTagAnswer({ rezepte: [{ ...ok, art: null }] }, ['a']).size).toBe(0);
     expect(readTagAnswer({ rezepte: [{ ...ok, eiweiss: 'x' }] }, ['a']).size).toBe(0);
-    expect(readTagAnswer({ rezepte: [{ ...ok, mahlzeit: [] }] }, ['a']).size).toBe(0);
+    // No meal at all is a clear verdict (the gate removes it), not a gap.
+    expect(readTagAnswer({ rezepte: [{ ...ok, mahlzeit: [], art: null }] }, ['a']).get('a')).toMatchObject({ mahlzeit: [], art: '' });
+    // The balance verdict is required.
+    const { ausgewogen: _a, ...noBalance } = ok;
+    expect(readTagAnswer({ rezepte: [noBalance] }, ['a']).size).toBe(0);
+    expect(readTagAnswer({ rezepte: [{ ...ok, ausgewogen: 'super' }] }, ['a']).size).toBe(0);
     expect(readTagAnswer('nein', ['a']).size).toBe(0);
+  });
+  it('takes a clear "wenig" or "no main meal" even without a complete classification', () => {
+    const cake = readTagAnswer({ rezepte: [{ ...ok, mahlzeit: ['backen'], art: null, eiweiss: null, ausgewogen: 'wenig' }] }, ['a']).get('a')!;
+    expect(cake).toMatchObject({ ausgewogen: 'wenig', mahlzeit: ['backen'], art: '', eiweiss: '', vegetarisch: true });
+    expect(readTagAnswer({ rezepte: [{ ...ok, mahlzeit: ['getraenk'], art: null, ausgewogen: 'gut' }] }, ['a']).get('a')).toMatchObject({ mahlzeit: ['getraenk'] });
+  });
+  it('asks for the balance and the main meal in the prompt', () => {
+    expect(TAG_SYSTEM_PROMPT).toMatch(/ausgewogen/);
+    expect(TAG_SYSTEM_PROMPT).toMatch(/fruehstueck, mittag oder abend/);
   });
   it('needs a valid vegetarian verdict with a reason: missing or invalid leaves the recipe out', () => {
     const { vegetarisch: _v, ...noVerdict } = ok;

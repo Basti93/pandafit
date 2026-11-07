@@ -78,4 +78,10 @@ export const SOURCES: PolicySource[] = [
     'Belastungssteuerung im Sport', 'Akut-zu-chronisch-Belastungsverhältnis (ACWR)', 'Methodisch umstritten; deshalb weder angezeigt noch bewertet. Body Battery und Stressscore der Uhr sind unabhängig nicht validiert und ebenfalls nicht verwendet.'),
   s('S35', 'Klinische Definition der Ruhetachykardie (Ruhepuls über 100 pro Minute), z. B. AHA/ACC/HRS-Leitlinie 2015, Circulation 133:e506', 'https://doi.org/10.1161/CIR.0000000000000311', 'Leitlinie', 'guideline-summary',
     'Erwachsene allgemein', 'Definition des erhöhten Ruhepulses', 'Eine Definition, keine Diagnose; Ursachen sind vielfältig, die Abklärung gehört zur Ärztin oder zum Arzt.'),
+  s('S36', 'Deutsche Gesellschaft für Ernährung: Vollwertig essen und trinken nach den 10 Regeln der DGE', 'https://www.dge.de/gesunde-ernaehrung/gut-essen-und-trinken/dge-empfehlungen/10-regeln-der-dge/', 'Ernährungsempfehlung (Fachgesellschaft)', 'guideline-summary',
+    'Gesunde Erwachsene in Deutschland', 'Lebensmittelauswahl: viel Gemüse, Hülsenfrüchte und Vollkorn, wenig Zucker, Salz und Fett, besonders gesättigtes und Frittiertes', 'Allgemeine Empfehlung für die Lebensmittelauswahl, keine Grenzwerte je Mahlzeit; die Schwellen der Rezeptsammlung sind eine eigene Übersetzung davon.'),
+  s('S37', 'WHO 2015: Guideline: Sugars intake for adults and children', 'https://www.who.int/publications/i/item/9789241549028', 'Leitlinie (WHO)', 'guideline-summary',
+    'Erwachsene und Kinder', 'Freie Zucker unter 10 % der Energiezufuhr (starke Empfehlung)', 'Gilt für die ganze Ernährung, nicht je Rezept; die Grenze je Portion der Rezeptsammlung ist nur eine Orientierung.'),
+  s('S38', 'Jäger et al. 2017, J Int Soc Sports Nutr 14:20, DOI 10.1186/s12970-017-0177-8', 'https://doi.org/10.1186/s12970-017-0177-8', 'Positionsstand (ISSN)', 'abstract',
+    'Gesunde, sportlich aktive Erwachsene', 'Eiweiß je Mahlzeit etwa 0,25–0,4 g/kg, grob 20–40 g', 'Orientierung für aktive Erwachsene; die Mindestwerte der Rezeptsammlung (10 und 15 g) liegen bewusst darunter, weil sie nur Ungeeignetes aussortieren.'),
 ];

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { SECTIONS, UNITS, type Ingredient, type Section, type Slot, type Unit } from '../../shared/meals';
 import { policyRule, ruleNumber, ruleValues } from '../../shared/training-policy';
 import { fitsDiet } from './check';
+import { parseNutrition, type Ausgewogen, type Nutrition } from './recipe-health';
 import { dataBlock } from './prompt';
 import type { Recipe } from './recipes';
 import { canonicalIngredient, deriveVersion, parseQualityMin, type Tags } from './recipe-tags';
@@ -28,6 +29,10 @@ export type StoredRecipe = Recipe & {
   vegHint?: string;
   /** Who judged the recipe vegetarian. A recipe is plannable only with the AI's `true`, and its reason (at most 80 characters). */
   vegCheckedBy?: 'ai'; vegReason?: string;
+  /** The stated nutrition per portion (schema.org `nutrition`), when the source has it. */
+  nutrition?: Nutrition;
+  /** How balanced a meal is, by the AI. An own or link recipe that breaks the healthy gate is marked `wenig` with the reason in `healthNote`. */
+  ausgewogen?: Ausgewogen; healthNote?: string;
 };
 
 export type Rejected = { status: 'rejected'; reason: string };
@@ -363,14 +368,6 @@ export function estimateProtein(ingredients: Ingredient[]): number | null {
   return Math.round(total);
 }
 
-const nutritionProtein = (x: unknown): number | null => {
-  if (!isObj(x)) return null;
-  const t = typeof x.proteinContent === 'string' ? x.proteinContent : typeof x.proteinContent === 'number' ? String(x.proteinContent) : '';
-  const m = /(\d+(?:[.,]\d+)?)/.exec(t);
-  const n = m ? Number(m[1]!.replace(',', '.')) : NaN;
-  return Number.isFinite(n) && n >= 0 && n <= 120 ? Math.round(n) : null;
-};
-
 const veganFlag = (title: string, ingredients: Ingredient[]): boolean => fitsDiet({ title, ingredients }, 'vegan');
 
 export const sanitizeUrl = (u: string): string | null => {
@@ -425,7 +422,10 @@ export async function importRecipe(obj: unknown, opts: ImportOptions = {}): Prom
     const withRaw = ingredients.map((i) => raw(i, lines.find((l) => norm(l).includes(norm(i.name)))));
 
     const minutes = (isoMinutes(obj.totalTime) ?? ((isoMinutes(obj.prepTime) ?? 0) + (isoMinutes(obj.cookTime) ?? 0))) || 30;
-    const proteinG = nutritionProtein(obj.nutrition) ?? estimateProtein(ingredients);
+    // A stated protein value goes before the estimate.
+    const nutrition = parseNutrition(obj.nutrition);
+    const stated = nutrition?.proteinG !== undefined && nutrition.proteinG <= 120 ? Math.round(nutrition.proteinG) : null;
+    const proteinG = stated ?? estimateProtein(ingredients);
     const rating = parseRating(obj.aggregateRating);
     const category = words(obj.recipeCategory), keywords = [...words(obj.keywords), ...words(obj.recipeCuisine)];
     return {
@@ -433,7 +433,7 @@ export async function importRecipe(obj: unknown, opts: ImportOptions = {}): Prom
       recipe: {
         title, slots: [], tags: null, canon: [...new Set(withRaw.map((i) => canonicalIngredient(i.name)))], category, keywords,
         parseQuality: quality, deriveVersion: deriveVersion(), vegan: veganFlag(title, withRaw), minutes: Math.min(600, Math.max(1, minutes)), proteinG: proteinG ?? PROTEIN_UNKNOWN, keepsDays: keepsDaysOf(title),
-        ingredients: withRaw, steps, sourceUrl: '', ...(rating ? { rating } : {}), ...(check?.kind === 'hint' ? { vegHint: check.hint } : {}),
+        ingredients: withRaw, steps, sourceUrl: '', ...(rating ? { rating } : {}), ...(nutrition ? { nutrition } : {}), ...(check?.kind === 'hint' ? { vegHint: check.hint } : {}),
       },
     };
   } catch (e) { return { status: 'failed', reason: e instanceof Error ? e.message.slice(0, 80) : 'error' }; }
