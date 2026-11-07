@@ -8,6 +8,7 @@ import {
 import type { TrackedRecord } from '../../shared/records';
 import type { RecordStore } from '../tracking/store';
 import { fitsEveryone } from './check';
+import { RecipeStore } from './recipe-store';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
 import { constraintsFor, ruleMeals, seeded, skeleton, type Member, type Slotted } from './rules';
 import { applyChat, buildChatPrompt, CHAT_SYSTEM_PROMPT, chatAnswerJsonSchema, chatAnswerSchema, listDish, putDish, REPLY_NO_AI, REPLY_NO_PLAN, replySwapped, ruleTarget, type ChatResult } from './chat';
@@ -46,6 +47,8 @@ type Deps = {
   random?: () => number;
   /** Profiles whose records were just written, so their sync can go soon. */
   onExport?: (ids: string[]) => void;
+  /** `<root>/recipes`: the recipe collection and its inbox. Without it there is none. */
+  recipesDir?: string;
 };
 type FileData = {
   settings: Record<string, MealSettings>; plans: Record<string, MealPlan>; states: Record<string, MealState>; notices: Record<string, string | null>; lastAuto: string | null;
@@ -94,6 +97,7 @@ export function usualTrainingDays(startsMs: number[], nowMs: number): number[] {
 export class MealCoach {
   private data: FileData | null = null;
   private planning: string | null = null;
+  private store: RecipeStore | null = null;
   constructor(private deps: Deps) {}
 
   private file(): string { return path.join(this.deps.dir, 'household.json'); }
@@ -114,6 +118,22 @@ export class MealCoach {
     const f = this.file();
     fs.writeFileSync(`${f}.tmp`, JSON.stringify(d));
     fs.renameSync(`${f}.tmp`, f);
+  }
+
+  /** The recipe collection, opened on first use; null without a directory for it. */
+  recipes(): RecipeStore | null {
+    if (!this.deps.recipesDir) return null;
+    this.store ??= new RecipeStore(this.deps.recipesDir, this.deps.nowMs);
+    return this.store;
+  }
+
+  /** Takes recipes waiting in the inbox. Never while a ride is open; never throws. */
+  private async importInbox(): Promise<void> {
+    try {
+      const store = this.recipes();
+      if (!store || !this.deps.noOpenRide()) return;
+      await store.scanInbox({ noOpenRide: this.deps.noOpenRide, ...(this.deps.ask ? { ask: this.deps.ask } : {}) });
+    } catch { /* the next scan tries again */ }
   }
 
   settings(id: string): MealSettings { return cleanSettings(this.load().settings[id]); }
@@ -166,6 +186,8 @@ export class MealCoach {
    */
   async tick(opts: { plan?: boolean } = {}): Promise<string[]> {
     try {
+      // The collection grows whether or not anyone plans meals.
+      await this.importInbox();
       // No profile ever turned the plan on: nothing is read, written or sent.
       if (Object.keys(this.load().settings).length === 0) return [];
       if (this.members().length === 0) return this.exportAll();

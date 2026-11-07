@@ -2,7 +2,7 @@
 
 The meal plan should use real, vegetarian recipes from a recipe collection on the private home server.
 
-- **Collection:** it grows slowly (an external fetcher in the private heimserver repo delivers about 50 per day) and is unlocked for planning from 10,000 recipes.
+- **Collection:** it grows slowly (an external fetcher in the private heimserver repo delivers about 50 per day) and is unlocked for planning from 1,000 recipes.
 - **Own links:** each person can add their own recipes by link, and those work at once.
 - **Public repo:**
   - only generic code: an importer for schema.org Recipe data, storage, checks and UI;
@@ -61,10 +61,11 @@ The meal plan should use real, vegetarian recipes from a recipe collection on th
    - `keepsDays` (default 2 for cooked dishes, 0 for salads or eggs per word list);
    - `vegan`.
 5. **Store**, and count imported, rejected (non-veg) and failed.
+   - If the recipe carries `aggregateRating` (`ratingValue`, `ratingCount`), store both. The importer never filters by rating (the external fetcher does); the shortlist uses a higher rating only as a tie-breaker.
 
 ### Unlock
 
-- Register value `meals.collection-unlock` = 10000 (the number of stored collection recipes, not counting link imports).
+- Register value `meals.collection-unlock` = 1000 (the number of stored collection recipes, not counting link imports).
 - Below it, planning uses the AI and the built-in recipes as today; link-imported recipes of the household are already candidates.
 - From it, the meal coach chooses dishes from the collection plus the link imports:
   - filtered by slot, minutes, the person's food rules and dislikes (existing preferences), and protein;
@@ -89,7 +90,7 @@ The meal plan should use real, vegetarian recipes from a recipe collection on th
 
 ### Status
 
-- The web Profil, in the Essen area (where "Essen anpassen" is), gets a muted line "Rezeptsammlung: 1.234 von 10.000" before the unlock, and "Rezeptsammlung: 10.512 Rezepte" after it.
+- The web Profil, in the Essen area (where "Essen anpassen" is), gets a muted line "Rezeptsammlung: 734 von 1.000" before the unlock, and "Rezeptsammlung: 1.512 Rezepte" after it.
 - A small `recipes` stats body is part of the existing meal records or the household state (choose the smallest fit; no new record kind if avoidable).
 
 ## Tasks
