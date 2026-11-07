@@ -18,7 +18,7 @@ import { openIdb } from './idbStore';
 import { mobilityToShow, planDateText, planIsStale, readPlan, shouldShowInstallHint } from './logic';
 import type { OpenState } from './register';
 import { createWebPort, type WebPort } from './webPort';
-import { MealsScreen, mealWeeks } from './MealsScreen';
+import { MealsScreen, mealWeeks, TodayMeals } from './MealsScreen';
 import { TogetherCard, TogetherPage, togetherOf } from './TogetherScreen';
 import type { PushEnv, SubJson } from './push';
 import { ContactSettings, UpdatesSwitch } from './ContactSettings';
@@ -120,7 +120,7 @@ const todayTitle = (ms: number): string => new Date(ms).toLocaleDateString('de-D
 /** "14:05", or with the day when it was not today. */
 const sinceText = (ms: number, now: number): string => (localDayKey(ms) === localDayKey(now) ? timeLabel(ms) : `${shortDate(ms)} ${timeLabel(ms)}`);
 
-function Heute({ port, env, account, goTraining, goRun, goBike, goCoach }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void }) {
+function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goMeals?: () => void }) {
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
   const weekplans = usePortRecords(port, 'weekplan').records;
@@ -197,6 +197,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach }: { por
           </section>
         </>
       )}
+      {goMeals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} onOpenPlan={goMeals} />}
       {session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />}
     </div>
   );
@@ -434,6 +435,9 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   // Essen only when the Mac sent a plan for this account: the meal plan is off by default.
   const mealRecords = usePortRecords(port, 'mealplan').records;
   const hasMeals = mealWeeks(mealRecords, env.now()).length > 0;
+  // Set by "Essensplan" on Heute; any other way into Essen keeps the usual default week.
+  const [mealsToday, setMealsToday] = useState(false);
+  useEffect(() => { if (tab !== 'essen') setMealsToday(false); }, [tab]);
   // Laufen only once the run coach's status says on or suggest: nothing of it for a person who does not run.
   const runRecords = usePortRecords(port, 'run').records;
   const hasRun = runView(runRecords ?? [], env.now()).visible;
@@ -499,9 +503,9 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
-          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} />}
+          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} goMeals={hasMeals ? () => { setMealsToday(true); setTab('essen'); } : undefined} />}
           {tab === 'training' && <Training port={port} env={env} resume={resume} />}
-          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} />}
+          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} focusToday={mealsToday} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
           {tab === 'statistik' && hasStats && <StatsScreen port={port} now={env.now} />}

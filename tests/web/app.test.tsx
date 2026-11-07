@@ -501,6 +501,49 @@ describe('Essen on the phone', () => {
     expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
   });
 
+  describe('on Heute', () => {
+    const withPlan = (meals: unknown[]): TrackedRecord => ({ ...mealPlan, body: { ...(mealPlan.body as object), meals } });
+    it('is hidden without a plan, and when the plan has nothing for today', async () => {
+      await boot({ account: 'anna', seed: [] });
+      await screen.findByRole('navigation');
+      expect(screen.queryByText('Essen heute')).toBeNull();
+      cleanup();
+      await boot({ account: 'anna', seed: [withPlan([{ day: (today + 1) % 7, slot: 'abend', dish: dish('Tomatensuppe'), reuseOf: null, eaters: ['pa'], takeAlong: false }])] });
+      await screen.findByRole('button', { name: 'Essen' });
+      expect(screen.queryByText('Essen heute')).toBeNull();
+    });
+
+    it('one row per slot of today in order, tapping opens the meal, the link goes to Essen', async () => {
+      await boot({ account: 'anna', seed: [mealPlan] });
+      const list = await screen.findByRole('list', { name: 'Essen heute' });
+      const rows = within(list).getAllByRole('listitem').map((r) => r.textContent ?? '');
+      expect(rows[0]).toContain('Frühstück · Skyr mit Beeren');
+      expect(rows[1]).toContain('Mittag · Linsen-Bolognese');
+      expect(rows[0]).toContain('5 Min');
+      expect(rows.some((r) => r.includes('Tomatensuppe'))).toBe(false);
+      expect(screen.queryByText(/Heute vorkochen/)).toBeNull();
+      fireEvent.click(within(list).getByRole('button', { name: /Linsen-Bolognese/ }));
+      expect(await screen.findByRole('dialog')).toBeTruthy();
+      expect(screen.getByText('Verrühren.')).toBeTruthy();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      fireEvent.click(await within(list).findByRole('button', { name: /Essensplan/ }));
+      expect(await screen.findByRole('heading', { name: 'Heute' })).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Ansicht' })).toBeTruthy();
+    });
+
+    it('says rest and cook-ahead in words', async () => {
+      const yesterday = (today + 6) % 7;
+      await boot({ account: 'anna', seed: [withPlan([
+        { day: today, slot: 'mittag', dish: dish('Linsen-Bolognese'), reuseOf: `${yesterday}-abend`, eaters: ['pa'], takeAlong: false },
+        { day: today, slot: 'abend', dish: dish('Chili'), reuseOf: null, eaters: ['pa'], takeAlong: false },
+        { day: (today + 1) % 7, slot: 'mittag', dish: dish('Chili'), reuseOf: `${today}-abend`, eaters: ['pa'], takeAlong: false },
+      ])] });
+      const list = await screen.findByRole('list', { name: 'Essen heute' });
+      expect(within(list).getByRole('button', { name: /Linsen-Bolognese/ }).textContent).toContain('Rest von gestern');
+      expect(await screen.findByText('Heute vorkochen: Chili')).toBeTruthy();
+    });
+  });
+
   it('today first with its meals, and a tick or a person off goes into the state record', async () => {
     const a = await boot({ account: 'anna', seed: [mealPlan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));

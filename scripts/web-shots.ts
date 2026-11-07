@@ -466,6 +466,7 @@ async function main() {
   await page.waitForTimeout(1500);
 
   await shot('heute');
+  await step('heute-essen', async () => { await page.getByRole('region', { name: 'Essen heute' }).waitFor({ timeout: 3000 }); await shot('heute-essen'); });
   await step('fahrt', async () => {
     liveOn = true;
     for (const ws of liveSockets) pushLive(ws);
