@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { estimateProtein, importRecipe, isoMinutes, meatWord, parseIngredientLine, parseInstructions, parseYield, sectionOf } from '../../../src/coach/meals/recipe-import';
+import { estimateProtein, importRecipe, isoMinutes, meatWord, notVegetarian, parseIngredientLine, parseInstructions, parseYield, sectionOf } from '../../../src/coach/meals/recipe-import';
 
 const lineOf = (s: string) => { const p = parseIngredientLine(s); return p.ok ? p.ingredients.map((i) => `${i.amount} ${i.unit} ${i.name}`) : null; };
 
@@ -40,11 +40,15 @@ describe('schema.org instructions and durations', () => {
 describe('the vegetarian check', () => {
   it.each(['Hähnchenbrustfilet', 'Speckwürfel', 'Fischsauce', 'Hackfleisch', 'Rinderhack', 'Lachsfilet', 'Thunfisch aus der Dose', 'Garnelen', 'Sardellen', 'Gelatine', 'Blattgelatine', 'Brühe vom Rind', 'Hühnerbrühe', 'Schinkenwürfel', 'Bratwurst', 'Würstchen', 'Putenbrust', 'Entenbrust', 'Kalbsleber', 'Leberkäse', 'Worcestersauce', 'Austernsauce', 'Schweineschmalz', '200 g Bacon', 'chicken breast', 'Lammkeule', 'Zitronenhähnchen', 'Gänsebrust'])(
     'rejects %s', (t) => { expect(meatWord(t)).not.toBeNull(); });
-  it.each(['vegetarischer Speck', 'Sojahack', 'Soja-Hack', 'veganer Schinken', 'veggie Wurst', 'Gemüsebrühe', 'Hühnereier', 'Fleischtomaten', 'Zitronenrinde', 'Orangenschale', 'gehackte Tomaten', 'Austernpilze', 'Frischkäse', 'Champignons', 'Haselnüsse', 'Spinat, Hafer', 'Räuchertofu', 'Kichererbsen', 'Pflanzliches Hack', 'Pasta ohne Fleisch', 'Wildkräuter', 'Studentenfutter', 'Mehl, Eier', 'Fleischersatz', 'Blumenkohlsteak'])(
+  it.each(['vegetarischer Speck', 'Sojahack', 'Soja-Hack', 'veganer Schinken', 'veggie Wurst', 'Gemüsebrühe', 'Hühnereier', 'Fleischtomaten', 'Zitronenrinde', 'Orangenschale', 'gehackte Tomaten', 'Austernpilze', 'Frischkäse', 'Champignons', 'Haselnüsse', 'Spinat, Hafer', 'Räuchertofu', 'Kichererbsen', 'Pflanzliches Hack', 'Pasta ohne Fleisch', 'Wildkräuter', 'Studentenfutter', 'Mehl, Eier', 'Fleischersatz', 'Blumenkohlsteak', 'Zwiebeln fein hacken', 'Mango-Fruchtfleisch', 'veganes Hack', 'vegane Fischsauce', 'Bärlauch-Flammkuchen', 'Fleischtomate', 'pork_free, diet_vegetarian'])(
     'lets %s pass', (t) => { expect(meatWord(t)).toBeNull(); });
   it('does not let a plant word in another part of the line clear meat', () => {
     expect(meatWord('Erbsen, Schinkenwürfel')).not.toBeNull();
     expect(meatWord('Linsen mit Speck')).not.toBeNull();
+  });
+  it('still rejects a meat keyword', () => { expect(meatWord('main_ingredient_pork')).not.toBeNull(); });
+  it('ignores the steps: their verbs are no ingredients', () => {
+    expect(notVegetarian({ title: 'Linsen-Dal', ingredients: ['1 Zwiebel', '200 g Linsen'], steps: ['Die Zwiebel fein hacken.'], extra: [] })).toBeNull();
   });
 });
 
@@ -130,10 +134,10 @@ describe('the whole import', () => {
     const bad = await importRecipe(base({ aggregateRating: { ratingValue: 'viel' } }));
     expect(bad.status === 'ok' && bad.recipe.rating).toBeUndefined();
   });
-  it('rejects meat in the title, an ingredient, a step or a keyword', async () => {
+  it('rejects meat in the title, an ingredient or a keyword, not because of a step', async () => {
     expect((await importRecipe(base({ recipeIngredient: ['200 g Speckwürfel', '1 Zwiebel'] }))).status).toBe('rejected');
     expect((await importRecipe(base({ name: 'Hähnchen-Topf' }))).status).toBe('rejected');
-    expect((await importRecipe(base({ recipeInstructions: ['Fisch anbraten.'] }))).status).toBe('rejected');
+    expect((await importRecipe(base({ recipeInstructions: ['Die Zwiebel fein hacken.'] }))).status).toBe('ok');
     expect((await importRecipe(base({ keywords: 'Fleisch, schnell' }))).status).toBe('rejected');
   });
   it('fails what is incomplete', async () => {
