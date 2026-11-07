@@ -275,7 +275,7 @@ test('queued messages outside QUEUEABLE are ignored', async () => {
   const c = await t.as(1);
   t.send(c, { type: 'queued', atMs: NOON, message: { type: 'subscribe', profileId: 'pa' } });
   t.send(c, { type: 'queued', atMs: NOON, message: { type: 'hevy-connect', profileId: 'pa', key: HEVY_KEY } });
-  t.send(c, { type: 'queued', atMs: NOON, message: { type: 'garmin-health', profileId: 'pa', rangeDays: 7 } });
+  t.send(c, { type: 'queued', atMs: NOON, message: { type: 'ride-detail', profileId: 'pa', rideId: 'ride-1' } });
   t.send(c, { type: 'queued', atMs: NOON, message: { type: 'queued', atMs: NOON, message: { type: 'note', profileId: 'pa', text: 'doppelt verpackt' } } });
   t.send(c, { type: 'queued', atMs: NOON, message: { type: 'records-list', requestId: 'r', profileId: 'pa', kind: 'workout' } });
   t.send(c, { type: 'queued', atMs: 'gestern', message: { type: 'note', profileId: 'pa', text: 'ohne Zeit' } });

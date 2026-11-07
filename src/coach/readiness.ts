@@ -1,15 +1,16 @@
 import type { GarminActivity, GarminBody, GarminDay, GarminReadiness } from '../shared/garmin';
+import { ruleNumber, ruleValues } from '../shared/training-policy';
 import type { RideSummary } from './metrics';
 
 const DAY_MS = 86_400_000;
-// Our own choices, not medical thresholds, see docs/after-ride.md.
-const RAISED_HR_BPM = 5;
-const MIN_HR_DAYS = 14;
-const BASELINE_DAYS = 28;
-const LOAD_FACTOR = 1.5;
-const LOAD_WINDOW_DAYS = 3;
-const MIN_LOAD_FOR_ALARM = 100;
-const SHORT_SLEEP_S = 5 * 3600;
+// The thresholds live in the policy register (health.*), with their sources.
+const RAISED_HR_BPM = ruleNumber('health.rhr-raised');
+const MIN_HR_DAYS = ruleValues('health.rhr-raised').minDays!;
+const BASELINE_DAYS = ruleValues('health.rhr-raised').baselineDays!;
+const LOAD_FACTOR = ruleNumber('health.load-spike');
+const LOAD_WINDOW_DAYS = ruleValues('health.load-spike').windowDays!;
+const MIN_LOAD_FOR_ALARM = ruleValues('health.load-spike').minLoad!;
+const SHORT_SLEEP_S = ruleNumber('health.sleep') * 3600;
 const EXTERNAL_WINDOW_DAYS = 42;
 const MATCH_START_MS = 10 * 60_000;
 const MATCH_DURATION = 0.2;

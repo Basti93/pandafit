@@ -9,6 +9,7 @@ import { readGoal, readRule } from '../shared/personal';
 import { readFrame } from '../shared/frame';
 import { readContact } from '../shared/contact';
 import { readBike, readRideBody } from '../shared/bike';
+import { readHealth } from '../shared/health';
 import { readTask } from '../shared/tasks';
 import { readStudio } from '../shared/studio';
 import { readChat } from '../shared/chat';
@@ -51,6 +52,7 @@ export function validBody(kind: RecordKind, body: unknown): boolean {
     case 'contact': return readContact(body) !== null;
     case 'bike': return readBike(body) !== null;
     case 'ride': return readRideBody(body) !== null;
+    case 'health': return readHealth(body) !== null;
   }
 }
 

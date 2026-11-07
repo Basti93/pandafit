@@ -8,7 +8,6 @@ import { useRide } from './useRide';
 import { FilmView } from './views/FilmView';
 import { ProfileView } from './views/ProfileView';
 import { RecoveryDialog } from './views/RecoveryDialog';
-import { HealthView, type HealthRange } from './views/HealthView';
 import { GarminProfileReview } from './views/GarminProfileReview';
 import { ProfileSettingsView } from './views/ProfileSettingsView';
 import { RideView } from './views/RideView';
@@ -16,7 +15,7 @@ import { StatusBar } from './views/StatusBar';
 import { CoachView } from './views/CoachView';
 import { coachScreen, DebriefView } from './views/DebriefCard';
 import { FeedbackView } from './views/FeedbackView';
-import { activeItem, DEFAULT_HEALTH_DAYS, HOME, menuItems, open, showMenu, type MenuItem, type Views } from './nav';
+import { activeItem, HOME, menuItems, open, showMenu, type MenuItem, type Views } from './nav';
 import { MenuBar } from './views/MenuBar';
 import { ProfileExtras } from './views/ProfileExtras';
 import { MoreInWeb } from './views/WebLink';
@@ -81,9 +80,6 @@ const Page = ({ ride }: { ride: ReturnType<typeof useRide> }) => {
   if (!profile) return <>{notice}<ProfileView profiles={state?.profiles ?? []} onPick={setProfile} onAdd={(p) => send({ type: 'save-profile', profile: p })} /></>;
 
   const garminConnected = coach.garmin?.state === 'connected';
-  const requestHealth = (range: HealthRange): void => {
-    if (garminConnected) coach.send({ type: 'garmin-health', profileId: profile.id, rangeDays: range });
-  };
   const go = (item: MenuItem): void => setV(open(item));
   const menu = showMenu({ profile: true, riding: false, film: false, waiting: false }) && (
     <MenuBar items={menuItems()} active={activeItem(v)} name={profile.name} avatar={profile.avatar} onGo={go} onSwitch={() => setProfile(null)} />
@@ -92,10 +88,8 @@ const Page = ({ ride }: { ride: ReturnType<typeof useRide> }) => {
 
   if (v.profile) {
     return page(<ProfileSettingsView profile={profile} ftpW={coach.state?.ftpW ?? profile.ftpW} coachConnected={coach.connected && coach.state !== null} coachHome={coach.coachHome} sendRide={send} sendCoach={coach.send} onBack={() => setV(HOME)} onDeleted={() => setProfile(null)}
-      extra={<ProfileExtras profileId={profile.id} coachConnected={coach.connected} send={coach.send} garmin={coach.garmin ?? { state: 'idle' }} garminSync={coach.garminSync} upload={coach.state?.garminUpload} hevy={coach.hevy} account={coach.account} coachHome={coach.coachHome} settings={languageToggle}
-        onHealth={garminConnected ? () => { setV({ ...HOME, health: DEFAULT_HEALTH_DAYS }); requestHealth(DEFAULT_HEALTH_DAYS); } : undefined} />} />);
+      extra={<ProfileExtras profileId={profile.id} coachConnected={coach.connected} send={coach.send} garmin={coach.garmin ?? { state: 'idle' }} garminSync={coach.garminSync} upload={coach.state?.garminUpload} hevy={coach.hevy} account={coach.account} coachHome={coach.coachHome} settings={languageToggle} />} />);
   }
-  if (v.health !== undefined) return page(<HealthView data={coach.garminHealth} range={v.health} onRange={(range) => { patch({ health: range }); requestHealth(range); }} onBack={() => setV({ ...HOME, profile: true })} strength={coach.strengthHealth} rides={coach.state?.summaries} garmin readiness={coach.garminReadiness} sync={coach.garminSync} />);
   if (v.review && coach.garminSuggestion) return page(<GarminProfileReview profile={profile} ftpW={coach.state?.ftpW ?? profile.ftpW} suggestion={coach.garminSuggestion} sendRide={send} sendCoach={coach.send} onBack={() => patch({ review: false })} />);
   const webOrigin = coach.account.webOrigin ?? null;
   const more = <MoreInWeb origin={webOrigin} />;

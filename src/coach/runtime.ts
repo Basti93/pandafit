@@ -10,7 +10,6 @@ import { readRide } from '../service/recorder';
 import { cleanSamples } from './metrics';
 import { GarminLink } from './garmin';
 import { GarminDb } from './garmin-db';
-import { healthData } from './garmin-health';
 import { readinessFrom, restingHrRaised, type GarminCoachData } from './readiness';
 import { GarminSync } from './garmin-sync';
 import { HevyLinks } from './hevy';
@@ -42,6 +41,10 @@ import { CoachTasks, type CoachId, type TaskFrom } from './coach-tasks';
 import { statsContent } from './stats/stats-content';
 import { exportStats } from './tracking/stats-export';
 import { exportBike, radForChat } from './tracking/bike-export';
+import { daysOf, weeksOf } from './health/aggregate';
+import { findingsOf } from './health/findings';
+import { CoachTexts, HealthCoachText } from './health/coach-text';
+import { exportHealth } from './health/health-export';
 import { mirrorExercises } from './tracking/mirror-exercises';
 import { ChatCoach } from './chat/chat-coach';
 import { planHint, type TodayContext } from './chat/plan-hint';
@@ -53,6 +56,7 @@ import { addDays, mondayOf, planFor, planOfWeek } from '../shared/week-plan';
 import { runView } from '../tracking/ui/run-view';
 import { newestNotes, type ChangeNote } from '../shared/change-notes';
 import { readStats, STATS_ID, type NextStep, type PublishedAdvice, type StatsBody } from '../shared/stats';
+import type { HealthBody } from '../shared/health';
 import { todayAdvice } from '../shared/today';
 import type { RecordLinks } from './tracking/link';
 import { AccountSync } from './tracking/mac-sync';
@@ -138,7 +142,9 @@ const GARMIN_CACHE_MS = 5 * 60_000;
 const GARMIN_DAYS = 60;
 /** A mobility session done without its own length counts this many minutes. */
 const STATS_EVERY_MS = 5 * 60_000;
-const READ_ONLY = new Set<string>(['subscribe', 'records-list', 'ride-detail', 'garmin-health', 'gym-preview']);
+/** The health record reads 52 weeks of Garmin days. */
+const HEALTH_DAYS_BACK = 370;
+const READ_ONLY = new Set<string>(['subscribe', 'records-list', 'ride-detail', 'gym-preview']);
 
 /** One coach for the profiles of one data root: the Mac's own, or one account's on the server. */
 export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
@@ -357,6 +363,28 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
   const weekReviews = new Map<string, object[]>();
   /** When each profile's stats were last made: at most every five minutes, or at once on a new date. */
   const statsMade = new Map<string, { atMs: number; date: string }>();
+  /** The health record's content per profile, made at most every five minutes (or on a new date); the cached copy is returned in between. */
+  const healthMade = new Map<string, { atMs: number; date: string; body: Omit<HealthBody, 'atMs' | 'coachText'> | null }>();
+  const healthContent = (id: string): Omit<HealthBody, 'atMs' | 'coachText'> | null => {
+    const now = nowMs();
+    const last = healthMade.get(id);
+    if (last && now - last.atMs < STATS_EVERY_MS && now >= last.atMs && last.date === dateKey(now)) return last.body;
+    let body: Omit<HealthBody, 'atMs' | 'coachText'> | null = null;
+    try {
+      const data = garminData(id);
+      const days = data ? new GarminDb(path.join(garminDir, 'data', id, 'garmin.db')).days(new Date(now - HEALTH_DAYS_BACK * 86_400_000).toISOString().slice(0, 10)) : [];
+      if (data && days.length) {
+        const weeks = weeksOf(days, gym.history(id), now);
+        body = { type: 'health', today: readinessFrom(data, coach.state(id).summaries, now), findings: findingsOf(days, weeks, { birthDate: data.body?.birthDate ?? null }, now), weeks, days: daysOf(days, now) };
+      }
+    } catch { body = null; }
+    healthMade.set(id, { atMs: now, date: dateKey(now), body });
+    return body;
+  };
+  const healthTexts = new CoachTexts(path.join(coachDir, 'health', 'texts.json'));
+  const healthText = new HealthCoachText({ texts: healthTexts, nowMs, ask });
+  const exportHealthNow = (profileIds: string[]): string[] =>
+    exportHealth({ store: records, profileIds, coachHere, noOpenRide, nowMs: nowMs(), content: healthContent, coachText: (id) => healthTexts.get(id) });
   const statsDue = (id: string): Omit<StatsBody, 'atMs'> | null => {
     const now = nowMs();
     const last = statsMade.get(id);
@@ -456,17 +484,6 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       return data?.body ? suggestProfile(data.body, data.activities, nowMs()) : null;
     } catch { return null; }
   };
-  const healthOf = (profileId: string, rangeDays: number | null) => {
-    if (!/^[A-Za-z0-9-]+$/.test(profileId)) throw new Error('Ungültiges Profil');
-    const now = nowMs();
-    const db = new GarminDb(path.join(garminDir, 'data', profileId, 'garmin.db'));
-    coach.scanRides(coached());
-    const state = coach.state(profileId);
-    const rated = state.summaries.flatMap((r) => { const rating = state.feedback[r.rideId]; return rating ? [{ startedAtMs: r.startedAtMs, rating }] : []; });
-    const from = rangeDays === null ? '0000-01-01' : new Date(now - rangeDays * 86_400_000).toISOString().slice(0, 10);
-    return healthData({ days: db.days(from), activities: db.activities(0), progress: db.progress(new Date(now).toISOString().slice(0, 10)), rated }, rangeDays, now);
-  };
-
   const view = (profileId: string): CoachStateMessage | null => {
     if (!known(profileId) || !coachHere(profileId)) return null;
     try {
@@ -573,7 +590,6 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       if (m.type === 'garmin-mfa') { garmin.mfa(m.profileId, m.code); return; }
       // The profile's sync and upload stop first and keep nothing, so no token of the old login comes back.
       if (m.type === 'garmin-disconnect') { garminSync.stop(m.profileId); uploader.stop(m.profileId); workouts.stop(m.profileId); garmin.disconnect(m.profileId); try { coach.garminDisconnected(m.profileId); } catch { /* unknown profile */ } publish(); return; }
-      if (m.type === 'garmin-health') { send({ type: 'garmin-health', data: healthOf(m.profileId, m.rangeDays) }); return; }
       if (m.type.startsWith('gym-')) { handleGym(m, send); return; }
       if (m.type.startsWith('meals-')) { handleMeals(m, atMs); return; }
       // Local writes only, also with a ride open: no AI, no Hevy, no Garmin.
@@ -696,6 +712,11 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       if (weeklyMailer) for (const p of list) { try { void weeklyMailer.tick(p.id, contactOfProfile(records, p.id), weeklyMailOf(p.id)).catch(() => {}); } catch { /* next scan */ } }
       // The stats record for every profile coached here, linked or not: written only when it changes, never with a ride open. Never throws.
       if (free) mealsChanged(exportStats({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: statsDue }));
+      // The health record and the weekly note on it: only on change and once per week, never with a ride open. Never throws.
+      if (free) {
+        mealsChanged(exportHealthNow(list.map((p) => p.id)));
+        for (const p of list) { try { const body = healthContent(p.id); if (body) void healthText.tick(p.id, body).then((wrote) => { if (wrote) mealsChanged(exportHealthNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
+      }
       // The bike plan and the counted rides for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportBike({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, state: (id) => { try { return coach.state(id); } catch { return null; } }, samples: (rideId) => cleanSamples(readRide(dir, rideId).samples).samples }));
       // Separate safeguard: the account sync must never disturb a ride or the coach, and is not awaited here.

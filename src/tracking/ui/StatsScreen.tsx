@@ -11,6 +11,8 @@ import { MuscleIcon } from './MuscleIcon';
 import { progressRows, type ProgressRow } from '../progress';
 import { runView } from './run-view';
 import { PageHead, Row, RowList, Sheet } from './kit';
+import { HealthSheet } from './HealthSheet';
+import { healthOf } from './health-view';
 
 const SPORT_LABEL: Record<Sport, string> = { bike: 'Rad', strength: 'Kraft', run: 'Laufen', mobility: 'Mobility', other: 'Andere' };
 const shortDate = (iso: string) => `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
@@ -120,6 +122,8 @@ function Progress({ rows }: { rows: ProgressRow[] }) {
 export function StatsScreen({ port, now }: { port: TrackingPort; now: () => number }) {
   const [details, setDetails] = useState(false);
   const [musclesOpen, setMusclesOpen] = useState(false);
+  const [healthOpen, setHealthOpen] = useState(false);
+  const health = healthOf(usePortRecords(port, 'health').records);
   const statsQ = usePortRecords(port, 'stats');
   const workoutsQ = usePortRecords(port, 'workout');
   const statsRecords = statsQ.records;
@@ -160,12 +164,14 @@ export function StatsScreen({ port, now }: { port: TrackingPort; now: () => numb
     <div className="tk-screen">
       <PageHead title="Statistik" subtitle={v.asOfMs !== null ? `Stand: ${dateLabel(v.asOfMs)}` : 'Minuten und harte Tage erscheinen nach dem nächsten Lauf des Coaches.'} />
       <ThisWeek sentence={sentence} verdicts={v.verdicts} />
-      {(muscles || hasDetails) && (
+      {(muscles || hasDetails || health) && (
         <RowList>
+          {health && <Row title="Gesundheit" onClick={() => setHealthOpen(true)} />}
           {muscles && <Row title="Muskeln" onClick={() => setMusclesOpen(true)} />}
           {hasDetails && <Row title="Details" onClick={() => setDetails(true)} />}
         </RowList>
       )}
+      {healthOpen && health && <HealthSheet health={health} onClose={() => setHealthOpen(false)} />}
       {musclesOpen && <MusclesSheet v={v} onClose={() => setMusclesOpen(false)} />}
       {details && (
         <Sheet title="Details" onClose={() => setDetails(false)}>

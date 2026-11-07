@@ -7,7 +7,7 @@ export { RULES } from './rules';
 export { SCENARIOS } from './scenarios';
 
 /** Bumped whenever a rule, value or status changes. Plans can name the version they were made with. */
-export const POLICY_VERSION = '2026-11-07.1';
+export const POLICY_VERSION = '2026-11-07.2';
 
 const BY_ID = new Map(RULES.map((r) => [r.id, r]));
 
@@ -44,5 +44,11 @@ export function ruleNumbers(id: string): number[] {
 export function ruleRamp(id: string): { pct: number; reps: number }[] {
   const v = policyRule(id).ramp;
   if (!v) throw new Error(`policy rule ${id} has no ramp`);
+  return v;
+}
+
+export function ruleNamedRange(id: string, name: string): { min: number; max: number } {
+  const v = policyRule(id).ranges?.[name];
+  if (!v) throw new Error(`policy rule ${id} has no range ${name}`);
   return v;
 }

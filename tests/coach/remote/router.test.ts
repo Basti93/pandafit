@@ -323,16 +323,14 @@ test('once everyone has moved, the together page is the server\'s', () => {
   expect(m.router.view('pa')!.together).toEqual(SERVER_TOGETHER);
 });
 
-const EMPTY_HEALTH = { points: [], years: [], progress: { activities: 0, activitiesComplete: false, daysDone: 0, daysTotal: 0, filesDone: 0, filesTotal: 0 }, pulseBeforeRides: null };
-
-test('garmin-health and ride-detail offline get an empty answer at once', () => {
+test('gym-preview and ride-detail offline get an empty answer at once', () => {
   const m = mac({ moved: ['pa'] });
   m.handle({ type: 'subscribe', profileId: 'pa' });
   m.ws.last().end(1013);
   m.replies.length = 0;
-  m.handle({ type: 'garmin-health', profileId: 'pa', rangeDays: 7 });
+  m.handle({ type: 'gym-preview', profileId: 'pa' });
   m.handle({ type: 'ride-detail', profileId: 'pa', rideId: 'ride-1000' });
-  expect(m.replies).toEqual([{ type: 'garmin-health', data: EMPTY_HEALTH }, { type: 'ride-detail', detail: { rideId: 'ride-1000', points: [] } }]);
+  expect(m.replies).toEqual([{ type: 'gym-preview', preview: null }, { type: 'ride-detail', detail: { rideId: 'ride-1000', points: [] } }]);
 });
 
 test('a request that timed out gets its empty answer, and its late answer never reaches the next request', () => {
@@ -353,10 +351,8 @@ test('a request that timed out gets its empty answer, and its late answer never 
   expect(b).toEqual([{ type: 'ride-detail', detail: { rideId: 'ride-b', points: [] } }]);
   // Without a key: the late answer to a timed-out preview is dropped, the next one goes to the next request.
   const p1 = ask({ type: 'gym-preview', profileId: 'pa' });
-  const h1 = ask({ type: 'garmin-health', profileId: 'pa', rangeDays: 7 });
-  timers.pop()!(); timers.pop()!();
+  timers.pop()!();
   expect(p1).toEqual([{ type: 'gym-preview', preview: null }]);
-  expect(h1).toEqual([{ type: 'garmin-health', data: EMPTY_HEALTH }]);
   const p2 = ask({ type: 'gym-preview', profileId: 'pa' });
   const late = { type: 'gym-preview', preview: { workout: { name: 'spät' }, edited: false } };
   m.ws.last().answer(late);

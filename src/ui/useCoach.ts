@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { settleServerProfile, type PendingEdit } from './useServerProfile';
 import type { CoachState } from '../coach/state';
 import type { Together } from '../coach/together';
-import type { GarminHealth, GarminReadiness } from '../shared/garmin';
+import type { GarminReadiness } from '../shared/garmin';
 import type { GarminSuggestion } from '../shared/garmin-profile';
 import type { StrengthHealth } from '../coach/strength';
 import { COACH_PORT, type CoachClientMessage, type AccountStatus, type GarminStatus, type GarminSyncInfo, type HevyStatus, type RideDetail, type CoachHome } from '../shared/coach-protocol';
@@ -26,7 +26,6 @@ export const useCoach = (profileId: string | null) => {
   const [garminSync, setGarminSync] = useState<GarminSyncInfo | null>(null);
   const [garminReadiness, setGarminReadiness] = useState<GarminReadiness | null>(null);
   const [garminSuggestion, setGarminSuggestion] = useState<GarminSuggestion | null>(null);
-  const [garminHealth, setGarminHealth] = useState<GarminHealth | null>(null);
   const [strengthHealth, setStrengthHealth] = useState<StrengthHealth | null>(null);
   const [connected, setConnected] = useState(false);
   const socket = useRef<WebSocket | null>(null);
@@ -37,7 +36,6 @@ export const useCoach = (profileId: string | null) => {
     setCoachHome(LOCAL_HOME);
     setServerProfile(null);
     edit.current = null;
-    setGarminHealth(null);
     setHevy({ state: 'idle' });
     setStrengthHealth(null);
     if (!profileId) return undefined;
@@ -53,7 +51,6 @@ export const useCoach = (profileId: string | null) => {
       ws.onmessage = (e) => {
         const m = JSON.parse(String(e.data));
         if (m.type === 'ride-detail') setDetail(m.detail);
-        if (m.type === 'garmin-health') setGarminHealth(m.data);
         if (m.type === 'coach-state') { setState(m.state); setThinking(m.thinking); setDebriefing(m.debriefing ?? false); setHevy(m.hevy ?? { state: 'idle' }); setTogether(m.together ?? null); setGarmin(m.garmin ?? { state: 'idle' }); setGarminSync(m.garminSync ?? null); setGarminReadiness(m.garminReadiness ?? null); setGarminSuggestion(m.garminSuggestion ?? null); setStrengthHealth(m.strengthHealth ?? null); setAccount(m.account ?? IDLE_ACCOUNT); setCoachHome(m.coachHome ?? LOCAL_HOME); if (m.coachHome?.where !== 'server' || !m.profile) { edit.current = null; setServerProfile(null); } else { const settled = settleServerProfile(edit.current, m.profile, Date.now()); edit.current = settled.pending; if (settled.accept) setServerProfile(m.profile); } }
       };
       ws.onclose = () => {
@@ -69,5 +66,5 @@ export const useCoach = (profileId: string | null) => {
     if (m.type === 'profile-update') edit.current = { profile: m.profile, atMs: Date.now() };
     if (socket.current?.readyState === WebSocket.OPEN) socket.current.send(JSON.stringify(m));
   };
-  return { coachHome, serverProfile, account, strengthHealth, debriefing, hevy, detail, garmin, garminHealth, garminReadiness, garminSuggestion, garminSync, state, together, thinking, connected, send };
+  return { coachHome, serverProfile, account, strengthHealth, debriefing, hevy, detail, garmin, garminReadiness, garminSuggestion, garminSync, state, together, thinking, connected, send };
 };
