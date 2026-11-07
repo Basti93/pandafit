@@ -23,6 +23,7 @@ const limits = () => ruleValues('meals.import-limits');
 export type AddOutcome =
   | { status: 'saved'; recipe: StoredRecipe }
   | { status: 'duplicate'; recipe: StoredRecipe }
+  | { status: 'forgotten' }
   | { status: 'rejected'; reason: string }
   | { status: 'pending'; reason: string }
   | { status: 'failed'; reason: string };
@@ -35,6 +36,8 @@ type Ask = Structure & TagAsk;
 
 const fingerprint = (title: string, ingredients: { name: string }[]): string =>
   crypto.createHash('sha1').update(`${norm(title)}|${[...new Set(ingredients.map((i) => norm(i.name)))].sort().join(',')}`).digest('hex').slice(0, 20);
+/** The owner of own recipes delivered through the inbox: they belong to the household, so every person sees and may delete them. */
+export const OWN_OWNER = '~own';
 const scopeOf = (source: 'collection' | 'link', owner: string | undefined): string => (source === 'collection' ? 'c' : `l:${owner ?? ''}`);
 const idOf = (scope: string, url: string): string => `${scope[0]}-${crypto.createHash('sha1').update(`${scope}|${url}`).digest('hex').slice(0, 14)}`;
 const dayKey = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
@@ -72,6 +75,7 @@ export class RecipeStore {
       CREATE VIRTUAL TABLE IF NOT EXISTS recipes_fts USING fts5(title, ingredients, tags, tokenize = 'unicode61 remove_diacritics 2');
       CREATE TABLE IF NOT EXISTS counters (key TEXT PRIMARY KEY, n INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS progress (file TEXT PRIMARY KEY, done INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS forgotten (url TEXT PRIMARY KEY);
     `);
     this.db = db;
     return db;
@@ -96,6 +100,12 @@ export class RecipeStore {
   async add(input: { source: 'collection' | 'link'; owner?: string; url: string; recipe: unknown; ask?: Structure; tagAsk?: TagAsk }): Promise<AddOutcome> {
     const url = sanitizeUrl(input.url);
     if (!url) { this.bump('failed'); return { status: 'failed', reason: 'bad url' }; }
+    if (input.source === 'link' && input.owner === OWN_OWNER) {
+      // An own recipe from the inbox: one the household deleted is not brought back, and one already in the collection becomes own (keeping its tags).
+      if (this.open().prepare('SELECT 1 AS x FROM forgotten WHERE url = ?').get(url)) { this.bump('duplicates'); return { status: 'forgotten' }; }
+      const upgraded = this.upgradeToOwn(url);
+      if (upgraded) { this.bump('duplicates'); return { status: 'duplicate', recipe: upgraded }; }
+    }
     const scope = scopeOf(input.source, input.owner);
     const known = this.byUrl(scope, url);
     if (known) { this.bump('duplicates'); return { status: 'duplicate', recipe: known }; }
@@ -120,6 +130,19 @@ export class RecipeStore {
     this.bump('imported');
     if (input.tagAsk) await this.tagIds([id], input.tagAsk);
     return { status: 'saved', recipe: this.any(id) ?? stored };
+  }
+
+  private upgradeToOwn(url: string): StoredRecipe | null {
+    const o = this.open();
+    const row = o.prepare("SELECT id, json FROM recipes WHERE scope = 'c' AND url = ? AND state != 'pending'").get(url) as { id: string; json: string } | undefined;
+    const old = this.parse(row);
+    if (!row || !old) return null;
+    if (this.byUrl(scopeOf('link', OWN_OWNER), url)) return null;
+    const next: StoredRecipe = { ...old, source: 'link', owner: OWN_OWNER };
+    try {
+      o.prepare('UPDATE recipes SET scope = ?, source = ?, owner = ?, json = ? WHERE id = ?').run(scopeOf('link', OWN_OWNER), 'link', OWN_OWNER, JSON.stringify(next), row.id);
+    } catch { return null; }
+    return next;
   }
 
   private columns(r: StoredRecipe): [number, number | null, number, number, number] {
@@ -147,14 +170,15 @@ export class RecipeStore {
 
   /** Link recipes of one person, newest first. */
   mine(owner: string): StoredRecipe[] {
-    return (this.open().prepare("SELECT json FROM recipes WHERE source = 'link' AND owner = ? AND state != 'pending' ORDER BY imported_ms DESC").all(owner) as Row[]).flatMap((r) => this.parse(r) ?? []);
+    return (this.open().prepare("SELECT json FROM recipes WHERE source = 'link' AND (owner = ? OR owner = ?) AND state != 'pending' ORDER BY imported_ms DESC").all(owner, OWN_OWNER) as Row[]).flatMap((r) => this.parse(r) ?? []);
   }
   /** Every person's link recipes that can be planned: all of them are candidates for the household's plan. */
   links(): StoredRecipe[] { return this.search({ source: 'link', limit: 5000 }); }
   /** A person deletes their own link recipe. True when one was removed. */
   remove(owner: string, id: string): boolean {
-    const own = this.open().prepare("SELECT 1 AS x FROM recipes WHERE id = ? AND source = 'link' AND owner = ?").get(id, owner);
+    const own = this.open().prepare("SELECT url, owner FROM recipes WHERE id = ? AND source = 'link' AND (owner = ? OR owner = ?)").get(id, owner, OWN_OWNER) as { url: string; owner: string } | undefined;
     if (!own) return false;
+    if (own.owner === OWN_OWNER) this.open().prepare('INSERT OR IGNORE INTO forgotten (url) VALUES (?)').run(own.url);
     this.deleteRow(id);
     return true;
   }
@@ -369,9 +393,11 @@ export class RecipeStore {
         const url = rec && typeof rec.url === 'string' ? rec.url : rec && typeof rec['@id'] === 'string' ? rec['@id'] : '';
         if (!rec || !url) { result.failed++; this.bump('failed'); continue; }
         let out: AddOutcome;
-        try { out = await this.add({ source: 'collection', url, recipe: rec, ...(askLimited ? { ask: askLimited } : {}) }); } catch { result.failed++; this.bump('failed'); continue; }
+        const { pandafitOwn, ...recipe } = rec;
+        const own = pandafitOwn === true;
+        try { out = await this.add({ source: own ? 'link' : 'collection', ...(own ? { owner: OWN_OWNER } : {}), url, recipe: own ? recipe : rec, ...(askLimited ? { ask: askLimited } : {}) }); } catch { result.failed++; this.bump('failed'); continue; }
         if (out.status === 'saved') result.imported++;
-        else if (out.status === 'duplicate') result.duplicates++;
+        else if (out.status === 'duplicate' || out.status === 'forgotten') result.duplicates++;
         else if (out.status === 'rejected') result.rejected++;
         else if (out.status === 'pending') result.pending++;
         else result.failed++;

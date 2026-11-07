@@ -349,6 +349,51 @@ describe('the inbox', () => {
     s.close();
   });
 
+  it('takes own recipes as household link recipes: plannable below the unlock, listed, deletable, not counted', async () => {
+    const dir = tmp();
+    const s = new RecipeStore(dir);
+    put(dir, 'o.jsonl', jsonl([{ ...recipe(1), pandafitOwn: true }, recipe(2)]));
+    expect(await s.scanInbox({ noOpenRide: open, ask: taggingAi() })).toMatchObject({ imported: 2, tagged: 2 });
+    expect(s.collectionCount()).toBe(1);
+    expect(s.links()).toHaveLength(1);
+    expect(s.mine('max')).toHaveLength(1);
+    expect(s.mine('lena')).toHaveLength(1);
+    expect(s.mine('max')[0]).toMatchObject({ source: 'link' });
+    put(dir, 'o2.jsonl', jsonl([{ ...recipe(1), pandafitOwn: true }]));
+    expect(await s.scanInbox({ noOpenRide: open })).toMatchObject({ imported: 0, duplicates: 1 });
+    expect(s.mine('max')).toHaveLength(1);
+    s.close();
+  });
+
+  it('upgrades a collection recipe with the same url to own, keeping its tags', async () => {
+    const dir = tmp();
+    const s = new RecipeStore(dir);
+    await s.add({ source: 'collection', url: 'https://rezepte.example/topf-1', recipe: recipe(1) });
+    await s.tagWaiting(taggingAi(), 5);
+    const before = s.search({ source: 'collection', limit: 10 })[0]!;
+    expect(before.tags).toBeTruthy();
+    put(dir, 'o.jsonl', jsonl([{ ...recipe(1), pandafitOwn: true }]));
+    expect(await s.scanInbox({ noOpenRide: open })).toMatchObject({ imported: 0, duplicates: 1 });
+    expect(s.collectionCount()).toBe(0);
+    expect(s.mine('max')).toHaveLength(1);
+    expect(s.links()[0]).toMatchObject({ id: before.id, tags: before.tags });
+    s.close();
+  });
+
+  it('does not bring back an own recipe that was deleted, but a link recipe of a person can be added again', async () => {
+    const dir = tmp();
+    const s = new RecipeStore(dir);
+    put(dir, 'o.jsonl', jsonl([{ ...recipe(1), pandafitOwn: true }]));
+    await s.scanInbox({ noOpenRide: open });
+    expect(s.remove('lena', s.mine('lena')[0]!.id)).toBe(true);
+    expect(s.mine('max')).toHaveLength(0);
+    put(dir, 'o2.jsonl', jsonl([{ ...recipe(1), pandafitOwn: true }]));
+    expect(await s.scanInbox({ noOpenRide: open })).toMatchObject({ imported: 0, duplicates: 1 });
+    expect(s.mine('max')).toHaveLength(0);
+    expect((await s.add({ source: 'link', owner: 'max', url: 'https://rezepte.example/topf-1', recipe: recipe(1) })).status).toBe('saved');
+    s.close();
+  });
+
   it('is run by the meal coach at its tick, even with no one planning, and not during a ride', async () => {
     const dir = tmp();
     let ride = true;
