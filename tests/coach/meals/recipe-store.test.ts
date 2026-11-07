@@ -206,7 +206,7 @@ describe('deriving again', () => {
     await s.tagWaiting(taggingAi(), 1);
     s.close();
     // The source changes under us only in the sense that the code derives differently: simulate by editing the stored raw.
-    const s2 = new RecipeStore(dir, () => 5, { deriveVersion: 3 });
+    const s2 = new RecipeStore(dir, () => 5, { deriveVersion: 4 });
     const db = s2.database();
     const row = db.prepare('SELECT raw FROM recipes').get() as { raw: string };
     const raw = JSON.parse(row.raw) as { recipe: { recipeYield: string } };
@@ -214,7 +214,7 @@ describe('deriving again', () => {
     db.prepare('UPDATE recipes SET raw = ?').run(JSON.stringify(raw));
     expect(await s2.rederive(100)).toBe(1);
     const r = s2.search({})[0]!;
-    expect(r.deriveVersion).toBe(3);
+    expect(r.deriveVersion).toBe(4);
     expect(r.ingredients.find((i) => i.name === 'Linsen')!.amount).toBe(25.25);
     expect(r.tags!.art).toBe('curry-eintopf');
     expect(await s2.rederive(100)).toBe(0);

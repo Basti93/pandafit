@@ -106,5 +106,8 @@ export const calmText = (text: string): boolean => !PRESSURE.test(text);
 
 export type Eater = Pick<MealSettings, 'diet' | 'dislikes' | 'intolerances'>;
 /** Everything a dish must pass for the people eating it. */
-export const fitsEveryone = (dish: Pick<Dish, 'title' | 'ingredients' | 'steps'>, eaters: Eater[]): boolean =>
-  fitsDiet(dish, strictest(eaters.map((e) => e.diet))) && eaters.every((e) => fitsDislikes(dish, e)) && [dish.title, ...dish.steps, ...dish.ingredients.map((i) => i.name)].every(calmText);
+export const fitsEveryone = (dish: Pick<Dish, 'title' | 'ingredients' | 'steps'> & { side?: Pick<NonNullable<Dish['side']>, 'name'> }, eaters: Eater[]): boolean => {
+  // A protein side is part of the meal: it has to fit the same people.
+  const whole = dish.side ? { ...dish, ingredients: [...dish.ingredients, { name: dish.side.name, amount: 0, unit: 'g' as const, section: 'Vorrat' as const }] } : dish;
+  return fitsDiet(whole, strictest(eaters.map((e) => e.diet))) && eaters.every((e) => fitsDislikes(whole, e)) && [whole.title, ...whole.steps, ...whole.ingredients.map((i) => i.name)].every(calmText);
+};

@@ -12,7 +12,7 @@ import { sanitizeUrl, type StoredRecipe } from './recipe-import';
 import { fetchPicture, imageUrlOf, type Picture } from './recipe-image';
 import { extractRecipe, fetchPage, type Page } from './recipe-link';
 import { browse, detail, type BrowseQuery } from './recipe-browse';
-import { planFromRecipes, recipeDish, type Favourites } from './recipe-plan';
+import { pickSide, planFromRecipes, recipeDish, type Favourites } from './recipe-plan';
 import { RecipeStore, shownLink } from './recipe-store';
 import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
@@ -258,13 +258,14 @@ export class MealCoach {
     const eaters = existing ? eatersOf(plan, state, req.meal) : plan.people.map((p) => p.id);
     if (!fitsEveryone(recipe, constraintsFor(members, eaters).map((m) => m.settings))) return 'nofit';
     let meal = existing;
+    const side = pickSide(recipe, at.slot, constraintsFor(members, eaters), this.deps.random ?? Math.random);
     if (!meal) {
-      meal = { day: at.day, slot: at.slot, dish: recipeDish(recipe), reuseOf: null, eaters, takeAlong: false };
+      meal = { day: at.day, slot: at.slot, dish: recipeDish(recipe, side), reuseOf: null, eaters, takeAlong: false };
       plan.meals.push(meal);
       plan.meals.sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
     }
     delete meal.askedBy;
-    putDish(plan, state, members, req.meal, recipeDish(recipe), this.deps.random ?? Math.random);
+    putDish(plan, state, members, req.meal, recipeDish(recipe, side), this.deps.random ?? Math.random);
     meal.askedBy = id;
     this.save();
     return 'placed';
@@ -410,7 +411,8 @@ export class MealCoach {
       for (const m of d.plans[week]?.meals ?? []) if (m.day < fromDay && m.dish.recipeId) lastIds.add(m.dish.recipeId);
       const lastWeek = [...new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).map((m) => m.dish.title))];
       // Real recipes first: the household's link recipes always, the collection once it is big enough. None at all: exactly the plan of before.
-      const real = await this.realMeals({ members, fromDay, trainingDays, random, lastIds, lastWeek, week });
+      const treatsInWeek = (d.plans[week]?.meals ?? []).filter((m) => m.day < fromDay && !m.reuseOf && m.dish.recipeId && this.recipes()?.getMany([m.dish.recipeId])[0]?.ausgewogen === 'wenig').length;
+      const real = await this.realMeals({ members, fromDay, trainingDays, random, lastIds, lastWeek, week, treatsInWeek });
       const realKeys = new Set(real.map((m) => mealKey(m.day, m.slot)));
       const aiSlots = skeleton(members, fromDay, false).filter((s) => !realKeys.has(mealKey(s.day, s.slot)));
       let fromAi: Meal[] = [];
@@ -444,7 +446,7 @@ export class MealCoach {
    * Meals from real recipes for the open slots of a week. Below the unlock only the household's link recipes are candidates, for at most
    * a third of the meals; from it the collection joins, for every meal, and the AI chooses from the shortlists. Empty without recipes.
    */
-  private async realMeals(i: { members: Member[]; fromDay: number; trainingDays: number[]; random: () => number; lastIds: Set<string>; lastWeek: string[]; week: string }): Promise<Meal[]> {
+  private async realMeals(i: { members: Member[]; fromDay: number; trainingDays: number[]; random: () => number; lastIds: Set<string>; lastWeek: string[]; week: string; treatsInWeek: number }): Promise<Meal[]> {
     try {
       const store = this.recipes();
       if (!store) return [];
@@ -462,7 +464,7 @@ export class MealCoach {
       const order = unlocked ? slots : [...slots].sort(() => i.random() - 0.5);
       const meals = await planFromRecipes({
         members: i.members, slots: order, trainingDays: i.trainingDays, pool, lastIds: i.lastIds, random: i.random, lastWeek: i.lastWeek,
-        ...(cap !== undefined ? { cap } : {}), favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
+        ...(cap !== undefined ? { cap } : {}), treatsInWeek: i.treatsInWeek, favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
       });
       return meals;
     } catch { return []; }

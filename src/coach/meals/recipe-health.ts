@@ -49,9 +49,27 @@ export function parseNutrition(x: unknown): Nutrition | null {
 const gate = () => ruleValues('meals.healthy-gate');
 export const planGutBoost = (): number => gate().planGutBoost!;
 
+/** What the stated nutrition says, apart from the AI's balance verdict: `eiweissarm` = protein below the minimum of every slot, `ausserhalb` = the reason energy, sugar or fat share are out of range. */
+export type NutritionFlags = { eiweissarm: boolean; ausserhalb: string | null };
+
+export function nutritionFlags(i: { slots: readonly Slot[]; nutrition?: Nutrition | undefined }): NutritionFlags {
+  const G = gate();
+  const n = i.nutrition;
+  if (!n || i.slots.length === 0) return { eiweissarm: false, ausserhalb: null };
+  const eiweissarm = n.proteinG !== undefined && !i.slots.some((slot) => n.proteinG! >= (slot !== 'fruehstueck' ? G.mainProteinMin! : G.breakfastProteinMin!));
+  if (n.sugarG !== undefined && n.sugarG > G.sugarMaxG!) return { eiweissarm, ausserhalb: `sugar ${n.sugarG} g` };
+  if (n.fatG !== undefined && n.kcal !== undefined && n.kcal > 0 && (n.fatG * 9) / n.kcal > G.fatShareMax!) return { eiweissarm, ausserhalb: 'fat share' };
+  const kcalFits = (slot: Slot): boolean => {
+    const main = slot !== 'fruehstueck';
+    return n.kcal === undefined || (n.kcal >= (main ? G.mainKcalMin! : G.breakfastKcalMin!) && n.kcal <= (main ? G.mainKcalMax! : G.breakfastKcalMax!));
+  };
+  return { eiweissarm, ausserhalb: i.slots.some(kcalFits) ? null : 'energy out of range' };
+}
+
 /**
- * Why a recipe is not a healthy meal, or null. `slots` are the recipe's main meal slots from the AI; with none it is no meal at all.
- * Nutrition values that are not stated are not checked. A recipe with several slots passes when one of them fits.
+ * Why a collection recipe is not a healthy meal, or null. `slots` are the recipe's main meal slots from the AI; with none it is no meal at all.
+ * Nutrition values that are not stated are not checked. Protein only removes a recipe below the collection minimum (10 g); a recipe between
+ * that and the main-meal minimum is merely `eiweissarm` and gets a side when planned.
  */
 export function unhealthyReason(i: { slots: readonly Slot[]; ausgewogen?: Ausgewogen | undefined; nutrition?: Nutrition | undefined }): string | null {
   const G = gate();
@@ -59,12 +77,8 @@ export function unhealthyReason(i: { slots: readonly Slot[]; ausgewogen?: Ausgew
   if (i.ausgewogen === 'wenig') return 'ausgewogen: wenig';
   const n = i.nutrition;
   if (!n) return null;
-  if (n.sugarG !== undefined && n.sugarG > G.sugarMaxG!) return `sugar ${n.sugarG} g`;
-  if (n.fatG !== undefined && n.kcal !== undefined && n.kcal > 0 && (n.fatG * 9) / n.kcal > G.fatShareMax!) return 'fat share';
-  const fits = (slot: Slot): boolean => {
-    const main = slot !== 'fruehstueck';
-    const lo = main ? G.mainKcalMin! : G.breakfastKcalMin!, hi = main ? G.mainKcalMax! : G.breakfastKcalMax!, p = main ? G.mainProteinMin! : G.breakfastProteinMin!;
-    return (n.kcal === undefined || (n.kcal >= lo && n.kcal <= hi)) && (n.proteinG === undefined || n.proteinG >= p);
-  };
-  return i.slots.some(fits) ? null : 'energy or protein out of range';
+  const f = nutritionFlags(i);
+  if (f.ausserhalb) return f.ausserhalb;
+  if (n.proteinG !== undefined && n.proteinG < G.collectionProteinMin!) return `protein ${n.proteinG} g`;
+  return null;
 }

@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { mealKey, SLOT_LABEL, SLOTS, type Dish, type Meal, type Slot } from '../../shared/meals';
-import { ruleValues } from '../../shared/training-policy';
+import { mealKey, SLOT_LABEL, SLOTS, type Dish, type Meal, type Side, type Slot } from '../../shared/meals';
+import { ruleNumber, ruleValues } from '../../shared/training-policy';
 import { fitsEveryone } from './check';
 import { planGutBoost } from './recipe-health';
+import { sideCandidates } from './recipe-side';
 import { dataBlock, letters } from './prompt';
 import type { StoredRecipe } from './recipe-import';
 import { PROTEIN_UNKNOWN, shownLink } from './recipe-import';
@@ -16,16 +17,31 @@ import { constraintsFor, type Member, type Slotted } from './rules';
 export const shortlistSize = (): number => ruleValues('meals.import-limits').shortlist!;
 /** What a favourite of someone who eats the meal adds to a recipe's bucket (the random buckets span 0 to 4): a clear lead, still varied among favourites. */
 export const favouriteBoost = (): number => ruleValues('meals.import-limits').favouriteBoost!;
+/** How many treats (`ausgewogen: wenig`) a shortlist may hold. */
+const TREAT_CANDIDATES = 3;
+/** The most treats the plan holds in one week. */
+export const treatsPerWeek = (): number => ruleNumber('meals.treat-per-week');
 /** Per person, the ids of their favourite recipes. */
 export type Favourites = ReadonlyMap<string, ReadonlySet<string>>;
 /** How many of the people eating this meal have the recipe as a favourite. */
 const likedBy = (r: StoredRecipe, n: Need, favs?: Favourites): number => (favs ? n.eaters.filter((e) => favs.get(e.id)?.has(r.id)).length : 0);
 
-/** A real recipe as the dish of a meal. The title stays the recipe's; the source link goes with it. */
-export const recipeDish = (r: StoredRecipe): Dish => ({
+/** A real recipe as the dish of a meal. The title stays the recipe's; the source link goes with it. A `side` tops up a dish low in protein. */
+export const recipeDish = (r: StoredRecipe, side?: Side | null): Dish => ({
   title: r.title, ingredients: r.ingredients.map((i) => ({ ...i })), steps: [...r.steps], minutes: r.minutes,
   proteinG: r.proteinG === PROTEIN_UNKNOWN ? 0 : r.proteinG, keepsDays: r.keepsDays, source: 'rezept', recipeId: r.id, sourceUrl: shownLink(r),
+  ...(side ? { side: { ...side } } : {}),
 });
+
+/** The sides that would lift this recipe to the meal's protein target for these eaters: null when it needs none (or its protein is unknown), empty when none fits. */
+const sidesFor = (r: StoredRecipe, slot: Slot, eaters: readonly Member[]): Side[] | null =>
+  r.eiweissarm && r.proteinG !== PROTEIN_UNKNOWN ? sideCandidates(r.proteinG, slot, eaters.map((e) => e.settings)) : null;
+
+/** A side for a recipe at a meal, or null when it needs none or none fits. The first fitting one of a random start, so the week varies. */
+export function pickSide(r: StoredRecipe, slot: Slot, eaters: readonly Member[], random: () => number): Side | null {
+  const c = sidesFor(r, slot, eaters);
+  return c && c.length > 0 ? c[Math.floor(random() * c.length)]! : null;
+}
 
 /** Longest cooking time that fits a meal: quick in the morning and on workdays, more time at the weekend. */
 const maxMinutes = (slot: Slot, day: number): number => (slot === 'fruehstueck' ? 20 : day >= 5 ? 90 : slot === 'mittag' ? 45 : 60);
@@ -37,8 +53,12 @@ export type Need = { slot: Slot; day: number; eaters: Member[]; takeAlong: boole
 function fitsCheap(r: StoredRecipe, n: Need): boolean {
   if (!r.slots.includes(n.slot) || r.minutes > maxMinutes(n.slot, n.day)) return false;
   if (r.keepsDays < n.keepDays || (n.takeAlong && r.keepsDays < 1)) return false;
-  // A training day wants protein: a recipe with an unknown value is never chosen for it.
-  return !(n.training && (r.proteinG === PROTEIN_UNKNOWN || r.proteinG < minProtein(n.slot)));
+  // A training day wants protein: a recipe with an unknown value is never chosen for it, and a low one only when a side lifts it.
+  if (!n.training) return true;
+  if (r.proteinG === PROTEIN_UNKNOWN) return false;
+  if (r.proteinG >= minProtein(n.slot)) return true;
+  const sides = sidesFor(r, n.slot, n.eaters);
+  return sides !== null && sides.length > 0;
 }
 
 /** Whether a recipe fits a meal at all. */
@@ -57,15 +77,16 @@ export function shortlist(pool: readonly StoredRecipe[], n: Need, random: () => 
   for (const r of pool) {
     if (avoid.has(r.id) || !fitsCheap(r, n)) continue;
     const liked = likedBy(r, n, favs);
-    // An unbalanced own or link recipe is planned only as a favourite of someone eating the meal.
-    if (r.ausgewogen === 'wenig' && liked === 0) continue;
     scored.push({ r, bucket: Math.floor(random() * 4) + (n.training && r.proteinG >= 24 ? 1 : 0) + liked * favouriteBoost() + (r.ausgewogen === 'gut' ? planGutBoost() : 0) });
   }
   scored.sort((a, b) => b.bucket - a.bucket || ratingOf(b.r) - ratingOf(a.r) || countOf(b.r) - countOf(a.r) || (a.r.id < b.r.id ? -1 : 1));
   const out: StoredRecipe[] = [];
+  let treats = 0;
   for (const { r } of scored) {
     if (out.length >= size) break;
-    if (fitsEveryone(r, n.eaters.map((e) => e.settings))) out.push(r);
+    // A treat is planned at most `meals.treat-per-week` times a week: a few in the list are enough to choose from.
+    if (r.ausgewogen === 'wenig' && treats >= TREAT_CANDIDATES) continue;
+    if (fitsEveryone(r, n.eaters.map((e) => e.settings))) { out.push(r); if (r.ausgewogen === 'wenig') treats++; }
   }
   return out;
 }
@@ -103,6 +124,8 @@ export type PlanInput = {
   lastIds: ReadonlySet<string>; random: () => number; ask?: Ask; lastWeek: string[];
   /** At most this many meals come from the pool (below the unlock only the household's link recipes are in it). */
   cap?: number;
+  /** Treats (`ausgewogen: wenig`) already in this week's plan, e.g. from the days before a replan. */
+  treatsInWeek?: number;
   /** Each person's favourite recipes: those of the people eating a meal lead its shortlist. */
   favourites?: Favourites;
   /** Ask the AI to choose from the shortlists; without it, or when it fails, the first shortlisted recipe is taken. */
@@ -139,17 +162,20 @@ export async function planFromRecipes(p: PlanInput): Promise<Meal[]> {
     } catch { /* the shortlist's own order takes over */ }
   }
   let count = 0;
+  let treats = p.treatsInWeek ?? 0;
   for (const s of sources) {
     if (p.cap !== undefined && count >= p.cap) break;
     const key = mealKey(s.day, s.slot);
     const list = lists.get(key);
     if (!list) continue;
     // Only what the shortlist offered counts, and only once in the week.
-    const picked = list.find((r) => r.id === chosen.get(key) && !used.has(r.id)) ?? list.find((r) => !used.has(r.id));
+    const open = (r: StoredRecipe) => !used.has(r.id) && (r.ausgewogen !== 'wenig' || treats < treatsPerWeek());
+    const picked = list.find((r) => r.id === chosen.get(key) && open(r)) ?? list.find(open);
     if (!picked) continue;
     used.add(picked.id);
+    if (picked.ausgewogen === 'wenig') treats++;
     count++;
-    byKey.set(key, { ...s, reuseOf: null, dish: recipeDish(picked) });
+    byKey.set(key, { ...s, reuseOf: null, dish: recipeDish(picked, pickSide(picked, s.slot, need(s).eaters, p.random)) });
   }
   // Rests: the source's dish when it keeps long enough and fits; otherwise the slot stays open for the caller.
   for (const s of p.slots) {

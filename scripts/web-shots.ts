@@ -250,7 +250,7 @@ const real = <T extends object>(d: T, path: string) => ({ ...d, source: 'rezept'
 const DISHES = [
   dish('Haferbrei mit Beeren', 10, 18, [['Haferflocken', 80, 'g', 'Vorrat'], ['Beeren', 150, 'g', 'Tiefkühl'], ['Milch', 250, 'ml', 'Kühlregal']]),
   real(dish('Linsen-Gemüse-Pfanne', 30, 32, [['Rote Linsen', 100, 'g', 'Vorrat'], ['Paprika', 2, 'Stk', 'Obst und Gemüse'], ['Kokosmilch', 1, 'Dose', 'Vorrat']]), 'linsen-gemuese-pfanne'),
-  real(dish('Ofengemüse mit Feta', 40, 28, [['Zucchini', 2, 'Stk', 'Obst und Gemüse'], ['Feta', 150, 'g', 'Kühlregal'], ['Süßkartoffel', 2, 'Stk', 'Obst und Gemüse']]), 'ofengemuese-feta'),
+  { ...real(dish('Ofengemüse mit Feta', 40, 12, [['Zucchini', 2, 'Stk', 'Obst und Gemüse'], ['Feta', 60, 'g', 'Kühlregal'], ['Süßkartoffel', 2, 'Stk', 'Obst und Gemüse']]), 'ofengemuese-feta'), side: { name: 'Skyr', amount: 150, unit: 'g', section: 'Kühlregal', proteinG: 16 } },
   real(dish('Skyr mit Nüssen', 5, 25, [['Skyr', 300, 'g', 'Kühlregal'], ['Walnüsse', 30, 'g', 'Vorrat']]), 'skyr-nuesse'),
 ];
 const mealPlanBody = {

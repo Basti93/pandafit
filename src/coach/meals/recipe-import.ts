@@ -31,8 +31,8 @@ export type StoredRecipe = Recipe & {
   vegCheckedBy?: 'ai'; vegReason?: string;
   /** The stated nutrition per portion (schema.org `nutrition`), when the source has it. */
   nutrition?: Nutrition;
-  /** How balanced a meal is, by the AI. An own or link recipe that breaks the healthy gate is marked `wenig` with the reason in `healthNote`. */
-  ausgewogen?: Ausgewogen; healthNote?: string;
+  /** How balanced a meal is, by the AI alone. The stated nutrition sets separate flags: `eiweissarm` (protein below the minimum; the plan adds a side) and `ausserhalb` (energy, sugar or fat share out of range, reason in `healthNote`). */
+  ausgewogen?: Ausgewogen; eiweissarm?: true; ausserhalb?: true; healthNote?: string;
 };
 
 export type Rejected = { status: 'rejected'; reason: string };

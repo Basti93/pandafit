@@ -125,7 +125,7 @@ describe('the whole import', () => {
     const salad = await importRecipe(base({ name: 'Bunter Bohnensalat' }));
     expect(salad.status === 'ok' && salad.recipe.keepsDays).toBe(0);
     const r = await importRecipe(base({ keywords: 'vegetarisch, einfach', recipeIngredient: ['2 Paradeiser', '1 Dose Kichererbsen', '1 Zwiebel', '1 EL Öl'] }));
-    expect(r.status === 'ok' && r.recipe).toMatchObject({ slots: [], tags: null, parseQuality: 1, deriveVersion: 2, category: ['Hauptgericht'], keywords: ['vegetarisch', 'einfach'] });
+    expect(r.status === 'ok' && r.recipe).toMatchObject({ slots: [], tags: null, parseQuality: 1, deriveVersion: 3, category: ['Hauptgericht'], keywords: ['vegetarisch', 'einfach'] });
     expect(r.status === 'ok' && r.recipe.canon).toEqual(['tomate', 'kichererbse', 'zwiebel', 'oel']);
   });
   it('stores rating and count when there are some, and ignores rubbish', async () => {

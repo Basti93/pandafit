@@ -83,6 +83,8 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .pm-addline { display: grid; grid-template-columns: 1fr 6rem; gap: .5rem; }
 .pm-addline input { min-width: 0; }
 .pm-rowtitle { display: block; }
+.pm-sidehint { display: block; color: var(--muted); font-size: .85rem; }
+.pm-side { margin: .5rem 0 0; }
 .pm-dev { display: block; color: var(--accent); font-size: .85rem; }
 .pm-people[role="group"] { margin: .25rem 0; }
 .tk-screen button.pm-check { width: 44px; height: 44px; min-width: 44px; padding: 0; border-radius: .7rem; background: transparent; border: 2px solid var(--muted); color: var(--ink); font-size: 1.2rem; }

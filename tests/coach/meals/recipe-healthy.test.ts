@@ -59,7 +59,7 @@ describe('the healthy gate (rule meals.healthy-gate)', () => {
   const ok = { slots: ['mittag'] as const, ausgewogen: 'gut' as const };
   it('keeps every threshold in the register, with sources', () => {
     const rule = policyRule('meals.healthy-gate');
-    expect(rule.values).toMatchObject({ mainKcalMin: 300, mainKcalMax: 850, mainProteinMin: 15, breakfastKcalMin: 200, breakfastKcalMax: 650, breakfastProteinMin: 10, sugarMaxG: 30, fatShareMax: 0.5 });
+    expect(rule.values).toMatchObject({ mainKcalMin: 300, mainKcalMax: 850, mainProteinMin: 15, breakfastKcalMin: 200, breakfastKcalMax: 650, breakfastProteinMin: 10, collectionProteinMin: 10, sugarMaxG: 30, fatShareMax: 0.5 });
     expect(rule.class).toBe('orientation');
     expect(rule.sourceIds.length).toBeGreaterThan(0);
   });
@@ -69,12 +69,13 @@ describe('the healthy gate (rule meals.healthy-gate)', () => {
     expect(unhealthyReason({ ...ok, ausgewogen: 'mittel' })).toBeNull();
     expect(unhealthyReason({ slots: ['abend'] })).toBeNull();
   });
-  it('checks main meals: 300 to 850 kcal and 15 g protein', () => {
+  it('checks main meals: 300 to 850 kcal and 10 g protein (below 15 g is only eiweissarm)', () => {
     expect(unhealthyReason({ ...ok, nutrition: { kcal: 520, proteinG: 28 } })).toBeNull();
     expect(unhealthyReason({ ...ok, nutrition: { kcal: 299 } })).not.toBeNull();
-    expect(unhealthyReason({ ...ok, nutrition: { kcal: 300, proteinG: 15 } })).toBeNull();
+    expect(unhealthyReason({ ...ok, nutrition: { kcal: 300, proteinG: 10 } })).toBeNull();
     expect(unhealthyReason({ ...ok, nutrition: { kcal: 851 } })).not.toBeNull();
-    expect(unhealthyReason({ ...ok, nutrition: { kcal: 600, proteinG: 14 } })).not.toBeNull();
+    expect(unhealthyReason({ ...ok, nutrition: { kcal: 600, proteinG: 14 } })).toBeNull();
+    expect(unhealthyReason({ ...ok, nutrition: { kcal: 600, proteinG: 9 } })).not.toBeNull();
   });
   it('checks breakfast: 200 to 650 kcal and 10 g protein; a recipe for several meals passes when one fits', () => {
     expect(unhealthyReason({ slots: ['fruehstueck'], nutrition: { kcal: 250, proteinG: 10 } })).toBeNull();
@@ -143,7 +144,8 @@ describe('the collection keeps only healthy meals', () => {
     expect(s.stats()).toMatchObject({ links: 3, unhealthy: 0 });
     const all = s.search({ source: 'link' });
     expect(all).toHaveLength(3);
-    expect(all.find((r) => r.title.endsWith('1'))).toMatchObject({ ausgewogen: 'wenig', healthNote: expect.stringContaining('sugar') });
+    expect(all.find((r) => r.title.endsWith('1'))).toMatchObject({ ausserhalb: true, healthNote: expect.stringContaining('sugar') });
+    expect(all.find((r) => r.title.endsWith('1'))!.ausgewogen).not.toBe('wenig');
     expect(all.find((r) => r.title.endsWith('2'))).toMatchObject({ ausgewogen: 'wenig' });
     expect(all.find((r) => r.title.endsWith('3'))).toMatchObject({ ausgewogen: 'gut' });
     expect(all.find((r) => r.title.endsWith('3'))!.healthNote).toBeUndefined();
@@ -218,13 +220,10 @@ describe('planning with the balance', () => {
     expect(list).toHaveLength(3);
   });
 
-  it('skips wenig unless it is a favourite of someone eating the meal', async () => {
+  it('no longer skips wenig in the shortlist; the plan limits it to once a week (see recipe-side.test.ts)', async () => {
     const pool = await make(['wenig', 'mittel']);
     const wenig = pool.find((r) => r.ausgewogen === 'wenig')!;
-    expect(shortlist(pool, need, () => 0.3).map((r) => r.id)).not.toContain(wenig.id);
-    const favs = new Map([['max', new Set([wenig.id])]]);
-    expect(shortlist(pool, need, () => 0.3, undefined, undefined, favs)[0]!.id).toBe(wenig.id);
-    expect(shortlist(pool, need, () => 0.3, undefined, undefined, new Map([['lena', new Set([wenig.id])]])).map((r) => r.id)).not.toContain(wenig.id);
+    expect(shortlist(pool, need, () => 0.3).map((r) => r.id)).toContain(wenig.id);
   });
 
   it('shows the balance only implicitly: a gut recipe comes first in the search, nothing else changes', async () => {

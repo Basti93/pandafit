@@ -29,7 +29,13 @@ export type Ingredient = { name: string; amount: number; unit: Unit; section: Se
  * `source`: 'coach' the coach invented it, 'liste' from the built-in list, 'rezept' a real recipe (the collection or a person's link),
  * which then has `sourceUrl`. A `proteinG` of 0 means unknown for a real recipe.
  */
-export type Dish = { title: string; ingredients: Ingredient[]; steps: string[]; minutes: number; proteinG: number; keepsDays: number; source: 'coach' | 'liste' | 'rezept'; recipeId?: string; sourceUrl?: string };
+export type Dish = { title: string; ingredients: Ingredient[]; steps: string[]; minutes: number; proteinG: number; keepsDays: number; source: 'coach' | 'liste' | 'rezept'; recipeId?: string; sourceUrl?: string; side?: Side };
+/** A simple protein side that tops up a dish low in protein ("dazu: 150 g Skyr"). Amount and protein are per portion; it is shopped like an ingredient. */
+export type Side = { name: string; amount: number; unit: Unit; section: Section; proteinG: number };
+/** The side as an ingredient line, for the shopping list. */
+export const sideIngredient = (s: Side): Ingredient => ({ name: s.name, amount: s.amount, unit: s.unit, section: s.section });
+/** "150 g Skyr", "2 Stk Eier". */
+export const sideText = (s: Side): string => `${s.unit === 'Stk' ? `${s.amount} Stk` : `${s.amount} ${s.unit}`} ${s.name}`;
 
 /** A link to show: https only, no spaces, not absurdly long. Anything else is dropped, so a record can never put a script into a link. */
 export const safeLink = (x: unknown): string | null => {
@@ -220,7 +226,7 @@ export function shoppingList(plan: MealPlan, state: MealState): ShopList {
     if (m.reuseOf) continue;
     const portions = cookPortions(plan, state, mealKey(m.day, m.slot)).total;
     if (portions === 0) continue;
-    for (const i of m.dish.ingredients) {
+    for (const i of m.dish.side ? [...m.dish.ingredients, sideIngredient(m.dish.side)] : m.dish.ingredients) {
       const key = itemKey(i.name, i.unit);
       const have = acc.get(key);
       if (have) { have.amount += i.amount * portions; have.dishes.add(m.dish.title); } else acc.set(key, { name: i.name.trim(), unit: i.unit, amount: i.amount * portions, section: i.section, dishes: new Set([m.dish.title]) });
@@ -245,11 +251,14 @@ const num = (x: unknown): x is number => typeof x === 'number' && Number.isFinit
 const readIngredient = (x: unknown): Ingredient | null =>
   isObj(x) && str(x.name) && num(x.amount) && UNITS.includes(x.unit as Unit) && SECTIONS.includes(x.section as Section)
     ? { name: x.name, amount: x.amount, unit: x.unit as Unit, section: x.section as Section, ...(x.raw === true ? { raw: true } : {}) } : null;
+const readSide = (x: unknown): Side | null =>
+  isObj(x) && str(x.name) && x.name.trim() !== '' && num(x.amount) && x.amount > 0 && UNITS.includes(x.unit as Unit) && SECTIONS.includes(x.section as Section) && num(x.proteinG) && x.proteinG >= 0
+    ? { name: x.name.trim().slice(0, 60), amount: x.amount, unit: x.unit as Unit, section: x.section as Section, proteinG: x.proteinG } : null;
 const readDish = (x: unknown): Dish | null => {
   if (!isObj(x) || !str(x.title) || !Array.isArray(x.ingredients) || !Array.isArray(x.steps) || !num(x.minutes) || !num(x.proteinG) || !num(x.keepsDays)) return null;
   const ingredients = x.ingredients.map(readIngredient);
   if (ingredients.some((i) => i === null) || !x.steps.every(str)) return null;
-  return { title: x.title, ingredients: ingredients as Ingredient[], steps: x.steps as string[], minutes: x.minutes, proteinG: x.proteinG, keepsDays: x.keepsDays, source: x.source === 'coach' ? 'coach' : x.source === 'rezept' && safeLink(x.sourceUrl) ? 'rezept' : 'liste', ...(str(x.recipeId) ? { recipeId: x.recipeId } : {}), ...(x.source === 'rezept' && safeLink(x.sourceUrl) ? { sourceUrl: safeLink(x.sourceUrl)! } : {}) };
+  return { title: x.title, ingredients: ingredients as Ingredient[], steps: x.steps as string[], minutes: x.minutes, proteinG: x.proteinG, keepsDays: x.keepsDays, source: x.source === 'coach' ? 'coach' : x.source === 'rezept' && safeLink(x.sourceUrl) ? 'rezept' : 'liste', ...(str(x.recipeId) ? { recipeId: x.recipeId } : {}), ...(x.source === 'rezept' && safeLink(x.sourceUrl) ? { sourceUrl: safeLink(x.sourceUrl)! } : {}), ...(readSide(x.side) ? { side: readSide(x.side)! } : {}) };
 };
 
 export function readMealPlan(body: unknown): MealPlan | null {

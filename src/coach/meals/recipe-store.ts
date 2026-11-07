@@ -4,7 +4,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ruleNumber, ruleValues } from '../../shared/training-policy';
 import { EXT, fetchPicture, imageUrlOf, inlinePicture, TYPE_OF_EXT, type ImageType, type Picture } from './recipe-image';
-import { unhealthyReason } from './recipe-health';
+import { nutritionFlags, unhealthyReason } from './recipe-health';
 import { importRecipe, norm, PROTEIN_UNKNOWN, sanitizeUrl, type Structure, type StoredRecipe } from './recipe-import';
 import { searchRecipes, type SearchQuery } from './recipe-search';
 import { allTags, classify, completeTags, deriveVersion, hardTags, mergeTags, parseQualityMin, slotsFrom, tagAi, tagInputHash, tagInputOf, tagLabels, tagPromptVersion, vocabulary, FACETS, type AiTags, type TagAsk } from './recipe-tags';
@@ -330,11 +330,12 @@ export class RecipeStore {
     const hard = hardTags({ minutes: r.minutes, proteinG: r.proteinG === PROTEIN_UNKNOWN ? null : r.proteinG, keepsDays: r.keepsDays, vegan: r.vegan, ingredients: r.ingredients });
     const tags = mergeTags(ai, hard);
     const next: StoredRecipe = { ...r, tags, slots: slotsFrom(tags.mahlzeit) };
-    // The balance verdict stays with the recipe. An own or link recipe that breaks the healthy gate is only marked (never removed).
-    delete next.ausgewogen; delete next.healthNote;
+    // The balance verdict comes only from the AI. The stated nutrition sets its own flags (never `ausgewogen`); an own or link recipe is never removed.
+    delete next.ausgewogen; delete next.healthNote; delete next.eiweissarm; delete next.ausserhalb;
     if (ai.ausgewogen) next.ausgewogen = ai.ausgewogen;
-    const why = unhealthyReason({ slots: next.slots, ausgewogen: ai.ausgewogen, nutrition: r.nutrition });
-    if (why && r.source !== 'collection') { next.ausgewogen = 'wenig'; next.healthNote = why; }
+    const flags = nutritionFlags({ slots: next.slots, nutrition: r.nutrition });
+    if (flags.eiweissarm) next.eiweissarm = true;
+    if (flags.ausserhalb) { next.ausserhalb = true; next.healthNote = flags.ausserhalb; }
     // Only the AI's own `true` is a verdict; an old classification without one keeps serving until it is asked again.
     if (ai.vegetarisch === true) { next.vegCheckedBy = 'ai'; next.vegReason = ai.grund; }
     const rid = (o.prepare('SELECT rowid AS r FROM recipes WHERE id = ?').get(r.id) as { r: number } | undefined)?.r;
