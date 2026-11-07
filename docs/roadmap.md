@@ -38,6 +38,9 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **K Aufräumen** | Kleinkram aus dem Parkplatz erledigt. | Parkplatz 0, A, B |
 | ✅ | **L Ruhige Oberfläche** | Jeder Screen unabhängig geprüft und entschlackt; die Wochenseite ist nicht mehr vom Chat erdrückt. | UX-Probe |
 | ✅ | **M Wochenübersicht per E-Mail** | Jede Person bekommt ihre Wochenübersicht per E-Mail an die Adresse aus ihrem Profil (selbst änderbar). | Wunsch 07.11.2026 |
+| | **N Nichts nur auf dem Mac** | Fahrten und Coach-Stand liegen auf dem Server (gab es schon); ein neuer Mac holt alles zurück; der alte Abgleich zum Vorgänger-Server ist abgebaut. | Wunsch 07.11.2026 |
+| | **O Rad in der Web-App** | Fahrten, Rad-Plan und Entwicklung lesbar am Handy; Heute/Woche/Empfehlung kennen Fahrten; der Chat erreicht den Rad-Coach. | Parkplatz F |
+| | **P Begleiter während der Fahrt** | Das Handy zeigt die laufende Fahrt groß und kann Leistung anpassen, Marker setzen und Intervalle überspringen; der Mac bleibt Chef. | Wunsch 07.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -260,6 +263,19 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 4. Keine Adresse und kein Zugangsschlüssel steht im Repo.
 
 **Von Claude entschieden (07.11.2026):** Sonntag 18 Uhr; Empfänger frei pro Mail nur für Clients mit `allowRecipient`, eine Adresse, geprüftes Format; Adressen als Datensatz pro Profil auf dem Server.
+
+## Meilenstein N — Brief (07.11.2026)
+
+**Ziel:** Nichts geht verloren, wenn der Mac verloren geht.
+
+**Stand vorher (geprüft 07.11.2026):** Beide Profile sind umgezogen; jede beendete oder abgebrochene Fahrt wird samt Sekundenwerten und FIT auf den Server geladen und täglich gesichert (auch auf den Mac gezogen). Der Coach-Stand liegt auf dem Server. Der Vorgänger-Server `bike-coach` bekommt parallel noch Daten, enthält aber nichts Zusätzliches.
+
+**Abnahme:**
+1. Ein Mac ohne Fahrten holt nach dem Anmelden alle Fahrten seines Profils vom Server zurück (Verlauf, Kurven, FIT), ohne Doppelte.
+2. Die Mac-App zeigt im Verlauf in einer Zeile, ob alle Fahrten gesichert sind („Alle Fahrten gesichert“ / „1 Fahrt wartet auf Upload“).
+3. Der alte Abgleich (config.json → Vorgänger-Server) und dessen Code sind entfernt; der Vorgänger-Dienst ist abgeschaltet, seine Daten gesichert.
+
+**Nicht dabei:** Garmin-Rohdaten (werden neu geholt), Geräte-Kopplungen.
 
 ## Parkplatz
 
