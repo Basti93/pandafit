@@ -95,6 +95,17 @@ export class RideEngine {
     return { wallClockMs: this.opts.nowMs(), type: 'target-adjust', detail: `${deltaPct}` };
   }
 
+  /** Ends the current step now and continues with the next one. Null (nothing happens) on the last step or while paused. */
+  skipStep(): RideEvent | null {
+    if (this.paused) return null;
+    const steps = this.opts.session.steps;
+    const { index } = this.position(this.elapsedS);
+    if (this.elapsedS >= this.totalS() || index >= steps.length - 1) return null;
+    const from = steps.slice(0, index).reduce((sum, s) => sum + s.durationS, 0);
+    this.elapsedS = from + steps[index].durationS;
+    return { wallClockMs: this.opts.nowMs(), type: 'skip', detail: `${index}` };
+  }
+
   state(): EngineState {
     const at = Math.min(this.elapsedS, this.totalS() - 1);
     const { step, index, remainingS } = this.position(at);

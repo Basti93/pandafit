@@ -11,6 +11,7 @@ export type ClientMessage =
   | { type: 'device-disconnect'; kind: DeviceKind }
   | { type: 'adjust'; deltaPct: number }
   | { type: 'mark'; note?: string }
+  | { type: 'skip' }
   | { type: 'stop' }
   | { type: 'discard' }
   | { type: 'resume'; rideId: string }

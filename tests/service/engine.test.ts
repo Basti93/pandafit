@@ -305,3 +305,33 @@ describe('holding a heart rate', () => {
     expect(e.state().targetW).toBe(90);
   });
 });
+
+test('skipStep ends the step and continues with the next one', () => {
+  const c = clock(); const e = make(c);
+  run(e, c, 10);
+  const ev = e.skipStep();
+  expect(ev).toMatchObject({ type: 'skip', detail: '0' });
+  expect(e.state().stepIndex).toBe(1);
+  expect(e.state().rideElapsedS).toBe(60);
+  expect(run(e, c, 1).sample.rideElapsedS).toBe(61);
+});
+test('skipStep drops a manual adjustment of the skipped step', () => {
+  const c = clock(); const e = new RideEngine({ session: { ...session, steps: [session.steps[0], session.steps[0]] }, ftpW: 200, nowMs: c.now });
+  run(e, c, 1); e.adjustTarget(10); e.skipStep();
+  expect(run(e, c, 1).sample.targetW).toBe(100);
+});
+test('skipStep is ignored on the last step and at the end', () => {
+  const c = clock(); const e = make(c, { resumeAtS: 70 });
+  expect(e.skipStep()).toBeNull();
+  expect(e.state().rideElapsedS).toBe(70);
+  const done = make(c, { resumeAtS: 120 });
+  expect(done.skipStep()).toBeNull();
+});
+test('skipStep is ignored while paused', () => {
+  const c = clock(); const e = make(c);
+  run(e, c, 1);
+  for (let i = 0; i < 4; i++) { c.step(); e.tick({ powerW: 0 }); }
+  expect(e.state().paused).toBe(true);
+  expect(e.skipStep()).toBeNull();
+  expect(e.state().stepIndex).toBe(0);
+});
