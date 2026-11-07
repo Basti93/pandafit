@@ -41,7 +41,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **N Nichts nur auf dem Mac** | Fahrten und Coach-Stand liegen auf dem Server (gab es schon); ein neuer Mac holt alles zurück; der alte Abgleich zum Vorgänger-Server ist abgebaut. | Wunsch 07.11.2026 |
 | ✅ | **O Rad in der Web-App** | Fahrten, Rad-Plan und Entwicklung lesbar am Handy; Heute/Woche/Empfehlung kennen Fahrten; der Chat erreicht den Rad-Coach. | Parkplatz F |
 | ✅ | **P Begleiter während der Fahrt** | Das Handy zeigt die laufende Fahrt groß und kann Leistung anpassen, Marker setzen und Intervalle überspringen; der Mac bleibt Chef. | Wunsch 07.11.2026 |
-| | **Q Mac nur fürs Rad** | Die Web-App ist die Haupt-App; die Mac-App kann nur noch koppeln, fahren und kurz zusammenfassen, alles andere öffnet die Web-App. Eine Fahrt geht nie verloren. | Wunsch 07.11.2026 |
+| ✅ | **Q Mac nur fürs Rad** | Die Web-App ist die Haupt-App; die Mac-App kann nur noch koppeln, fahren und kurz zusammenfassen, alles andere öffnet die Web-App. Eine Fahrt geht nie verloren. | Wunsch 07.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -349,3 +349,7 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 - Aus Meilenstein P:
   - Nach „Intervall überspringen“ ordnen `onTargetPct` und die Intervallwerte (`src/coach/metrics.ts`) Fahrzeit den Schritten ohne die übersprungenen Sekunden zu; Fix: übersprungene Sekunden an `summarizeRide` geben. „Geschafft“ zählt Übersprungenes als nicht gefahren (gewollt).
   - Handy-Begleiter noch nicht in einer echten Fahrt erprobt; WebSocket unter CSP `default-src 'self'` in Safari ungetestet.
+- Aus Meilenstein Q:
+  - Ältere Fahrt nachträglich zu Garmin hochladen hat kein Zuhause mehr (nur direkt nach der Fahrt).
+  - Gesundheit (Garmin) gibt es nur am Mac unter Verbindungen; Web hat keine Ansicht.
+  - `src/ui/coachTrackingPort.ts` nur noch von zwei Tests genutzt; tote CSS in `src/ui/style.css`.
