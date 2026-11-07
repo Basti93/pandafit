@@ -130,7 +130,7 @@ const veg = (): VegLists => {
   vegLists = { contains: l.contains!, startsWith: l.startsWith!, exact: l.exact!, harmless: l.harmless!, harmlessExact: l.harmlessExact!, plant: l.plant! };
   return vegLists;
 };
-const MARKER = /^(vegan|vegetar|veggie|pflanz|fleischlos|fleischfrei|meatless|plant)/;
+const MARKER = /^(vegan|vegetar|veggie|pflanz|fleischlos|fleischfrei|meatless|plant|free|frei)$|^(vegan|vegetar|veggie|pflanz|fleischlos|fleischfrei|meatless|plant)/;
 
 const isMeatWord = (w: string, L: VegLists): boolean => {
   if (L.harmlessExact.includes(w) || L.harmless.some((h) => w.startsWith(h))) return false;
@@ -161,12 +161,15 @@ function meatWordIn(text: string): string | null {
   return null;
 }
 
-/** Why a recipe is not vegetarian, or null. Looks at the title, every ingredient, the steps, the category and the keywords. */
+/**
+ * Why a recipe is not vegetarian, or null. Looks at the title, every ingredient, the category and the keywords. Not at the steps:
+ * they only use what the ingredients list, and their verbs ("Zwiebeln fein hacken") would read as meat words.
+ */
 export function notVegetarian(r: { title: string; ingredients: string[]; steps: string[]; extra: string[] }): string | null {
-  for (const t of [r.title, ...r.ingredients, ...r.steps, ...r.extra]) { const w = meatWord(t); if (w) return w; }
-  // The shared dish check as a second layer.
-  const dish = { title: r.title, ingredients: r.ingredients.map((name) => ({ name, amount: 1, unit: 'Stk' as Unit, section: 'Sonstiges' as Section })) };
-  return fitsDiet(dish, 'vegetarisch') ? null : 'dish-check';
+  // The word lists cover every word of the older dish check (`check.ts`), with markers ("veganes Hack") and harmless words on top,
+  // so that check is not repeated here: it would refuse "Fleischtomate" or "Flammkuchen".
+  for (const t of [r.title, ...r.ingredients, ...r.extra]) { const w = meatWord(t); if (w) return w; }
+  return null;
 }
 
 // ---- Ingredient lines ----
