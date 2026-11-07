@@ -2,7 +2,7 @@ import { useId, useMemo, useRef, useState } from 'react';
 import type { TrackedRecord } from '../shared/records';
 import {
   addWeeks, changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, isRecipeRecordId, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, readOwnRecipe, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealPlan, readMealState, recipeAmount,
-  shoppingList, SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf, withEater, withItem,
+  shoppingList, sideText, SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf, withEater, withItem,
   type ItemState, type LinkRequest, type Meal, type Slot, type MealChat, type OwnRecipe, type MealPlan, type MealState, type ShopItem,
 } from '../shared/meals';
 import { weekRangeOfKey } from '../shared/dates';
@@ -141,6 +141,7 @@ export function MealDetail({ week, meal, onEater, onView }: { week: Week; meal: 
           <ul className="pm-ingredients">{meal.dish.ingredients.map((i, n) => <li key={n}><b>{recipeAmount(i, cook.total)}</b> {i.name}</li>)}</ul>
         </>
       )}
+      {meal.dish.side && <p className="pm-side"><b>dazu:</b> {sideText(meal.dish.side)} <span className="muted">(je Portion, {meal.dish.side.proteinG} g Eiweiß)</span></p>}
       <ol className="pm-steps">{meal.dish.steps.map((s, n) => <li key={n}>{s}</li>)}</ol>
       <p className="muted pm-meta">{[SLOT_TIME[meal.slot], `${meal.dish.minutes} Min`, ...(meal.dish.proteinG > 0 ? [`${meal.dish.proteinG} g Eiweiß`] : []), meal.dish.keepsDays === 0 ? 'am besten frisch' : `hält ${meal.dish.keepsDays} ${meal.dish.keepsDays === 1 ? 'Tag' : 'Tage'}`].join(' · ')}</p>
       {extras.length > 0 && <p className="muted pm-meta">{extras.join(' · ')}</p>}
@@ -169,7 +170,7 @@ function MealRow({ week, meal, open, onToggle, onEater, onView }: { week: Week; 
   const note = eaters.length === 0 ? 'Niemand isst mit' : away.length > 0 ? `${listAnd(away.map((p) => p.name))} ${away.length > 1 ? 'essen' : 'isst'} nicht mit` : null;
   return (
     <Row
-      title={<span className="pm-titleline"><MealThumb recipeId={meal.dish.recipeId} title={meal.dish.title} /><span><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{note && <small className="pm-dev">{note}</small>}</span></span>}
+      title={<span className="pm-titleline"><MealThumb recipeId={meal.dish.recipeId} title={meal.dish.title} /><span><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{meal.dish.side && <small className="pm-sidehint">dazu: {sideText(meal.dish.side)}</small>}{note && <small className="pm-dev">{note}</small>}</span></span>}
       value={meal.reuseOf ? 'Rest' : `${meal.dish.minutes} Min`} expanded={open} onClick={onToggle}>
       <MealDetail week={week} meal={meal} onEater={onEater} onView={onView} />
     </Row>
@@ -292,7 +293,7 @@ export function TodayMeals({ port, now, fetchFn, onOpenPlan }: { port: WebPort; 
       <RowList label="Essen heute">
         {meals.map((m) => (
           <Row key={m.slot} onClick={() => setOpenKey(mealKey(m.day, m.slot))} value={label(m)}
-            title={<span className="pm-titleline"><MealThumb recipeId={m.dish.recipeId} title={m.dish.title} /><span className="pm-rowtitle"><b>{SLOT_SHORT[m.slot]}</b> · {m.dish.title}</span></span>} />
+            title={<span className="pm-titleline"><MealThumb recipeId={m.dish.recipeId} title={m.dish.title} /><span className="pm-rowtitle"><b>{SLOT_SHORT[m.slot]}</b> · {m.dish.title}{m.dish.side && <span className="muted"> + {m.dish.side.name}</span>}</span></span>} />
         ))}
         <Row title="Essensplan" onClick={onOpenPlan} />
       </RowList>
