@@ -33,11 +33,14 @@ export type EngineState = {
 };
 export type TrainerCommand = { targetW: number };
 export type EngineOptions = {
-  session: Session; ftpW: number; resumeAtS?: number; startSeq?: number; nowMs: () => number; maxHrBpm?: number; hrMaxBpm?: number;
+  session: Session; ftpW: number; resumeAtS?: number; skippedS?: number; startSeq?: number; nowMs: () => number; maxHrBpm?: number; hrMaxBpm?: number;
 };
 
 export class RideEngine {
+  /** The real, continuous ride clock (written into every sample). */
   private elapsedS: number;
+  /** Seconds of the session skipped so far; the session position is elapsedS + skippedS. */
+  private skippedS: number;
   private seq: number;
   private adjustPct = 0;
   private adjustedStep = -1;
@@ -57,6 +60,7 @@ export class RideEngine {
 
   constructor(private opts: EngineOptions) {
     this.elapsedS = opts.resumeAtS ?? 0;
+    this.skippedS = opts.skippedS ?? 0;
     this.seq = opts.startSeq ?? 0;
   }
 
@@ -76,7 +80,7 @@ export class RideEngine {
       this.applyAutoReduction(now, events);
       this.elapsedS += 1;
     }
-    const targets = this.targets(Math.max(0, this.paused ? this.elapsedS : this.elapsedS - 1));
+    const targets = this.targets(Math.max(0, this.sessionS() - (this.paused ? 0 : 1)));
     const sample: Sample = {
       seq: this.seq++, wallClockMs: now, rideElapsedS: this.elapsedS, ...this.latest,
       targetW: targets, gradePct: null, gear: null,
@@ -89,14 +93,24 @@ export class RideEngine {
   }
 
   adjustTarget(deltaPct: number): RideEvent {
-    const { index } = this.position(this.elapsedS);
+    const { index } = this.position(this.sessionS());
     this.adjustPct = (index === this.adjustedStep ? this.adjustPct : 0) + deltaPct;
     this.adjustedStep = index;
     return { wallClockMs: this.opts.nowMs(), type: 'target-adjust', detail: `${deltaPct}` };
   }
 
+  /** Ends the current step now and continues with the next one. Null (nothing happens) on the last step or while paused. */
+  skipStep(): RideEvent | null {
+    if (this.paused) return null;
+    const steps = this.opts.session.steps;
+    const { index, remainingS } = this.position(this.sessionS());
+    if (this.isDone() || index >= steps.length - 1) return null;
+    this.skippedS += remainingS;
+    return { wallClockMs: this.opts.nowMs(), type: 'skip', detail: `${index}:${remainingS}` };
+  }
+
   state(): EngineState {
-    const at = Math.min(this.elapsedS, this.totalS() - 1);
+    const at = Math.min(this.sessionS(), this.totalS() - 1);
     const { step, index, remainingS } = this.position(at);
     const next = this.opts.session.steps[index + 1];
     const t = this.targets(at);
@@ -109,7 +123,9 @@ export class RideEngine {
     };
   }
 
-  isDone(): boolean { return this.elapsedS >= this.totalS(); }
+  isDone(): boolean { return this.sessionS() >= this.totalS(); }
+
+  private sessionS(): number { return this.elapsedS + this.skippedS; }
 
   private updatePause(now: number, events: RideEvent[]): void {
     const { powerW } = this.latest;
@@ -130,7 +146,7 @@ export class RideEngine {
 
   /** Decision without AI: heart rate above the limit for too long, or collapsing cadence. */
   private applyAutoReduction(now: number, events: RideEvent[]): void {
-    const { step, index, remainingS } = this.position(this.elapsedS);
+    const { step, index, remainingS } = this.position(this.sessionS());
     if (index !== this.autoStep) { this.autoStep = index; this.autoPct = 0; this.hrHighS = 0; this.hrZoneHighS = 0; this.cadenceLowS = 0; this.holdPct = 0; this.holdLowS = 0; this.holdHighS = 0; }
     if (this.opts.session.id === RAMP_ID) return;
     const { hrBpm, cadenceRpm } = this.latest;

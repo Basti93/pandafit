@@ -305,3 +305,51 @@ describe('holding a heart rate', () => {
     expect(e.state().targetW).toBe(90);
   });
 });
+
+test('skipStep ends the step, keeps the ride clock continuous and switches the target at once', () => {
+  const c = clock(); const e = make(c);
+  run(e, c, 10);
+  const ev = e.skipStep();
+  expect(ev).toMatchObject({ type: 'skip', detail: '0:50' });
+  expect(e.state().stepIndex).toBe(1);
+  expect(e.state().rideElapsedS).toBe(10);
+  const a = run(e, c, 1), b = run(e, c, 1);
+  expect([a.sample.rideElapsedS, b.sample.rideElapsedS]).toEqual([11, 12]);
+  expect(e.state().label).toBe('B');
+});
+test('skipStep ends the session earlier in real time', () => {
+  const c = clock(); const e = make(c);
+  run(e, c, 10); e.skipStep();
+  run(e, c, 59);
+  expect(e.isDone()).toBe(false);
+  run(e, c, 1);
+  expect(e.isDone()).toBe(true);
+  expect(e.state().rideElapsedS).toBe(70);
+});
+test('resume after a skip continues in the right step', () => {
+  const c = clock(); const e = make(c, { resumeAtS: 20, skippedS: 50 });
+  expect(e.state().stepIndex).toBe(1);
+  expect(e.state().stepRemainingS).toBe(50);
+  expect(run(e, c, 1).sample.rideElapsedS).toBe(21);
+});
+test('skipStep drops a manual adjustment of the skipped step', () => {
+  const c = clock(); const e = new RideEngine({ session: { ...session, steps: [session.steps[0], session.steps[0]] }, ftpW: 200, nowMs: c.now });
+  run(e, c, 1); e.adjustTarget(10); e.skipStep();
+  expect(run(e, c, 1).sample.targetW).toBe(100);
+});
+test('skipStep is ignored on the last step and at the end', () => {
+  const c = clock(); const e = make(c, { resumeAtS: 70 });
+  expect(e.skipStep()).toBeNull();
+  expect(e.state().rideElapsedS).toBe(70);
+  expect(make(c, { resumeAtS: 20, skippedS: 50 }).skipStep()).toBeNull();
+  const done = make(c, { resumeAtS: 120 });
+  expect(done.skipStep()).toBeNull();
+});
+test('skipStep is ignored while paused', () => {
+  const c = clock(); const e = make(c);
+  run(e, c, 1);
+  for (let i = 0; i < 4; i++) { c.step(); e.tick({ powerW: 0 }); }
+  expect(e.state().paused).toBe(true);
+  expect(e.skipStep()).toBeNull();
+  expect(e.state().stepIndex).toBe(0);
+});

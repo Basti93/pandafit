@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
 import { QUEUEABLE, type CoachClientMessage, type CoachHome, type CoachServerMessage, type CoachStateMessage } from '../../shared/coach-protocol';
+import type { LiveMessage } from '../../shared/live';
 import { ruleBasedSession } from '../rules';
 import { loadState, type CoachState } from '../state';
 import { computeTogether } from '../together';
@@ -261,6 +262,20 @@ export class RemoteCoach {
     try { may = this.opts.mayWrite(); } catch { /* unsure: refuse */ }
     if (!this.ws || !this.online || (!may && m.type !== 'subscribe')) return 'refused';
     try { this.ws.send(JSON.stringify(m)); return 'sent'; } catch { return 'refused'; }
+  }
+
+  /**
+   * The running ride, for the phone. Fire and forget: sent only when the socket is open right now, never queued, never kept.
+   * A full socket buffer drops the message (the next state replaces it). Works with a ride open, on purpose. Never throws.
+   */
+  sendLive(m: LiveMessage): boolean {
+    try {
+      const ws = this.ws;
+      if (!ws || !this.online) return false;
+      if ((ws.bufferedAmount ?? 0) > 64 * 1024) return false;
+      ws.send(JSON.stringify(m));
+      return true;
+    } catch { return false; }
   }
 
   /**

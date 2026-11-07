@@ -5,6 +5,6 @@ export type Sample = {
 };
 export type RideEvent = {
   wallClockMs: number;
-  type: 'gap-start' | 'gap-end' | 'device-lost' | 'device-back' | 'marker' | 'target-adjust' | 'storage-error' | 'resumed' | 'pause' | 'resume';
+  type: 'gap-start' | 'gap-end' | 'device-lost' | 'device-back' | 'marker' | 'target-adjust' | 'storage-error' | 'resumed' | 'pause' | 'resume' | 'skip';
   detail?: string;
 };

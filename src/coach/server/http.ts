@@ -11,6 +11,8 @@ import { RIDE_ID } from '../ride-upload-format';
 import { listRides, loadRide, storeRide } from './ride-store';
 import { RecordStore } from '../tracking/store';
 import type { AccountCoach, Household } from './household';
+import { LIVE_TYPES, type LiveMessage } from '../../shared/live';
+import { LiveChannel } from './live';
 import { MAX_ITEM_BYTES, MigrationError, parseManifest } from './migration';
 
 export type CoachServerOptions = {
@@ -26,7 +28,7 @@ const ACCOUNT = /^[1-9][0-9]{0,15}$/;
 /** A client's id for a queued entry: a uuid, with room to spare. */
 const MAX_QID = 100;
 
-type Conn = { ws: WebSocket; subscribed: boolean; lastSent: string | null };
+type Conn = { ws: WebSocket; subscribed: boolean; /** Follows the running ride (the phone). */ watching: boolean; lastSent: string | null };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 /** Compares digests, so neither the length nor the content of the token leaks through the time taken. */
@@ -222,6 +224,10 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
       if (c.lastSent !== body) { c.ws.send(body); c.lastSent = body; }
     } catch { /* connection gone */ }
   };
+  // The running ride of each account, in memory only; see live.ts.
+  const live = new LiveChannel<Conn>({
+    nowMs, send: (c, m: LiveMessage) => send(c, m), peers: (id) => conns.get(id) ?? [], watching: (c) => c.watching,
+  });
   const publish = (a: AccountCoach): void => { for (const c of conns.get(a.accountId) ?? []) if (c.subscribed) sendView(c, a); };
 
   const listen = (a: AccountCoach): void => {
@@ -318,6 +324,8 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
         }
         return;
       }
+      if (m.type === 'live-watch') { c.watching = true; live.hello(a.accountId, c); return; }
+      if (typeof m.type === 'string' && LIVE_TYPES.has(m.type)) { live.handle(a.accountId, a.profileId, c, m); return; }
       apply(c, a, m, now, false);
     } catch { /* an invalid message changes nothing */ }
   };
@@ -344,12 +352,12 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
       const a = household.account(accountId);
       if (!a) { ws.close(4404, 'not moved'); return; }
       listen(a);
-      const c: Conn = { ws, subscribed: false, lastSent: null };
+      const c: Conn = { ws, subscribed: false, watching: false, lastSent: null };
       let set = conns.get(accountId);
       if (!set) { set = new Set(); conns.set(accountId, set); }
       set.add(c);
       ws.on('message', (data, isBinary) => onMessage(c, a, data, isBinary));
-      ws.on('close', () => { set.delete(c); });
+      ws.on('close', () => { set.delete(c); live.closed(accountId, c); });
     });
   });
 

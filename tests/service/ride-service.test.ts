@@ -224,3 +224,27 @@ test('another profile can be deleted during a ride', () => {
   expect(out.some((m) => m.type === 'error')).toBe(false);
   expect(JSON.parse(fs.readFileSync(path.join(dir, 'profiles.json'), 'utf8')).map((p: { id: string }) => p.id)).toEqual(['P']);
 });
+
+const twoSteps: Session = { id: 's2', name: 'Zwei', steps: [
+  { kind: 'erg', durationS: 100, ftpFraction: 0.5, label: 'A' },
+  { kind: 'erg', durationS: 100, ftpFraction: 0.8, label: 'B' },
+] };
+test('skip moves to the next step and is recorded as an event', () => {
+  const svc = make(); svc.handle({ type: 'start', profileId: 'A', session: twoSteps, ftpW: 200 });
+  ticks(svc, 5);
+  svc.handle({ type: 'skip' });
+  ticks(svc, 1);
+  const r = readRide(dir, onlyRide());
+  expect(r.events.filter((e) => e.type === 'skip')).toHaveLength(1);
+  expect(r.samples.at(-1)?.targetW).toBe(160);
+  expect(r.samples.map((x) => x.rideElapsedS)).toEqual([1, 2, 3, 4, 5, 6]);
+  expect(r.events.find((e) => e.type === 'skip')?.detail).toBe('0:95');
+});
+test('skip without a ride or on the last step does nothing and never throws', () => {
+  const svc = make();
+  svc.handle({ type: 'skip' });
+  expect(out.some((m) => m.type === 'error')).toBe(false);
+  start(svc); ticks(svc, 3);
+  svc.handle({ type: 'skip' });
+  expect(readRide(dir, onlyRide()).events.some((e) => e.type === 'skip')).toBe(false);
+});

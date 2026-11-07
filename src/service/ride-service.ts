@@ -105,6 +105,7 @@ export class RideService {
       }
       case 'adjust': if (a) this.logEvent(a.engine.adjustTarget(msg.deltaPct)); return;
       case 'mark': this.logEvent({ wallClockMs: this.deps.nowMs(), type: 'marker', detail: msg.note }); return;
+      case 'skip': if (a && !a.paused && !a.ending) { const e = a.engine.skipStep(); if (e) this.logEvent(e); } return;
       case 'stop': if (a) this.end('aborted'); return;
       case 'discard': if (a) this.end('discarded'); return;
       case 'resume': if (a) { a.recovered = false; a.paused = false; } return;
@@ -181,7 +182,7 @@ export class RideService {
     try { return JSON.parse(fs.readFileSync(path.join(this.deps.dir, 'profiles.json'), 'utf8')) as Profile[]; } catch { return []; }
   }
 
-  private newEngine(session: Session, ftpW: number, extra: { resumeAtS?: number; startSeq?: number; maxHrBpm?: number; hrMaxBpm?: number } = {}): RideEngine {
+  private newEngine(session: Session, ftpW: number, extra: { resumeAtS?: number; skippedS?: number; startSeq?: number; maxHrBpm?: number; hrMaxBpm?: number } = {}): RideEngine {
     return new RideEngine({ session, ftpW, nowMs: this.deps.nowMs, ...extra });
   }
 
