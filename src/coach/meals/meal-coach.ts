@@ -13,7 +13,7 @@ import { fetchPicture, imageUrlOf, type Picture } from './recipe-image';
 import { extractRecipe, fetchPage, type Page } from './recipe-link';
 import { browse, detail, type BrowseQuery } from './recipe-browse';
 import { planFromRecipes, recipeDish, type Favourites } from './recipe-plan';
-import { RecipeStore } from './recipe-store';
+import { RecipeStore, shownLink } from './recipe-store';
 import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
 import { constraintsFor, ruleMeals, seeded, skeleton, type Member, type Slotted } from './rules';
@@ -658,7 +658,7 @@ export class MealCoach {
   private keepRecipeRecords(id: string, have: TrackedRecord[], recipes: RecipeStore, wanted: Map<string, unknown>, keep: Set<string>): void {
     try {
       this.removeDeletedRecipes(id, have);
-      for (const r of recipes.mine(id)) wanted.set(`recipe-${r.id}`, { title: r.title, sourceUrl: r.sourceUrl, minutes: r.minutes });
+      for (const r of recipes.mine(id)) wanted.set(`recipe-${r.id}`, { title: r.title, sourceUrl: shownLink(r), minutes: r.minutes });
       for (const r of have) if (!r.deleted && isFavRecordId(r.id)) keep.add(r.id);
       const requests = have.flatMap((r) => { const q = !r.deleted && isLinkRecordId(r.id) ? readLinkRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
       for (const q of requests.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);

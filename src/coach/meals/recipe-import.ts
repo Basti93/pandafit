@@ -452,3 +452,8 @@ function merge(list_: Ingredient[]): Ingredient[] {
 
 /** `proteinG` of a recipe whose protein is unknown. Such a recipe is never chosen for a protein target. */
 export const PROTEIN_UNKNOWN = -1;
+
+/** Owner of the household's own recipes that came through the inbox. */
+export const OWN_OWNER = '~own';
+/** The link shown to people: none for own recipes delivered through the inbox (their url is only an id for dedupe). */
+export const shownLink = (r: { sourceUrl: string; owner?: string }): string => (r.owner === OWN_OWNER ? '' : r.sourceUrl);

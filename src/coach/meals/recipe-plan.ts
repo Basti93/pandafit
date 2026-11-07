@@ -5,7 +5,7 @@ import { fitsEveryone } from './check';
 import { planGutBoost } from './recipe-health';
 import { dataBlock, letters } from './prompt';
 import type { StoredRecipe } from './recipe-import';
-import { PROTEIN_UNKNOWN } from './recipe-import';
+import { PROTEIN_UNKNOWN, shownLink } from './recipe-import';
 import { constraintsFor, type Member, type Slotted } from './rules';
 
 /**
@@ -24,7 +24,7 @@ const likedBy = (r: StoredRecipe, n: Need, favs?: Favourites): number => (favs ?
 /** A real recipe as the dish of a meal. The title stays the recipe's; the source link goes with it. */
 export const recipeDish = (r: StoredRecipe): Dish => ({
   title: r.title, ingredients: r.ingredients.map((i) => ({ ...i })), steps: [...r.steps], minutes: r.minutes,
-  proteinG: r.proteinG === PROTEIN_UNKNOWN ? 0 : r.proteinG, keepsDays: r.keepsDays, source: 'rezept', recipeId: r.id, sourceUrl: r.sourceUrl,
+  proteinG: r.proteinG === PROTEIN_UNKNOWN ? 0 : r.proteinG, keepsDays: r.keepsDays, source: 'rezept', recipeId: r.id, sourceUrl: shownLink(r),
 });
 
 /** Longest cooking time that fits a meal: quick in the morning and on workdays, more time at the weekend. */

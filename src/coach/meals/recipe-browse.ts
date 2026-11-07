@@ -1,6 +1,6 @@
 import { RECIPE_ID, RECIPE_PAGE, type RecipeDetail, type RecipePage, type RecipeSummary } from '../../shared/meals';
 import { PROTEIN_UNKNOWN, type StoredRecipe } from './recipe-import';
-import type { RecipeStore } from './recipe-store';
+import { shownLink, type RecipeStore } from './recipe-store';
 import { allTags, FACETS, facetOf, labelOf, vocabulary, type Facet } from './recipe-tags';
 
 /** What the app may ask when browsing; every value is checked here, none is trusted. */
@@ -42,5 +42,5 @@ export function detail(store: RecipeStore, person: string, favs: ReadonlySet<str
   if (!RECIPE_ID.test(id)) return null;
   const r = store.canSee(id, person);
   if (!r) return null;
-  return { ...summaryOf(r, favs.has(r.id), store.imageOf(r.id) !== null), ingredients: r.ingredients.map((i) => ({ ...i })), steps: [...r.steps], sourceUrl: r.sourceUrl };
+  return { ...summaryOf(r, favs.has(r.id), store.imageOf(r.id) !== null), ingredients: r.ingredients.map((i) => ({ ...i })), steps: [...r.steps], sourceUrl: shownLink(r) };
 }
