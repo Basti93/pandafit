@@ -107,7 +107,7 @@ export function changeIngredient(dish: Dish, alt: string, neu: Ingredient | null
   } else if (neu) nextSteps = dish.steps.map((x) => x.split(old.name).join(neu.name));
   const t = title ? clean(title, 80) : dish.title;
   if (!t) return null;
-  const { recipeId: _r, ...rest } = dish;
+  const { recipeId: _r, sourceUrl: _u, ...rest } = dish;
   return { ...rest, title: t, ingredients, steps: nextSteps, source: 'coach' };
 }
 

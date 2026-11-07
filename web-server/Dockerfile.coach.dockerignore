@@ -7,3 +7,5 @@ out
 .superpowers
 **/.env
 docs
+**/recipes/
+**/recipes.db*

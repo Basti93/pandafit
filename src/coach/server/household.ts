@@ -312,7 +312,7 @@ export class Household {
       },
     };
     this.mealCoach = new MealCoach({
-      dir: this.mealsDir(), nowMs: this.nowMs,
+      dir: this.mealsDir(), nowMs: this.nowMs, recipesDir: path.join(this.opts.root, 'recipes'),
       profiles: () => [...this.accounts.values()].map((a) => { const { id, name, avatar } = a.profile(); return { id, name, ...(avatar ? { avatar } : {}) }; }),
       noOpenRide: () => true,
       ask: this.ask,

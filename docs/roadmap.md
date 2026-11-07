@@ -43,6 +43,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **P Begleiter während der Fahrt** | Das Handy zeigt die laufende Fahrt groß und kann Leistung anpassen, Marker setzen und Intervalle überspringen; der Mac bleibt Chef. | Wunsch 07.11.2026 |
 | ✅ | **Q Mac nur fürs Rad** | Die Web-App ist die Haupt-App; die Mac-App kann nur noch koppeln, fahren und kurz zusammenfassen, alles andere öffnet die Web-App. Eine Fahrt geht nie verloren. | Wunsch 07.11.2026 |
 | ✅ | **R Gesundheit** | Garmin-Gesundheit in der Web-App: Ruhepuls, Fitness, Alltagsbewegung, Schlaf, ruhig in Sätzen, belegte Regeln mit Quellen, wöchentliche Coach-Auswertung ohne Diagnose. | Wunsch 07.11.2026 |
+| | **S Echte Rezepte** | Vegetarische Rezeptsammlung auf dem Heimserver (wächst langsam, frei ab 1.000), eigene Rezepte per Link sofort; der Plan wählt echte Rezepte statt zu erfinden. | Wunsch 07.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 

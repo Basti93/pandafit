@@ -2,12 +2,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   addWeeks, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
-  newChatId, planRecordId, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
-  type Habit, type ItemState, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
+  isLinkRecordId, isRecipeRecordId, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
+  type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
 import type { RecordStore } from '../tracking/store';
 import { fitsEveryone } from './check';
+import { sanitizeUrl, type StoredRecipe } from './recipe-import';
+import { extractRecipe, fetchPage, type Page } from './recipe-link';
+import { planFromRecipes } from './recipe-plan';
+import { RecipeStore } from './recipe-store';
+import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
 import { constraintsFor, ruleMeals, seeded, skeleton, type Member, type Slotted } from './rules';
 import { applyChat, buildChatPrompt, CHAT_SYSTEM_PROMPT, chatAnswerJsonSchema, chatAnswerSchema, listDish, putDish, REPLY_NO_AI, REPLY_NO_PLAN, replySwapped, ruleTarget, type ChatResult } from './chat';
@@ -22,6 +27,8 @@ const SWAP_TIMEOUT_MS = 120_000;
 const CHAT_TIMEOUT_MS = 120_000;
 /** Messages kept per person, the newest. */
 const CHAT_KEEP = 10;
+/** Link requests kept per person, the newest. */
+const LINK_KEEP = 10;
 const MAX_TAGS = 20;
 const TAG_MAX = 40;
 const TRAINING_WINDOW_DAYS = 28;
@@ -46,6 +53,10 @@ type Deps = {
   random?: () => number;
   /** Profiles whose records were just written, so their sync can go soon. */
   onExport?: (ids: string[]) => void;
+  /** `<root>/recipes`: the recipe collection and its inbox. Without it there is none. */
+  recipesDir?: string;
+  /** Fetches the page of a link recipe; the guarded fetch unless a test gives its own. */
+  fetchPage?: (url: string) => Promise<Page>;
 };
 type FileData = {
   settings: Record<string, MealSettings>; plans: Record<string, MealPlan>; states: Record<string, MealState>; notices: Record<string, string | null>; lastAuto: string | null;
@@ -65,6 +76,8 @@ export type MealsView = {
   chat: MealChat[];
   /** False while a ride is open. */
   canPlan: boolean;
+  /** How big the recipe collection is against the number it is planned from; null without a collection. */
+  recipes: { collection: number; unlock: number } | null;
 };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -94,6 +107,8 @@ export function usualTrainingDays(startsMs: number[], nowMs: number): number[] {
 export class MealCoach {
   private data: FileData | null = null;
   private planning: string | null = null;
+  private store: RecipeStore | null = null;
+  private linking = false;
   constructor(private deps: Deps) {}
 
   private file(): string { return path.join(this.deps.dir, 'household.json'); }
@@ -114,6 +129,95 @@ export class MealCoach {
     const f = this.file();
     fs.writeFileSync(`${f}.tmp`, JSON.stringify(d));
     fs.renameSync(`${f}.tmp`, f);
+  }
+
+  /** The recipe collection, opened on first use; null without a directory for it. */
+  recipes(): RecipeStore | null {
+    if (!this.deps.recipesDir) return null;
+    this.store ??= new RecipeStore(this.deps.recipesDir, this.deps.nowMs);
+    return this.store;
+  }
+
+  private counted: { atMs: number; value: { collection: number; unlock: number } } | null = null;
+  /** The collection's size for the view, read at most once a minute (the view is built often). */
+  private recipeCount(): { collection: number; unlock: number } | null {
+    try {
+      const store = this.recipes();
+      if (!store) return null;
+      const now = this.deps.nowMs();
+      if (!this.counted || now - this.counted.atMs > 60_000 || now < this.counted.atMs) { const s = store.stats(); this.counted = { atMs: now, value: { collection: s.collection, unlock: s.unlock } }; }
+      return this.counted.value;
+    } catch { return null; }
+  }
+
+  /** Takes recipes waiting in the inbox. Never while a ride is open; never throws. */
+  private async importInbox(): Promise<void> {
+    try {
+      const store = this.recipes();
+      if (!store || !this.deps.noOpenRide()) return;
+      await store.scanInbox({ noOpenRide: this.deps.noOpenRide, ...(this.deps.ask ? { ask: this.deps.ask } : {}) });
+    } catch { /* the next scan tries again */ }
+  }
+
+  /**
+   * One link a person gave: fetched with the guard, the Recipe found in its JSON-LD, the same pipeline as the collection. Counts against
+   * the household's daily limit whether or not it works. Never throws.
+   */
+  async addLink(owner: string, url: string): Promise<LinkResult> {
+    try {
+      const store = this.recipes();
+      const clean = typeof url === 'string' ? sanitizeUrl(url.trim()) : null;
+      if (!store || !clean || !clean.startsWith('https://')) return { state: 'bad' };
+      if (store.linksToday() >= ruleValues('meals.import-limits').linkPerDay!) return { state: 'limit' };
+      store.countLink();
+      const page = await (this.deps.fetchPage ?? fetchPage)(clean);
+      if (!page.ok) return { state: ['scheme', 'credentials', 'port', 'host', 'private', 'unresolved'].includes(page.reason) ? 'bad' : page.reason === 'type' ? 'none' : 'fetch' };
+      const found = extractRecipe(page.html);
+      if (!found) return { state: 'none' };
+      const out = await store.add({ source: 'link', owner, url: clean, recipe: found, ...(this.deps.ask ? { ask: this.deps.ask, tagAsk: this.deps.ask } : {}) });
+      if (out.status === 'saved' || out.status === 'duplicate') return { state: 'saved', title: out.recipe.title };
+      if (out.status === 'pending') return { state: 'wait', title: String((found as { name?: unknown }).name ?? '').slice(0, 120) || 'Rezept' };
+      return { state: out.status === 'rejected' ? 'veg' : 'none' };
+    } catch { return { state: 'fetch' }; }
+  }
+
+  /** Answers waiting link requests of people with the plan on and a linked account, a few per tick, never with a ride open. */
+  private async answerLinks(): Promise<boolean> {
+    const { store } = this.deps;
+    if (!store || this.linking || !this.recipes() || !this.deps.noOpenRide()) return false;
+    this.linking = true;
+    let any = false;
+    const touched = new Set<string>();
+    try {
+      let budget = 5;
+      for (const p of this.deps.profiles()) {
+        if (!this.synced(p.id)) continue;
+        for (const r of store.all(p.id, 'mealplan')) {
+          if (budget <= 0) return any;
+          if (r.deleted || !isLinkRecordId(r.id)) continue;
+          const req = readLinkRequest(r.id, r.body);
+          if (!req || req.result) continue;
+          budget--;
+          const result = await this.addLink(p.id, req.url);
+          const now = this.deps.nowMs();
+          const body = isObj(r.body) ? r.body : {};
+          store.putMany(p.id, [{ ...r, updatedMs: Math.max(now, r.updatedMs + 1), body: { ...body, result, answeredMs: now } }]);
+          any = true;
+          touched.add(p.id);
+        }
+      }
+    } catch { /* the next tick tries again */ } finally {
+      this.linking = false;
+      if (touched.size > 0) { try { this.deps.onExport?.([...touched]); } catch { /* a listener never matters here */ } }
+    }
+    return any;
+  }
+
+  /** A person deleted a recipe from their list (the record has a tombstone): the recipe goes too. */
+  private removeDeletedRecipes(owner: string, have: TrackedRecord[]): void {
+    const store = this.recipes();
+    if (!store) return;
+    for (const r of have) if (r.deleted && isRecipeRecordId(r.id)) { try { store.remove(owner, r.id.slice('recipe-'.length)); } catch { /* gone already */ } }
   }
 
   settings(id: string): MealSettings { return cleanSettings(this.load().settings[id]); }
@@ -157,7 +261,7 @@ export class MealCoach {
     const current = weekOf(now);
     const weeks = [current, addWeeks(current, 1)].flatMap((w) => (d.plans[w] ? [{ plan: d.plans[w]!, state: d.states[w] ?? EMPTY_STATE, notice: d.notices[w] ?? null }] : []));
     const on = this.enabled(id);
-    return { settings: this.settings(id), weeks: on ? weeks : [], currentWeek: current, today: dayIndex(now), planning: this.planning, canPlan: this.deps.noOpenRide(), chat: on ? d.chats[id] ?? [] : [] };
+    return { settings: this.settings(id), weeks: on ? weeks : [], currentWeek: current, today: dayIndex(now), planning: this.planning, canPlan: this.deps.noOpenRide(), chat: on ? d.chats[id] ?? [] : [], recipes: on ? this.recipeCount() : null };
   }
 
   /**
@@ -166,10 +270,13 @@ export class MealCoach {
    */
   async tick(opts: { plan?: boolean } = {}): Promise<string[]> {
     try {
+      // The collection grows whether or not anyone plans meals.
+      await this.importInbox();
       // No profile ever turned the plan on: nothing is read, written or sent.
       if (Object.keys(this.load().settings).length === 0) return [];
       if (this.members().length === 0) return this.exportAll();
       this.importStates();
+      await this.answerLinks();
       let touched = this.exportAll();
       // Messages from phones, and those typed here during a ride, once no ride is open.
       if (await this.answerPending()) touched = [...new Set([...touched, ...this.exportAll()])];
@@ -208,13 +315,20 @@ export class MealCoach {
     try {
       const d = this.load();
       const trainingDays = this.training();
-      const aiSlots = skeleton(members, fromDay, false);
+      const random = this.deps.random ?? seeded(`${week}-${fromDay}-${this.deps.nowMs()}`);
+      const lastIds = new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).flatMap((m) => (m.dish.recipeId ? [m.dish.recipeId] : [])));
+      const lastWeek = [...new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).map((m) => m.dish.title))];
+      // Real recipes first: the household's link recipes always, the collection once it is big enough. None at all: exactly the plan of before.
+      const real = await this.realMeals({ members, fromDay, trainingDays, random, lastIds, lastWeek, week });
+      const realKeys = new Set(real.map((m) => mealKey(m.day, m.slot)));
+      const aiSlots = skeleton(members, fromDay, false).filter((s) => !realKeys.has(mealKey(s.day, s.slot)));
       let fromAi: Meal[] = [];
       let notice: string | null = null;
-      if (this.deps.ask) {
+      if (aiSlots.length === 0) {
+        // Every meal came from a real recipe: nothing to invent.
+      } else if (this.deps.ask) {
         try {
-          const lastWeek = (d.plans[addWeeks(week, -1)]?.meals ?? []).map((m) => m.dish.title);
-          const raw = await this.deps.ask({ prompt: buildMealPrompt({ members, slots: aiSlots, trainingDays, lastWeek: [...new Set(lastWeek)] }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: PLAN_TIMEOUT_MS });
+          const raw = await this.deps.ask({ prompt: buildMealPrompt({ members, slots: aiSlots, trainingDays, lastWeek }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: PLAN_TIMEOUT_MS });
           fromAi = mealsFromAnswer(raw, members, aiSlots);
           const replaced = aiSlots.length - fromAi.length;
           if (!mealAnswerSchema.safeParse(raw).success) notice = NOTICE_NO_AI;
@@ -222,18 +336,42 @@ export class MealCoach {
         } catch { notice = NOTICE_NO_AI; }
       } else notice = NOTICE_NO_AI;
       // Whatever the AI left open comes from the list, with the rule's cook-once-eat-twice where both halves are open.
-      const have = new Set(fromAi.map((m) => mealKey(m.day, m.slot)));
+      const have = new Set([...fromAi, ...real].map((m) => mealKey(m.day, m.slot)));
       const open = skeleton(members, fromDay, true).filter((s) => !have.has(mealKey(s.day, s.slot))).map((s) => (s.reuseOf && have.has(s.reuseOf) ? { ...s, reuseOf: null } : s));
-      const random = this.deps.random ?? seeded(`${week}-${fromDay}-${this.deps.nowMs()}`);
-      const lastIds = new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).flatMap((m) => (m.dish.recipeId ? [m.dish.recipeId] : [])));
+      for (const m of real) if (m.dish.recipeId) lastIds.add(m.dish.recipeId);
       const fromList = ruleMeals(members, open, trainingDays, random, lastIds);
       const kept = (d.plans[week]?.meals ?? []).filter((m) => m.day < fromDay);
-      const meals = [...kept, ...fromAi, ...fromList].sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
-      const source = fromAi.length === 0 ? 'liste' : fromList.length === 0 ? 'coach' : 'gemischt';
+      const meals = [...kept, ...real, ...fromAi, ...fromList].sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+      const source = fromAi.length === 0 ? 'liste' : fromList.length + real.length === 0 ? 'coach' : 'gemischt';
       d.plans[week] = { week, createdMs: this.deps.nowMs(), source, people: this.people(), meals, trainingDays };
       d.notices[week] = notice;
       this.save();
     } finally { this.planning = null; }
+  }
+
+  /**
+   * Meals from real recipes for the open slots of a week. Below the unlock only the household's link recipes are candidates, for at most
+   * a third of the meals; from it the collection joins, for every meal, and the AI chooses from the shortlists. Empty without recipes.
+   */
+  private async realMeals(i: { members: Member[]; fromDay: number; trainingDays: number[]; random: () => number; lastIds: Set<string>; lastWeek: string[]; week: string }): Promise<Meal[]> {
+    try {
+      const store = this.recipes();
+      if (!store) return [];
+      const unlocked = store.unlocked();
+      const seed = [...i.week].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 4294967291, 7);
+      const pool: StoredRecipe[] = [...store.links()];
+      if (unlocked) for (const slot of SLOTS) pool.push(...store.collectionFor(slot, 2000, seed));
+      if (pool.length === 0) return [];
+      const slots = skeleton(i.members, i.fromDay, unlocked);
+      const cap = unlocked ? undefined : Math.max(1, Math.floor(slots.length / 3));
+      // Below the unlock the slots are looked at in a random order, so the links do not always land on the same days.
+      const order = unlocked ? slots : [...slots].sort(() => i.random() - 0.5);
+      const meals = await planFromRecipes({
+        members: i.members, slots: order, trainingDays: i.trainingDays, pool, lastIds: i.lastIds, random: i.random, lastWeek: i.lastWeek,
+        ...(cap !== undefined ? { cap } : {}), aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
+      });
+      return meals;
+    } catch { return []; }
   }
 
   /** "Tauschen": another fitting dish for one meal, from the list at once or, with `ai`, from the AI when it answers. */
@@ -422,6 +560,16 @@ export class MealCoach {
     return any;
   }
 
+  /** The person's recipe list as records, and the newest link requests kept; a recipe whose record the person deleted is removed first. */
+  private keepRecipeRecords(id: string, have: TrackedRecord[], recipes: RecipeStore, wanted: Map<string, unknown>, keep: Set<string>): void {
+    try {
+      this.removeDeletedRecipes(id, have);
+      for (const r of recipes.mine(id)) wanted.set(`recipe-${r.id}`, { title: r.title, sourceUrl: r.sourceUrl, minutes: r.minutes });
+      const requests = have.flatMap((r) => { const q = !r.deleted && isLinkRecordId(r.id) ? readLinkRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
+      for (const q of requests.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
+    } catch { /* the plan's records go on without them */ }
+  }
+
   /** Writes the plan and its state into each synced profile's records, and tombstones what is no longer wanted. Returns the profiles it changed. */
   exportAll(): string[] {
     const { store } = this.deps;
@@ -437,6 +585,10 @@ export class MealCoach {
         // Never on and nothing there: no read beyond this, no write, nothing to send.
         if (!this.synced(p.id) && !have.some((r) => !r.deleted)) continue;
         const wanted = new Map<string, unknown>();
+        // Link requests and the person's own recipes are managed apart from the plan: kept, not tombstoned as unknown.
+        const keep = new Set<string>();
+        const recipes = this.synced(p.id) ? this.recipes() : null;
+        if (recipes) this.keepRecipeRecords(p.id, have, recipes, wanted, keep);
         if (this.synced(p.id)) {
           for (const w of weeks) {
             wanted.set(planRecordId(w), { ...d.plans[w], you: p.id });
@@ -452,7 +604,7 @@ export class MealCoach {
           if (r && !r.deleted && JSON.stringify(r.body) === JSON.stringify(body)) continue;
           out.push({ kind: 'mealplan', id: rid, updatedMs: Math.max(now, (r?.updatedMs ?? 0) + 1), deleted: false, body });
         }
-        for (const r of have) if (!r.deleted && !wanted.has(r.id)) out.push({ ...r, updatedMs: Math.max(now, r.updatedMs + 1), deleted: true });
+        for (const r of have) if (!r.deleted && !wanted.has(r.id) && !keep.has(r.id)) out.push({ ...r, updatedMs: Math.max(now, r.updatedMs + 1), deleted: true });
         if (out.length > 0) { store.putMany(p.id, out); touched.push(p.id); }
       } catch { /* the next tick tries again */ }
     }

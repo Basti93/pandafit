@@ -612,6 +612,61 @@ describe('Essen on the phone', () => {
     expect(store.all('pa').some((r) => r.id.startsWith('chat-'))).toBe(false);
   });
 
+  it('shows where a dish comes from: a recipe link for a real recipe, "vom Coach" for an invented dish, nothing for the list', async () => {
+    const real = { ...dish('Linsen-Bolognese'), source: 'rezept', sourceUrl: 'https://rezepte.example/linsen' };
+    const plan = { ...mealPlan, body: { ...(mealPlan.body as object), meals: [
+      { day: today, slot: 'fruehstueck', dish: { ...dish('Skyr mit Beeren'), source: 'coach' }, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false },
+      { day: today, slot: 'mittag', dish: real, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: true },
+      { day: today, slot: 'abend', dish: { ...dish('Tomatensuppe'), source: 'rezept', sourceUrl: 'javascript:alert(1)' }, reuseOf: null, eaters: ['pa'], takeAlong: false },
+    ] } };
+    await boot({ account: 'anna', seed: [plan] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Skyr mit Beeren/ }));
+    expect(screen.getByText('vom Coach')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Linsen-Bolognese/ }));
+    const link = screen.getByRole('link', { name: 'Rezept ›' });
+    expect(link.getAttribute('href')).toBe('https://rezepte.example/linsen');
+    expect(link.getAttribute('rel')).toContain('noopener');
+    // A link that is not https is never shown; the dish falls back to the list.
+    fireEvent.click(screen.getByRole('button', { name: /Tomatensuppe/ }));
+    expect(screen.queryAllByRole('link', { name: 'Rezept ›' })).toHaveLength(0);
+  });
+
+  it('adds a recipe by link as a record, shows the coach\'s answer, lists own recipes and deletes one', async () => {
+    const own = (id: string, title: string): TrackedRecord => ({ kind: 'mealplan', id, updatedMs: NOW - 500, deleted: false, body: { title, sourceUrl: 'https://rezepte.example/x', minutes: 20 } });
+    const a = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry')] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rezept hinzufügen' }));
+    const field = await screen.findByLabelText('Link zum Rezept');
+    // Only https links can be sent.
+    fireEvent.change(field, { target: { value: 'http://rezepte.example/a' } });
+    expect((screen.getByRole('button', { name: 'Hinzufügen' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(field, { target: { value: 'https://rezepte.example/a' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }));
+    expect(await screen.findByText('Der Coach schaut sich die Seite gleich an.')).toBeTruthy();
+    const phone = await openIdb('anna', a.factory);
+    const sent = (await phone.list('mealplan')).filter((r) => r.id.startsWith('link-'));
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.body).toMatchObject({ url: 'https://rezepte.example/a', result: null });
+    // The coach answers by writing the record again; the phone shows it when the sheet is opened afterwards.
+    const answered = { ...sent[0]!, updatedMs: sent[0]!.updatedMs + 5, body: { ...(sent[0]!.body as object), atMs: Date.now() - 1000, result: { state: 'veg' }, answeredMs: Date.now() } };
+    phone.close();
+    cleanup();
+    const again = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry'), answered] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rezept hinzufügen' }));
+    expect(await screen.findByText('Nicht vegetarisch – nicht gespeichert')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Eigene Rezepte/ }));
+    expect(await screen.findByText('Erfundenes Curry')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
+    expect(await screen.findByText('Noch keine eigenen Rezepte.')).toBeTruthy();
+    const store = await openIdb('anna', again.factory);
+    expect((await store.list('mealplan')).find((r) => r.id === 'recipe-l-aaaa1111')?.deleted).toBe(true);
+    store.close();
+  });
+
   it('without a plan there is no Essen and so no chat: nothing is sent', async () => {
     const a = await boot({ account: 'anna', seed: [] });
     await screen.findByRole('navigation');

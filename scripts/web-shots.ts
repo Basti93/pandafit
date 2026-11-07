@@ -231,11 +231,12 @@ records.push(rec('health', 'health', healthBody(false), NOW - 1800_000));
 
 // ---------- the meal plan ----------
 const dish = (t: string, min: number, prot: number, ing: [string, number, string, string][]) => ({ title: t, minutes: min, proteinG: prot, keepsDays: 2, source: 'coach', steps: ['Alles vorbereiten.', 'Zusammen garen und abschmecken.'], ingredients: ing.map(([name, amount, unit, section]) => ({ name, amount, unit, section })) });
+const real = <T extends object>(d: T, path: string) => ({ ...d, source: 'rezept', sourceUrl: `https://rezepte.example/${path}` });
 const DISHES = [
   dish('Haferbrei mit Beeren', 10, 18, [['Haferflocken', 80, 'g', 'Vorrat'], ['Beeren', 150, 'g', 'Tiefkühl'], ['Milch', 250, 'ml', 'Kühlregal']]),
-  dish('Linsen-Gemüse-Pfanne', 30, 32, [['Rote Linsen', 100, 'g', 'Vorrat'], ['Paprika', 2, 'Stk', 'Obst und Gemüse'], ['Kokosmilch', 1, 'Dose', 'Vorrat']]),
-  dish('Ofengemüse mit Feta', 40, 28, [['Zucchini', 2, 'Stk', 'Obst und Gemüse'], ['Feta', 150, 'g', 'Kühlregal'], ['Süßkartoffel', 2, 'Stk', 'Obst und Gemüse']]),
-  dish('Skyr mit Nüssen', 5, 25, [['Skyr', 300, 'g', 'Kühlregal'], ['Walnüsse', 30, 'g', 'Vorrat']]),
+  real(dish('Linsen-Gemüse-Pfanne', 30, 32, [['Rote Linsen', 100, 'g', 'Vorrat'], ['Paprika', 2, 'Stk', 'Obst und Gemüse'], ['Kokosmilch', 1, 'Dose', 'Vorrat']]), 'linsen-gemuese-pfanne'),
+  real(dish('Ofengemüse mit Feta', 40, 28, [['Zucchini', 2, 'Stk', 'Obst und Gemüse'], ['Feta', 150, 'g', 'Kühlregal'], ['Süßkartoffel', 2, 'Stk', 'Obst und Gemüse']]), 'ofengemuese-feta'),
+  real(dish('Skyr mit Nüssen', 5, 25, [['Skyr', 300, 'g', 'Kühlregal'], ['Walnüsse', 30, 'g', 'Vorrat']]), 'skyr-nuesse'),
 ];
 const mealPlanBody = {
   week: monday, createdMs: dateAt(addDays(monday, -2), 18), source: 'coach', trainingDays: [0, 2, 4],
@@ -243,6 +244,10 @@ const mealPlanBody = {
   meals: Array.from({ length: 7 }, (_, d) => (['fruehstueck', 'mittag', 'abend'] as const).map((slot, s) => ({ day: d, slot, dish: DISHES[s === 0 ? 0 : s === 1 ? (d % 2 ? 1 : 3) : (d % 2 ? 2 : 1)], reuseOf: null, eaters: d === 5 && s === 2 ? ['p-mira'] : ['p-mira', 'p-jonas'], takeAlong: s === 1 && d < 5 }))).flat(),
 };
 records.push(rec('mealplan', `week-${monday}`, mealPlanBody, dateAt(addDays(monday, -2), 18)));
+// A person's own recipes (written by the coach) and an answered link request.
+records.push(rec('mealplan', 'recipe-l-a1b2c3d4e5f6a7', { title: 'Linsen-Gemüse-Pfanne', sourceUrl: 'https://rezepte.example/linsen-gemuese-pfanne', minutes: 30 }, NOW - 2 * DAY));
+records.push(rec('mealplan', 'recipe-l-b2c3d4e5f6a7b8', { title: 'Ofengemüse mit Feta', sourceUrl: 'https://rezepte.example/ofengemuese-feta', minutes: 40 }, NOW - DAY));
+records.push(rec('mealplan', 'link-shotseed01', { url: 'https://rezepte.example/ofengemuese-feta', atMs: NOW - DAY, result: { state: 'saved', title: 'Ofengemüse mit Feta' }, answeredMs: NOW - DAY + 1000 }, NOW - DAY));
 
 // ---------- the week chat: ~60 messages over 3 weeks ----------
 type Msg = { d: number; h: number; role: 'rider' | 'coach'; text: string; extra?: Record<string, unknown> };
@@ -510,7 +515,15 @@ async function main() {
   await fresh('Essen');
   await shot('essen-tage');
   await step('essen-mahlzeit-offen', async () => { await page.locator('.tk-rowbtn[aria-expanded]').first().click(); await shot('essen-tage-mahlzeit-offen'); });
+  await step('essen-gericht-quelle', async () => { await page.locator('.tk-rowbtn[aria-expanded]').nth(1).click(); await shot('essen-gericht-quelle'); });
   await step('essen-wunsch', async () => { await page.getByRole('button', { name: 'Änderung wünschen' }).click(); await shot('essen-aenderung-wuenschen'); await page.keyboard.press('Escape'); });
+  await step('essen-rezept-hinzufuegen', async () => {
+    await page.getByRole('button', { name: 'Rezept hinzufügen' }).click();
+    await page.getByLabel('Link zum Rezept').fill('https://rezepte.example/gemuese-curry');
+    await shot('essen-rezept-hinzufuegen');
+    await page.keyboard.press('Escape');
+  });
+  await step('essen-eigene-rezepte', async () => { await page.getByRole('button', { name: /^Eigene Rezepte/ }).click(); await shot('essen-eigene-rezepte'); await page.keyboard.press('Escape'); });
   await step('essen-einkauf', async () => { await page.getByRole('button', { name: /^Einkauf/ }).click(); await shot('essen-einkauf'); });
   await step('essen-einkauf-haben-wir', async () => { await page.locator('.pm-have').first().click(); await shot('essen-einkauf-haben-wir'); await page.locator('.pm-have').first().click(); });
   await step('essen-einkauf-eigenes', async () => {

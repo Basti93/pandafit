@@ -101,6 +101,7 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .pm-reply { margin: .2rem 0 0; color: var(--muted); }
 .pm-reply.pending { font-style: italic; }
 .pm-chat-before summary { color: var(--muted); font-size: .9rem; padding-top: .6rem; }
+.pm-source a, .pm-rowtitle small a { color: var(--muted); }
 .pm-asked { margin: 0; color: var(--muted); font-size: .85rem; }
 
 /* Gemeinsam: the compact card on Heute and the full page. Time and regularity only, the same look for everyone. */

@@ -25,7 +25,17 @@ export type Unit = (typeof UNITS)[number];
 
 /** Amounts are per portion. `raw`: eaten raw, so a dislike like "rohe Zwiebeln" applies. */
 export type Ingredient = { name: string; amount: number; unit: Unit; section: Section; raw?: boolean };
-export type Dish = { title: string; ingredients: Ingredient[]; steps: string[]; minutes: number; proteinG: number; keepsDays: number; source: 'coach' | 'liste'; recipeId?: string };
+/**
+ * `source`: 'coach' the coach invented it, 'liste' from the built-in list, 'rezept' a real recipe (the collection or a person's link),
+ * which then has `sourceUrl`. A `proteinG` of 0 means unknown for a real recipe.
+ */
+export type Dish = { title: string; ingredients: Ingredient[]; steps: string[]; minutes: number; proteinG: number; keepsDays: number; source: 'coach' | 'liste' | 'rezept'; recipeId?: string; sourceUrl?: string };
+
+/** A link to show: https only, no spaces, not absurdly long. Anything else is dropped, so a record can never put a script into a link. */
+export const safeLink = (x: unknown): string | null => {
+  if (typeof x !== 'string' || x.length > 500 || /\s/.test(x)) return null;
+  try { const u = new URL(x); return u.protocol === 'https:' && !u.username && !u.password ? u.toString() : null; } catch { return null; }
+};
 /** `reuseOf` names the meal this one is the rest of (cook once, eat twice): it has nothing of its own to shop or cook. */
 export type Meal = { day: number; slot: Slot; dish: Dish; reuseOf: string | null; eaters: string[]; takeAlong: boolean; /** Changed in the chat with the coach at this person's wish. */ askedBy?: string };
 export type Person = { id: string; name: string; avatar?: string };
@@ -239,7 +249,7 @@ const readDish = (x: unknown): Dish | null => {
   if (!isObj(x) || !str(x.title) || !Array.isArray(x.ingredients) || !Array.isArray(x.steps) || !num(x.minutes) || !num(x.proteinG) || !num(x.keepsDays)) return null;
   const ingredients = x.ingredients.map(readIngredient);
   if (ingredients.some((i) => i === null) || !x.steps.every(str)) return null;
-  return { title: x.title, ingredients: ingredients as Ingredient[], steps: x.steps as string[], minutes: x.minutes, proteinG: x.proteinG, keepsDays: x.keepsDays, source: x.source === 'coach' ? 'coach' : 'liste', ...(str(x.recipeId) ? { recipeId: x.recipeId } : {}) };
+  return { title: x.title, ingredients: ingredients as Ingredient[], steps: x.steps as string[], minutes: x.minutes, proteinG: x.proteinG, keepsDays: x.keepsDays, source: x.source === 'coach' ? 'coach' : x.source === 'rezept' && safeLink(x.sourceUrl) ? 'rezept' : 'liste', ...(str(x.recipeId) ? { recipeId: x.recipeId } : {}), ...(x.source === 'rezept' && safeLink(x.sourceUrl) ? { sourceUrl: safeLink(x.sourceUrl)! } : {}) };
 };
 
 export function readMealPlan(body: unknown): MealPlan | null {
@@ -305,6 +315,46 @@ export function readMealChat(id: string, body: unknown): MealChat | null {
   if (!text) return null;
   const changed = Array.isArray(body.changed) ? body.changed.filter((k): k is string => str(k) && parseMealKey(k) !== null) : [];
   return { id, week: body.week, text, atMs: body.atMs, reply: str(body.reply) ? body.reply : null, answeredMs: num(body.answeredMs) ? body.answeredMs : null, changed };
+}
+
+// ---- Own recipes by link: the request and the answer are records of the person's account, like the chat ----
+
+export type LinkState = 'saved' | 'wait' | 'veg' | 'none' | 'limit' | 'bad' | 'fetch';
+export type LinkResult = { state: LinkState; title?: string };
+/** A person's request to add a recipe by link, first written by the device, then once more by the coach with the answer. */
+export type LinkRequest = { id: string; url: string; atMs: number; result: LinkResult | null; answeredMs: number | null };
+export const LINK_URL_MAX = 500;
+export const isLinkRecordId = (id: string): boolean => /^link-[a-z0-9]{4,40}$/.test(id);
+export const newLinkId = (nowMs: number, random: () => number = Math.random): string => `link-${Math.round(nowMs).toString(36)}${Math.floor(random() * 2 ** 40).toString(36).padStart(8, '0')}`;
+const LINK_STATES: readonly string[] = ['saved', 'wait', 'veg', 'none', 'limit', 'bad', 'fetch'];
+export function readLinkRequest(id: string, body: unknown): LinkRequest | null {
+  if (!isLinkRecordId(id) || !isObj(body) || !str(body.url) || !num(body.atMs)) return null;
+  const url = body.url.trim().slice(0, LINK_URL_MAX);
+  if (!url) return null;
+  const r = isObj(body.result) && LINK_STATES.includes(body.result.state as string) ? { state: body.result.state as LinkState, ...(str(body.result.title) ? { title: body.result.title.slice(0, 120) } : {}) } : null;
+  return { id, url, atMs: body.atMs, result: r, answeredMs: num(body.answeredMs) ? body.answeredMs : null };
+}
+/** What the person reads after adding a link. */
+export const linkAnswer = (r: LinkResult | null): string => {
+  switch (r?.state) {
+    case 'saved': return `Gespeichert: ${r.title ?? 'Rezept'}`;
+    case 'wait': return `Gespeichert, wird noch aufbereitet: ${r.title ?? 'Rezept'}`;
+    case 'veg': return 'Nicht vegetarisch – nicht gespeichert';
+    case 'none': return 'Auf der Seite ist kein Rezept zu finden';
+    case 'limit': return 'Für heute sind es genug Rezepte. Morgen geht es weiter.';
+    case 'bad': return 'Das ist kein Link, den ich öffnen kann. Er muss mit https beginnen.';
+    case 'fetch': return 'Die Seite war nicht zu erreichen. Versuch es später noch einmal.';
+    default: return 'Der Coach schaut sich die Seite gleich an.';
+  }
+};
+
+/** A person's own recipe in their list ("Eigene Rezepte"), written by the coach; deleting the record deletes the recipe. */
+export type OwnRecipe = { id: string; title: string; sourceUrl: string; minutes: number };
+export const isRecipeRecordId = (id: string): boolean => /^recipe-[a-z0-9-]{4,40}$/.test(id);
+export function readOwnRecipe(id: string, body: unknown): OwnRecipe | null {
+  if (!isRecipeRecordId(id) || !isObj(body) || !str(body.title) || !num(body.minutes)) return null;
+  const sourceUrl = safeLink(body.sourceUrl);
+  return sourceUrl && body.title.trim() ? { id, title: body.title.trim().slice(0, 120), sourceUrl, minutes: body.minutes } : null;
 }
 
 export const initialOf = (p: Person): string => p.avatar || (p.name.trim()[0] ?? '?').toUpperCase();

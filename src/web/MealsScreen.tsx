@@ -1,9 +1,9 @@
 import { useId, useMemo, useRef, useState } from 'react';
 import type { TrackedRecord } from '../shared/records';
 import {
-  addWeeks, changeOwn, CHAT_MAX_CHARS, isOwnKey, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealPlan, readMealState, recipeAmount,
+  addWeeks, changeOwn, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, isRecipeRecordId, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, readOwnRecipe, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealPlan, readMealState, recipeAmount,
   shoppingList, SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf, withEater, withItem,
-  type ItemState, type Meal, type MealChat, type MealPlan, type MealState, type ShopItem,
+  type ItemState, type LinkRequest, type Meal, type MealChat, type OwnRecipe, type MealPlan, type MealState, type ShopItem,
 } from '../shared/meals';
 import { weekRangeOfKey } from '../shared/dates';
 import type { WebPort } from './webPort';
@@ -27,6 +27,54 @@ export function mealWeeks(records: TrackedRecord[] | null, now: number): Week[] 
 /** This person's messages to the coach about the plan, oldest first. */
 export const mealChats = (records: TrackedRecord[] | null): MealChat[] =>
   (records ?? []).flatMap((r) => { const c = !r.deleted && isChatRecordId(r.id) ? readMealChat(r.id, r.body) : null; return c ? [c] : []; }).sort((a, b) => a.atMs - b.atMs);
+
+/** This person's requests to add a recipe by link, newest first. */
+export const linkRequests = (records: TrackedRecord[] | null): LinkRequest[] =>
+  (records ?? []).flatMap((r) => { const q = !r.deleted && isLinkRecordId(r.id) ? readLinkRequest(r.id, r.body) : null; return q ? [q] : []; }).sort((a, b) => b.atMs - a.atMs);
+/** This person's own recipes, written by the coach, newest first. */
+export const ownRecipes = (records: TrackedRecord[] | null): OwnRecipe[] =>
+  (records ?? []).flatMap((r) => { const o = !r.deleted && isRecipeRecordId(r.id) ? readOwnRecipe(r.id, r.body) : null; return o ? [o] : []; }).sort((a, b) => a.title.localeCompare(b.title, 'de'));
+
+/** "Rezept hinzufügen": a link, written as a record and answered by the coach, like a message. */
+function AddRecipeSheet({ requests, onAdd, onClose }: { requests: LinkRequest[]; onAdd: (url: string) => Promise<void>; onClose: () => void }) {
+  const [url, setUrl] = useState('');
+  const [sentAt, setSentAt] = useState<number | null>(null);
+  const formId = useId();
+  const clean = url.trim();
+  const ok = safeLink(clean) !== null;
+  // The answer to what was just sent; on opening, the answer to a link sent in the last ten minutes.
+  const recent = requests[0] && Date.now() - requests[0].atMs < 600_000 ? requests[0] : undefined;
+  const last = sentAt === null ? recent : requests.find((q) => q.atMs >= sentAt);
+  const submit = () => { if (!ok) return; setSentAt(Date.now() - 1000); setUrl(''); void onAdd(clean); };
+  return (
+    <Sheet title="Rezept hinzufügen" onClose={onClose} actions={<button type="submit" form={formId} disabled={!ok}>Hinzufügen</button>}>
+      <form id={formId} className="tk-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        <label className="tk-field"><span>Link zum Rezept</span>
+          <input autoFocus type="url" inputMode="url" aria-label="Link zum Rezept" maxLength={LINK_URL_MAX} placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
+        </label>
+        <p className="muted pm-meta">Nur vegetarische Rezepte, nur Links mit https.</p>
+      </form>
+      {(sentAt !== null || last) && <p className={last?.result ? 'pm-reply' : 'pm-reply pending'} role="status">{linkAnswer(last?.result ?? null)}</p>}
+    </Sheet>
+  );
+}
+
+/** "Eigene Rezepte": the recipes this person added by link; each can be deleted. */
+function OwnRecipesSheet({ recipes, onDelete, onClose }: { recipes: OwnRecipe[]; onDelete: (id: string) => void; onClose: () => void }) {
+  return (
+    <Sheet title="Eigene Rezepte" onClose={onClose}>
+      {recipes.length === 0 ? <p className="muted">Noch keine eigenen Rezepte.</p> : (
+        <RowList label="Eigene Rezepte">
+          {recipes.map((r) => (
+            <Row key={r.id} title={<span className="pm-rowtitle">{r.title}<small className="muted"><a href={r.sourceUrl} target="_blank" rel="noopener noreferrer">Rezept ›</a></small></span>} value={`${r.minutes} Min`}>
+              <ConfirmLink label="Löschen" onConfirm={() => onDelete(r.id)} />
+            </Row>
+          ))}
+        </RowList>
+      )}
+    </Sheet>
+  );
+}
 
 const chatDate = (ms: number) => new Date(ms).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
 const ChatRow = ({ c }: { c: MealChat }) => (
@@ -86,8 +134,10 @@ function MealRow({ week, meal, open, onToggle, onEater }: { week: Week; meal: Me
         </>
       )}
       <ol className="pm-steps">{meal.dish.steps.map((s, n) => <li key={n}>{s}</li>)}</ol>
-      <p className="muted pm-meta">{[SLOT_TIME[meal.slot], `${meal.dish.minutes} Min`, `${meal.dish.proteinG} g Eiweiß`, meal.dish.keepsDays === 0 ? 'am besten frisch' : `hält ${meal.dish.keepsDays} ${meal.dish.keepsDays === 1 ? 'Tag' : 'Tage'}`].join(' · ')}</p>
+      <p className="muted pm-meta">{[SLOT_TIME[meal.slot], `${meal.dish.minutes} Min`, ...(meal.dish.proteinG > 0 ? [`${meal.dish.proteinG} g Eiweiß`] : []), meal.dish.keepsDays === 0 ? 'am besten frisch' : `hält ${meal.dish.keepsDays} ${meal.dish.keepsDays === 1 ? 'Tag' : 'Tage'}`].join(' · ')}</p>
       {extras.length > 0 && <p className="muted pm-meta">{extras.join(' · ')}</p>}
+      {meal.dish.source === 'rezept' && meal.dish.sourceUrl && <p className="muted pm-meta pm-source">nach Rezept · <a href={meal.dish.sourceUrl} target="_blank" rel="noopener noreferrer">Rezept ›</a></p>}
+      {meal.dish.source === 'coach' && <p className="muted pm-meta pm-source">vom Coach</p>}
       {askedBy && <p className="pm-asked">auf Wunsch von {askedBy.name}</p>}
       <div className="tk-row pm-people" role="group" aria-label="Wer isst mit">
         <span className="muted">Isst mit:</span>
@@ -174,8 +224,11 @@ export function MealsScreen({ port, now }: { port: WebPort; now: () => number })
   const [tab, setTab] = useState<'tage' | 'einkauf'>('tage');
   const [openMeal, setOpenMeal] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [sheet, setSheet] = useState<'add' | 'own' | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const chat = useMemo(() => mealChats(records), [records]);
+  const requests = useMemo(() => linkRequests(records), [records]);
+  const own = useMemo(() => ownRecipes(records), [records]);
   if (!week) return <div className="tk-screen"><PageHead title="Essen" /><p className="muted">Noch kein Essensplan da. Der Mac plant samstagmorgens die kommende Woche.</p></div>;
 
   /** One at a time, each on the freshest stored state, so quick taps never undo each other. The newer entry wins on the Mac. */
@@ -187,6 +240,17 @@ export function MealsScreen({ port, now }: { port: WebPort; now: () => number })
       await port.put({ kind: 'mealplan', id, updatedMs: Math.max(at, (have?.updatedMs ?? 0) + 1), deleted: false, body: f(readMealState(have?.deleted ? undefined : have?.body), at) });
     }).catch(() => { /* shown as before; nothing lost */ });
     return queue.current;
+  };
+  /** A link to add: a record of its own, answered by the coach on the server. */
+  const addLink = async (url: string) => {
+    const at = now();
+    await port.put({ kind: 'mealplan', id: newLinkId(at), updatedMs: at, deleted: false, body: { url, atMs: at, result: null, answeredMs: null } }).catch(() => { /* the field is empty again; nothing else is lost */ });
+  };
+  /** Deleting the record deletes the recipe: the coach sees the tombstone. */
+  const deleteRecipe = async (id: string) => {
+    const have = (await port.list('mealplan')).find((r) => r.id === id);
+    if (!have) return;
+    await port.put({ ...have, updatedMs: Math.max(now(), have.updatedMs + 1), deleted: true }).catch(() => { /* still there; try again */ });
   };
   /** A new record of its own: only the Mac writes it again, with the reply. */
   const say = async (text: string) => {
@@ -228,6 +292,12 @@ export function MealsScreen({ port, now }: { port: WebPort; now: () => number })
           </RowList>
           <button type="button" className="secondary" onClick={() => setChatOpen(true)}>Änderung wünschen</button>
           {chatOpen && <ChatSheet chat={chat} onSend={say} onClose={() => setChatOpen(false)} />}
+          <RowList label="Rezepte">
+            <Row title="Rezept hinzufügen" onClick={() => setSheet('add')} />
+            <Row title="Eigene Rezepte" value={own.length > 0 ? String(own.length) : undefined} onClick={() => setSheet('own')} />
+          </RowList>
+          {sheet === 'add' && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setSheet(null)} />}
+          {sheet === 'own' && <OwnRecipesSheet recipes={own} onDelete={(id) => void deleteRecipe(id)} onClose={() => setSheet(null)} />}
         </>
       ) : <Shopping key={week.plan.week} week={week} onSet={(item, state) => void change((s, at) => withItem(s, item, state, at))} onOwn={(f) => void change(f)} />}
     </div>
