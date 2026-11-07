@@ -8,7 +8,7 @@ import { QUEUEABLE, type CoachClientMessage, type CoachServerMessage, type Coach
 import { ChangeClock, changeKey, isHouseholdKey } from './change-clock';
 import { HandledQids } from './handled-qids';
 import { RIDE_ID } from '../ride-upload-format';
-import { storeRide } from './ride-store';
+import { listRides, loadRide, storeRide } from './ride-store';
 import { RecordStore } from '../tracking/store';
 import type { AccountCoach, Household } from './household';
 import { MAX_ITEM_BYTES, MigrationError, parseManifest } from './migration';
@@ -97,6 +97,27 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
 
   // The account comes from the header, so a ride lands in that account's folder only and only with its bound profile id.
   // During a move (begun, not finished) rides land there too, without a coach to read them yet.
+  // The account's rides, for a Mac that lost its own. Only the account's folder and only the bound profile's closed rides.
+  const rideTarget = (accountId: number): { dir: string; profileId: string } | null => {
+    const a = household.account(accountId);
+    if (a) return { dir: a.dir, profileId: a.profileId };
+    const bound = desk.boundProfileId(accountId);
+    return bound ? { dir: path.join(household.accountsDir(), String(accountId)), profileId: bound } : null;
+  };
+
+  app.get('/rides', async (req, reply) => {
+    const target = rideTarget(authorised(req.raw)!);
+    if (!target) return reply.code(404).send({ error: 'not moved' });
+    return { rides: listRides(path.join(target.dir, 'rides'), target.profileId) };
+  });
+
+  app.get('/rides/:rideId', async (req, reply) => {
+    const target = rideTarget(authorised(req.raw)!);
+    if (!target) return reply.code(404).send({ error: 'not moved' });
+    const u = loadRide(path.join(target.dir, 'rides'), (req.params as { rideId: string }).rideId, target.profileId);
+    return u ?? reply.code(404).send({ error: 'no such ride' });
+  });
+
   app.put('/rides/:rideId', { bodyLimit: 32 * 1024 * 1024 }, async (req, reply) => {
     const accountId = authorised(req.raw)!;
     const a = household.account(accountId);

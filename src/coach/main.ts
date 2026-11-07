@@ -17,6 +17,7 @@ import { afterRideJob } from './remote/after-ride';
 import { migrate, moveMeals, type MigrateResult } from './remote/migrate';
 import { MoveBackoff } from './remote/move-backoff';
 import { RemoteCoach, ruleFallback } from './remote/remote-coach';
+import { RideRestore } from './remote/ride-restore';
 import { RideUploads } from './remote/ride-upload';
 import { createRouter, mealsStayLocal } from './remote/router';
 
@@ -33,21 +34,6 @@ const root = path.dirname(dir);
 
 const profiles = (): Profile[] => {
   try { return JSON.parse(fs.readFileSync(path.join(dir, 'profiles.json'), 'utf8')) as Profile[]; } catch { return []; }
-};
-
-const config = (): { syncUrl?: string; syncToken?: string } => {
-  try { return JSON.parse(fs.readFileSync(path.join(dir, '..', 'config.json'), 'utf8')); } catch { return {}; }
-};
-const syncUrl = process.env.BIKE_SYNC_URL ?? config().syncUrl;
-const syncToken = process.env.BIKE_SYNC_TOKEN ?? config().syncToken;
-const lastSynced = new Map<string, string>();
-const pushToServer = (s: CoachState): void => {
-  if (!syncUrl || !syncToken) return;
-  const body = JSON.stringify(s);
-  if (lastSynced.get(s.profileId) === body) return;
-  fetch(`${syncUrl}/profiles/${encodeURIComponent(s.profileId)}/coach`, {
-    method: 'PUT', body, headers: { authorization: `Bearer ${syncToken}`, 'content-type': 'application/json' }, signal: AbortSignal.timeout(10_000),
-  }).then((r) => { if (r.ok) lastSynced.set(s.profileId, body); }).catch(() => { /* try again on the next run */ });
 };
 
 // Optional and per profile: without a link nothing is sent.
@@ -102,7 +88,6 @@ const runtime = createCoachRuntime({
     const all = profiles();
     return computeTogether(all, all.flatMap((p) => { const s = runtime.coachState(p.id) ?? cachedState(p.id); return s ? [s] : []; }), Date.now());
   },
-  legacyPush: pushToServer,
 });
 
 // ---- After the ride: uploads of a moved profile's rides, the move of a linked one, the meal plan once everyone moved ----
@@ -113,6 +98,7 @@ const httpOf = (id: string): CoachHttp | null => {
   return url && token ? coachHttp({ url, token, reject: () => links.reject(id), mayContinue: noOpenRide }) : null;
 };
 const uploads = new RideUploads({ ridesDir: dir, dir: coachRoot, http: httpOf, noOpenRide });
+const restore = new RideRestore({ ridesDir: dir, uploads, http: httpOf, noOpenRide });
 /** How far a local profile's move got, for its view. */
 const moving = new Map<string, { done: number; total: number }>();
 /** When a profile's move may run again, and what stops it. */
@@ -141,7 +127,7 @@ const afterRide = (): void => {
     profileIds: () => profiles().map((p) => p.id), noOpenRide, onServer,
     linked: (id) => links.status(id).state === 'linked',
     settled: (id) => runtime.accountSync.settled(id),
-    backoff, uploads, move: moveOne,
+    backoff, uploads, restore, move: moveOne,
     meals: async () => {
       const moved = await moveMeals({ coachDir: coachRoot, profileIds: profiles().map((p) => p.id), onServer, http: httpOf });
       if (moved) publish();
@@ -160,7 +146,7 @@ const movingOf = (id: string): CoachHome | null => {
   return { where: 'moving', done: at?.done ?? 0, total: at?.total ?? 0, problem };
 };
 
-const router = createRouter({ local: runtime, remote, mealsLocal, togetherLocal: () => profiles().some((p) => !onServer(p.id)), coachDir: coachRoot, moving: movingOf });
+const router = createRouter({ local: runtime, remote, mealsLocal, togetherLocal: () => profiles().some((p) => !onServer(p.id)), coachDir: coachRoot, moving: movingOf, pendingRides: (id) => uploads.pending(id).length });
 
 const http = createServer();
 const wss = new WebSocketServer({

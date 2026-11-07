@@ -100,7 +100,9 @@ export type CoachHome =
    * full: the queue holds its most entries, so further writes are refused until the server is back. drift: items changed here after
    * the server took over on a cut-off finish; they stay on this Mac and did not reach the server.
    */
-  | { where: 'server'; online: boolean; sinceMs: number | null; session: 'server' | 'cached' | 'rules'; queued: number; full: boolean; drift?: string[] };
+  | { where: 'server'; online: boolean; sinceMs: number | null; session: 'server' | 'cached' | 'rules'; queued: number; full: boolean; drift?: string[];
+      /** Finished rides on this Mac the server does not hold yet. Only the Mac knows; absent on the phone. */
+      pendingRides?: number };
 export type RideDetail = { rideId: string; points: { t: number; powerW: number | null; hrBpm: number | null; cadenceRpm: number | null }[] };
 export type GymConfirmResult = 'written' | 'stale' | 'failed';
 /** queued-ack: the queued entry was handled (applied, skipped as stale or ignored as invalid) and may leave the client's queue. */

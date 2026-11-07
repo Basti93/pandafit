@@ -6,7 +6,7 @@ import { bestPowers, loadSeries } from '../../coach/metrics';
 import { progressText, rideProgress } from '../../coach/progress';
 import { rideStats } from '../../coach/stats';
 import type { CoachState } from '../../coach/state';
-import type { CoachClientMessage, RideDetail } from '../../shared/coach-protocol';
+import type { CoachClientMessage, CoachHome, RideDetail } from '../../shared/coach-protocol';
 import { LoadChart } from './LoadChart';
 import { RideCharts } from './RideCharts';
 
@@ -35,14 +35,22 @@ const WeekBars = ({ weeks }: { weeks: { startMs: number; minutes: number }[] }) 
   );
 };
 
-type Props = { state: CoachState; detail: RideDetail | null; send: (m: CoachClientMessage) => void; onBack?: () => void; garminConnected?: boolean; /** The run look back; nothing when there is none. */ lookBack?: ReactNode };
+type Props = { coachHome?: CoachHome; state: CoachState; detail: RideDetail | null; send: (m: CoachClientMessage) => void; onBack?: () => void; garminConnected?: boolean; /** The run look back; nothing when there is none. */ lookBack?: ReactNode };
 
-export const HistoryView = ({ state, detail, send, onBack, garminConnected = false, lookBack }: Props) => {
+/** One muted line: whether this Mac's rides are on the server. Nothing for a profile that has not moved or where it cannot be told. */
+export const backupLine = (home: CoachHome | undefined): string | null => {
+  if (home?.where !== 'server' || home.pendingRides === undefined) return null;
+  if (home.pendingRides === 0) return 'Alle Fahrten gesichert';
+  return home.pendingRides === 1 ? '1 Fahrt wartet auf Upload' : `${home.pendingRides} Fahrten warten auf Upload`;
+};
+
+export const HistoryView = ({ coachHome, state, detail, send, onBack, garminConnected = false, lookBack }: Props) => {
   const [open, setOpen] = useState<string | null>(null);
   const stats = rideStats(state.summaries, Date.now());
   const rides = [...state.summaries].sort((a, b) => b.startedAtMs - a.startedAtMs);
   const best = Object.entries(bestPowers(state.summaries)).sort(([a], [b]) => Number(a) - Number(b));
   const load = loadSeries(state.summaries, Date.now(), LOAD_DAYS);
+  const backup = backupLine(coachHome);
   const toggle = (rideId: string) => {
     setOpen(open === rideId ? null : rideId);
     if (open !== rideId) send({ type: 'ride-detail', profileId: state.profileId, rideId });
@@ -75,6 +83,7 @@ export const HistoryView = ({ state, detail, send, onBack, garminConnected = fal
       {load.length > 1 && <LoadChart points={load} />}
       <section className="card">
         <h3>Deine Fahrten</h3>
+        {backup && <p className="muted" data-testid="ride-backup">{backup}</p>}
         {rides.length === 0 && <p className="muted">Noch ganz leer hier. Deine erste Fahrt wartet schon.</p>}
         <ul className="rides">
           {rides.map((r) => (

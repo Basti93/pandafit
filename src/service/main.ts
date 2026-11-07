@@ -2,12 +2,9 @@ import { FakeBlePort } from './ble/fake-device';
 import { NobleBlePort } from './ble/noble-adapter';
 import { SimBlePort } from './ble/sim-device';
 import type { BlePort, DeviceKind } from './ble/device-port';
-import fs from 'node:fs';
-import path from 'node:path';
 import { Diagnostics, withDiagnostics } from './diagnostics';
 import { LiveLog } from './live-log';
 import { RideService } from './ride-service';
-import { SyncClient } from './sync';
 import { startWsServer } from './ws-server';
 
 const dir = process.env.BIKE_DATA_DIR;
@@ -37,17 +34,6 @@ const wss = startWsServer(service, {
 setInterval(() => {
   try { service.tick(); } catch (e) { console.error('Fahrtakt-Fehler', e); }
 }, 1000 / scale);
-
-/** Sync is optional: without settings you ride purely locally. It runs separately from the ride tick. */
-const syncConfig = (): { syncUrl?: string; syncToken?: string } => {
-  try { return JSON.parse(fs.readFileSync(path.join(dir, '..', 'config.json'), 'utf8')); } catch { return {}; }
-};
-const syncUrl = process.env.BIKE_SYNC_URL ?? syncConfig().syncUrl;
-const syncToken = process.env.BIKE_SYNC_TOKEN ?? syncConfig().syncToken;
-if (syncUrl && syncToken) {
-  const sync = new SyncClient({ baseUrl: syncUrl, token: syncToken, dir });
-  setInterval(() => void sync.syncAll(), 30_000 / scale);
-}
 
 if (fake) {
   setInterval(() => {

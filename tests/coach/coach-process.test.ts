@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { WebSocket } from 'ws';
-import { buildServer } from '../../server/index';
 import { rampTest } from '../../src/coach/rules';
 import { connect, hardKill, rideId, send, session, sleep, startService, waitForSamples, type Svc } from '../chaos/helpers';
 import { readRide } from '../../src/service/recorder';
@@ -139,18 +138,3 @@ test('coach crash leaves the ride service recording', async () => {
   await waitForSamples(dir, n + 10);
   void connect;
 }, 20000);
-test('coach state reaches the home server, and a server outage changes nothing', async () => {
-  const app = buildServer({ dbPath: ':memory:', token: 't' });
-  const baseUrl = await app.listen({ port: 0, host: '127.0.0.1' });
-  const root = temp(); seed(root);
-  const c = await startCoach(root, fakeClaude(), { BIKE_COACH_WAIT_MS: '0', BIKE_SYNC_URL: baseUrl, BIKE_SYNC_TOKEN: 't' });
-  const sub = await subscribe(c.port);
-  await until(() => sub.last()?.state?.next?.source === 'claude');
-  const read = async () => (await fetch(`${baseUrl}/profiles/pa/coach`, { headers: { authorization: 'Bearer t' } })).json() as Promise<{ next?: { source: string } }>;
-  let remote: { next?: { source: string } } = {};
-  await until(() => { void read().then((r) => { remote = r; }).catch(() => {}); return remote.next?.source === 'claude'; });
-  await app.close();
-  sub.ws.send(JSON.stringify({ type: 'note', profileId: 'pa', text: 'Server weg' }));
-  await until(() => sub.last()?.state?.notes?.length === 1);
-  sub.ws.close();
-}, 25000);

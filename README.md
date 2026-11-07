@@ -98,11 +98,11 @@ npm run typecheck
 
 ## Data
 
-On the Mac, everything is stored locally in `~/Library/Application Support/bike-coach/` (the project's old name, kept so existing data stays where it is): rides under `rides/`, FIT files under `rides/exports/`, the device log under `rides/diagnostics/`, problem reports under `rides/reports/`, coach state under `coach/`, Garmin data under `garmin/`. A `config.json` with `syncUrl` and `syncToken` turns on the optional sync with your own server ([`server/`](server)). Without it, everything runs locally.
+On the Mac, everything is stored locally in `~/Library/Application Support/bike-coach/` (the project's old name, kept so existing data stays where it is): rides under `rides/`, FIT files under `rides/exports/`, the device log under `rides/diagnostics/`, problem reports under `rides/reports/`, coach state under `coach/`, Garmin data under `garmin/`. With an account link, finished rides also go to your home server after the ride, and a Mac without rides gets them back from there. Without a link, everything runs locally.
 
 The phone keeps its entries on the device (IndexedDB) and sends them to the home server when there is a connection. On the server, the Hevy key and Garmin tokens are stored encrypted (AES-256-GCM) with a key from the server's `.env`; this protects backups, not a running server.
 
-The app does not back up the Mac's local data. The scripts under `server/mac/` and `web-server/mac/` only fetch the server's backups.
+The app does not back up the Mac's local data. The scripts under `web-server/mac/` only fetch the server's backups.
 
 ## Structure
 
@@ -117,7 +117,6 @@ The app does not back up the Mac's local data. The scripts under `server/mac/` a
 | `src/shared` | Shared types and rules |
 | `scripts/garmin` | Garmin fetch in Python |
 | `web-server` | Home server: sync API for the phone and the coach container (Docker, SQLite) |
-| `server` | Older sync server for rides from the Mac (Docker, SQLite) |
 
 Rules for changes during a running ride are in [`CLAUDE.md`](CLAUDE.md).
 

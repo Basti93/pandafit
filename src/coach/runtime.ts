@@ -93,8 +93,6 @@ export type RuntimeOptions = {
   coachHere?: (profileId: string) => boolean;
   /** False once the meal plan is the server's: the own meal plan is not ticked here any more. Default: always. */
   mealsHere?: () => boolean;
-  /** The old push of the coach state to the home server, called on every scan. */
-  legacyPush?: (s: CoachState) => void;
   nowMs?: () => number;
   /** How long a finished ride waits for feedback before planning anyway. */
   waitMs?: number;
@@ -637,7 +635,6 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       const now = nowMs();
       for (const p of list) {
         const s = coach.state(p.id);
-        opts.legacyPush?.(s);
         if (runs && !coach.isThinking(p.id)) void coach.ensureDebrief(p.id).catch(() => {}).finally(publish);
         if (!runs || !s.dirty || coach.isThinking(p.id)) continue;
         const waited = now - (s.dirtySinceMs ?? now) >= waitMs;

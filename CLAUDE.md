@@ -17,7 +17,7 @@ The user is on the bike and dictates feedback into the terminal using macOS dict
 
 - Test without a bike: `npm run dev:sim` simulates the trainer and strap.
 - Data: `~/Library/Application Support/bike-coach/rides/`, FIT files under `rides/exports/`.
-- Sync to the home server: `~/Library/Application Support/bike-coach/config.json` with `{"syncUrl": "...", "syncToken": "..."}`. Without the file, everything runs locally.
+- Home server: rides go there through the account link of the profile (Profile > Konto) after the ride, and a Mac without rides gets them back from there. Without a link, everything runs locally. A leftover `config.json` is ignored.
 - Hevy is optional and per profile: everyone enters their own API key in the app. It lives in `hevy/<profileId>/api-key` in the data folder, never in the repo.
 - To pair other devices: delete `rides/devices.json` while no ride is running.
 
