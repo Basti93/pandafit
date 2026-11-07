@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MealCoach } from '../../../src/coach/meals/meal-coach';
 import { RecordStore } from '../../../src/coach/tracking/store';
-import { favouriteIds, favRecordId, isFavRecordId, type MealSettings } from '../../../src/shared/meals';
+import { favouriteIds, favRecordId, isFavRecordId, mealKey, newPlaceId, readPlaceRequest, type MealSettings } from '../../../src/shared/meals';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { policyRule } from '../../../src/shared/training-policy';
 import { taggingAi } from './fake-ai';
@@ -193,5 +193,75 @@ describe('planning with favourites', () => {
     await coach.replan('max', week);
     const real = planOf(coach).meals.filter((m) => m.dish.source === 'rezept');
     expect(real.map((m) => m.dish.recipeId).sort()).toEqual([...f].sort());
+  });
+});
+
+describe('In den Plan', () => {
+  const placeRec = (id: string, over: Record<string, unknown>): TrackedRecord => ({ kind: 'mealplan', id, updatedMs: at(7, 6), deleted: false, body: { week, meal: '3-abend', recipeId: 'c-00000000000000', atMs: at(7, 6), result: null, answeredMs: null, ...over } });
+  const plan = (coach: MealCoach, w = week) => coach.view('max').weeks.find((x) => x.plan.week === w)?.plan;
+  const result = (store: RecordStore, id: string) => readPlaceRequest(id, store.all('max', 'mealplan').find((r) => r.id === id)?.body)?.result;
+
+  it('replaces the meal with the recipe, like a swap, and answers in the record', async () => {
+    const { coach, store } = setup({ ask: async () => ({}) });
+    await fill(coach, 6);
+    await coach.replan('max', week);
+    const r = idByTitle(coach, 'Sammlung Pfanne 4')!.id;
+    store.putMany('max', [placeRec('place-aaaa0001', { recipeId: r })], 'remote');
+    await coach.tick();
+    expect(result(store, 'place-aaaa0001')).toBe('placed');
+    const meal = plan(coach)!.meals.find((m) => mealKey(m.day, m.slot) === '3-abend')!;
+    expect(meal).toMatchObject({ askedBy: 'max', reuseOf: null });
+    expect(meal.dish).toMatchObject({ recipeId: r, source: 'rezept', title: 'Sammlung Pfanne 4' });
+    // Asked once: another tick leaves it alone.
+    await coach.tick();
+    expect(plan(coach)!.meals.find((m) => mealKey(m.day, m.slot) === '3-abend')!.dish.recipeId).toBe(r);
+  });
+
+  it('refuses what does not fit the people eating, a past day, an unknown recipe and a week without a plan', async () => {
+    const { coach, store } = setup({ ask: async () => ({}) });
+    await fill(coach, 3);
+    coach.setSettings('lena', { ...ON, diet: 'vegan', dislikes: ['Karotten'] });
+    await coach.replan('max', week);
+    await coach.replan('max', '2026-11-02');
+    const r = idByTitle(coach, 'Sammlung Pfanne 1')!.id;
+    store.putMany('max', [
+      placeRec('place-aaaa0002', { recipeId: r }), placeRec('place-aaaa0003', { recipeId: r, week: '2026-11-02', meal: '1-mittag' }),
+      placeRec('place-aaaa0004', { recipeId: 'c-00000000000000' }), placeRec('place-aaaa0005', { recipeId: r, week: '2026-11-16' }),
+    ], 'remote');
+    const before = JSON.stringify(plan(coach)!.meals);
+    await coach.tick();
+    expect(['place-aaaa0002', 'place-aaaa0003', 'place-aaaa0004', 'place-aaaa0005'].map((id) => result(store, id))).toEqual(['nofit', 'past', 'gone', 'noplan']);
+    expect(JSON.stringify(plan(coach)!.meals)).toBe(before);
+  });
+
+  it('does not show a person another person\'s link recipe', async () => {
+    const { coach, store } = setup({ ask: async () => ({}) });
+    await fill(coach, 1, 'link', 'lena', 'Lenas');
+    await coach.replan('max', week);
+    store.putMany('max', [placeRec('place-aaaa0006', { recipeId: idByTitle(coach, 'Lenas Pfanne 1')!.id })], 'remote');
+    await coach.tick();
+    expect(result(store, 'place-aaaa0006')).toBe('gone');
+  });
+
+  it('adds a meal into a free slot, eaten by the people of the plan', async () => {
+    const { coach, store } = setup({ ask: async () => ({}) });
+    await fill(coach, 2);
+    await coach.replan('max', week);
+    // A day the plan left free (the plan is the coach's own state, so the test reaches in once).
+    const own = (coach as unknown as { load(): { plans: Record<string, { meals: { day: number; slot: string }[] }> } }).load().plans[week]!;
+    own.meals = own.meals.filter((m) => !(m.day === 4 && m.slot === 'abend'));
+    const free = { day: 4, slot: 'abend' as const };
+    store.putMany('max', [placeRec('place-aaaa0007', { meal: mealKey(free.day, free.slot), recipeId: idByTitle(coach, 'Sammlung Pfanne 2')!.id })], 'remote');
+    await coach.tick();
+    expect(result(store, 'place-aaaa0007')).toBe('placed');
+    expect(plan(coach)!.meals.find((m) => m.day === free.day && m.slot === free.slot)).toMatchObject({ eaters: ['max', 'lena'] });
+  });
+
+  it('writes requests a device can read back', () => {
+    const id = newPlaceId(5);
+    expect(readPlaceRequest(id, { week, meal: '3-abend', recipeId: 'c-00000000000000', atMs: 5 })).toMatchObject({ result: null });
+    expect(readPlaceRequest(id, { week, meal: '9-abend', recipeId: 'c-00000000000000', atMs: 5 })).toBeNull();
+    expect(readPlaceRequest(id, { week: '2026-11-10', meal: '3-abend', recipeId: 'c-00000000000000', atMs: 5 })).toBeNull();
+    expect(readPlaceRequest(id, { week, meal: '3-abend', recipeId: '../x', atMs: 5 })).toBeNull();
   });
 });

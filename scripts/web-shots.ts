@@ -230,8 +230,23 @@ const healthBody = (arzt: boolean) => ({
 records.push(rec('health', 'health', healthBody(false), NOW - 1800_000));
 
 // ---------- the meal plan ----------
+// Invented recipes of the collection browser. The shots have no coach: its recipe routes are played by the script further down,
+// and the pictures are plain colour blocks generated there (no picture or recipe data is in the repo).
+const RECIPE_IDS: Record<string, string> = { 'linsen-gemuese-pfanne': 'c-1a2b3c4d5e6f70', 'ofengemuese-feta': 'c-2b3c4d5e6f7081', 'skyr-nuesse': 'c-3c4d5e6f708192' };
+type ShotRecipe = { id: string; title: string; minutes: number; proteinG: number; keepsDays: number; own: boolean; tags: string[]; hue: number; image: boolean; ingredients: [string, number, string, string][]; steps: string[]; sourceUrl: string };
+const SHOT_RECIPES: ShotRecipe[] = [
+  { id: RECIPE_IDS['linsen-gemuese-pfanne']!, title: 'Linsen-Gemüse-Pfanne', minutes: 30, proteinG: 32, keepsDays: 2, own: true, tags: ['Proteinreich', 'Pfannengericht', 'Orientalisch'], hue: 28, image: true, ingredients: [['Rote Linsen', 100, 'g', 'Vorrat'], ['Paprika', 2, 'Stk', 'Obst und Gemüse'], ['Kokosmilch', 1, 'Dose', 'Vorrat']], steps: ['Linsen waschen und mit Wasser aufsetzen.', 'Paprika würfeln, anbraten und mit der Kokosmilch zu den Linsen geben.', 'Zehn Minuten köcheln und abschmecken.'], sourceUrl: 'https://rezepte.example/linsen-gemuese-pfanne' },
+  { id: RECIPE_IDS['ofengemuese-feta']!, title: 'Ofengemüse mit Feta', minutes: 40, proteinG: 28, keepsDays: 2, own: false, tags: ['Proteinreich', 'Nur Ofen', 'Mediterran'], hue: 95, image: true, ingredients: [['Zucchini', 2, 'Stk', 'Obst und Gemüse'], ['Feta', 150, 'g', 'Kühlregal'], ['Süßkartoffel', 2, 'Stk', 'Obst und Gemüse']], steps: ['Gemüse in Stücke schneiden und mit Öl auf ein Blech geben.', 'Bei 200 Grad 25 Minuten backen, dann den Feta darüber bröckeln.'], sourceUrl: 'https://rezepte.example/ofengemuese-feta' },
+  { id: RECIPE_IDS['skyr-nuesse']!, title: 'Skyr mit Nüssen', minutes: 5, proteinG: 25, keepsDays: 0, own: false, tags: ['Schnell', 'Proteinreich', 'Ohne Kochen'], hue: 205, image: true, ingredients: [['Skyr', 300, 'g', 'Kühlregal'], ['Walnüsse', 30, 'g', 'Vorrat']], steps: ['Skyr in eine Schale geben und die Nüsse darüber streuen.'], sourceUrl: 'https://rezepte.example/skyr-nuesse' },
+  { id: 'c-4d5e6f70819203', title: 'Kichererbsen-Spinat-Curry', minutes: 25, proteinG: 22, keepsDays: 3, own: false, tags: ['Meal-Prep', 'Curry und Eintopf', 'Indisch'], hue: 52, image: false, ingredients: [['Kichererbsen', 1, 'Dose', 'Vorrat'], ['Spinat', 200, 'g', 'Tiefkühl']], steps: ['Alles zusammen erhitzen.'], sourceUrl: 'https://rezepte.example/kichererbsen-curry' },
+  { id: 'c-5e6f7081920314', title: 'Tomaten-Brot-Salat', minutes: 15, proteinG: 12, keepsDays: 0, own: false, tags: ['Schnell', 'Salat', 'Mediterran'], hue: 8, image: true, ingredients: [['Tomaten', 4, 'Stk', 'Obst und Gemüse'], ['Brot', 2, 'Scheibe', 'Brot und Backwaren']], steps: ['Alles würfeln und mischen.'], sourceUrl: 'https://rezepte.example/tomaten-brot-salat' },
+  { id: 'c-6f70819203142a', title: 'Haferpfannkuchen mit Beeren', minutes: 20, proteinG: 19, keepsDays: 0, own: false, tags: ['Eine Pfanne', 'Pfannengericht'], hue: 330, image: true, ingredients: [['Haferflocken', 80, 'g', 'Vorrat'], ['Beeren', 150, 'g', 'Tiefkühl']], steps: ['Teig anrühren und in der Pfanne ausbacken.'], sourceUrl: 'https://rezepte.example/haferpfannkuchen' },
+  { id: 'c-7081920314253b', title: 'Pilzrisotto', minutes: 35, proteinG: 14, keepsDays: 2, own: false, tags: ['Reis und Getreide', 'Italienisch'], hue: 150, image: false, ingredients: [['Risottoreis', 80, 'g', 'Vorrat'], ['Champignons', 150, 'g', 'Obst und Gemüse']], steps: ['Reis anschwitzen und nach und nach Brühe zugeben.'], sourceUrl: 'https://rezepte.example/pilzrisotto' },
+  { id: 'c-81920314253647', title: 'Tofu-Gemüse-Bowl', minutes: 25, proteinG: 30, keepsDays: 2, own: false, tags: ['Proteinreich', 'Bowl', 'Asiatisch'], hue: 175, image: true, ingredients: [['Tofu', 200, 'g', 'Kühlregal'], ['Reis', 80, 'g', 'Vorrat']], steps: ['Tofu anbraten, Reis kochen, alles anrichten.'], sourceUrl: 'https://rezepte.example/tofu-bowl' },
+];
+const colourBlock = (hue: number): string => `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360"><rect width="640" height="360" fill="hsl(${hue} 38% 46%)"/><circle cx="470" cy="120" r="150" fill="hsl(${hue} 42% 58%)"/><circle cx="150" cy="300" r="120" fill="hsl(${hue} 34% 36%)"/></svg>`;
 const dish = (t: string, min: number, prot: number, ing: [string, number, string, string][]) => ({ title: t, minutes: min, proteinG: prot, keepsDays: 2, source: 'coach', steps: ['Alles vorbereiten.', 'Zusammen garen und abschmecken.'], ingredients: ing.map(([name, amount, unit, section]) => ({ name, amount, unit, section })) });
-const real = <T extends object>(d: T, path: string) => ({ ...d, source: 'rezept', sourceUrl: `https://rezepte.example/${path}` });
+const real = <T extends object>(d: T, path: string) => ({ ...d, source: 'rezept', sourceUrl: `https://rezepte.example/${path}`, recipeId: RECIPE_IDS[path] });
 const DISHES = [
   dish('Haferbrei mit Beeren', 10, 18, [['Haferflocken', 80, 'g', 'Vorrat'], ['Beeren', 150, 'g', 'Tiefkühl'], ['Milch', 250, 'ml', 'Kühlregal']]),
   real(dish('Linsen-Gemüse-Pfanne', 30, 32, [['Rote Linsen', 100, 'g', 'Vorrat'], ['Paprika', 2, 'Stk', 'Obst und Gemüse'], ['Kokosmilch', 1, 'Dose', 'Vorrat']]), 'linsen-gemuese-pfanne'),
@@ -247,6 +262,7 @@ records.push(rec('mealplan', `week-${monday}`, mealPlanBody, dateAt(addDays(mond
 // A person's own recipes (written by the coach) and an answered link request.
 records.push(rec('mealplan', 'recipe-l-a1b2c3d4e5f6a7', { title: 'Linsen-Gemüse-Pfanne', sourceUrl: 'https://rezepte.example/linsen-gemuese-pfanne', minutes: 30 }, NOW - 2 * DAY));
 records.push(rec('mealplan', 'recipe-l-b2c3d4e5f6a7b8', { title: 'Ofengemüse mit Feta', sourceUrl: 'https://rezepte.example/ofengemuese-feta', minutes: 40 }, NOW - DAY));
+for (const id of [RECIPE_IDS['ofengemuese-feta']!, 'c-5e6f7081920314']) records.push(rec('mealplan', `fav-${id}`, { atMs: NOW - DAY }, NOW - DAY));
 records.push(rec('mealplan', 'link-shotseed01', { url: 'https://rezepte.example/ofengemuese-feta', atMs: NOW - DAY, result: { state: 'saved', title: 'Ofengemüse mit Feta' }, answeredMs: NOW - DAY + 1000 }, NOW - DAY));
 
 // ---------- the week chat: ~60 messages over 3 weeks ----------
@@ -402,6 +418,23 @@ async function main() {
     step: { name: 'Tempo', index: 2, count: 5, remainingS: 200 - liveStep }, nextStep: { label: 'Locker' },
   });
   const pushLive = (ws: WebSocketRoute) => { try { ws.send(JSON.stringify({ type: 'live-state', profileId: 'pa', state: liveState() })); } catch { /* closed */ } };
+  // The coach's recipe routes (invented recipes above; the pictures are generated colour blocks).
+  await page.route(/\/coach\/recipes\//, (route) => {
+    const u = new URL(route.request().url());
+    const summary = (r: ShotRecipe) => ({ id: r.id, title: r.title, minutes: r.minutes, proteinG: r.proteinG, keepsDays: r.keepsDays, own: r.own, fav: false, image: r.image, tags: r.tags });
+    const img = /\/coach\/recipes\/([^/]+)\/image$/.exec(u.pathname);
+    if (img) { const r = SHOT_RECIPES.find((x) => x.id === img[1]); return r?.image ? route.fulfill({ status: 200, contentType: 'image/svg+xml', body: colourBlock(r.hue) }) : route.fulfill({ status: 404, json: { error: 'no picture' } }); }
+    if (u.pathname.endsWith('/search')) {
+      const q = (u.searchParams.get('q') ?? '').toLowerCase();
+      const tags = (u.searchParams.get('tags') ?? '').split(',').filter(Boolean).map((t) => t.split(':').pop()!.toLowerCase());
+      const offset = Number(u.searchParams.get('offset') ?? 0);
+      const favs = new Set(records.filter((x) => x.id.startsWith('fav-') && !x.deleted).map((x) => x.id.slice(4)));
+      const all = SHOT_RECIPES.filter((r) => r.title.toLowerCase().includes(q) && (u.searchParams.get('own') !== '1' || r.own) && (u.searchParams.get('fav') !== '1' || favs.has(r.id)) && tags.every((t) => r.tags.some((x) => x.toLowerCase().replace(/ /g, '-') === t || x.toLowerCase() === t)));
+      return route.fulfill({ json: { items: all.slice(offset, offset + 20).map(summary), more: all.length > offset + 20 } });
+    }
+    const one = SHOT_RECIPES.find((x) => u.pathname.endsWith(`/${x.id}`));
+    return one ? route.fulfill({ json: { ...summary(one), ingredients: one.ingredients.map(([name, amount, unit, section]) => ({ name, amount, unit, section })), steps: one.steps, sourceUrl: one.sourceUrl } }) : route.fulfill({ status: 404, json: { error: 'no such recipe' } });
+  });
   await page.route(/\/coach\/status$/, (route) => route.fulfill({ json: { profileId: 'pa', moved: true } }));
   await page.routeWebSocket(/\/coach$/, (ws) => {
     liveSockets.add(ws);
@@ -517,6 +550,23 @@ async function main() {
   await step('essen-mahlzeit-offen', async () => { await page.locator('.tk-rowbtn[aria-expanded]').first().click(); await shot('essen-tage-mahlzeit-offen'); });
   await step('essen-gericht-quelle', async () => { await page.locator('.tk-rowbtn[aria-expanded]').nth(1).click(); await shot('essen-gericht-quelle'); });
   await step('essen-wunsch', async () => { await page.getByRole('button', { name: 'Änderung wünschen' }).click(); await shot('essen-aenderung-wuenschen'); await page.keyboard.press('Escape'); });
+  await step('essen-rezepte', async () => {
+    await page.getByRole('button', { name: /^Rezepte/ }).click();
+    await page.getByRole('listitem').first().waitFor();
+    await shot('essen-rezepte');
+    await page.getByRole('group', { name: 'Filter' }).getByRole('button', { name: 'Favoriten' }).click();
+    await page.waitForTimeout(500);
+    await shot('essen-rezepte-favoriten');
+    await page.getByRole('group', { name: 'Filter' }).getByRole('button', { name: 'Favoriten' }).click();
+    await page.waitForTimeout(600);
+    await page.locator('.rc-open', { hasText: 'Linsen-Gemüse-Pfanne' }).click();
+    await page.getByRole('heading', { name: 'Linsen-Gemüse-Pfanne' }).waitFor();
+    await page.waitForTimeout(500);
+    await shot('essen-rezept');
+    await page.getByRole('button', { name: 'In den Plan ›' }).click();
+    await shot('essen-rezept-in-den-plan');
+    await page.keyboard.press('Escape'); await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+  });
   await step('essen-rezept-hinzufuegen', async () => {
     await page.getByRole('button', { name: 'Rezept hinzufügen' }).click();
     await page.getByLabel('Link zum Rezept').fill('https://rezepte.example/gemuese-curry');

@@ -376,4 +376,27 @@ export const favRecordId = (recipeId: string): string => `fav-${recipeId}`;
 export const favouriteIds = (records: readonly { id: string; deleted: boolean }[] | null): Set<string> =>
   new Set((records ?? []).filter((r) => !r.deleted && isFavRecordId(r.id)).map((r) => r.id.slice('fav-'.length)));
 
+// ---- Putting a recipe on the plan: a request record, answered by the coach, like a link ----
+
+export type PlaceState = 'placed' | 'nofit' | 'past' | 'noplan' | 'gone';
+/** A person's wish to cook a recipe at a meal; written by the device, answered once more by the coach with `result`. */
+export type PlaceRequest = { id: string; week: string; meal: string; recipeId: string; atMs: number; result: PlaceState | null; answeredMs: number | null };
+export const isPlaceRecordId = (id: string): boolean => /^place-[a-z0-9]{4,40}$/.test(id);
+export const newPlaceId = (nowMs: number, random: () => number = Math.random): string => `place-${Math.round(nowMs).toString(36)}${Math.floor(random() * 2 ** 40).toString(36).padStart(8, '0')}`;
+const PLACE_STATES: readonly string[] = ['placed', 'nofit', 'past', 'noplan', 'gone'];
+export function readPlaceRequest(id: string, body: unknown): PlaceRequest | null {
+  if (!isPlaceRecordId(id) || !isObj(body) || !isWeekKey(body.week) || typeof body.meal !== 'string' || !parseMealKey(body.meal) || typeof body.recipeId !== 'string' || !RECIPE_ID.test(body.recipeId) || !num(body.atMs)) return null;
+  return { id, week: body.week, meal: body.meal, recipeId: body.recipeId, atMs: body.atMs, result: PLACE_STATES.includes(body.result as string) ? body.result as PlaceState : null, answeredMs: num(body.answeredMs) ? body.answeredMs : null };
+}
+export const placeAnswer = (r: PlaceState | null): string => {
+  switch (r) {
+    case 'placed': return 'Ist im Plan.';
+    case 'nofit': return 'Das passt nicht zu den Angaben der Esser dieser Mahlzeit.';
+    case 'past': return 'Dieser Tag ist schon vorbei.';
+    case 'noplan': return 'Für diese Woche gibt es keinen Plan mehr, den ich ändern kann.';
+    case 'gone': return 'Dieses Rezept gibt es nicht mehr.';
+    default: return 'Der Coach trägt es gleich ein.';
+  }
+};
+
 export const initialOf = (p: Person): string => p.avatar || (p.name.trim()[0] ?? '?').toUpperCase();

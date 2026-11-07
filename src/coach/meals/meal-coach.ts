@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   addWeeks, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
-  isFavRecordId, isLinkRecordId, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
+  isFavRecordId, isLinkRecordId, isPlaceRecordId, parseMealKey, readPlaceRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
   type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
@@ -12,7 +12,7 @@ import { sanitizeUrl, type StoredRecipe } from './recipe-import';
 import { fetchPicture, imageUrlOf, type Picture } from './recipe-image';
 import { extractRecipe, fetchPage, type Page } from './recipe-link';
 import { browse, detail, type BrowseQuery } from './recipe-browse';
-import { planFromRecipes, type Favourites } from './recipe-plan';
+import { planFromRecipes, recipeDish, type Favourites } from './recipe-plan';
 import { RecipeStore } from './recipe-store';
 import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
@@ -236,6 +236,71 @@ export class MealCoach {
     try { const store = this.recipes(); return store ? detail(store, profileId, this.favourites(profileId), id) : null; } catch { return null; }
   }
 
+  /**
+   * A person wants a recipe at a meal ("In den Plan"). The same checks as a swap: the week must still be changeable, the day not past,
+   * the recipe one this person may see, and it must fit everyone who eats the meal (diet, dislikes, intolerances). A meal that is not
+   * there yet is added. The recipe replaces the dish like a swap does; the meal's leftovers follow.
+   */
+  private place(id: string, req: { week: string; meal: string; recipeId: string }): PlaceState {
+    const now = this.deps.nowMs();
+    const current = weekOf(now);
+    const d = this.load();
+    const plan = d.plans[req.week];
+    if (!plan || (req.week !== current && req.week !== addWeeks(current, 1))) return 'noplan';
+    const at = parseMealKey(req.meal);
+    if (!at) return 'noplan';
+    if (req.week === current && at.day < dayIndex(now)) return 'past';
+    const recipe = this.recipes()?.canSee(req.recipeId, id) ?? null;
+    if (!recipe) return 'gone';
+    const members = this.members();
+    const state = d.states[req.week] ?? EMPTY_STATE;
+    const existing = plan.meals.find((m) => mealKey(m.day, m.slot) === req.meal);
+    const eaters = existing ? eatersOf(plan, state, req.meal) : plan.people.map((p) => p.id);
+    if (!fitsEveryone(recipe, constraintsFor(members, eaters).map((m) => m.settings))) return 'nofit';
+    let meal = existing;
+    if (!meal) {
+      meal = { day: at.day, slot: at.slot, dish: recipeDish(recipe), reuseOf: null, eaters, takeAlong: false };
+      plan.meals.push(meal);
+      plan.meals.sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
+    }
+    delete meal.askedBy;
+    putDish(plan, state, members, req.meal, recipeDish(recipe), this.deps.random ?? Math.random);
+    meal.askedBy = id;
+    this.save();
+    return 'placed';
+  }
+
+  /** Answers waiting "In den Plan" requests, a few per tick, never with a ride open and never next to a planning run. */
+  private answerPlacements(): boolean {
+    const { store } = this.deps;
+    if (!store || this.planning || !this.deps.noOpenRide()) return false;
+    let any = false;
+    const touched = new Set<string>();
+    try {
+      let budget = 5;
+      for (const p of this.deps.profiles()) {
+        if (!this.synced(p.id)) continue;
+        for (const r of store.all(p.id, 'mealplan')) {
+          if (budget <= 0) return any;
+          if (r.deleted || !isPlaceRecordId(r.id)) continue;
+          const req = readPlaceRequest(r.id, r.body);
+          if (!req || req.result) continue;
+          budget--;
+          this.importStates();
+          const result = this.place(p.id, req);
+          const now = this.deps.nowMs();
+          store.putMany(p.id, [{ ...r, updatedMs: Math.max(now, r.updatedMs + 1), body: { ...(isObj(r.body) ? r.body : {}), result, answeredMs: now } }]);
+          any = true;
+          touched.add(p.id);
+        }
+      }
+    } catch { /* the next tick tries again */ } finally {
+      if (any) this.exportAll();
+      if (touched.size > 0) { try { this.deps.onExport?.([...touched]); } catch { /* a listener never matters here */ } }
+    }
+    return any;
+  }
+
   /** A person deleted a recipe from their list (the record has a tombstone): the recipe goes too. */
   private removeDeletedRecipes(owner: string, have: TrackedRecord[]): void {
     const store = this.recipes();
@@ -300,6 +365,7 @@ export class MealCoach {
       if (this.members().length === 0) return this.exportAll();
       this.importStates();
       await this.answerLinks();
+      this.answerPlacements();
       let touched = this.exportAll();
       // Messages from phones, and those typed here during a ride, once no ride is open.
       if (await this.answerPending()) touched = [...new Set([...touched, ...this.exportAll()])];
@@ -596,6 +662,8 @@ export class MealCoach {
       for (const r of have) if (!r.deleted && isFavRecordId(r.id)) keep.add(r.id);
       const requests = have.flatMap((r) => { const q = !r.deleted && isLinkRecordId(r.id) ? readLinkRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
       for (const q of requests.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
+      const places = have.flatMap((r) => { const q = !r.deleted && isPlaceRecordId(r.id) ? readPlaceRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
+      for (const q of places.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
     } catch { /* the plan's records go on without them */ }
   }
 
