@@ -90,14 +90,19 @@ test('a command is refused across accounts: an account without a ride gets no-ri
   expect(strangerMac.got).toEqual([]);
 });
 
-test('a command for another ride, a stale ride, an old command or a bad shape is refused', () => {
+test('the server stamps a command with its own time, so a wrong phone clock does not matter', () => {
+  const mac = peer(1, 'mac'), phone = peer(1, 'phone'); live(mac);
+  ch.handle(1, 'pa', phone, cmd({ id: 'skew', atMs: now - 3_600_000 }));
+  expect(mac.got).toEqual([expect.objectContaining({ type: 'live-command', id: 'skew', atMs: now })]);
+});
+
+test('a command for another ride, a stale ride or a bad shape is refused', () => {
   const mac = peer(1, 'mac'), phone = peer(1, 'phone'); live(mac);
   ch.handle(1, 'pa', phone, cmd({ id: 'a', rideId: 'ride-other' }));
-  ch.handle(1, 'pa', phone, cmd({ id: 'b', atMs: now - 11_000 }));
   ch.handle(1, 'pa', phone, cmd({ id: 'c', deltaPct: 50 }));
   ch.handle(1, 'pa', phone, cmd({ id: 'd', deltaPct: 5.5 }));
   ch.handle(1, 'pa', phone, cmd({ id: 'e', kind: 'stop' }));
-  expect(phone.got.filter((m) => m.type === 'live-ack').map((m) => (m as { reason?: string }).reason)).toEqual(['no-ride', 'old', 'invalid', 'invalid', 'invalid']);
+  expect(phone.got.filter((m) => m.type === 'live-ack').map((m) => (m as { reason?: string }).reason)).toEqual(['no-ride', 'invalid', 'invalid', 'invalid']);
   expect(mac.got).toEqual([]);
   now += 10_001;
   ch.handle(1, 'pa', phone, cmd({ id: 'f' }));

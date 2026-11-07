@@ -1,5 +1,5 @@
 import {
-  commandFresh, LIVE_FRESH_MS, LIVE_RATE_MAX, LIVE_RATE_WINDOW_MS, parseLiveCommand, parseLiveState,
+  LIVE_FRESH_MS, LIVE_RATE_MAX, LIVE_RATE_WINDOW_MS, parseLiveCommand, parseLiveState,
   type LiveMessage, type LiveRefusal, type LiveState,
 } from '../../shared/live';
 
@@ -99,7 +99,6 @@ export class LiveChannel<P> {
     const hits = (this.recent.get(accountId) ?? []).filter((t) => now - t < LIVE_RATE_WINDOW_MS);
     if (hits.length >= LIVE_RATE_MAX) { this.recent.set(accountId, hits); this.refuse(peer, profileId, cmd.id, 'rate'); return; }
     this.recent.set(accountId, [...hits, now]);
-    if (!commandFresh(cmd.atMs, now)) { this.refuse(peer, profileId, cmd.id, 'old'); return; }
     const state = this.fresh(accountId);
     const r = this.running.get(accountId);
     if (!state || !r || state.rideId !== cmd.rideId) { this.refuse(peer, profileId, cmd.id, 'no-ride'); return; }
@@ -110,7 +109,8 @@ export class LiveChannel<P> {
     for (const [id, a] of asked) if (now - a.atMs > ASKED_MS) asked.delete(id);
     if (asked.size >= MAX_ASKED) { this.refuse(peer, profileId, cmd.id, 'rate'); return; }
     asked.set(cmd.id, { peer, atMs: now });
-    try { this.deps.send(r.owner, cmd); } catch { asked.delete(cmd.id); this.refuse(peer, profileId, cmd.id, 'offline'); }
+    // The phone's clock is not trusted: the Mac judges the age by this server stamp.
+    try { this.deps.send(r.owner, { ...cmd, atMs: now }); } catch { asked.delete(cmd.id); this.refuse(peer, profileId, cmd.id, 'offline'); }
   }
 
   private onAck(accountId: number, peer: P, m: Record<string, unknown>): void {

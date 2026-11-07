@@ -237,6 +237,8 @@ test('skip moves to the next step and is recorded as an event', () => {
   const r = readRide(dir, onlyRide());
   expect(r.events.filter((e) => e.type === 'skip')).toHaveLength(1);
   expect(r.samples.at(-1)?.targetW).toBe(160);
+  expect(r.samples.map((x) => x.rideElapsedS)).toEqual([1, 2, 3, 4, 5, 6]);
+  expect(r.events.find((e) => e.type === 'skip')?.detail).toBe('0:95');
 });
 test('skip without a ride or on the last step does nothing and never throws', () => {
   const svc = make();

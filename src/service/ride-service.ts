@@ -182,7 +182,7 @@ export class RideService {
     try { return JSON.parse(fs.readFileSync(path.join(this.deps.dir, 'profiles.json'), 'utf8')) as Profile[]; } catch { return []; }
   }
 
-  private newEngine(session: Session, ftpW: number, extra: { resumeAtS?: number; startSeq?: number; maxHrBpm?: number; hrMaxBpm?: number } = {}): RideEngine {
+  private newEngine(session: Session, ftpW: number, extra: { resumeAtS?: number; skippedS?: number; startSeq?: number; maxHrBpm?: number; hrMaxBpm?: number } = {}): RideEngine {
     return new RideEngine({ session, ftpW, nowMs: this.deps.nowMs, ...extra });
   }
 
