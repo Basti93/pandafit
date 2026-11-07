@@ -23,7 +23,7 @@ export type RuleValue = number | { min: number; max: number };
 
 export type PolicyRule = {
   id: string;
-  domain: 'gym' | 'muscle' | 'rest' | 'bike' | 'run' | 'planner' | 'endurance' | 'data';
+  domain: 'gym' | 'muscle' | 'rest' | 'bike' | 'run' | 'planner' | 'endurance' | 'data' | 'health';
   statement: string; decision: string; class: RuleClass; enforcement: Enforcement;
   value?: RuleValue; unit?: string;
   /** Further named ranges of the same rule, e.g. the sets for other goals and the reps of a muscle target. */

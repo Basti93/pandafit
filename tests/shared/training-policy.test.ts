@@ -2,12 +2,12 @@ import { POLICY_VERSION, RULES, SCENARIOS, SOURCES, policyRule, ruleNumber, rule
 
 describe('training policy register', () => {
   it('has a version and unique ids', () => {
-    expect(POLICY_VERSION).toBe('2026-11-07.1');
+    expect(POLICY_VERSION).toBe('2026-11-07.2');
     for (const list of [SOURCES, RULES, SCENARIOS]) expect(new Set(list.map((x) => x.id)).size).toBe(list.length);
   });
 
-  it('registers all 26 sources of the foundation with population, endpoint and limits', () => {
-    expect(SOURCES.map((s) => s.id)).toEqual(Array.from({ length: 26 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`));
+  it('registers the 26 sources of the foundation and the health sources with population, endpoint and limits', () => {
+    expect(SOURCES.map((s) => s.id)).toEqual(Array.from({ length: 35 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`));
     for (const s of SOURCES) for (const k of ['citation', 'url', 'population', 'endpoint', 'limits'] as const) expect(s[k].length).toBeGreaterThan(0);
   });
 

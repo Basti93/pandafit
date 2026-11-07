@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { RUN_TYPES, type RunType } from '../shared/run';
+import { ruleValues } from '../shared/training-policy';
 import type { GarminActivity, GarminBody, GarminDay, GarminProgress } from '../shared/garmin';
 
 const DAY_MS = 86_400_000;
@@ -15,6 +16,11 @@ const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFi
 const positive = (v: unknown): number | null => { const n = num(v); return n !== null && n > 0 ? n : null; };
 const notNegative = (v: unknown): number | null => { const n = num(v); return n !== null && n >= 0 ? n : null; };
 const text = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+
+const intensityMinutes = (stats: Raw): number | null => {
+  const moderate = notNegative(stats.moderateIntensityMinutes), vigorous = notNegative(stats.vigorousIntensityMinutes);
+  return moderate === null && vigorous === null ? null : (moderate ?? 0) + ruleValues('health.activity-minutes').vigorousFactor! * (vigorous ?? 0);
+};
 
 const toDay = (date: string, r: Record<string, unknown>): GarminDay => {
   const stats = obj(r.stats);
@@ -35,6 +41,7 @@ const toDay = (date: string, r: Record<string, unknown>): GarminDay => {
     readinessScore: notNegative(readiness.score),
     acuteLoad: notNegative(readiness.acuteLoad),
     recoveryHours: notNegative(readiness.recoveryTime),
+    intensityMin: intensityMinutes(stats),
   };
 };
 

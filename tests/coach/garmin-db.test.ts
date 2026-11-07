@@ -21,14 +21,14 @@ const make = () => {
 
 test('a full day has all values from their real places', () => {
   const { file, day } = make();
-  day('2026-11-01', 'stats', { restingHeartRate: 60, averageStressLevel: 29, bodyBatteryHighestValue: 92, totalSteps: 5664 });
+  day('2026-11-01', 'stats', { restingHeartRate: 60, averageStressLevel: 29, bodyBatteryHighestValue: 92, totalSteps: 5664, moderateIntensityMinutes: 30, vigorousIntensityMinutes: 10 });
   day('2026-11-01', 'sleep', { dailySleepDTO: { sleepTimeSeconds: 25200, deepSleepSeconds: 3600, remSleepSeconds: 5400, sleepScores: { overall: { value: 81 } } } });
   day('2026-11-01', 'hrv', { hrvSummary: { lastNightAvg: 55 } });
   day('2026-11-01', 'max_metrics', [{ generic: { vo2MaxPreciseValue: 51.4 }, cycling: null }]);
   day('2026-11-01', 'training_readiness', [{ score: 94, level: 'HIGH', acuteLoad: 35, recoveryTime: 1 }]);
   expect(new GarminDb(file).days('2026-01-01')).toEqual([{
     date: '2026-11-01', restingHrBpm: 60, hrvMs: 55, sleepS: 25200, deepS: 3600, remS: 5400, sleepScore: 81, bodyBatteryMax: 92, stressAvg: 29,
-    vo2max: 51.4, steps: 5664, readinessScore: 94, acuteLoad: 35, recoveryHours: 1,
+    vo2max: 51.4, steps: 5664, readinessScore: 94, acuteLoad: 35, recoveryHours: 1, intensityMin: 50,
   }]);
 });
 test.each([[{}], [[]], [null]])('an empty answer gives nulls and never throws: %j', (empty) => {
@@ -36,6 +36,13 @@ test.each([[{}], [[]], [null]])('an empty answer gives nulls and never throws: %
   for (const e of ['stats', 'sleep', 'hrv', 'max_metrics', 'training_readiness']) day('2026-11-01', e, empty);
   const [d] = new GarminDb(file).days('2026-01-01');
   expect(Object.entries(d).filter(([k]) => k !== 'date').every(([, v]) => v === null)).toBe(true);
+});
+test('intensity minutes count vigorous double, a missing half counts as zero and none stays unknown', () => {
+  const { file, day } = make();
+  day('2026-11-01', 'stats', { moderateIntensityMinutes: 20 });
+  day('2026-11-02', 'stats', { vigorousIntensityMinutes: 15 });
+  day('2026-11-03', 'stats', { totalSteps: 100 });
+  expect(new GarminDb(file).days('2026-01-01').map((d) => d.intensityMin)).toEqual([20, 30, null]);
 });
 test('sleep of zero or missing counts as no sleep data, and a stress of -1 as none', () => {
   const { file, day } = make();

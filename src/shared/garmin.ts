@@ -1,6 +1,8 @@
 export type GarminDay = {
   date: string; restingHrBpm: number | null; hrvMs: number | null; sleepS: number | null; deepS: number | null; remS: number | null; sleepScore: number | null;
   bodyBatteryMax: number | null; stressAvg: number | null; vo2max: number | null; steps: number | null; readinessScore: number | null; acuteLoad: number | null; recoveryHours: number | null;
+  /** Moderate minutes plus twice the vigorous ones, as Garmin and the WHO count them. Old data has none. */
+  intensityMin?: number | null;
 };
 export type GarminActivity = {
   id: string; startMs: number; sport: string; name: string | null; durationS: number; distanceM: number | null; avgHr: number | null; maxHr: number | null;
