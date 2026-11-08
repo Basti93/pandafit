@@ -1,4 +1,5 @@
 import { resolveExercise } from './exercise-identity';
+import { LEG_MUSCLES } from '../shared/legs';
 import { isExcluded } from '../shared/excluded';
 import { EXERCISES, exerciseTitles, type Exercise } from '../shared/exercises';
 import { defaultStudio, mainStudio, studioName, studioKey, resolveStudio, NO_STUDIOS, type StudioState } from '../shared/studio';
@@ -164,10 +165,18 @@ export function isExcludedExercise(e: { templateId: string; title: string }, cat
   return isExcluded(e, excluded, catalog);
 }
 
-export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: number, id: string, catalog: Exercise[] = EXERCISES, studio?: string, studios: StudioState = NO_STUDIOS, next: { changes: NextChange[]; workouts: LoggedWorkout[]; overrides?: LoadStepOverrides; /** Exercise ids the person's rules rule out: dropped from the plan, with a line in `onSkipped`. */ excluded?: ReadonlySet<string>; onSkipped?: (lines: string[]) => void } = { changes: [], workouts: [] }): TrackedWorkout {
+export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: number, id: string, catalog: Exercise[] = EXERCISES, studio?: string, studios: StudioState = NO_STUDIOS, next: { changes: NextChange[]; workouts: LoggedWorkout[]; overrides?: LoadStepOverrides; /** Exercise ids the person's rules rule out: dropped from the plan, with a line in `onSkipped`. */ excluded?: ReadonlySet<string>; /** The plan day says no legs: leg exercises are dropped (never all of them). */ noLegs?: boolean; onSkipped?: (lines: string[]) => void } = { changes: [], workouts: [] }): TrackedWorkout {
   const out = (e: GymExercise): boolean => !!next.excluded && isExcludedExercise(e, catalog, next.excluded);
   const dropped = w.exercises.filter(out);
   if (dropped.length) w = { ...w, exercises: w.exercises.filter((e) => !out(e)) };
+  const legNotes: string[] = [];
+  if (next.noLegs) {
+    const leg = (e: GymExercise): boolean => LEG_MUSCLES.includes(resolveExercise({ exerciseId: e.templateId, title: e.title }, catalog).exercise?.primaryMuscle ?? '');
+    const rest = w.exercises.filter((e) => !leg(e));
+    if (rest.length === w.exercises.length) { /* no leg exercise: nothing to say */ }
+    else if (rest.length === 0) legNotes.push('Heute war ohne Beine abgesprochen.');
+    else { w = { ...w, exercises: rest }; legNotes.push('Ohne Beine, wie abgesprochen.'); }
+  }
   const listed = listedIds(next.workouts);
   const todo = next.changes.filter((c) => c.state === 'taken' && !listed.has(c.id));
   // A lowered weight lands on a weight the machine here can really show: the exercise's ladder in this workout's studio.
@@ -180,7 +189,7 @@ export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: nu
     return snapDown(kg, ladderFrom(own, { exerciseId, studio: key, main, renames: studios.renames }, equipment, next.overrides ?? new Map()).ladder);
   };
   const { plan, notes: changeNotes, applied } = applyNextChanges(w, todo, catalog, lower, next.excluded);
-  const notes = [...dropped.map((e) => `Ohne ${e.title} – deine Regel.`), ...changeNotes];
+  const notes = [...dropped.map((e) => `Ohne ${e.title} – deine Regel.`), ...legNotes, ...changeNotes];
   const done = todo.filter((c) => applied.includes(c.id));
   const planStudio = w.studio ? studioName(w.studio) : undefined;
   const exercises = plan.exercises.map((g) => plannedExercise(g, history, catalog, studio, studios, { planStudio, overrides: next.overrides }));

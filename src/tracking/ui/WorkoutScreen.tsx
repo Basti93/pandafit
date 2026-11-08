@@ -7,6 +7,8 @@ import { readStats, STATS_ID } from '../../shared/stats';
 import { excludedIds } from '../../shared/personal';
 import { exerciseImages, videoSearchUrl } from '../media';
 import { resolveExercise } from '../exercise-identity';
+import { dateKey } from '../../shared/day-rating';
+import { hasSport, planFor } from '../../shared/week-plan';
 import { describeExercise } from '../similar';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
@@ -492,8 +494,10 @@ export function WorkoutScreen({ port, plan = null, routine = null, resume = fals
     let changeRecs: TrackedRecord[] = [], all: LoggedWorkout[] = [], overrides = loadStepOverrides([], studios.renames), excludedNow: ReadonlySet<string> = new Set();
     try { excludedNow = excludedIds(await port.list('rule'), catalog); } catch { /* start without them */ }
     try { overrides = loadStepOverrides(await port.list('loadstep'), studios.renames); changeRecs = await port.list('change'); all = (await port.list('workout')).filter((r) => !r.deleted).map((r) => r.body as LoggedWorkout); } catch { /* start without them: they stay taken for the next time */ }
+    let noLegs = false;
+    try { const day = planFor(await port.list('weekplan'), dateKey(now())); noLegs = !!day && day.legs === false && hasSport(day, 'gym'); } catch { /* start with the plan as it is */ }
     let skipped: string[] = [];
-    const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, excluded: excludedNow, onSkipped: (l) => { skipped = l; } });
+    const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
     if (!(await begin(w, skipped.length ? skipped.join(' ') : null))) return;
     await markUsed(port, all.filter((x) => x.endMs !== null), now());
   };
