@@ -105,6 +105,18 @@ test('scan with scheduled() false asks no Claude and starts no Hevy or Garmin ru
   }
 });
 
+test('with a ride open no day sentence is asked, even with a training today', async () => {
+  const { root, runtime, ask } = make({ noOpenRide: () => false });
+  const store = new RecordStore({ dir: path.join(root, 'coach', 'tracking') });
+  store.putMany('pa', [{ kind: 'run', id: 'manual-abc', updatedMs: Date.now(), deleted: false, body: { type: 'manual', startMs: Date.now() - 3600_000, durationS: 1800, distanceM: 5000, avgHr: null, runType: 'running' } }]);
+  runtime.scan();
+  await settle();
+  runtime.scan();
+  await settle();
+  expect(ask).not.toHaveBeenCalled();
+  expect(fs.existsSync(path.join(root, 'coach', 'day', 'texts.json'))).toBe(false);
+});
+
 test('heavyBusy() true skips the Hevy and Garmin ticks but not planning', async () => {
   const busy = make({ heavyBusy: () => true });
   connectHevyAndGarmin(busy.root);

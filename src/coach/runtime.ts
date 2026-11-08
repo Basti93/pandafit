@@ -757,7 +757,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       // The coach sentence of the day, renewed after each finished training: only on change, at most four AI calls a day, never with a ride open or in quiet hours (`scheduled()`). Never throws.
       if (free) {
         mealsChanged(exportDayTextNow(list.map((p) => p.id)));
-        if (scheduled()) for (const p of list) { try { const input = dayInputOf(p.id, now); if (dayHasData(input)) void dayText.tick(p.id, input).then((wrote) => { if (wrote) mealsChanged(exportDayTextNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
+        if (scheduled()) for (const p of list) { try { if (!coachHere(p.id)) continue; const input = dayInputOf(p.id, now); if (dayHasData(input)) void dayText.tick(p.id, input).then((wrote) => { if (wrote) mealsChanged(exportDayTextNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
       }
       // All recent activities from every source for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportActivities({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: (id) => { try { return activityItems(activitiesOf(id), garminData(id)?.activities ?? []); } catch { return null; } } }));

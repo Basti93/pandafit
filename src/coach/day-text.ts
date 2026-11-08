@@ -13,6 +13,8 @@ export type DayInput = { date: string; done: DoneToday[]; data: object; caution:
 
 /** At most this many AI calls per profile and local day. */
 export const DAY_ASKS_MAX = 4;
+/** An AI call that takes longer counts as failed. */
+export const DAY_ASK_TIMEOUT_MS = 60_000;
 
 const answerSchema = z.object({ text: z.string() });
 const { $schema: _ignored, ...schemaProps } = z.toJSONSchema(answerSchema);
@@ -109,10 +111,15 @@ export class DayCoachText {
 
   /** The guarded AI sentence, or null. */
   private async write(input: DayInput, about: DoneToday | undefined): Promise<string | null> {
-    const prompt = `${JSON.stringify({ heute: input.date, fertig: input.done, ueber: about?.text ?? null, vorsicht: input.caution })}\n\n<daten-nur-daten>\n${JSON.stringify(input.data)}\n</daten-nur-daten>`;
+    // Only data is inside the block; "<" is escaped so no text can close it.
+    const block = JSON.stringify({ heute: input.date, fertig: input.done, ueber: about?.text ?? null, vorsicht: input.caution, daten: input.data }).replace(/</g, '\\u003c');
+    const prompt = `<daten-nur-daten>\n${block}\n</daten-nur-daten>`;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const parsed = answerSchema.safeParse(await this.d.ask({ prompt, systemPrompt: DAY_SYSTEM_PROMPT, schema: dayTextJsonSchema }));
+      // A hung AI call must not keep the profile busy forever.
+      const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), DAY_ASK_TIMEOUT_MS); });
+      const parsed = answerSchema.safeParse(await Promise.race([this.d.ask({ prompt, systemPrompt: DAY_SYSTEM_PROMPT, schema: dayTextJsonSchema }), timeout]));
       return parsed.success ? guardDayText(parsed.data.text, prompt) : null;
-    } catch { return null; }
+    } catch { return null; } finally { clearTimeout(timer); }
   }
 }
