@@ -16,11 +16,11 @@ The transparent artboard is named `Panda`. Its default state machine is `PandaCo
 | `nod` | Nod and settle | 53 frames |
 | `breathe` | Let the shoulders rise and settle on a slow breath | 189 frames |
 | `flex` | Set down the mug, flex both paws and pick it back up | 135 frames |
-| `bike` | Pedal through two revolutions | 143 frames |
-| `run` | Jog with alternating strides and arm swings | 139 frames |
+| `bike` | Pedal through two revolutions on a compact bike | 143 frames |
+| `run` | Jog forward on short, rounded paws | 139 frames |
 | `yoga` | Wobble and settle in tree pose | 170 frames |
-| `read` | Read and turn one page | 154 frames |
-| `knit` | Work a short row as the yarn ball unwinds | 166 frames |
+| `read` | Read and turn one page with the covers facing out | 154 frames |
+| `knit` | Work a short row with the scarf attached to the needle | 166 frames |
 
 The head, eyelids, torso, mug, steam and left and right shoulder pivots are independently keyed. During `greet` the forearms rotate around fixed shoulder pivots. During `nod` the torso, paws and mug follow the head down. The artwork uses vector paths and the original Pandafit palette. The source has no external assets or scripts.
 
@@ -44,4 +44,15 @@ printf '%s\n' 'advance 3' 'data bike=1' 'advance 76' 'screenshot /tmp/panda-bike
   rive design/panda-rive --commands
 ```
 
-Verified with Rive CLI 1.9.2. Each trigger rendered a distinct pose and returned to the same initial frame. For a signed runtime file, run `rive login` and then `rive design/panda-rive --publish=local`. The CLI returned exit code 3 when run without an account session. See the [CLI documentation](https://rive.app/docs/cli/overview) for account and export options.
+## Runtime file
+
+[`panda-coach.riv`](panda-coach.riv) is the local export. It contains all ten View Model triggers. It loads in Canvas Lite 2.49.4 with the named artboard and state machine above. The running, mug and knitting clips were played through the browser runtime using same-origin assets.
+
+The Free Workspace export includes Rive's splash screen. The project has no scripts, so the CLI reports that there is no script bytecode to sign. To reproduce the local export with Rive CLI 1.9.2:
+
+```sh
+rive login
+rive design/panda-rive --publish=local --output-dir=.
+```
+
+See the [CLI documentation](https://rive.app/docs/cli/overview) for account and export options.
