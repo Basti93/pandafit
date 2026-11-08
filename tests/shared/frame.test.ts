@@ -75,8 +75,8 @@ describe('gym time budget', () => {
   it('is one line in the prompt', () => {
     const p = buildGymPrompt({ state: initialGymState('p'), workouts: [], templates: [], nowMs: 1, summaries: [], complaints: [], previous: null, wantNote: false, budgetMinutes: 30 });
     expect(p).toContain('Zeit: höchstens 30 Min einschließlich Aufwärmen und Pausen.');
-    expect(p).not.toContain('Heute keine Beinübungen.');
-    expect(buildGymPrompt({ state: initialGymState('p'), workouts: [], templates: [], nowMs: 1, summaries: [], complaints: [], previous: null, wantNote: false, avoidLegs: true })).toContain('Heute keine Beinübungen.');
+    expect(p).not.toContain('Keine Beinübungen in dieser Einheit.');
+    expect(buildGymPrompt({ state: initialGymState('p'), workouts: [], templates: [], nowMs: 1, summaries: [], complaints: [], previous: null, wantNote: false, avoidLegs: true })).toContain('Keine Beinübungen in dieser Einheit.');
   });
 });
 

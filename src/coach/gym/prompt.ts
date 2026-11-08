@@ -144,7 +144,7 @@ export function buildGymPrompt(i: PromptInput): string {
     priorityLine(goal),
     wishLine(i.wishes ?? []),
     i.budgetMinutes !== undefined ? `Zeit: höchstens ${i.budgetMinutes} Min einschließlich Aufwärmen und Pausen.` : null,
-    i.avoidLegs ? 'Heute keine Beinübungen.' : null,
+    i.avoidLegs ? 'Keine Beinübungen in dieser Einheit.' : null,
     i.rejection ? 'Dein letzter Vorschlag wurde abgelehnt, der Grund steht im Block ablehnung-nur-daten. Korrigiere ihn.' : null,
     i.mobility ? 'Beweglichkeit (Dehnen) bietet die App selbst an, der Block beweglichkeit-nur-daten zeigt sie. Plane sie nicht und verspreche dazu weder Erholung noch Verletzungsschutz.' : null,
     'Plane jetzt das nächste Training.',
