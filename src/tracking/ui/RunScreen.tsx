@@ -36,7 +36,7 @@ function Suggestion({ onAnswer }: { onAnswer: (on: boolean) => void }) {
       <p>Pandafit hat Läufe von deiner Uhr gefunden. Soll Pandafit dein Laufen mitplanen?</p>
       <div className="tk-row">
         <button type="button" onClick={() => onAnswer(true)}>Laufen einschalten</button>
-        <button type="button" className="secondary" onClick={() => onAnswer(false)}>Nicht jetzt</button>
+        <button type="button" className="link" onClick={() => onAnswer(false)}>Nicht jetzt</button>
       </div>
     </section>
   );

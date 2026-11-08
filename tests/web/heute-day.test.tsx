@@ -122,12 +122,15 @@ describe('Heute as a day page', () => {
     b.rerender();
     expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
   });
-  it('Dein Körper shows words and no digits, and the link leads on', async () => {
+  it('Dein Körper shows words and no digits, and the outline button leads on', async () => {
     await boot([health()]);
     const card = await screen.findByRole('region', { name: 'Dein Körper' });
     expect(card.textContent).toContain('Ruhepuls · beachten');
     expect(card.textContent).not.toMatch(/\d/);
-    expect(screen.getByRole('button', { name: 'Mit dem Coach reden' })).toBeTruthy();
+    const toCoach = screen.getByRole('button', { name: 'Mit dem Coach reden' });
+    expect(toCoach.className).toBe('secondary'); // a jump is an outline button, not a text link
+    fireEvent.click(toCoach);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Woche' })).toBeTruthy();
   });
   it('without a health record there is no Dein Körper', async () => {
     await boot([]);

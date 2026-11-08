@@ -122,7 +122,7 @@ export function RecipesSheet({ ctx, onClose, onAddLink }: { ctx: RecipeCtx; onCl
       <label className="tk-field" htmlFor={searchId}><span className="rc-sr">Rezept suchen</span>
         <input id={searchId} type="search" aria-label="Rezept suchen" placeholder="Rezept oder Zutat suchen" maxLength={80} value={text} onChange={(e) => setText(e.target.value)} />
       </label>
-      <div className="rc-chips" role="group" aria-label="Filter">
+      <div className="tk-chips" role="group" aria-label="Filter">
         {[['fav', 'Favoriten'], ['own', 'Von mir'], ...OTHER_CHIPS].map(([id, label]) => (
           <button key={id} type="button" aria-pressed={chips.has(id!)} onClick={() => toggle(id!)}>{label}</button>
         ))}
@@ -175,9 +175,9 @@ export function RecipeView({ ctx, id, onClose, onDeleted }: { ctx: RecipeCtx; id
           <div className="rc-headline"><p className="muted rc-facts">{factsLine(d)}</p><Heart on={fav} title={d.title} onToggle={() => ctx.toggleFav(id, !fav)} /></div>
           {d.tags.length > 0 && <ul className="rc-tags" aria-label="Schlagwörter">{d.tags.map((t) => <li key={t}>{t.replace(' und ', ' & ')}</li>)}</ul>}
           <div className="rc-portions" role="group" aria-label="Portionen">
-            <button type="button" className="secondary" aria-label="Eine Portion weniger" disabled={portions <= 1} onClick={() => setPortions(portions - 1)}>−</button>
+            <button type="button" className="tk-step-btn" aria-label="Eine Portion weniger" disabled={portions <= 1} onClick={() => setPortions(portions - 1)}>−</button>
             <span aria-live="polite">{portions} {portions === 1 ? 'Portion' : 'Portionen'}</span>
-            <button type="button" className="secondary" aria-label="Eine Portion mehr" disabled={portions >= 4} onClick={() => setPortions(portions + 1)}>+</button>
+            <button type="button" className="tk-step-btn" aria-label="Eine Portion mehr" disabled={portions >= 4} onClick={() => setPortions(portions + 1)}>+</button>
           </div>
           <ul className="pm-ingredients">{d.ingredients.map((i, n) => <li key={n}><b>{recipeAmount(i, portions)}</b> {i.name}</li>)}</ul>
           <ol className="pm-steps">{d.steps.map((s, n) => <li key={n}>{s}</li>)}</ol>
@@ -224,7 +224,7 @@ function PlaceSheet({ ctx, recipe, onClose }: { ctx: RecipeCtx; recipe: RecipeSu
               </button>
             ))}
           </div>
-          <div className="rc-slotpick" role="group" aria-label="Mahlzeit">
+          <div className="tk-chips rc-slotpick" role="group" aria-label="Mahlzeit">
             {SLOTS.map((s) => <button key={s} type="button" aria-pressed={s === slot} onClick={() => { setSlot(s); setSentAt(null); }}>{SLOT_LABEL[s]}</button>)}
           </div>
           <p className="muted pm-meta">{meal ? (meal.dish.recipeId === recipe.id ? 'Schon eingetragen' : `Tauscht ${meal.dish.title} aus`) : 'Noch frei'}{names.length > 0 ? ` · isst mit: ${names.join(', ')}, für ${names.length} ${names.length === 1 ? 'Portion' : 'Portionen'}` : ''}</p>

@@ -1,0 +1,104 @@
+/* Design tokens of the web app: every colour (dark first, light below) and a few sizes. Colours are named by role.
+   A token on :root without a light value carries "shared" on its line: it is the same in both schemes. */
+:root {
+  color-scheme: dark light;
+
+  /* Surfaces, text and lines */
+  --bg: #12201a;
+  --text: #f6eedd;
+  --ink: #1f1408; /* shared */
+  --field: #101b16;
+  --card: #1c2f26;
+  --line: #33493c;
+  --field-line: #55705f;
+  --muted: #aebba9;
+  --day: #cdd7c8;
+  --accent: #e8964a; /* shared */
+  --good: #9ccb68; /* shared */
+  --good-text: #9ccb68;
+  --danger: #d9806f;
+  --low: #f2bd55; /* shared */
+
+  /* Chosen person pill (meal plan), picked row. --seg-on stays dark in sheets; --seg-on-screen is the meal screen's own light value. */
+  --seg-on: #2d4638; /* shared */
+  --seg-on-screen: #2d4638;
+  --pick: #243a30;
+
+  /* Chips */
+  --chip-warm: #f2bd55;
+  --chip-fail: #f08a7a;
+  --chip-drop: #8cc4f0;
+
+  /* Meal plan: one colour per meal, one per person */
+  --slot-fruehstueck: #f2bd55;
+  --slot-mittag: #9ccb68;
+  --slot-abend: #7fb4e8;
+  --pc0: #e8964a; /* shared */
+  --pc1: #c9a0e8;
+  --pc2: #9ccb68;
+  --pc3: #7fb4e8;
+
+  /* Together: bar fill (the light value replaces the inline cell colour) */
+  --gm-fill: #9ccb68;
+
+  /* Same in both schemes: switch knob, skip button, list separator, shadows, scrim */
+  --switch-knob: #f6eedd; /* shared */
+  --switch-knob-on: #fff; /* shared */
+  --skip-bg: rgba(255, 255, 255, .3); /* shared */
+  --skip-line: rgba(31, 20, 8, .45); /* shared */
+  --run-sep: rgba(255, 255, 255, .08); /* shared */
+  --shadow-rest: rgba(0, 0, 0, .35); /* shared */
+  --shadow-lift: rgba(0, 0, 0, .28); /* shared */
+  --scrim: rgba(0, 0, 0, .55); /* shared */
+
+  /* Sizes */
+  --web-nav-h: 3.6rem;
+  --space-1: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --radius-s: .5rem;
+  --radius-xs: .6rem;
+  --radius-m: .8rem;
+  --radius-card: 1.1rem;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+  --fs-2xs: .8rem;
+  --fs-xs: .85rem;
+  --fs-s: .9rem;
+  --fs-m: .95rem;
+  --fs-l: 1.1rem;
+  --fs-xl: 1.2rem;
+  --fs-2xl: 1.3rem;
+  --fs-3xl: 1.4rem;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f3e8;
+    --text: #1f2a24;
+    --field: #ffffff;
+    --card: #ece6d4;
+    --line: #cfc7ad;
+    --field-line: var(--line);
+    --muted: #5d6a60;
+    --day: var(--muted);
+    --good-text: #3f7a1f;
+    --danger: #a8372a;
+
+    --seg-on-screen: #dcd5bd;
+    --pick: #dcd5bd;
+
+    --chip-warm: #9a6a00;
+    --chip-fail: #b23a2a;
+    --chip-drop: #2a6aa0;
+
+    --slot-fruehstueck: #c98a12;
+    --slot-mittag: #4f8a2a;
+    --slot-abend: #2f78bf;
+    --pc1: #b98ad8;
+    --pc2: #8cc05a;
+    --pc3: #6aa6e0;
+
+    --gm-fill: #6fa043;
+  }
+}

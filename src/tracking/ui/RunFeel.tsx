@@ -20,9 +20,9 @@ export function RunFeelQuestion({ onAnswer }: { onAnswer: (feel: Feel | null) =>
     <section className="tk-feel" aria-label="Wie fühlte sich der Lauf an?">
       <p>Wie fühlte sich der Lauf an?</p>
       <div className="tk-chips">
-        {(Object.keys(LABEL) as Feel[]).map((f) => <button key={f} type="button" className="secondary" onClick={() => tap(f)}>{LABEL[f]}</button>)}
+        {(Object.keys(LABEL) as Feel[]).map((f) => <button key={f} type="button" onClick={() => tap(f)}>{LABEL[f]}</button>)}
       </div>
-      <button type="button" className="link tk-skip-feel" onClick={() => tap(null)}>Später</button>
+      <button type="button" className="link" onClick={() => tap(null)}>Später</button>
     </section>
   );
 }

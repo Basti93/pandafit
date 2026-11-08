@@ -87,8 +87,8 @@ export function SetRow({ index, set, timed, label, preset, target, plates, editi
       {asking && (
         <p className="tk-note tk-wide">
           Dieser erledigte Satz geht dabei weg. Wirklich entfernen?{' '}
-          <button type="button" onClick={() => { setAsking(false); onRemove(); }}>Ja, entfernen</button>{' '}
-          <button type="button" className="ghost" onClick={() => setAsking(false)}>Behalten</button>
+          <button type="button" className="danger-link" onClick={() => { setAsking(false); onRemove(); }}>Ja, entfernen</button>{' '}
+          <button type="button" className="link" onClick={() => setAsking(false)}>Behalten</button>
         </p>
       )}
     </div>

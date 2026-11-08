@@ -150,7 +150,7 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
       </button>
       {focusOpen && (
         <>
-          <div className="tk-row tk-focus" role="group" aria-label={`Muskeln im Fokus, bis zu ${MAX_FOCUS}`}>
+          <div className="tk-chips" role="group" aria-label={`Muskeln im Fokus, bis zu ${MAX_FOCUS}`}>
             {FOCUS_GROUPS.map((g) => {
               const on = goal.focus.includes(g);
               return <button key={g} type="button" aria-pressed={on} disabled={!on && goal.focus.length >= MAX_FOCUS} onClick={() => toggleFocus(g)}>{MUSCLE_TARGETS[g].label}</button>;
@@ -253,7 +253,7 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
       {adding ? (
         <form className="tk-row" onSubmit={(e) => { e.preventDefault(); addWish(); }}>
           <input aria-label="Neue Regel" autoFocus value={text} maxLength={RULE_TEXT_MAX} placeholder="Neue Regel oder Wunsch" onChange={(e) => setText(e.target.value)} />
-          <button type="submit" className="secondary" disabled={!text.trim()}>Speichern</button>
+          <button type="submit" disabled={!text.trim()}>Speichern</button>
         </form>
       ) : (
         <>

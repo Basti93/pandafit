@@ -127,7 +127,7 @@ export function MealDetail({ week, meal, onEater, onView, me, readOnly }: { week
   const askedBy = meal.askedBy ? week.plan.people.find((p) => p.id === meal.askedBy) : undefined;
   return (
     <>
-      {meal.dish.recipeId && <button type="button" className="link pm-viewlink" onClick={() => onView(meal.dish.recipeId!)}>Rezept ansehen ›</button>}
+      {meal.dish.recipeId && <button type="button" className="secondary pm-viewlink" onClick={() => onView(meal.dish.recipeId!)}>Rezept ansehen ›</button>}
       {!meal.reuseOf && cook.total > 0 && (
         <>
           <h3 className="tk-section">Rezept für {cook.total} {cook.total === 1 ? 'Portion' : 'Portionen'}</h3>
@@ -364,7 +364,7 @@ export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; no
           {weeks.map((w) => <button key={w.plan.week} type="button" className="link" aria-pressed={w === week} onClick={() => pick(w)}>{w.plan.week === current ? 'Diese Woche' : 'Nächste Woche'}</button>)}
         </div>
       )}
-      <div className="pm-seg" role="group" aria-label="Ansicht">
+      <div className="tk-seg" role="group" aria-label="Ansicht">
         <button type="button" aria-pressed={tab === 'tage'} onClick={() => setTab('tage')}>Tage</button>
         <button type="button" aria-pressed={tab === 'einkauf'} onClick={() => setTab('einkauf')}>Einkauf{openCount > 0 ? ` · ${openCount} offen` : ''}</button>
       </div>
