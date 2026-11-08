@@ -130,3 +130,8 @@ test('strengthHealth hands over the sessions of the twelve weeks with their dura
   const h = strengthHealth([w('old', new Date(2027, 0, 4, 10).getTime()), w('new', new Date(2027, 5, 15, 10).getTime())], now);
   expect(h.sessions).toEqual([{ id: 'new', title: 'Beine', startMs: new Date(2027, 5, 15, 10).getTime(), durationS: 3000 }]);
 });
+
+test('a workout in the future is not listed', () => {
+  const data = strengthPromptData([workout(2), workout(-1)], NOW) as { letzte14Tage: unknown[] };
+  expect(data.letzte14Tage).toHaveLength(1);
+});

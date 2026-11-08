@@ -1,7 +1,7 @@
 import type { TrackedRecord } from '../../shared/records';
 import { frameOf, type Frame } from '../../shared/frame';
 import { dateKey } from '../../shared/day-rating';
-import { nextPlanDate } from '../../shared/week-plan';
+import { hasSport, nextPlanDate, planFor } from '../../shared/week-plan';
 
 type Reader = { all(profileId: string, kind?: 'frame' | 'weekplan' | 'workout'): TrackedRecord[] };
 
@@ -13,16 +13,44 @@ export function frameOfProfile(store: Reader, profileId: string, todayDate: stri
 }
 
 /**
+ * The date the gym coach plans for: today in spontaneous mode, else the next gym day of the week plan without a finished
+ * workout, else today. `doneDates` are more days with a finished gym session (Hevy, Garmin) from outside the app records.
+ */
+export function gymPlanDateOf(store: Reader, profileId: string, todayDate: string, doneDates: Iterable<string> = []): string {
+  try {
+    // A day whose strength session is already done needs no plan.
+    const done = new Set([...store.all(profileId, 'workout').filter((r) => !r.deleted && isFinished(r.body)).map((r) => dateKey((r.body as { startMs: number }).startMs)), ...doneDates]);
+    // Spontaneous: no week plan counts, the session is for today.
+    if (frameOf(store.all(profileId, 'frame'), todayDate).mode === 'spontaneous') return todayDate;
+    return nextPlanDate(store.all(profileId, 'weekplan'), todayDate, 'gym', (d) => done.has(d)) ?? todayDate;
+  } catch { return todayDate; }
+}
+
+/** The plan day the gym coach plans for, when the agreed "no legs" holds for it (gym on that day, `legs` false). */
+export function gymPlanDayNoLegs(store: Reader, profileId: string, todayDate: string, doneDates: Iterable<string> = []): boolean {
+  try {
+    const day = planFor(store.all(profileId, 'weekplan'), gymPlanDateOf(store, profileId, todayDate, doneDates));
+    return day !== null && day.legs === false && hasSport(day, 'gym');
+  } catch { return false; }
+}
+
+/** Short key of the target day and its legs value: changes when a new agreement or a new target day asks for a new plan. */
+export function gymLegsKeyOf(store: Reader, profileId: string, todayDate: string, doneDates: Iterable<string> = []): string {
+  const date = gymPlanDateOf(store, profileId, todayDate, doneDates);
+  return `${date}:${gymPlanDayNoLegs(store, profileId, todayDate, doneDates)}`;
+}
+
+/**
  * The minutes for the gym session the coach plans: the person's time on the day it is planned for (the next gym day of the
  * week plan, else today). null: no time given.
  */
-export function gymBudgetOf(store: Reader, profileId: string, todayDate: string): number | null {
+export function gymBudgetOf(store: Reader, profileId: string, todayDate: string, doneDates: Iterable<string> = []): number | null {
   try {
-    // A day whose strength session is already done needs no plan.
-    const done = new Set(store.all(profileId, 'workout').filter((r) => !r.deleted && isFinished(r.body)).map((r) => dateKey((r.body as { startMs: number }).startMs)));
-    const frames = store.all(profileId, 'frame');
-    // Spontaneous: no week plan counts, the session is for today.
-    const date = frameOf(frames, todayDate).mode === 'spontaneous' ? todayDate : nextPlanDate(store.all(profileId, 'weekplan'), todayDate, 'gym', (d) => done.has(d)) ?? todayDate;
-    return frameOf(frames, date).effectiveMinutes;
+    const date = gymPlanDateOf(store, profileId, todayDate, doneDates);
+    const minutes = frameOf(store.all(profileId, 'frame'), date).effectiveMinutes;
+    // A second session with minutes (strength + 15 Min. bike) takes its time from the strength session. Nothing left: unchanged.
+    const day = planFor(store.all(profileId, 'weekplan'), date);
+    const taken = day && day.sport === 'gym' && day.also && day.also.sport !== 'gym' ? day.also.minutes : undefined;
+    return minutes !== null && taken !== undefined && minutes - taken > 0 ? minutes - taken : minutes;
   } catch { return null; }
 }

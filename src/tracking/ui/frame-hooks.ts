@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { dateKey, ratingsFromEntries, type DayRating, type RatingEntry } from '../../shared/day-rating';
 import type { Exercise } from '../../shared/exercises';
 import { frameOf, frameRecord, type Frame, type FrameBody } from '../../shared/frame';
+import { LEG_MUSCLES } from '../../shared/legs';
 import { addDays, planFor } from '../../shared/week-plan';
 import { todayAdvice, type TodayAdvice } from '../../shared/today';
 import type { RunWeekBody } from '../../shared/run';
@@ -12,7 +13,6 @@ import { readStats } from '../../shared/stats';
 import { finishedWorkouts, useCatalog, useGoal, usePortRecords } from './hooks';
 import { ridesOf } from './bike-view';
 
-const LEG_MUSCLES = ['quadriceps', 'hamstrings', 'glutes', 'calves'];
 const DAYS_BACK = 7;
 const RUN_HARDNESS = { test: 'hard', long: 'moderate', easy: 'easy' } as const;
 

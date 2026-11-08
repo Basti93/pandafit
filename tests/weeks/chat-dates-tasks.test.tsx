@@ -66,7 +66,7 @@ describe('forwarded requests on the week page', () => {
   const rec = (from: 'chat' | 'bike', to: 'gym' | 'run', text: string, lasting: boolean, atMs: number) => taskRecord({ from, to, text, lasting, atMs }, atMs);
 
   it('lists open tasks with the coach and the end, removes with a tombstone, hides expired ones', async () => {
-    const { port, map } = fakePort([rec('chat', 'gym', 'Nur eine Trizepsübung', false, NOW - DAY), rec('bike', 'run', 'Beine schonen', true, NOW - 2 * DAY), rec('chat', 'gym', 'Uralt', false, NOW - 9 * DAY)]);
+    const { port, map } = fakePort([rec('chat', 'gym', 'Nur eine Trizepsübung', false, NOW - DAY), rec('bike', 'run', 'Beine schonen', true, NOW - 2 * DAY), rec('chat', 'gym', 'Uralt', false, NOW - 29 * DAY)]);
     render(<CoachScreen port={port} {...env} />);
     fireEvent.click(await screen.findByRole('button', { name: /^Regeln/ }));
     const list = within(await screen.findByRole('list', { name: 'Regeln' }));
@@ -77,7 +77,7 @@ describe('forwarded requests on the week page', () => {
     fireEvent.click(row(/Beine schonen/));
     expect(list.getByText('dauerhaft')).toBeTruthy();
     fireEvent.click(row(/Nur eine Trizepsübung/));
-    expect(list.getByText('bis Fr., 13. Nov.')).toBeTruthy();
+    expect(list.getByText('bis zur nächsten Einheit')).toBeTruthy();
     expect(list.queryByText('dauerhaft')).toBeNull(); // only one row is open
     fireEvent.click(list.getByRole('button', { name: 'Entfernen' }));
     fireEvent.click(list.getByRole('button', { name: 'Ja' }));
@@ -92,7 +92,7 @@ describe('forwarded requests on the week page', () => {
     expect(readTask(r.body)).toMatchObject({ from: 'chat', to: 'gym' });
     expect(readTask({ ...(r.body as object), to: 'meals' })).toBeNull();
     expect(readable(r)).toBe(true);
-    expect(openTasks([r], NOW + 8 * DAY)).toEqual([]);
+    expect(openTasks([r], NOW + 29 * DAY)).toEqual([]);
   });
 });
 
@@ -103,7 +103,7 @@ describe('coach task board on records', () => {
   const file = () => path.join(tmp, 'chat', 'tasks.json');
   const legacy = (tasks: object) => { fs.mkdirSync(path.dirname(file()), { recursive: true }); fs.writeFileSync(file(), JSON.stringify(tasks)); };
   const oldTasks = {
-    p1: { tasks: [{ from: 'chat', to: 'gym', text: 'Mehr Beine', lasting: true, atMs: NOW - DAY }, { from: 'bike', to: 'run', text: 'Locker', lasting: false, atMs: NOW - 10 * DAY }], versions: { gym: 3 } },
+    p1: { tasks: [{ from: 'chat', to: 'gym', text: 'Mehr Beine', lasting: true, atMs: NOW - DAY }, { from: 'bike', to: 'run', text: 'Locker', lasting: false, atMs: NOW - 29 * DAY }], versions: { gym: 3 } },
     p2: { tasks: [{ from: 'run', to: 'bike', text: 'Rad ruhig', lasting: false, atMs: NOW - DAY }], versions: {} },
   };
 

@@ -103,7 +103,7 @@ describe('planning', () => {
     const given: unknown[] = [];
     const h = harness({ giveTask: (_id: string, t: unknown) => given.push(t) });
     const outlook = { direction: 'Mehr Beinbeuger.', sessions: [{ date: null, name: 'Beine', focus: 'Beinbeuger', exercises: [{ title: 'Beinbeugen sitzend', sets: 3 }] }] };
-    h.replies = [answer({ outlook, tasks: [{ coach: 'bike', text: 'Morgen locker', lasting: false }] })];
+    h.replies = [answer({ outlook, tasks: [{ coach: 'bike', text: 'Morgen locker', lasting: false, forDate: null }] })];
     await h.coach.tick(ID);
     expect(h.coach.state(ID).outlook).toEqual(outlook);
     expect(given).toEqual([{ to: 'bike', text: 'Morgen locker', lasting: false }]);

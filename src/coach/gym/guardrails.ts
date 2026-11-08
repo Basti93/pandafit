@@ -124,7 +124,7 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     const parsed = raw.exercises.map((e, i) => parseExercise(e, i, byId));
     const exercises = parsed.map((p) => p.ex);
     if (exercises.some((e) => isExcluded(e, ctx.excluded, ctx.catalog ?? [], ctx.links))) return no('Übung ausgeschlossen (Regel der Person)');
-    if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Beine heute nicht');
+    if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Keine Beine in dieser Einheit');
     const all = exercises.flatMap((e) => e.sets);
     if (all.filter((s) => s.type !== 'warmup').length > MAX_SETS) return no(`mehr als ${MAX_SETS} Sätze`);
     if (all.filter((s) => s.type === 'failure').length > MAX_FAILURE_SETS) return no(`mehr als ${MAX_FAILURE_SETS} Sätze bis zum Versagen`);
@@ -152,7 +152,7 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
  */
 const REASON_PHRASES: [RegExp, string][] = [
   [/Schema/, 'die Antwort war nicht lesbar'],
-  [/Beine heute nicht/, 'Beinübungen, obwohl die Beine heute pausieren'],
+  [/Keine Beine in dieser Einheit/, 'Beinübungen, obwohl die Beine in dieser Einheit pausieren'],
   [/ausgeschlossen/, 'eine Übung, die du ausgeschlossen hast'],
   [/mehr als \d+ Übungen/, 'zu viele Übungen'],
   [/mehr als \d+ Sätze bis zum Versagen/, 'zu viele Sätze bis zum Versagen'],

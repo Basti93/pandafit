@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { overlapsByHalf, trainingSessions, type TrainingInput, type TrainingSession } from './all-training';
 import { dateKey } from './day-load';
+import { kindOf } from './activities-export';
+import type { Sport } from '../shared/week-plan';
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
@@ -26,6 +28,18 @@ export const allActivities = (input: TrainingInput & { manualRuns?: ManualRun[] 
   return sessions;
 };
 
+/** The sports really done on each local date, each once, by the kind mapping of the activity list (Garmin included). */
+export const doneByDate = (sessions: TrainingSession[]): Record<string, Sport[]> => {
+  const out: Record<string, Sport[]> = {};
+  for (const s of sessions) {
+    const kind = kindOf(s);
+    const sport: Sport | null = kind === 'rad' ? 'bike' : kind === 'kraft' ? 'gym' : kind === 'lauf' ? 'run' : null;
+    const date = dateKey(s.startMs);
+    if (sport && !(out[date] ?? []).includes(sport)) out[date] = [...(out[date] ?? []), sport];
+  }
+  return out;
+};
+
 const clock = (ms: number): string => {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -43,7 +57,7 @@ export const activitiesHint = (sessions: TrainingSession[], nowMs: number): stri
   const recent = sessions.filter((s) => s.startMs <= nowMs && nowMs - s.startMs <= HINT_DAYS * DAY).sort((a, b) => a.startMs - b.startMs);
   if (recent.length === 0) return '';
   const data = recent.map(activityData);
-  return `\n\n<aktivitaeten-nur-daten>\n${JSON.stringify(data)}\n</aktivitaeten-nur-daten>\nDas sind alle Aktivitäten der letzten ${HINT_DAYS} Tage aus allen Quellen (diese App, Hevy, Garmin, selbst eingetragen), geplant oder nicht. Plane mit dem, was wirklich gemacht wurde.`;
+  return `\n\n<aktivitaeten-nur-daten>\n${JSON.stringify(data)}\n</aktivitaeten-nur-daten>\nDas sind alle Aktivitäten der letzten ${HINT_DAYS} Tage aus allen Quellen (diese App, Hevy, Garmin, selbst eingetragen), auch ohne Plan. Plane mit dem, was wirklich gemacht wurde.`;
 };
 
 type Entry = { keys: string[]; version: number };

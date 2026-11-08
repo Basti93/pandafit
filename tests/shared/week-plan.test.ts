@@ -1,4 +1,4 @@
-import { checkWeekPlan, mondayOf, parseProposal, planFor, weekDates, type PlanDay } from '../../src/shared/week-plan';
+import { checkWeekPlan, dayLabel, mondayOf, parseProposal, planFor, weekDates, type PlanDay } from '../../src/shared/week-plan';
 
 const day = (date: string, sport: PlanDay['sport'], hardness: PlanDay['hardness'] = 'easy', extra: Partial<PlanDay> = {}): PlanDay => ({ date, sport, hardness, fixed: false, ...extra });
 const week = (days: Partial<Record<number, PlanDay>>) => weekDates('2026-11-02').map((d, i) => days[i] ? { ...days[i]!, date: d } : day(d, 'rest'));
@@ -79,4 +79,14 @@ test('a second part is dropped when both parts are hard', () => {
   const p = parseProposal({ weekStart: '2026-11-02', days })!;
   expect(p.days[1]!.also).toBeUndefined();
   expect(p.days[2]!.also).toEqual({ sport: 'bike', hardness: 'easy' });
+});
+
+test('a second session keeps valid minutes only, and the label says them', () => {
+  const parse = (minutes: unknown) => parseProposal({ weekStart: '2026-11-02', days: week({ 1: day('', 'gym', 'moderate', { also: { sport: 'bike', hardness: 'easy', minutes } as never }) }) })!.days[1]!;
+  expect(parse(15).also).toEqual({ sport: 'bike', hardness: 'easy', minutes: 15 });
+  expect(parse(500).also).toEqual({ sport: 'bike', hardness: 'easy' });
+  expect(parse('15').also).toEqual({ sport: 'bike', hardness: 'easy' });
+  expect(parse(null).also).toEqual({ sport: 'bike', hardness: 'easy' });
+  expect(parse(12.5).also).toEqual({ sport: 'bike', hardness: 'easy' });
+  expect(dayLabel(parse(15))).toBe('Kraft, mittel + Rad, locker, 15 Min.');
 });

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { deleteRule, excludeRuleRecord, FOCUS_GROUPS, goalRecord, MAX_FOCUS, moveRule, ruleId, ruleRecord, RULE_TEXT_MAX, rulesOf, storedGoalOf, type GoalBody, type Prio, type SportKey, type Strength } from '../../shared/personal';
 import { MUSCLE_TARGETS } from '../../shared/muscle-targets';
-import { addDays, SPORT_LABEL } from '../../shared/week-plan';
+import { addDays, SPORT_LABEL, WEEKDAY_LABEL } from '../../shared/week-plan';
 import { dateKey } from '../../shared/day-rating';
-import { shortDateOfKey as dayLabel, shortDate } from '../../shared/dates';
-import { type COACH_LABEL, deleteTask, ONE_OFF_MS, openTasks } from '../../shared/tasks';
+import { shortDateOfKey as dayLabel } from '../../shared/dates';
+import { type COACH_LABEL, deleteTask, openTasks } from '../../shared/tasks';
 import type { TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
 import { familyLabel, familyLine, familyOf } from '../../shared/families';
@@ -231,7 +231,7 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
           })}
           {tasks.map((t) => (
             <Row key={t.id} title={<>{t.text}<small className="tk-row-sub muted">{FOR_LABEL[t.to]}</small></>} expanded={open === t.id} onClick={() => toggle(t.id)}>
-              <p className="muted">{t.lasting ? 'dauerhaft' : `bis ${shortDate(t.atMs + ONE_OFF_MS)}`}</p>
+              <p className="muted">{t.lasting ? 'dauerhaft' : t.forDate ? `bis ${WEEKDAY_LABEL[(new Date(`${t.forDate}T12:00:00`).getDay() + 6) % 7]}` : 'bis zur nächsten Einheit'}</p>
               <div className="tk-row"><ConfirmLink label="Entfernen" question="Wirklich entfernen?" onConfirm={() => void removeTask(t.id)} /></div>
             </Row>
           ))}

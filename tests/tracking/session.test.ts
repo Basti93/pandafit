@@ -423,3 +423,29 @@ describe('rest on swap', () => {
     expect(s.exercises[0]).toMatchObject({ exerciseId: 'pf-chest-press-machine', restS: 90, restByUser: true });
   });
 });
+
+describe('start without legs (noLegs)', () => {
+  const sets = [{ type: 'normal' as const, weightKg: null, reps: null }];
+  const squat = { templateId: 'pf-squat', title: 'Kniebeuge', restS: null, supersetId: null, notes: '', sets };
+  const bench = { templateId: 'pf-bench-press', title: 'Bankdrücken', restS: null, supersetId: null, notes: '', sets };
+  const run = (exercises: GymWorkout['exercises'], noLegs?: boolean) => {
+    let lines: string[] = [];
+    const w = startFromPlan({ name: 'T', exercises }, [], 0, 'w1', EXERCISES, undefined, undefined, { changes: [], workouts: [], ...(noLegs !== undefined ? { noLegs } : {}), onSkipped: (l) => { lines = l; } });
+    return { w, lines };
+  };
+  test('drops leg exercises and says so', () => {
+    const { w, lines } = run([squat, bench], true);
+    expect(w.exercises.map((e) => e.exerciseId)).toEqual(['pf-bench-press']);
+    expect(lines).toContain('Ohne Beine, wie abgesprochen.');
+  });
+  test('keeps both when unset', () => {
+    const { w, lines } = run([squat, bench]);
+    expect(w.exercises).toHaveLength(2);
+    expect(lines).toEqual([]);
+  });
+  test('never drops everything', () => {
+    const { w, lines } = run([squat], true);
+    expect(w.exercises).toHaveLength(1);
+    expect(lines).toContain('Heute war ohne Beine abgesprochen.');
+  });
+});

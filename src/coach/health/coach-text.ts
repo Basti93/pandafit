@@ -54,6 +54,9 @@ export function fallbackCoachText(findings: HealthFinding[]): string {
 export const healthTextInput = (body: Pick<HealthBody, 'findings' | 'weeks' | 'today'>): string =>
   JSON.stringify({ befunde: body.findings.map((f) => ({ text: f.text, ton: f.tone })), wochen: body.weeks.slice(-4), heute: body.today });
 
+/** A stable string of the findings (rule and text, sorted): when it changes, the text is stale. */
+export const findingsKey = (findings: HealthFinding[]): string => findings.map((f) => `${f.rule}:${f.text}`).sort().join('|');
+
 /** Which week's text each profile has, in a file, so a restart never writes it again. */
 export class CoachTexts {
   private data: Record<string, CoachText> | null = null;
@@ -64,10 +67,19 @@ export class CoachTexts {
     return this.data;
   }
   get(profileId: string): CoachText | undefined { return this.load()[profileId]; }
+  delete(profileId: string): void {
+    const d = this.load();
+    if (!(profileId in d)) return;
+    delete d[profileId];
+    this.save(d);
+  }
+  private save(d: Record<string, CoachText>): void {
+    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(d)); fs.renameSync(tmp, this.file); } catch { /* written again at worst once more */ }
+  }
   set(profileId: string, t: CoachText): void {
     const d = this.load();
     d[profileId] = t;
-    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(d)); fs.renameSync(tmp, this.file); } catch { /* written again at worst once more */ }
+    this.save(d);
   }
 }
 
@@ -78,7 +90,7 @@ type Deps = {
 };
 
 /**
- * Once per ISO week and profile: a short note on the findings. The AI may only rephrase them; anything that does not hold up
+ * Per ISO week and profile, and again when the findings change (one AI call per day at most): a short note on the findings. The AI may only rephrase them; anything that does not hold up
  * (invented digits, diagnosis words, too long, no mention of the doctor for a doctor finding) gives way to the findings
  * themselves. The result is stored either way, so a week is never asked twice. Never throws.
  */
@@ -89,19 +101,31 @@ export class HealthCoachText {
   /** The text of this week if there is one. Without any finding there is nothing to say and nothing is stored. */
   async tick(profileId: string, body: Pick<HealthBody, 'findings' | 'weeks' | 'today'>): Promise<boolean> {
     const week = mondayOf(dateKey(this.d.nowMs()));
-    if (body.findings.length === 0 || this.d.texts.get(profileId)?.week === week || this.busy.has(profileId)) return false;
+    if (this.busy.has(profileId)) return false;
+    if (body.findings.length === 0) {
+      // Nothing to say any more: an older text must not stand for today.
+      if (this.d.texts.get(profileId)) { this.d.texts.delete(profileId); return true; }
+      return false;
+    }
+    const key = findingsKey(body.findings);
+    const stored = this.d.texts.get(profileId);
+    if (stored?.week === week && stored.key === key) return false;
+    // At most one AI call per profile and local day: a text built today already means the AI was asked today.
+    const askedToday = stored?.atMs !== undefined && dateKey(stored.atMs) === dateKey(this.d.nowMs());
     this.busy.add(profileId);
     try {
       const input = healthTextInput(body);
       let text: string | null = null;
-      try {
-        const raw = await this.d.ask({ prompt: input, systemPrompt: HEALTH_SYSTEM_PROMPT, schema: healthTextJsonSchema });
-        const parsed = answerSchema.safeParse(raw);
-        if (parsed.success) text = guardCoachText(parsed.data.text, input, body.findings);
-      } catch { /* the findings speak for themselves */ }
+      if (!askedToday) {
+        try {
+          const raw = await this.d.ask({ prompt: input, systemPrompt: HEALTH_SYSTEM_PROMPT, schema: healthTextJsonSchema });
+          const parsed = answerSchema.safeParse(raw);
+          if (parsed.success) text = guardCoachText(parsed.data.text, input, body.findings);
+        } catch { /* the findings speak for themselves */ }
+      }
       const final = text ?? fallbackCoachText(body.findings);
       if (!final) return false;
-      this.d.texts.set(profileId, { week, text: final });
+      this.d.texts.set(profileId, { week, text: final, atMs: this.d.nowMs(), key });
       return true;
     } catch { return false; } finally { this.busy.delete(profileId); }
   }

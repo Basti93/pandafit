@@ -7,6 +7,9 @@ import { readStats, STATS_ID } from '../../shared/stats';
 import { excludedIds } from '../../shared/personal';
 import { exerciseImages, videoSearchUrl } from '../media';
 import { resolveExercise } from '../exercise-identity';
+import { dateKey } from '../../shared/day-rating';
+import { frameOf } from '../../shared/frame';
+import { HARDNESS_LABEL, hasSport, planFor, SPORT_LABEL } from '../../shared/week-plan';
 import { describeExercise } from '../similar';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
@@ -492,9 +495,19 @@ export function WorkoutScreen({ port, plan = null, routine = null, resume = fals
     let changeRecs: TrackedRecord[] = [], all: LoggedWorkout[] = [], overrides = loadStepOverrides([], studios.renames), excludedNow: ReadonlySet<string> = new Set();
     try { excludedNow = excludedIds(await port.list('rule'), catalog); } catch { /* start without them */ }
     try { overrides = loadStepOverrides(await port.list('loadstep'), studios.renames); changeRecs = await port.list('change'); all = (await port.list('workout')).filter((r) => !r.deleted).map((r) => r.body as LoggedWorkout); } catch { /* start without them: they stay taken for the next time */ }
+    let noLegs = false, alsoNote: string | null = null;
+    try {
+      // Spontaneous mode has no week plan: the plan day checks do not apply. A failed frame read keeps them.
+      let spontaneous = false;
+      try { spontaneous = frameOf(await port.list('frame'), dateKey(now())).mode === 'spontaneous'; } catch { /* keep the checks */ }
+      const day = spontaneous ? null : planFor(await port.list('weekplan'), dateKey(now()));
+      noLegs = !!day && day.legs === false && hasSport(day, 'gym');
+      // The second session of today with minutes is part of the agreement: say it at the start.
+      if (day && day.sport === 'gym' && day.also && day.also.sport !== 'gym' && day.also.minutes) alsoNote = `Dazu heute: ${day.also.minutes} Min. ${SPORT_LABEL[day.also.sport]} ${HARDNESS_LABEL[day.also.hardness]}.`;
+    } catch { /* start with the plan as it is */ }
     let skipped: string[] = [];
-    const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, excluded: excludedNow, onSkipped: (l) => { skipped = l; } });
-    if (!(await begin(w, skipped.length ? skipped.join(' ') : null))) return;
+    const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
+    if (!(await begin(w, [...skipped, ...(alsoNote ? [alsoNote] : [])].join(' ') || null))) return;
     await markUsed(port, all.filter((x) => x.endMs !== null), now());
   };
 

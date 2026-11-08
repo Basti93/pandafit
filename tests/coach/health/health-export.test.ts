@@ -52,6 +52,14 @@ describe('the health record', () => {
     expect(readHealth(records()[0]!.body)!.coachText!.text).toBe('Ruhig weiter.');
   });
 
+  it('publishes no coach text once it is gone', () => {
+    text = { week: '2026-11-02', text: 'Ruhig weiter.' };
+    run();
+    text = undefined;
+    expect(run({ now: NOW + 60_000 })).toEqual(['pa']);
+    expect(readHealth(records()[0]!.body)!.coachText).toBeUndefined();
+  });
+
   it('does not write a body the web would not read (over the size limit)', () => {
     c = content({ weeks: Array.from({ length: 3000 }, (_, i) => ({ week: '2026-10-26', rhr: 55, hrv: 40, sleepH: 7, steps: 9000 + i })) });
     expect(JSON.stringify(c).length).toBeGreaterThan(MAX_HEALTH_BODY);

@@ -38,6 +38,8 @@ export const trainsLegs = (exercises: { templateId: string; title: string }[], m
 export type DayInput = {
   rides: RideSummary[]; bikeNext: Session | null; gym: StrengthWorkout[]; gymNext: GymWorkout | null;
   muscleOf: MuscleOf; bikeDays: number[]; gymDays: number[];
+  /** Local date of today: a planned session never goes on an earlier date. */
+  today: string;
   runs?: { startMs: number; durationS: number; hardness: DayHardness }[];
 };
 
@@ -50,8 +52,8 @@ const weekday = (date: string): number => {
 /** How hard each of the given local dates is, from rides, gym workouts and the two next planned sessions. */
 export const dayRatings = (input: DayInput, dates: string[]): Record<string, DayRating> => {
   const entries: RatingEntry[] = [];
-  const add = (date: string, hardness: DayHardness, legs: boolean, minutes: number, sport: RatingEntry['sport']): void => {
-    entries.push({ date, hardness, legs, minutes, ...(sport ? { sport } : {}) });
+  const add = (date: string, hardness: DayHardness, legs: boolean, minutes: number, sport: RatingEntry['sport'], planned = false): void => {
+    entries.push({ date, hardness, legs, minutes, ...(sport ? { sport } : {}), ...(planned ? { planned: true as const } : {}) });
   };
   for (const r of input.rides) add(dateKey(r.startedAtMs), rateRide(r), false, r.durationS / 60, 'bike');
   for (const w of input.gym) {
@@ -61,13 +63,13 @@ export const dayRatings = (input: DayInput, dates: string[]): Record<string, Day
   for (const r of input.runs ?? []) add(dateKey(r.startMs), r.hardness, false, r.durationS / 60, 'run');
   // A planned session goes on the next usual day without a finished one of its own source. Without usual days, any date does.
   const nextFree = (days: number[], done: Set<string>): string | undefined =>
-    dates.find((d) => (days.length === 0 || days.includes(weekday(d))) && !done.has(d));
+    dates.find((d) => d >= input.today && (days.length === 0 || days.includes(weekday(d))) && !done.has(d));
   const bikeDate = input.bikeNext ? nextFree(input.bikeDays, new Set(input.rides.map((r) => dateKey(r.startedAtMs)))) : undefined;
-  if (input.bikeNext && bikeDate) add(bikeDate, rateSession(input.bikeNext), false, input.bikeNext.steps.reduce((a, s) => a + s.durationS, 0) / 60, 'bike');
+  if (input.bikeNext && bikeDate) add(bikeDate, rateSession(input.bikeNext), false, input.bikeNext.steps.reduce((a, s) => a + s.durationS, 0) / 60, 'bike', true);
   const gymDate = input.gymNext ? nextFree(input.gymDays, new Set(input.gym.map((w) => dateKey(w.startMs)))) : undefined;
   if (input.gymNext && gymDate) {
     const legs = trainsLegs(input.gymNext.exercises, input.muscleOf);
-    add(gymDate, legs ? 'hard' : 'moderate', legs, input.gymNext.exercises.length > 0 ? gymMinutes(input.gymNext) : GYM_MINUTES_WITHOUT_PLAN, 'gym');
+    add(gymDate, legs ? 'hard' : 'moderate', legs, input.gymNext.exercises.length > 0 ? gymMinutes(input.gymNext) : GYM_MINUTES_WITHOUT_PLAN, 'gym', true);
   }
   return ratingsFromEntries(entries, dates);
 };

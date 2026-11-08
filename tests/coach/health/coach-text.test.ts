@@ -52,7 +52,7 @@ describe('HealthCoachText', () => {
     let calls = 0;
     const t = make(async () => { calls++; return { text: 'Deine Schritte lagen bei 7.200, etwas unter dem Richtwert.' }; });
     expect(await t.tick('pa', BASIC)).toBe(true);
-    expect(texts.get('pa')).toEqual({ week: '2026-11-02', text: 'Deine Schritte lagen bei 7.200, etwas unter dem Richtwert.' });
+    expect(texts.get('pa')).toMatchObject({ week: '2026-11-02', text: 'Deine Schritte lagen bei 7.200, etwas unter dem Richtwert.', atMs: MON });
     expect(await t.tick('pa', BASIC)).toBe(false);
     expect(await make(async () => { calls++; return { text: 'x' }; }, MON + 3 * 86_400_000).tick('pa', BASIC)).toBe(false);
     expect(calls).toBe(1);
@@ -61,6 +61,39 @@ describe('HealthCoachText', () => {
     expect(later.get('pa')!.week).toBe('2026-11-02');
     expect(await make(async () => { calls++; return { text: 'Neue Woche, 7.200 Schritte.' }; }, MON + 7 * 86_400_000).tick('pa', BASIC)).toBe(true);
     expect(calls).toBe(2);
+  });
+
+  it('rebuilds on changed findings in the same week, not on the same ones', async () => {
+    let calls = 0;
+    const ask = async () => { calls++; return { text: 'Kurz, 7.200.' }; };
+    await make(ask).tick('pa', BASIC);
+    expect(await make(ask).tick('pa', BASIC)).toBe(false);
+    const other = body([f('Der Ruhepuls liegt etwas höher als sonst.')]);
+    const later = MON + 86_400_000;
+    expect(await make(ask, later).tick('pa', other)).toBe(true);
+    expect(texts.get('pa')).toMatchObject({ atMs: later });
+    expect(calls).toBe(2);
+  });
+
+  it('drops the stored text once the findings are gone, without an AI call', async () => {
+    let calls = 0;
+    const ask = async () => { calls++; return { text: 'Kurz, 7.200.' }; };
+    await make(ask).tick('pa', DOC);
+    expect(texts.get('pa')).toBeDefined();
+    expect(await make(ask, MON + 86_400_000).tick('pa', body([]))).toBe(true);
+    expect(texts.get('pa')).toBeUndefined();
+    expect(new CoachTexts(path.join(dir, 'texts.json')).get('pa')).toBeUndefined();
+    expect(calls).toBe(1);
+  });
+
+  it('asks the AI once per local day; a second change that day uses the fallback', async () => {
+    let calls = 0;
+    const ask = async () => { calls++; return { text: 'Kurz, 7.200.' }; };
+    await make(ask).tick('pa', BASIC);
+    const other = body([f('Der Ruhepuls liegt etwas höher als sonst.')]);
+    expect(await make(ask, MON + 3_600_000).tick('pa', other)).toBe(true);
+    expect(calls).toBe(1);
+    expect(texts.get('pa')!.text).toBe('Der Ruhepuls liegt etwas höher als sonst.');
   });
 
   it('falls back to the findings on invented numbers or diagnosis words, and does not ask again that week', async () => {

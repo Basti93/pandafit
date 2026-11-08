@@ -24,7 +24,7 @@ import { addNote, type ChangeNote } from '../../shared/change-notes';
 import { feelHold, HOLD_REASON, phaseOf, ruleWeek, weekDates, type RuleWeek } from './rules';
 import { manualRuns, mergeRuns } from './runs';
 import { loadRunCache, saveRunCache, type RunCache } from './state';
-import { readTasks, type CoachId } from '../coach-tasks';
+import { readTasks, type GivenTask, type CoachId } from '../coach-tasks';
 
 const DAY = 86_400_000;
 const RETRY_MS = 10 * 60_000;
@@ -56,7 +56,7 @@ export type RunDeps = {
   /** Changes when the rider takes a new week plan; part of what makes a week plan again. */
   planKey?: (id: string, week: string) => string;
   /** Hands a task from this coach to another one. */
-  giveTask?: (id: string, task: { to: CoachId; text: string; lasting: boolean }) => void;
+  giveTask?: (id: string, task: GivenTask) => void;
   profile: (id: string) => Profile | null;
   garminDb: (id: string) => Pick<GarminDb, 'runs' | 'activityFile' | 'body'> | null;
   days: (id: string, dates: string[]) => Record<string, DayRating>;
@@ -108,7 +108,7 @@ export class RunCoach {
   constructor(private deps: RunDeps) {}
 
   isThinking(id: string): boolean { return this.running.has(id); }
-  /** The runs of the last tick, only while running is on. For mobility after a run. */
+  /** The runs of the last tick, also while running is off. For mobility after a run. */
   runs(id: string): Run[] { return this.lastRuns.get(id) ?? []; }
 
   /**
@@ -198,7 +198,7 @@ export class RunCoach {
     const fromGarmin = db ? garminRuns(db, fromMs, band, cache.paceCache) : [];
     const runs = mergeRuns(fromGarmin, manualRuns(this.deps.store.all(id, 'run'), band)).filter((r) => r.startMs <= now);
     this.saveCache(id);
-    this.lastRuns.set(id, on ? runs : []);
+    this.lastRuns.set(id, runs);
     const complaints = this.deps.complaints(id);
     const mode = runComplaintMode(complaints, now);
 

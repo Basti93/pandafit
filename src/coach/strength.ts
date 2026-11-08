@@ -10,7 +10,7 @@ const MAX_MONTHS = 24;
 export const strengthPromptData = (workouts: StrengthWorkout[], nowMs: number): object | null => {
   if (workouts.length === 0) return null;
   const from = nowMs - RECENT_DAYS * DAY_MS;
-  const letzte14Tage = workouts.filter((w) => w.startMs >= from).slice(-MAX_RECENT).map((w) => ({
+  const letzte14Tage = workouts.filter((w) => w.startMs >= from && w.startMs <= nowMs).slice(-MAX_RECENT).map((w) => ({
     tag: new Date(w.startMs).toISOString().slice(0, 10), titel: w.title, minuten: Math.round(w.durationS / 60),
     uebungen: w.exercises.slice(0, MAX_EXERCISES).map((e) => ({ name: e.title, saetze: e.sets, wdh: e.reps, volumenKg: e.volumeKg })),
   }));

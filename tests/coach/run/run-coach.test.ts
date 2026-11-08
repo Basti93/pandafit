@@ -505,14 +505,14 @@ describe('fix round 1', () => {
     expect(rec('manual-x')!.body).toMatchObject({ type: 'week' });
   });
 
-  test('with running off or never on, Garmin runs give the coach no runs for mobility', async () => {
+  test('with running off or never on, Garmin runs still reach the coach for mobility and load', async () => {
     garmin = [run('g1', at(1, 18))];
     const coach = make();
     await coach.tick('pa');
-    expect(coach.runs('pa')).toEqual([]);
+    expect(coach.runs('pa').map((r) => r.id)).toEqual(['g1']);
     settings({ on: false });
     await coach.tick('pa');
-    expect(coach.runs('pa')).toEqual([]);
+    expect(coach.runs('pa').map((r) => r.id)).toEqual(['g1']);
     settings({ on: true }, now + 1);
     await coach.tick('pa');
     expect(coach.runs('pa').map((r) => r.id)).toEqual(['g1']);

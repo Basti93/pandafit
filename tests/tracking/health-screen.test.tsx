@@ -80,3 +80,11 @@ test('rows exist only with data, and Body Battery and stress appear nowhere', as
   for (const b of within(sheet).getAllByRole('button')) fireEvent.click(b);
   expect(sheet.textContent).not.toMatch(/Body Battery|Stress|ACWR/i);
 });
+
+test('the sheet shows the Stand line only when the text has a time', async () => {
+  await show([statsRec, healthRec(body({ coachText: { week: '2026-11-02', text: 'Ruhig.', atMs: new Date(2026, 10, 3, 9).getTime() } }))]);
+  expect(within(openHealth()).getByText('Stand: Di., 3. Nov.')).toBeTruthy();
+  cleanup();
+  await show([statsRec, healthRec(body({ coachText: { week: '2026-11-02', text: 'Ruhig.' } }))]);
+  expect(within(openHealth()).queryByText(/^Stand:/)).toBeNull();
+});

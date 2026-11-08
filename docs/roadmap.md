@@ -46,7 +46,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **S Echte Rezepte** | Vegetarische Rezeptsammlung auf dem Heimserver (wächst langsam, frei ab 1.000), eigene Rezepte per Link sofort; der Plan wählt echte Rezepte statt zu erfinden. | Wunsch 07.11.2026 |
 | ✅ | **T Rezepte ansehen** | Rezepte in der Web-App suchen und ansehen, mit Bild, Portionen, „In den Plan“ und Favoriten pro Person, die der Plan bevorzugt. | Wunsch 07.11.2026 |
 | ✅ | **U Was ich gemacht habe** | Die Woche zeigt rückwirkend das Gemachte oder „Ruhetag“; ein Verlauf über alle Sportarten; ein Garmin-Lauf ist nach spätestens einer Stunde da. | Wunsch 08.11.2026 |
-| ⬜ | **V Absprachen halten** | Was für einen Tag vereinbart ist, steht beim Start im Training; alle Coaches kennen denselben Stand von geplant und erledigt; Aufträge gelten so lange wie gemeint; Läufe zählen mit, ohne geplant zu werden. | Trainingsaudit 08.11.2026 |
+| ✅ | **V Absprachen halten** | Was für einen Tag vereinbart ist, steht beim Start im Training; alle Coaches kennen denselben Stand von geplant und erledigt; Aufträge gelten so lange wie gemeint; Läufe zählen mit, ohne geplant zu werden. | Trainingsaudit 08.11.2026 |
 | ⬜ | **W Belastung nach Menge** | Ein Krafttag ist so hart, wie viel und was trainiert wurde: eine einzelne Beinübung sperrt die Beine nicht mehr 48 Stunden. | Trainingsaudit 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
@@ -305,7 +305,7 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 
 **Von Claude entschieden (08.11.2026):** Alle Aktivitäten zählen, auch Garmin-Aktivitäten ohne eigenen Bereich (z. B. Yoga), jede nur einmal (wie `allActivities`). Auch im Modus „Spontan“ zeigt die Woche die vergangenen Tage mit dem Gemachten. Für neue Aktivitäten prüft der Server alle 50 Minuten nur die erste Seite der Aktivitätsliste (unter einer Stunde wegen Daten-Cache und Scan); nur wenn etwas neu ist, planen die Coaches neu (wie heute). Nur Web-App: die Mac-App ist nur fürs Rad (Q).
 
-## Meilenstein V — Brief (Entwurf 08.11.2026)
+## Meilenstein V — Brief (umgesetzt 08.11.2026)
 
 **Ziel:** Was ich mit dem Coach abspreche, kommt im Training auch so an, und kein Coach rechnet mit einem Training, das ich nicht gemacht habe.
 
@@ -318,7 +318,7 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 4. Ein Auftrag mit Tag („am Montag …“) gilt nur bis zu diesem Tag. Ein Auftrag für die nächste Einheit gilt bis zu dieser Einheit und ist danach erledigt. Dauerhafte Wünsche werden persönliche Regeln (E).
 5. Ich kann Läufe selbst wählen: Der Lauf-Coach plant dann nichts, meine Läufe zählen aber bei Belastung und Tagesvorschlag mit.
 
-**Stand vorher (geprüft 08.11.2026):** Einmalige Aufträge laufen fest nach sieben Tagen ab (`ONE_OFF_MS` in `src/shared/tasks.ts`); `doneMs` existiert, wird aber nirgends gesetzt. Woher die Kraft-Einheit ihre Tagesvorgaben beim Start nimmt und wo „ohne Beine“ verloren geht, ist noch zu prüfen.
+**Stand vorher (geprüft 08.11.2026):** Einmalige Aufträge laufen fest nach sieben Tagen ab (`ONE_OFF_MS` in `src/shared/tasks.ts`); `doneMs` existiert, wird aber nirgends gesetzt. „Ohne Beine“ wirkte nur, wenn es auf dem heutigen Plantag stand; der Kraft-Coach plant aber für den nächsten Krafttag. Ein bestätigter Tausch wurde beim Start still übersprungen, wenn die Übung nach einem Neuplanen fehlte. „Ausdauer dazu“ gab es nur als Notiz. Geplante Einheiten standen ohne Kennzeichen zwischen erledigten. Der Gesundheitstext wurde nur einmal pro Woche geschrieben.
 
 **Fällt weg:** die pauschalen sieben Tage für einmalige Aufträge.
 
@@ -410,3 +410,8 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
   - Statistik ist ohne Statistik-Record und ohne Trainings ausgeblendet: eine Person nur mit Garmin sähe „Gesundheit“ nicht.
   - Fällt die KI beim ersten Wochenlauf aus, bleibt der feste Text die ganze Woche.
   - HRV/Schlaf fließen noch nicht in die Tagesbewertung ein (nur angezeigt).
+- Aus Meilenstein V:
+  - Ändern sich die Befunde zweimal am selben Tag, bleibt bis zur nächsten Änderung der feste Text ohne KI stehen.
+  - Rad + Kraft als zweite Einheit mit Minuten: das Kraft-Zeitbudget nimmt die Minuten nicht, nur der Prompt kennt sie.
+  - Manuelle Läufe ohne Lauf-Einstellungen und ohne Garmin fehlen der Mobilität (selten).
+  - Die Start-Hinweise („Ohne Beine“, „Dazu heute“) haben keinen Oberflächentest.

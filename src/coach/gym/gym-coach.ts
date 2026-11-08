@@ -21,7 +21,7 @@ import { historyFromLogged, mergeHistory } from '../tracking/merge';
 import type { RecordStore } from '../tracking/store';
 import { legacyGymRules, loadGymState, removeGymState, saveGymState, type GymState } from './state';
 import type { ExerciseTemplate, GymExercise, GymWorkout } from './types';
-import { readTasks, type CoachId } from '../coach-tasks';
+import { readTasks, type GivenTask, type CoachId } from '../coach-tasks';
 import { readOutlook, type GymOutlook } from '../../shared/gym-outlook';
 import type { LoadStepOverrides } from '../../shared/loads';
 import { MUSCLE_TARGETS } from '../../shared/muscle-targets';
@@ -62,11 +62,11 @@ type Deps = {
   /** Recent mobility for the prompt, as data. */
   mobility?: (id: string) => unknown;
   /** Today's advice asks for strength without leg exercises (tired legs): plan without them. */
-  avoidLegsToday?: (id: string) => boolean;
+  avoidLegs?: (id: string) => boolean;
   /** The accepted week plan as prompt text, or ''. */
   planHint?: (id: string) => string;
   /** Hands a task from this coach to another one. */
-  giveTask?: (id: string, task: { to: CoachId; text: string; lasting: boolean }) => void;
+  giveTask?: (id: string, task: GivenTask) => void;
   /** Own records of this Mac. Without one only Hevy counts, as before. */
   store?: RecordStore;
   /** The profile's one exercise catalog. Defaults to the merged catalog of the store (built-ins without a store). */
@@ -155,6 +155,17 @@ export class GymCoach {
     const base = reason.replace(/\s*Berücksichtigt:[\s\S]*$/, '');
     const note = this.deps.store ? considered(takenChangesOf(this.deps.store, id)) : '';
     return note ? `${base} ${note}`.trim() : base;
+  }
+  /** The taken swaps as titles from the catalog, for the planner's prompt. */
+  private swapsTaken(id: string): { statt: string; nimm: string }[] {
+    if (!this.deps.store) return [];
+    const cat = this.catalog(id);
+    const title = (x: string) => cat.find((e) => e.id === x)?.title;
+    return takenChangesOf(this.deps.store, id).flatMap((c) => c.ops.flatMap((o) => {
+      if (o.op !== 'swap') return [];
+      const statt = title(o.exerciseId); const nimm = title(o.toId);
+      return statt && nimm ? [{ statt, nimm }] : [];
+    }));
   }
   private loadSteps(id: string): LoadStepOverrides {
     if (this.deps.loadSteps) return this.deps.loadSteps(id);
@@ -436,8 +447,8 @@ export class GymCoach {
       const studio = this.studio(id);
       const overrides = this.loadSteps(id);
       const excluded = this.excluded(id);
-      const budget = this.deps.store ? gymBudgetOf(this.deps.store, id, dateKey(now)) : null;
-      const avoidLegs = open.some((c) => LEG_COMPLAINT.test(c.text)) || this.deps.avoidLegsToday?.(id) === true;
+      const budget = this.deps.store ? gymBudgetOf(this.deps.store, id, dateKey(now), real.map((w) => dateKey(w.startMs))) : null;
+      const avoidLegs = open.some((c) => LEG_COMPLAINT.test(c.text)) || this.deps.avoidLegs?.(id) === true;
       const ctx: GymContext = { workouts: real, templates, nowMs: now, excluded, catalog: this.catalog(id), links: this.state(id).links, ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, ...(avoidLegs ? { avoidLegs: true } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) };
       const rule = ruleWorkout(ctx);
       if (rule.guard) console.warn(`Regel-Training: erster Plan verworfen (${rule.guard})`);
@@ -458,7 +469,7 @@ export class GymCoach {
         x.emptyReason = hasRule ? null : rule.reason;
       });
       const ask = (rejection?: string) => this.deps.ask({
-        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, excluded, ...(avoidLegs ? { avoidLegs: true } : {}), ...(this.deps.store ? { goal: goalOfProfile(this.deps.store, id, dateKey(now)), wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
+        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), swaps: this.swapsTaken(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, excluded, ...(avoidLegs ? { avoidLegs: true } : {}), ...(this.deps.store ? { goal: goalOfProfile(this.deps.store, id, dateKey(now)), wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
         systemPrompt: GYM_SYSTEM_PROMPT, schema: gymAnswerJsonSchema,
       });
       let raw = await ask();

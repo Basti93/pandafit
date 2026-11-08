@@ -3,12 +3,13 @@ import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate } from './types';
 import { ruleNumber } from '../../shared/training-policy';
 import { extendDown, ladderFrom, nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
+import { LEG_MUSCLES } from '../../shared/legs';
 import { repRangeOf } from '../../shared/muscle-targets';
 import { mainStudio, studioKey, resolveStudio, type Renames } from '../../shared/studio';
 import { COMPARABLE_DAYS, DROP_STEP_BACK, LONG_BREAK_DAYS, MIN_COMPARABLE, RECENT_DAYS, STEP_BACK } from './limits';
 
 const DAY_MS = 86_400_000;
-export const LEG_MUSCLES = ['quadriceps', 'hamstrings', 'glutes', 'calves'];
+export { LEG_MUSCLES };
 const LEG_WINDOW_MS = 48 * 3_600_000;
 
 /** The assistance is weight_kg here, so more of it is easier. In this first version its weight is simply kept. */
