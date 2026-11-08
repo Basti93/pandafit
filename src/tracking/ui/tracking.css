@@ -468,3 +468,8 @@
 .tk-sheet-actions button:disabled { opacity: .6; }
 .tk-sheet .tk-rows .tk-rowitem > button.tk-rowbtn[aria-expanded="true"] { position: sticky; top: 0; z-index: 1; background: var(--bg, #12201a); }
 .tk-sheet .tk-stepper button.tk-step-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+/* The bike card as one tap target: text left, "›" right. */
+.tk-cardtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .5rem; }
+.tk-screen .card button.tk-cardbtn { min-height: 0; padding: 0; align-items: center; }
+.tk-run .tk-entry { margin-top: 1rem; }
+.tk-run .tk-weekcard { display: flex; flex-direction: column; gap: .5rem; }

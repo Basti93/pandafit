@@ -58,24 +58,24 @@ void runFp;
 test('the run question is answered once, thanks, and then gone', async () => {
   const { port, state } = fakePort([status('2026-11-03')]);
   render(<RunScreen port={port} now={() => NOW} newId={() => 'u'} />);
-  expect(await screen.findByText(/Wie war er\?/)).toBeTruthy();
+  expect(await screen.findByText(/Wie fühlte sich der Lauf an\?/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'schwer' }));
   await waitFor(() => expect(state.puts.filter((p) => p.id === 'run-feel-g1')).toHaveLength(1));
   expect(state.puts.find((p) => p.id === 'run-feel-g1')!.body).toMatchObject({ type: 'feel', runId: 'g1', feel: 'hard', atMs: NOW });
   expect(await screen.findByText(/Danke – das fließt in den nächsten Laufplan ein/)).toBeTruthy();
-  expect(screen.queryByText(/Wie war der Lauf/)).toBeNull();
+  expect(screen.queryByText(/Wie fühlte sich der Lauf an/)).toBeNull();
 });
 
 test('skipping writes a null feel and asks no more; an old run is not asked about', async () => {
   const a = fakePort([status('2026-11-03')]);
   render(<RunScreen port={a.port} now={() => NOW} newId={() => 'u'} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Überspringen' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Später' }));
   await waitFor(() => expect(a.state.puts.find((p) => p.id === 'run-feel-g1')!.body).toMatchObject({ feel: null }));
-  expect(screen.queryByText(/Wie war der Lauf/)).toBeNull();
+  expect(screen.queryByText(/Wie fühlte sich der Lauf an/)).toBeNull();
   expect(screen.queryByText(/Danke/)).toBeNull();
   cleanup();
   const b = fakePort([status('2026-10-25')]);
   render(<RunScreen port={b.port} now={() => NOW} newId={() => 'u'} />);
   await waitFor(() => expect(document.querySelector('.tk-run')).toBeTruthy());
-  expect(screen.queryByText(/Wie war der Lauf/)).toBeNull();
+  expect(screen.queryByText(/Wie fühlte sich der Lauf an/)).toBeNull();
 });

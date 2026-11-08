@@ -602,7 +602,7 @@ async function main() {
   await nav('Ausdauer');
   await page.waitForTimeout(500);
   await shot('rad');
-  await step('rad-aufbau', async () => { await page.getByRole('button', { name: /^Aufbau/ }).click(); await shot('rad-aufbau'); await closeDialog(); });
+  await step('rad-aufbau', async () => { await page.getByRole('button', { name: /Ablauf ansehen/ }).click(); await shot('rad-aufbau'); await closeDialog(); });
   await step('rad-fahrt', async () => { await page.getByRole('button', { name: /Grundlage|Locker|Schwellen/ }).first().click(); await shot('rad-fahrt'); await closeDialog(); });
   await step('rad-entwicklung', async () => { await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('rad-entwicklung'); await closeDialog(); });
   const enduranceSeg = (label: string) => page.getByRole('group', { name: 'Ausdauer' }).getByRole('button', { name: label, exact: true }).click().then(() => page.waitForTimeout(400));
@@ -611,7 +611,7 @@ async function main() {
   await shot('laufen');
   await step('laufen-eintragen', async () => { await page.getByRole('button', { name: 'Lauf eintragen' }).click(); await shot('laufen-lauf-eintragen'); await page.getByRole('button', { name: /^Mehr/ }).click(); await shot('laufen-lauf-eintragen-mehr'); await page.keyboard.press('Escape'); });
   await step('laufen-entwicklung', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('laufen-entwicklung'); await page.keyboard.press('Escape'); });
-  await step('laufen-einstellungen', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Lauftage und Angaben/ }).click(); await shot('laufen-lauftage-aendern'); await page.keyboard.press('Escape'); });
+  await step('laufen-einstellungen', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Lauftage/ }).click(); await shot('laufen-lauftage-aendern'); await page.keyboard.press('Escape'); });
   await nav('Woche');
   await page.waitForTimeout(500);
   await step('rueckblick', async () => { await page.getByRole('region', { name: 'Rückblick' }).scrollIntoViewIfNeeded(); await shot('woche-rueckblick'); });

@@ -1142,7 +1142,7 @@ describe('Laufen on the phone', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
     expect(screen.queryByRole('heading', { name: 'Wochenrückblick' })).toBeNull();
     fireEvent.click(await screen.findByRole('button', { name: /^Entwicklung/ }));
-    fireEvent.click(await screen.findByRole('button', { name: /^Mehr/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Ältere Wochen/ }));
     expect(await screen.findByRole('heading', { name: 'Wochenrückblick' })).toBeTruthy();
     expect(screen.getByText(/12,5 km/)).toBeTruthy();
   });
@@ -1223,22 +1223,22 @@ describe('Rad on the phone', () => {
     expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
   });
 
-  it('the next card names the session and Aufbau opens one row per block', async () => {
+  it('the next card names the session and the card opens the Ablauf with one row per block', async () => {
     await boot({ account: 'anna', seed: [bikeRec()], startTab: 'rad' });
     const card = await screen.findByRole('region', { name: 'Nächste Fahrt' });
     expect(card.textContent).toContain('Schwellen-Intervalle · 60 Min · hart');
     expect(card.textContent).toContain('Die letzten Tage waren locker.');
-    fireEvent.click(screen.getByRole('button', { name: /^Aufbau/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Schwellen-Intervalle/ }));
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByText('10 Min locker')).toBeTruthy();
-    expect(within(sheet).getByText('3 × 8 Min bei 95 %, dazwischen 4 Min locker')).toBeTruthy();
+    expect(within(sheet).getByText('3 × 8 Min bei 95 % (200 W), dazwischen 4 Min locker')).toBeTruthy();
   });
 
   it('the last ride opens the ride sheet with the facts, the sentence and the chart', async () => {
     await boot({ account: 'anna', seed: [bikeRec(), rideRec('r1', 3 * DAY), rideRec('r0', 60 * DAY, 'Locker')], startTab: 'rad' });
     fireEvent.click(await screen.findByRole('button', { name: /Grundlage/ }));
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText(/Ø 150 W · Ø Puls 130 · Belastung 40 · geschafft 100 %/)).toBeTruthy();
+    expect(within(sheet).getByText(/Alles geschafft, ruhig gefahren · Ø 150 W · Ø Puls 130/)).toBeTruthy();
     expect(within(sheet).getByText('Ruhig und gleichmäßig gefahren.')).toBeTruthy();
     expect(within(sheet).getByRole('img', { name: /Leistung und Puls/ }).querySelectorAll('polyline').length).toBe(2);
   });
@@ -1247,8 +1247,8 @@ describe('Rad on the phone', () => {
     await boot({ account: 'anna', seed: [bikeRec()], startTab: 'rad' });
     fireEvent.click(await screen.findByRole('button', { name: /^Entwicklung/ }));
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText(/^FTP 210 W – seit .* 10 W mehr$/)).toBeTruthy();
-    expect(within(sheet).getByText('Aufbau – noch 3 Wochen')).toBeTruthy();
+    expect(within(sheet).getByText(/^FTP \(Dauerleistung\) 210 W – seit .* 10 W mehr$/)).toBeTruthy();
+    expect(within(sheet).getByText('Phase Aufbau – noch 3 Wochen bis zur nächsten Phase')).toBeTruthy();
     expect(within(sheet).getAllByRole('img').length).toBe(2);
   });
 

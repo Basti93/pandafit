@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { TrackedRecord } from '../../src/shared/records';
 import { weekDates } from '../../src/shared/week-plan';
 import { BikeScreen } from '../../src/tracking/ui/BikeScreen';
@@ -23,4 +23,14 @@ test('a bike day today says Heute', async () => {
   const { port } = fakePort([bike, plan(['rest', 'rest', 'bike'])]);
   render(<BikeScreen port={port} now={() => NOW} />);
   expect(await screen.findByText('Heute · Fahren am Mac')).toBeTruthy();
+});
+
+test('the card opens the Ablauf with watts next to the percent; there is no separate Aufbau row', async () => {
+  const withBlocks = { ...bike, body: { ...(bike.body as object), next: { name: 'Schwellen-Intervalle', minutes: 60, hardness: 'hard', reason: '', blocks: [{ label: '3 × 8 Min bei 95 %, dazwischen 4 Min locker', minutes: 36, pct: 95 }] } } } as TrackedRecord;
+  const { port } = fakePort([withBlocks]);
+  render(<BikeScreen port={port} now={() => NOW} />);
+  expect(screen.queryByRole('button', { name: /^Aufbau/ })).toBeNull();
+  fireEvent.click(await screen.findByRole('button', { name: /Schwellen-Intervalle/ }));
+  const sheet = within(await screen.findByRole('dialog', { name: 'Schwellen-Intervalle' }));
+  expect(sheet.getByText('3 × 8 Min bei 95 % (190 W), dazwischen 4 Min locker')).toBeTruthy();
 });
