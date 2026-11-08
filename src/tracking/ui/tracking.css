@@ -63,7 +63,8 @@
 .tk-screen .tk-notes { width: 100%; resize: none; overflow: hidden; line-height: 1.4; font: inherit; }
 .tk-screen button.tk-skip { background: var(--skip-bg); color: var(--tk-ink); border: 1px solid var(--skip-line); }
 .tk-rest { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem var(--space-4); border-radius: 1rem; background: var(--good); color: var(--ink); font-weight: 700; }
-.tk-note { background: var(--card); border-left: 4px solid var(--low); padding: .7rem var(--space-4); border-radius: var(--radius-xs); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+/* One callout: card fill, a 4 px bar on the left (amber for a note, green for the effort question), the same radius and padding. */
+.tk-note { background: var(--card); border-left: 4px solid var(--low); padding: .7rem var(--space-4); border-radius: var(--radius-m); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .tk-effort { margin: .6rem 0; padding: .7rem var(--space-4); border-radius: var(--radius-m); border-left: 4px solid var(--good); background: var(--card); }
 .tk-effort p { margin: 0 0 var(--space-2); }
 .tk-effort .tk-row button { min-width: 3.2rem; }
