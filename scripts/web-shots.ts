@@ -536,6 +536,19 @@ async function main() {
   await shot('kraft-training-start');
   await step('kraft-studio', async () => { await page.getByRole('button', { name: /^Studio/ }).click({ timeout: 1000 }); await shot('kraft-training-start-studio'); await closeDialog(); });
   await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Routine oder leer' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
+  await step('kraft-plan', async () => {
+    await page.getByRole('button', { name: 'Ansehen und anpassen' }).click({ timeout: 1000 });
+    const sheet = page.getByRole('dialog', { name: 'Nächstes Training' });
+    await sheet.getByLabel('Wiederholungen Satz 1').first().waitFor();
+    await page.waitForTimeout(300);
+    await shot('kraft-plan-ansehen');
+    const reps = sheet.getByLabel('Wiederholungen Satz 1').first();
+    await reps.fill('8'); await reps.blur();
+    await sheet.getByRole('button', { name: 'Fertig' }).click();
+    await page.getByText('Angepasst').waitFor();
+    await shot('kraft-plan-angepasst');
+    await page.getByRole('button', { name: 'Änderungen verwerfen' }).click();
+  });
   await seg('Routinen');
   await shot('kraft-routinen');
   await step('kraft-routine-edit', async () => {

@@ -1,5 +1,5 @@
 // Real-browser smoke test of the web app: build, start the real server on localhost with a temporary database, then
-// log in, track and finish a workout, reload offline, and read the workout from a second browser context.
+// log in, look at the next planned workout in its sheet, track and finish a workout, reload offline, and read the workout from a second browser context.
 // Usage: npm run test:web-smoke  (needs a Chromium that playwright-core finds, e.g. from ~/Library/Caches/ms-playwright)
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -8,6 +8,7 @@ import { chromium, type Browser, type Page } from 'playwright-core';
 import { createAccount } from '../web-server/auth';
 import { openDb } from '../web-server/db';
 import { buildServer } from '../web-server/index';
+import { putRecords } from '../web-server/records';
 
 const PASSWORD = 'smoke test pass 1';
 const fail = (msg: string): never => { throw new Error(`smoke: ${msg}`); };
@@ -20,7 +21,13 @@ async function launch(): Promise<Browser> {
 
 const dbPath = join(mkdtempSync(join(tmpdir(), 'pf-smoke-')), 'smoke.db');
 const db = openDb(dbPath);
-await createAccount(db, 'smoke', PASSWORD);
+const accountId = await createAccount(db, 'smoke', PASSWORD);
+// A plan from the coach, so the sheet "Nächstes Training" can be opened.
+const planSet = { type: 'normal', weightKg: 40, reps: 8 };
+const seeded = putRecords(db, accountId, [{ kind: 'plan', id: 'current', updatedMs: Date.now(), deleted: false, body: {
+  workout: { name: 'Smoke-Plan', exercises: [{ templateId: 'pf-squat', title: 'Kniebeuge', restS: null, supersetId: null, notes: '', sets: [planSet, planSet] }] },
+  reason: 'Zum Testen.', source: 'rules', note: null, questions: [], atMs: Date.now(), mobility: null } }], Date.now());
+if (seeded.refused.length) fail(`plan seed refused: ${JSON.stringify(seeded.refused)}`);
 db.close();
 const app = buildServer({ dbPath, staticDir: resolve('out/web') });
 await app.listen({ port: 0, host: '127.0.0.1' });
@@ -53,6 +60,15 @@ try {
   const scope = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.scope);
   if (scope !== `${base}/`) fail(`service worker scope is ${scope}`);
   step('service worker controls the page');
+
+  // Heute: "Ansehen und anpassen" opens the next workout in its sheet in Kraft; × closes it.
+  await page.getByRole('button', { name: 'Ansehen und anpassen' }).click();
+  const planSheet = page.getByRole('dialog', { name: 'Nächstes Training' });
+  await planSheet.getByLabel('Wiederholungen Satz 1').first().waitFor();
+  await planSheet.getByRole('button', { name: 'Schließen' }).click();
+  await planSheet.waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Ansehen und anpassen' }).waitFor();
+  step('the next workout opens in its sheet and closes');
 
   await page.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true }).click();
   // Start an empty workout: directly, or through the "Routine oder leer" sheet when a plan or routines exist.

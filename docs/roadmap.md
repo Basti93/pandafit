@@ -52,6 +52,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Y Heute als Tagesseite** | Heute zeigt Gestern, Heute und Morgen (Pfeile, Wischen): oben ein persönlicher Satz vom Coach, neu nach jedem Training; dann Training, Essen, Dein Körper, Gemeinsam. Gestern zeigt, was gemacht wurde, Morgen, was ansteht. | Wunsch 08.11.2026 |
 | ✅ | **Z Zum Abschluss** | Nach dem Krafttraining schlägt die App ruhig einen Abschluss vor: 20 Min locker Cardio und Dehnen, oder nur Dehnen, wenn Ausdauer heute schon dran ist, eine Beschwerde offen ist oder das Training lang war. In der Zusammenfassung und 3 Stunden lang auf Heute. | Wunsch 08.11.2026 |
 | ✅ | **Style-System** | Alle Farben, Radien, Schriftgrößen und Abstände als Tokens in `src/web/tokens.css` (hell und dunkel), keine festen Farbwerte mehr in web.css und tracking.css (Test). Danach ein Aussehen pro Art von Element: Hauptknopf, Knopf mit Rahmen, Text-Link, Löschen, Chips, Umschalter, Überschriften, Zeilen. | Wunsch 08.11.2026 |
+| ✅ | **Training ansehen und anpassen** | Das nächste Krafttraining lässt sich vor dem Start im Detail ansehen und ändern (Kilo, Wiederholungen, Sätze, Übung tauschen, entfernen, hinzufügen); „Training starten“ nimmt die angepasste Version. Entwurf nur auf dem Gerät. | Wunsch 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -357,6 +358,7 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
 **Ziel:** Ein ruhiger Abschluss nach dem Krafttraining, angeboten, nie verlangt. Plan: `docs/superpowers/plans/2026-11-08-milestone-z-finisher.md`. Nur Web, eine reine Regel `finisherOf` (`src/tracking/ui/finisher.ts`), gezeigt in der Zusammenfassung und auf Heute (dort mit der Beweglichkeits-Zeile des Coaches). Keine Server-Änderung.
 
 ## Parkplatz
+- Anpassungen am nächsten Training liegen nur auf dem Gerät; eine Übernahme zwischen Geräten wäre ein eigener Record. Ein Vorschlag, der zwischen Anpassen und Start übernommen wird, fehlt im Entwurf.
 
 - ~~Export nach Hevy wählt bei zwei verknüpften Hevy-Vorlagen derselben Übung die zuerst gelistete (aus Review Meilenstein 0).~~ Erledigt mit K.
 - Ohne Statistik-Record zählen manche deutschen Hevy-Varianten als „Sonstiges“ (löst sich mit A).

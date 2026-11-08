@@ -13,7 +13,7 @@
 - The sheet „Nächstes Training“: the coach's reason (muted), then per exercise: title, info icon as elsewhere, each set as a row with reps and kg fields (same inputs as in the running workout, no done-tick), a sets stepper, „Andere Übung“ (picker), remove (×); at the end „Übung hinzufügen“. Actions: primary „Training starten“, link „Fertig“ (closes; edits are kept).
 - Weights and reps shown are exactly what the start would prefill (same history, studio, load steps, excluded exercises, no-legs rule).
 - Changed plan: the card shows a muted „Angepasst“ and a link „Änderungen verwerfen“.
-- The draft is local to the device: `pandafit.plandraft.<account>` = `{ planKey, workout }`; `planKey` = the plan record's `atMs` and workout name. A new coach plan (other key) drops the draft and the card says once, muted: „Der Coach hat neu geplant. Deine Änderungen galten dem alten Plan.“
+- The draft is local to the device: `pandafit.plandraft.<account>` = `{ planKey, workout }`; `planKey` = the plan record's `atMs` and workout name. A new coach plan (other key) drops the draft and the card says once, muted: „Deine Anpassungen passen nicht mehr zum aktuellen Plan oder Studio. Darum gilt wieder der Plan des Coaches.“
 - Starting with a draft: new id and `startMs = now`, done sets none; everything else from the draft. Without a draft the start is exactly as today.
 
 ## Global Constraints

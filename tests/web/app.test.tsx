@@ -198,11 +198,34 @@ describe('web app', () => {
 
   it('the plan shows its date and says calmly when it is older than a week', async () => {
     await boot({ seed: [plan(NOW - 2 * DAY)] });
-    expect(await screen.findByText(/^Plan vom /)).toBeTruthy();
+    // The date, the reason and the note are in the sheet "Nächstes Training" that Heute opens in Kraft.
+    fireEvent.click(await screen.findByRole('button', { name: 'Ansehen und anpassen' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Nächstes Training' });
+    expect(within(sheet).getByText(/^Plan vom /)).toBeTruthy();
+    expect(within(sheet).getByText('Beine sind dran')).toBeTruthy();
+    expect(within(sheet).getByText('Gut gemacht diese Woche')).toBeTruthy();
     expect(screen.queryByText(/Coach macht einen neuen/)).toBeNull();
     cleanup();
     await boot({ seed: [plan(NOW - 9 * DAY)] });
     expect(await screen.findByText(/Coach macht einen neuen/)).toBeTruthy();
+  });
+
+  it('the plan sheet from Heute opens once; an adjusted plan says "Angepasst" on Heute', async () => {
+    await boot({ seed: [plan(NOW - 2 * DAY)] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Ansehen und anpassen' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Nächstes Training' });
+    const reps = within(sheet).getByLabelText('Wiederholungen Satz 1');
+    fireEvent.focus(reps); fireEvent.change(reps, { target: { value: '6' } }); fireEvent.blur(reps);
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Fertig' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nächstes Training' })).toBeNull());
+    // Away to another Kraft page and back: the sheet does not open again by itself.
+    fireEvent.click(screen.getByRole('button', { name: 'Routinen', exact: true } as never));
+    fireEvent.click(await screen.findByRole('button', { name: 'Training', pressed: false }));
+    await screen.findByRole('button', { name: 'Beine A starten' });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole('dialog', { name: 'Nächstes Training' })).toBeNull();
+    fireEvent.click(within(screen.getByRole('navigation')).getByRole('button', { name: 'Heute' }));
+    expect(await screen.findByText('Angepasst')).toBeTruthy();
   });
 
   it('without a plan there is a calm note and a workout can still be started', async () => {
