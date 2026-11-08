@@ -50,12 +50,12 @@ describe('Heute as a day page', () => {
     };
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW }), rec('together', 'current', together)]);
     const coach = await screen.findByText('Schön, dass du dran bist.');
-    const train = await screen.findByRole('button', { name: 'Zum Krafttraining' }).catch(() => null);
+    const train = await screen.findByRole('button', { name: 'Zum Krafttraining' });
     const tg = await screen.findByRole('button', { name: /Gemeinsam/ });
-    if (train) expect(before(coach, train)).toBe(true);
+    expect(before(coach, train)).toBe(true);
     expect(before(coach, tg)).toBe(true);
-    const main = coach.closest('.tk-screen')!;
-    expect(main.lastElementChild!.contains(tg) || main.lastElementChild === tg.closest('section,button')).toBe(true);
+    const page = coach.closest('.tk-daypage')!;
+    expect(page.lastElementChild!.contains(tg)).toBe(true);
   });
   it("a daytext of yesterday shows a saying", async () => {
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-03', text: 'Gestriger Satz.', atMs: NOW - DAY })]);
@@ -76,9 +76,35 @@ describe('Heute as a day page', () => {
   it('a swipe to the left goes on one day, and does nothing from inside a field', async () => {
     await boot([]);
     const root = screen.getByLabelText('Satz vom Coach').parentElement!;
-    fireEvent.pointerDown(root, { clientX: 200, clientY: 100 });
-    fireEvent.pointerUp(root, { clientX: 100, clientY: 105 });
+    fireEvent.pointerDown(root, { clientX: 200, clientY: 100, isPrimary: true });
+    fireEvent.pointerUp(root, { clientX: 100, clientY: 105, isPrimary: true });
     expect(screen.getByRole('heading', { level: 1, name: 'Morgen' })).toBeTruthy();
+  });
+  it('a swipe from inside a field or a dialog does not change the day', async () => {
+    await boot([]);
+    const page = screen.getByLabelText('Satz vom Coach').parentElement!;
+    const input = document.createElement('input'); page.appendChild(input);
+    fireEvent.pointerDown(input, { clientX: 200, clientY: 100, isPrimary: true });
+    fireEvent.pointerUp(input, { clientX: 100, clientY: 100, isPrimary: true });
+    const dlg = document.createElement('div'); dlg.setAttribute('role', 'dialog'); const inner = document.createElement('p'); dlg.appendChild(inner); page.appendChild(dlg);
+    fireEvent.pointerDown(inner, { clientX: 200, clientY: 100, isPrimary: true });
+    fireEvent.pointerUp(inner, { clientX: 100, clientY: 100, isPrimary: true });
+    expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
+  });
+  it('a short swipe does not change the day', async () => {
+    await boot([]);
+    const page = screen.getByLabelText('Satz vom Coach').parentElement!;
+    fireEvent.pointerDown(page, { clientX: 200, clientY: 100, isPrimary: true });
+    fireEvent.pointerUp(page, { clientX: 160, clientY: 100, isPrimary: true });
+    expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
+  });
+  it('a doctor finding is the first line of Dein Körper', async () => {
+    const h = health().body as { findings: unknown[] };
+    h.findings.push({ rule: 'health.rhr-high', text: 'Das lässt du bitte ärztlich anschauen.', tone: 'arzt' });
+    await boot([rec('health', 'health', h)]);
+    const card = await screen.findByRole('region', { name: 'Dein Körper' });
+    expect(card.querySelector('p')!.textContent).toBe('Das lässt du bitte ärztlich anschauen.');
+    expect(card.querySelector('p')!.compareDocumentPosition(card.querySelector('ul')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   it('a new calendar day starts at Heute again', async () => {
     const clock = { now: NOW };

@@ -228,7 +228,7 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-screen .rc-view a { color: var(--muted); text-decoration: underline; font-weight: 600; }
 
 /* Heute as a day page: arrows left and right, the day name in the middle, the coach sentence with its mark. */
-.tk-daypage { touch-action: pan-y; }
+.tk-daypage { touch-action: pan-y pinch-zoom; }
 .tk-dayhead { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 2.75rem; margin-bottom: .5rem; padding-right: 3.4rem; }
 .tk-daytitle { flex: 1; text-align: center; min-width: 0; }
 .tk-daytitle .tk-title { margin: 0; line-height: 1.2; }

@@ -24,7 +24,8 @@ export function swipeIgnored(target: Element | null): boolean {
   for (let el: Element | null = target; el && el !== el.ownerDocument.body; el = el.parentElement) {
     if (el.matches('[role=dialog], input, textarea, select, .tk-hscroll')) return true;
     const ox = el.ownerDocument.defaultView?.getComputedStyle(el).overflowX;
-    if (ox === 'auto' || ox === 'scroll') return true;
+    // Only an element that really scrolls sideways counts: overflow auto on a box that fits is harmless.
+    if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth) return true;
   }
   return false;
 }

@@ -199,9 +199,9 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   return (
     <div
       className="tk-screen tk-daypage"
-      onPointerDown={(e) => { swipe.current = swipeIgnored(e.target as Element | null) ? null : { x: e.clientX, y: e.clientY }; }}
+      onPointerDown={(e) => { if (!e.isPrimary) return; swipe.current = swipeIgnored(e.target as Element | null) ? null : { x: e.clientX, y: e.clientY }; }}
       onPointerCancel={() => { swipe.current = null; }}
-      onPointerUp={(e) => { const s = swipe.current; swipe.current = null; if (s) step(swipeStep(e.clientX - s.x, e.clientY - s.y)); }}
+      onPointerUp={(e) => { if (!e.isPrimary) return; const s = swipe.current; swipe.current = null; if (s) step(swipeStep(e.clientX - s.x, e.clientY - s.y)); }}
     >
       <DayHead offset={offset} nowMs={now} onStep={step} />
       {offset === 0 && <>

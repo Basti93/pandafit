@@ -24,8 +24,10 @@ describe('day navigation', () => {
     expect(dayTitle(1, now)).toEqual({ name: 'Morgen', date: 'Mo, 9. November' });
   });
   it('swipeIgnored in a dialog, a field and a sideways scroller, not on plain content', () => {
-    document.body.innerHTML = '<div role="dialog"><p id="a">x</p></div><input id="b"><div class="tk-hscroll"><span id="c">y</span></div><div style="overflow-x:auto"><span id="d">z</span></div><p id="e">plain</p>';
+    document.body.innerHTML = '<div role="dialog"><p id="a">x</p></div><input id="b"><div class="tk-hscroll"><span id="c">y</span></div><div style="overflow-x:auto"><span id="d">z</span></div><p id="e">plain</p><div style="overflow-x:auto"><span id="f">w</span></div>';
     const el = (id: string) => document.getElementById(id);
+    Object.defineProperty(el('d')!.parentElement!, 'scrollWidth', { value: 500 }); // jsdom has no layout
+    expect(swipeIgnored(el('f'))).toBe(false); // overflow auto, but it fits
     expect(swipeIgnored(el('a'))).toBe(true);
     expect(swipeIgnored(el('b'))).toBe(true);
     expect(swipeIgnored(el('c'))).toBe(true);
