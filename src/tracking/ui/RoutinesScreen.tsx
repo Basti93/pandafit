@@ -86,7 +86,6 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
 
   return (
     <div className="tk-screen">
-      <h1 className="tk-title">Routinen</h1>
       {q.failed && <p role="status" className="tk-note">Deine Routinen konnten gerade nicht gelesen werden. <button type="button" onClick={q.retry}>Nochmal versuchen</button></p>}
       {records !== null && records.length === 0 && <p className="muted">Noch keine Routine. Leg eine an, dann startest du sie mit einem Tipp.</p>}
       {(records ?? []).length > 0 && (

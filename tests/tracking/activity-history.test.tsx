@@ -45,7 +45,7 @@ test('a Kraft entry opens the workout detail; one without local record falls bac
   render(<ActivityHistory port={port} now={() => NOW} onClose={() => {}} />);
   fireEvent.click(await screen.findByRole('button', { name: /^Kraft Oberkörper/ }));
   expect(await screen.findByRole('heading', { name: 'Oberkörper' })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+  fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
   fireEvent.click(await screen.findByRole('button', { name: /^Kraft Beine/ }));
   expect(await screen.findByRole('dialog', { name: 'Kraft Beine' })).toBeTruthy();
 });

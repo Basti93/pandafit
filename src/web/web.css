@@ -9,16 +9,18 @@ html, body { margin: 0; background: var(--bg); color: var(--text); }
 body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, sans-serif; padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 /* The tab bar sits at the bottom, inside the safe area. The page keeps room for it, so it never covers the finish button. */
 :root { --web-nav-h: 3.6rem; }
-.web-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); gap: .1rem; padding: .3rem calc(.5rem + env(safe-area-inset-right)) calc(.3rem + env(safe-area-inset-bottom)) calc(.5rem + env(safe-area-inset-left)); background: var(--bg); border-top: 1px solid var(--line); }
+.web-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); gap: .1rem; padding: .3rem max(calc(.5rem + env(safe-area-inset-right)), calc((100% - 640px) / 2)) calc(.3rem + env(safe-area-inset-bottom)) max(calc(.5rem + env(safe-area-inset-left)), calc((100% - 640px) / 2)); background: var(--bg); }
+/* On a wide screen the tabs and their line stay in the content column (640 px), like the page. */
+.web-nav::before { content: ''; position: absolute; top: 0; left: max(0px, calc((100% - 640px) / 2)); right: max(0px, calc((100% - 640px) / 2)); border-top: 1px solid var(--line); }
 .web-nav button { font: inherit; font-size: .95rem; font-weight: 600; min-height: 48px; padding: .3rem .2rem; border-radius: .9rem; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
-/* Up to eight tabs on a narrow phone: the label shrinks a little and never wraps. */
-.web-nav button { font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: .1rem; padding-right: .1rem; }
-@media (max-width: 420px) { .web-nav button { font-size: .75rem; } } /* six tabs, the longest label is Ausdauer */
+/* At most five tabs: the label never wraps. */
+.web-nav button { font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: .1rem; padding-right: .1rem; }
 @media (min-width: 560px) { .web-nav button { font-size: .95rem; } }
 .web-nav button[aria-current='page'] { background: var(--card); color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
 /* While a field has focus the keyboard is up: the bar steps aside instead of riding on top of it. */
 .web-nav-away { display: none; }
-.web-main { padding-top: env(safe-area-inset-top); padding-bottom: calc(var(--web-nav-h) + env(safe-area-inset-bottom) + 1.5rem); }
+/* The page ends a full tab bar plus a little air above it, so its last line (Abmelden, a note) is never under the bar. */
+.web-main { padding-top: env(safe-area-inset-top); padding-bottom: calc(var(--web-nav-h) + env(safe-area-inset-bottom) + 2.5rem); }
 .web-login label { display: flex; flex-direction: column; gap: .3rem; }
 .web-login { padding-top: calc(28vh + env(safe-area-inset-top)); gap: .75rem; }
 .web-login button[type='submit'] { margin-top: .25rem; }
@@ -134,10 +136,14 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .gm-stack li span { text-align: left; }
 /* The profile sits at the top right instead of taking a tab. */
 .web-main { position: relative; }
-.web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .45rem); right: calc(env(safe-area-inset-right) + .8rem); width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .45rem); right: max(calc(env(safe-area-inset-right) + .8rem), calc((100% - 640px) / 2 + .8rem)); width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .web-profile[aria-current='page'] { color: var(--text); border-color: var(--accent); }
 /* Sub pages of a tab (Kraft: Training, Routinen, Verlauf): one pill with segments, not loose buttons. */
 .tk-seg { display: flex; background: var(--card); border-radius: 999px; padding: 3px; margin-right: 3.4rem; }
+/* One page head (Kraft, Ausdauer): the title on top, the switch below it at full width; the screen under it follows closely. */
+.tk-pagehead + .tk-seg { margin-right: 0; }
+.tk-screen.tk-headblock { padding-bottom: 0; }
+.tk-headblock .tk-pagehead { margin-bottom: 0; }
 .tk-screen .tk-seg button { flex: 1; background: transparent; color: var(--muted); border: 0; min-height: 40px; padding: .3rem .5rem; box-shadow: none; }
 .tk-screen .tk-seg button[aria-pressed='true'] { background: var(--bg); color: var(--text); font-weight: 700; }
 /* The live workout header leaves room for the round profile button at the top right. */

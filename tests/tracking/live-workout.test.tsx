@@ -111,7 +111,7 @@ test('the header menu: discard asks first and then removes the workout; Studio a
   expect(f.map.get('workout:w1')!.deleted).toBe(false);
   fireEvent.click(within(menu).getByRole('button', { name: 'Ja' }));
   await waitFor(() => expect(f.map.get('workout:w1')!.deleted).toBe(true));
-  expect(await screen.findByRole('heading', { name: 'Training starten' })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ })).toBeTruthy();
 });
 
 test('Coach fragen from the header menu opens the coach panel', async () => {
@@ -137,7 +137,7 @@ test('the start screen: studio is a row, the others live behind "Anderes Trainin
   const f = fakePort([]);
   const plan = { name: 'Plan', exercises: [{ templateId: 'pf-squat', title: 'Kniebeuge', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal' as const, weightKg: 60, reps: 8 }] }] };
   render(<WorkoutScreen port={f.port} plan={plan} {...ids} />);
-  await screen.findByRole('heading', { name: 'Training starten' });
+  await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
   expect(screen.queryByRole('button', { name: 'Leeres Training starten' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Anderes Training' }));
   fireEvent.click(within(screen.getByRole('dialog', { name: 'Anderes Training' })).getByRole('button', { name: 'Leeres Training starten' }));
@@ -176,7 +176,7 @@ describe('Reihenfolge by holding a title', () => {
     expect(screen.queryByRole('list', { name: 'Reihenfolge der Übungen' })).toBeNull();
   });
 
-  test('dragging the held row writes the new order; Fertig leaves the mode', async () => {
+  test('dragging the held row writes the new order; × leaves the mode', async () => {
     vi.useRealTimers();
     const f = await running(); // Bankdrücken, Kniebeuge, Kreuzheben
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -197,7 +197,9 @@ describe('Reihenfolge by holding a title', () => {
     vi.useRealTimers();
     await waitFor(() => expect(order(f.map)).toBe('Kreuzheben,Bankdrücken,Kniebeuge'));
     expect(bodyOf(f.map).exercises[2]!.sets[0]!.doneMs).toBe(7000); // done sets stay with their exercise
-    fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
+    // The order is saved with every move: no "Fertig", × closes.
+    expect(within(screen.getByRole('dialog', { name: 'Reihenfolge' })).queryByRole('button', { name: 'Fertig' })).toBeNull();
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Reihenfolge' })).getByRole('button', { name: 'Schließen' }));
     expect(screen.queryByRole('list', { name: 'Reihenfolge der Übungen' })).toBeNull();
   });
 

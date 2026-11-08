@@ -31,7 +31,7 @@ describe('catalog page', () => {
   test('groups are collapsed without counts; a tap opens one', async () => {
     await open();
     expect(queryLine(bench.title)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Brust' }).textContent).toBe('Brust›');
+    expect(screen.getByRole('button', { name: 'Brust' }).textContent).toBe('Brust⌄');
     fireEvent.click(screen.getByRole('button', { name: 'Brust' }));
     expect(line(bench.title)).toBeTruthy();
   });

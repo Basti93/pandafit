@@ -35,7 +35,7 @@ import { ReorderSheet, type DragStart } from './ReorderSheet';
 import { exerciseHasNoWeight, previousSets, setLabels, setLastHint, setTargetHint } from './setGrid';
 import { SyncNote } from './SyncNote';
 import { StudioRow, StudioSheet } from './StudioSheet';
-import { ChoiceRow, ConfirmLink, Sheet } from './kit';
+import { ChoiceRow, ConfirmLink, ExpandMark, Sheet } from './kit';
 import { WorkoutSummary, pendingSummary, setPendingSummary } from './WorkoutSummary';
 import { defaultStudio, knownStudios, resolveStudio, studioName, studioStateOf } from '../../shared/studio';
 import { hideStudio, rememberStudio, removeStudio, renameStudio } from '../studios';
@@ -261,7 +261,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
                   <span className="tk-ex-icon">{icon}</span>
                   <span className="tk-row-title">{e.title}</span>
                   {value && <span className="tk-row-value muted">{value}</span>}
-                  <span className={`tk-chevron${isOpen ? ' open' : ''}`} aria-hidden="true">›</span>
+                  <ExpandMark open={isOpen} />
                 </button>
               </h2>
               <button type="button" className="link tk-more" aria-label={`Mehr zu ${e.title}`} aria-expanded={menu === e.rid} onClick={() => { if (menu !== e.rid) setOpenRid(e.rid); setMenuMore(false); setMenu(menu === e.rid ? null : e.rid); }}>⋯</button>
@@ -556,7 +556,6 @@ export function WorkoutScreen({ port, plan = null, routine = null, resume = fals
       <SyncNote port={port} />
       {!summary && (
         <>
-          <h1 className="tk-title">Training starten</h1>
           {plan ? (
             <section className="card tk-plan-preview" aria-label="Heutiger Plan">
               <h2>{plan.name}</h2>

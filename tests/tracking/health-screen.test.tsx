@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { HEALTH_ID, type HealthBody, type HealthFinding } from '../../src/shared/health';
 import type { TrackedRecord } from '../../src/shared/records';
 import { STATS_ID, type StatsBody } from '../../src/shared/stats';
-import { StatsScreen } from '../../src/tracking/ui/StatsScreen';
+import { LookBack } from '../../src/tracking/ui/StatsScreen';
 import { healthRows } from '../../src/tracking/ui/health-view';
 import { fakePort } from './fake-port';
 
@@ -23,8 +23,8 @@ const healthRec = (b: HealthBody): TrackedRecord => ({ kind: 'health', id: HEALT
 
 async function show(seed: TrackedRecord[]) {
   const { port } = fakePort(seed);
-  render(<StatsScreen port={port} now={now} />);
-  await screen.findByRole('heading', { name: 'Statistik' });
+  render(<LookBack port={port} now={now} onHistory={() => {}} />);
+  await screen.findByRole('heading', { name: 'Rückblick' });
   await new Promise((r) => setTimeout(r, 20));
 }
 const openHealth = () => { fireEvent.click(screen.getByRole('button', { name: 'Gesundheit' })); return screen.getByRole('dialog', { name: 'Gesundheit' }); };
@@ -70,6 +70,10 @@ test('the sources sheet lists the register sources of the health rules', async (
   fireEvent.click(within(openHealth()).getByRole('button', { name: /^Quellen/ }));
   const sources = screen.getByRole('dialog', { name: 'Quellen' });
   for (const t of [/Buchheit 2014/, /Paluch et al\. 2022/, /Bull et al\. 2020/, /Kodama et al\. 2009/, /Zhang et al\. 2016/]) expect(within(sources).getByText(t)).toBeTruthy();
+  // A page inside the sheet: "‹ Zurück" instead of ×, and it leads back to Gesundheit.
+  expect(within(sources).queryByRole('button', { name: 'Schließen' })).toBeNull();
+  fireEvent.click(within(sources).getByRole('button', { name: '‹ Zurück' }));
+  expect(screen.getByRole('dialog', { name: 'Gesundheit' })).toBeTruthy();
 });
 
 test('rows exist only with data, and Body Battery and stress appear nowhere', async () => {

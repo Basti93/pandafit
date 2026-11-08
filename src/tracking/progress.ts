@@ -89,3 +89,31 @@ export function progressRows(i: Input): ProgressRow[] {
   for (const l of top) rows.push({ text: `${l.title}: etwa ${Math.round(l.recent!)} kg${liftChange(l.recent!, l.before)}` });
   return rows;
 }
+
+export type Trend = 'steigt' | 'gleich' | 'stockt';
+
+/**
+ * One word per lift, from the same comparison as the progress sentences: the best estimated max of the last four weeks
+ * against the eight weeks before. A lift without a value in both is left out (no word rather than a wrong one).
+ */
+export function liftTrends(workouts: LoggedWorkout[], nowMs: number): Map<string, Trend> {
+  const recent = new Map<string, number>();
+  const before = new Map<string, number>();
+  for (const w of workouts) {
+    const age = nowMs - w.startMs;
+    if (age < 0 || age > BEFORE_DAYS * DAY) continue;
+    for (const e of w.exercises) {
+      const max = estimatedMax(e.sets.filter((s) => s.doneMs !== null || w.source === 'hevy'));
+      if (max === null) continue;
+      const m = age <= RECENT_DAYS * DAY ? recent : before;
+      m.set(e.exerciseId, Math.max(m.get(e.exerciseId) ?? 0, max));
+    }
+  }
+  const out = new Map<string, Trend>();
+  for (const [id, r] of recent) {
+    const b = before.get(id);
+    if (b === undefined) continue;
+    out.set(id, Math.abs(r - b) < 1 ? 'gleich' : r > b ? 'steigt' : 'stockt');
+  }
+  return out;
+}

@@ -5,7 +5,7 @@ import { HARDNESS_LABEL } from '../../shared/week-plan';
 import type { TrackingPort } from '../ports';
 import { bikeOf, ftpSentence, minText, phaseText, rideFacts, rideName, rideTitle, rideValue, ridesOf, type BikeRide } from './bike-view';
 import { usePortRecords } from './hooks';
-import { PageHead, Row, RowList, Sheet } from './kit';
+import { Row, RowList, Sheet } from './kit';
 
 const W = 300, H = 90;
 
@@ -87,7 +87,6 @@ export function BikeScreen({ port }: { port: TrackingPort }) {
   const last = rides[0];
   return (
     <div className="tk-screen tk-bike">
-      <PageHead title="Rad" />
       {next ? (
         <section className="card" aria-label="Nächste Fahrt">
           <p className="tk-today-line"><b>{next.name}</b> · {minText(next.minutes)} · {HARDNESS_LABEL[next.hardness]}</p>

@@ -3,7 +3,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
 import { RoutinesScreen } from '../../src/tracking/ui/RoutinesScreen';
 import { CoachScreen } from '../../src/tracking/ui/CoachScreen';
-import { DevelopmentScreen, WorkoutDetail } from '../../src/tracking/ui/HistoryScreen';
+import { WorkoutDetail } from '../../src/tracking/ui/HistoryScreen';
+import { ExercisesScreen } from '../../src/tracking/ui/ExercisesScreen';
 import { ExercisePicker } from '../../src/tracking/ui/ExercisePicker';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import type { GymWorkout } from '../../src/coach/gym/types';
@@ -251,7 +252,7 @@ test('own exercises show up in the picker, timed ones get a seconds field', asyn
 test('shows calmly that a finished workout is not on the server yet', async () => {
   const { port, state } = fakePort([rec(finished())]);
   state.pending = 1;
-  render(<DevelopmentScreen port={port} {...ids} />);
+  render(<ExercisesScreen port={port} {...ids} />);
   const note = await screen.findByRole('status');
   expect(note.textContent).toMatch(/noch nicht auf dem Server/i);
   expect(note.textContent).toMatch(/sicher/);
@@ -449,11 +450,34 @@ test('WorkoutScreen starts a given routine', async () => {
   expect(screen.getByText('Push')).toBeTruthy();
 });
 
-test('Entwicklung lists the exercises with last values and progress', async () => {
+test('Übungen: "Deine Übungen" lists the exercises done, a tap shows last values and progress, the catalog follows', async () => {
   const { port } = fakePort([rec(finished('a', 5000)), rec(finished('b', 9000))]);
-  render(<DevelopmentScreen port={port} {...ids} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Kniebeuge' }));
+  render(<ExercisesScreen port={port} {...ids} />);
+  const mine = await screen.findByRole('list', { name: 'Deine Übungen' });
+  expect(screen.getByRole('heading', { name: 'Anleitungen nachschlagen' })).toBeTruthy();
+  fireEvent.click(within(mine).getByRole('button', { name: 'Kniebeuge' }));
   expect(await screen.findByText('Letztes Mal: 85 kg × 5')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+  expect(await screen.findByRole('list', { name: 'Deine Übungen' })).toBeTruthy();
+});
+
+test('Übungen: one word per exercise for how it moves, none without an earlier value', async () => {
+  const day = 86_400_000;
+  const now = 200 * day;
+  const lift = (id: string, at: number, kg: number, exerciseId = 'pf-squat', title = 'Kniebeuge'): LoggedWorkout => ({
+    id, title: 'Beine', startMs: at, endMs: at + 1000, source: 'pandafit',
+    exercises: [{ exerciseId, title, supersetId: null, notes: '', sets: [set(kg, 5, at)] }],
+  });
+  const { port } = fakePort([
+    rec(lift('old', now - 50 * day, 80)), rec(lift('new', now - 3 * day, 90)),
+    rec(lift('b-old', now - 50 * day, 60, 'pf-bench-press', 'Bankdrücken')), rec(lift('b-new', now - 3 * day, 60, 'pf-bench-press', 'Bankdrücken')),
+    rec(lift('r-new', now - 3 * day, 40, 'pf-row', 'Rudern')),
+  ]);
+  render(<ExercisesScreen port={port} now={() => now} newId={ids.newId} />);
+  const mine = await screen.findByRole('list', { name: 'Deine Übungen' });
+  expect(within(mine).getByRole('button', { name: /^Kniebeuge/ }).textContent).toBe('Kniebeugesteigt›');
+  expect(within(mine).getByRole('button', { name: /^Bankdrücken/ }).textContent).toBe('Bankdrückengleich›');
+  expect(within(mine).getByRole('button', { name: /^Rudern/ }).textContent).toBe('Rudern›');
 });
 
 // ---- fix round 2 ----

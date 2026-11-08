@@ -187,7 +187,7 @@ describe('where the card lives', () => {
     expect(await screen.findByRole('region', { name: 'Übungen einordnen' })).toBeTruthy();
     cleanup();
     render(<WorkoutScreen port={fakePort([sameProposal]).port} now={() => NOW} newId={() => 'x'} />);
-    await screen.findByRole('heading', { level: 1 });
+    await screen.findByRole('button', { name: 'Leeres Training starten' });
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByRole('region', { name: 'Übungen einordnen' })).toBeNull();
   });

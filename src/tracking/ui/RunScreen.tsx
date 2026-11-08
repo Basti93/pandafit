@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { feelAsked, RunFeelQuestion } from './RunFeel';
 import { ReviewList } from './RunLookBack';
-import { PageHead, Row, RowList, Sheet, Switch } from './kit';
+import { Row, RowList, Sheet, Switch } from './kit';
 import { shortDateOfKey } from '../../shared/dates';
 import type { TrackedRecord } from '../../shared/records';
 import { manualRunId, paceText, runSendId, weekFp, type PlannedRun, type RunGarmin, type RunNumbers, type RunSendBody, type RunFeelBody, runFeelId, type RunWeekBody, type RunReviewBody, type ManualRunBody } from '../../shared/run';
@@ -14,6 +14,7 @@ const KIND: Record<PlannedRun['kind'], string> = { easy: 'Ruhiger Lauf', long: '
 const CHANGED = 'Der Plan hat sich geändert. Bitte bestätige noch einmal, dann geht die neue Version an Garmin.';
 const STALE = 'Inzwischen gibt es einen neueren Plan. Bitte schau ihn dir an und bestätige noch einmal.';
 const LEFT_ON_WATCH = 'Auf deiner Uhr sind noch geplante Läufe. Sollen sie entfernt werden?';
+const FIRST_PLAN = 'Laufen ist an. Dein Laufplan erscheint hier, sobald der Coach ihn angelegt hat.';
 const PAUSE = 'Laufen pausiert, solange die Beschwerde offen ist. Sobald sie vorbei ist, geht es ruhig weiter.';
 const GENTLE = 'Wir planen gerade sanft.';
 const FAILED = 'Das Senden hat gerade nicht geklappt. Du kannst es später noch einmal versuchen.';
@@ -206,7 +207,9 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
   const [savedNote, setSavedNote] = useState(false);
   const [thanked, setThanked] = useState<string | null>(null);
   const view = runView(q.records ?? [], now());
-  if (q.records === null || !view.visible || !view.status) return null;
+  if (q.records === null) return null;
+  // "Laufen planen" is on, but the run coach has not answered yet: one sentence, so the page is not empty.
+  if (!view.status || !view.visible) return view.settings?.on ? <div className="tk-screen tk-run"><p className="muted">{FIRST_PLAN}</p></div> : null;
   const { status, week } = view;
   const all = q.all ?? [];
   const byId = (id: string): TrackedRecord | undefined => all.find((r) => r.id === id);
@@ -239,7 +242,6 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
 
   return (
     <div className="tk-screen tk-run">
-      <PageHead title="Laufen" />
       {status.suggest && !status.on && <Suggestion onAnswer={(on) => { void writeSettings(port, all, now(), (old) => ({ type: 'settings', on, weekdays: old?.weekdays ?? null, answers: old?.answers ?? null })).catch(() => {}); }} />}
       {status.on && firstQuestions && <Questions suggested={status.suggestedDays} saved={view.settings ?? null} onSave={saveSettings} />}
       {status.on && paused && <p role="status" className="tk-note">{PAUSE}</p>}

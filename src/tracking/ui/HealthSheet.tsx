@@ -26,10 +26,10 @@ function Spark({ series }: { series: HealthSeries }) {
   );
 }
 
-function SourcesSheet({ onClose }: { onClose: () => void }) {
+function SourcesSheet({ onClose, onBack }: { onClose: () => void; onBack: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   return (
-    <Sheet title="Quellen" onClose={onClose}>
+    <Sheet title="Quellen" onClose={onClose} onBack={onBack}>
       <p className="muted tk-small">Diese Studien und Empfehlungen stehen hinter den Sätzen. Sie sind Orientierung, keine Diagnose.</p>
       <RowList label="Quellen">
         {healthSources().map((s) => (
@@ -47,7 +47,7 @@ function SourcesSheet({ onClose }: { onClose: () => void }) {
 export function HealthSheet({ health, onClose }: { health: HealthBody; onClose: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [sources, setSources] = useState(false);
-  if (sources) return <SourcesSheet onClose={() => setSources(false)} />;
+  if (sources) return <SourcesSheet onClose={onClose} onBack={() => setSources(false)} />;
   const doctor = doctorFinding(health);
   const rows = healthRows(health);
   return (
@@ -67,7 +67,7 @@ export function HealthSheet({ health, onClose }: { health: HealthBody; onClose: 
         </RowList>
       )}
       <p className="muted tk-small">Keine Diagnose. Grundlage: WHO-Empfehlungen und Studien zu Ruhepuls, Fitness und Schritten.</p>
-      <button type="button" className="link" onClick={() => setSources(true)}>Quellen ›</button>
+      <RowList><Row title="Quellen" onClick={() => setSources(true)} /></RowList>
     </Sheet>
   );
 }

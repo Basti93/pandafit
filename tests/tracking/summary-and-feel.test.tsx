@@ -42,7 +42,7 @@ test('before the publish the summary shows no placeholder, and a reload still sh
   fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
   cleanup();
   render(<WorkoutScreen port={port} {...ids} />);
-  await screen.findByRole('heading', { name: 'Training starten' });
+  await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
   expect(screen.queryByRole('region', { name: 'Zusammenfassung' })).toBeNull();
 });
 
@@ -76,6 +76,6 @@ test('skipping writes a null feel and asks no more; an old run is not asked abou
   cleanup();
   const b = fakePort([status('2026-10-25')]);
   render(<RunScreen port={b.port} now={() => NOW} newId={() => 'u'} />);
-  await screen.findByRole('heading', { name: 'Laufen' });
+  await waitFor(() => expect(document.querySelector('.tk-run')).toBeTruthy());
   expect(screen.queryByText(/Wie war der Lauf/)).toBeNull();
 });

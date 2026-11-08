@@ -78,7 +78,7 @@ export function ReorderSheet({ workout, start, onDrop, onStep, onClose }: {
   };
 
   return (
-    <Sheet title="Reihenfolge" onClose={onClose} actions={<button type="button" className="primary" onClick={onClose}>Fertig</button>}>
+    <Sheet title="Reihenfolge" onClose={onClose}>
       <ul className={`tk-reorder${drag ? ' dragging' : ''}`} aria-label="Reihenfolge der Übungen">
         {blocks.map((block, bi) => {
           const lifted = drag !== null && bi === from;

@@ -17,8 +17,9 @@ import { openProposals } from './chat-open';
 import { useGoal, usePortRecords } from './hooks';
 import { dayText as runDay, runView } from './run-view';
 import { PageHead, Row, RowList } from './kit';
+import { LookBack } from './StatsScreen';
 
-/** Woche is the week: seven days, what changed lately, and three rows that open the goal, the rules and the chat with the coach. */
+/** Woche is the week: seven days, what changed lately, rows that open the goal, the rules and the chat with the coach, and the Rückblick. */
 export function CoachScreen({ port, now, newId, showPrefs = true }: { port: TrackingPort; now: () => number; newId: () => string; showPrefs?: boolean }) {
   const chat = usePortRecords(port, 'chat').all;
   const plans = usePortRecords(port, 'weekplan').all;
@@ -103,11 +104,9 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
           )}
         </section>
       )}
-      <RowList>
-        <Row key="history" title="Verlauf" value={newestActivity ? <span className="tk-ellipsis">{activityText(newestActivity)}</span> : undefined} onClick={() => setSheet('history')} />
-        {rows}
-      </RowList>
+      <RowList>{rows}</RowList>
       {error && <p role="alert" className="tk-note">{error}</p>}
+      <LookBack port={port} now={now} latest={newestActivity ? activityText(newestActivity) : undefined} onHistory={() => setSheet('history')} />
       {showPrefs && <section className="card"><CoachPrefs port={port} now={now} /></section>}
       {sheet === 'goal' && <GoalSheet port={port} now={now} onClose={() => setSheet(null)} frame={fr.frame}
         onMode={(m) => void fr.setMode(m).catch(saveFailed)} onMinutes={(m) => void fr.setMinutes(m).catch(saveFailed)} />}

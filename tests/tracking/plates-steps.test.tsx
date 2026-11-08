@@ -104,7 +104,7 @@ describe('studio line', () => {
   test('a typed new studio is saved on the started workout, reusing a known name by case', async () => {
     const f = fakePort([]);
     render(<WorkoutScreen port={f.port} {...ids} />);
-    await screen.findByRole('heading', { name: 'Training starten' });
+    await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
     fireEvent.click(screen.getByRole('button', { name: /^Studio/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Neues Studio …' }));
     const input = await screen.findByLabelText('Name des neuen Studios');

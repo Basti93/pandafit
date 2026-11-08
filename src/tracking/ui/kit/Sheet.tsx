@@ -1,9 +1,9 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 /**
  * Full screen on the phone (size "small": a bottom sheet of auto height, at most 70 %, over a dimmed backdrop, for short option lists): title, × top right, the body, and a sticky bottom area for the primary button.
- * The page behind does not scroll. Escape, ×, and the browser's Back all call `onClose`. Focus goes to the sheet and returns afterwards.
+ * The page behind does not scroll. Escape, ×, and the browser's Back all call `onClose` (Escape calls `onBack` when given). Focus goes to the sheet and returns afterwards.
  * Render it only while it is open: `{open && <Sheet …/>}`.
  */
 /** Open sheets, the newest last: Escape and Back only close the top one, so a sheet may open another (a picker inside a form). */
@@ -32,11 +32,21 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export function Sheet({ title, onClose, children, actions, size = 'full' }: { title: string; onClose: () => void; children: ReactNode; actions?: ReactNode; size?: 'full' | 'small' }) {
+/**
+ * One close pattern: × top right. A sub-page has "‹ Zurück" at the top left instead: a full sheet opened over another sheet
+ * (it closes back to the one below), or a sheet given `onBack` (a page inside the same sheet).
+ */
+export function Sheet({ title, onClose, onBack, children, actions, size = 'full' }: { title: string; onClose: () => void; onBack?: () => void; children: ReactNode; actions?: ReactNode; size?: 'full' | 'small' }) {
   const id = useId();
+  // Decided once, when it opens: is there a sheet below it?
+  const [over] = useState(() => stack.length > 0);
+  const back = onBack ?? (over && size === 'full' ? onClose : undefined);
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
+  // Escape goes one step back on a page inside the sheet; the browser's Back still closes the sheet (it owns one history entry).
+  const escape = useRef(onClose);
+  escape.current = onBack ?? onClose;
 
   useEffect(() => {
     const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -52,7 +62,7 @@ export function Sheet({ title, onClose, children, actions, size = 'full' }: { ti
     const push = () => { if (gone) return; try { history.pushState(mark, ''); pushed = true; } catch { /* no history: Escape and × still work */ } };
     if (pendingBacks > 0) afterBacks.push(push); else push();
     const onPop = () => { if (swallowing || !pushed || (history.state as { sheet?: string } | null)?.sheet === id) return; popped = true; close.current(); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && stack[stack.length - 1] === id) { e.stopPropagation(); close.current(); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && stack[stack.length - 1] === id) { e.stopPropagation(); escape.current(); } };
     window.addEventListener('popstate', onPop);
     document.addEventListener('keydown', onKey);
     return () => {
@@ -71,8 +81,9 @@ export function Sheet({ title, onClose, children, actions, size = 'full' }: { ti
       {size === 'small' && <div className="tk-sheet-backdrop" aria-hidden="true" onClick={onClose} />}
       <div className="tk-sheet-panel">
       <header className="tk-sheet-head">
+        {back && <button type="button" className="link tk-sheet-back" onClick={back}>‹ Zurück</button>}
         <h2 id={`${id}-t`}>{title}</h2>
-        <button type="button" className="link tk-sheet-x" aria-label="Schließen" onClick={onClose}>×</button>
+        {!back && <button type="button" className="link tk-sheet-x" aria-label="Schließen" onClick={onClose}>×</button>}
       </header>
       <div className="tk-sheet-body">{children}</div>
       {actions && <footer className="tk-sheet-actions">{actions}</footer>}

@@ -70,7 +70,7 @@ export function CatalogScreen({ port, now = Date.now, newId = () => crypto.rando
   const askFam = asking ? familyOf(asking) : 'other';
   return (
     <div className="tk-screen">
-      <h1 className="tk-title">Übungen</h1>
+      <h2 className="tk-section">Anleitungen nachschlagen</h2>
       {/* Unknown exercises wait here to be sorted in (not on the training screen); nothing shows when none wait. */}
       <ExerciseProposals port={port} now={now} newId={newId} />
       <input className="tk-search" aria-label="Übung suchen" placeholder="Übung oder Muskel suchen" value={q} onChange={(e) => setQ(e.target.value)} />

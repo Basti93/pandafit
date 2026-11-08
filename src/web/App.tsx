@@ -6,8 +6,7 @@ import { openStoreCount } from '../tracking/registry';
 import { PageHead, Row, RowList, Switch } from '../tracking/ui/kit';
 import { CoachPrefs } from '../tracking/ui/CoachPrefs';
 import { localDayKey, shortDate, timeLabel } from '../shared/dates';
-import { BikeScreen, bikeOf, hasBike as bikeVisible, ridesOf, CatalogScreen, DevelopmentScreen, RoutinesScreen, RunScreen, RunSettingsCard, StatsScreen, WorkoutScreen } from '../tracking/ui';
-import { statsVisible } from '../tracking/ui/StatsScreen';
+import { BikeScreen, bikeOf, hasBike as bikeVisible, ridesOf, ExercisesScreen, RoutinesScreen, RunScreen, RunSettingsCard, WorkoutScreen } from '../tracking/ui';
 import { CoachScreen } from '../tracking/ui/CoachScreen';
 import { TodayCard, todayPlan } from '../tracking/ui/TodayCard';
 import { runView } from '../tracking/ui/run-view';
@@ -206,21 +205,22 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals
 function Training({ port, env, resume }: { port: WebPort; env: Env; resume: boolean }) {
   const [running, setRunning] = useState(false);
   const plans = usePortRecords(port, 'plan').records;
-  const [screen, setScreen] = useState<'workout' | 'routines' | 'history' | 'catalog'>('workout');
+  const [screen, setScreen] = useState<'workout' | 'routines' | 'exercises'>('workout');
   const [routine, setRoutine] = useState<GymWorkout | null>(null);
   const plan = readPlan((plans ?? []).find((r) => r.id === 'current'));
   return (
     <>
-      {/* A running workout has the whole screen: no sub-navigation until it is done. */}
-      {!(running && screen === 'workout') && <div className="tk-screen"><div className="tk-seg" role="group" aria-label="Kraft">
-        <button type="button" aria-pressed={screen === 'workout'} onClick={() => { setRoutine(null); setScreen('workout'); }}>Training</button>
-        <button type="button" aria-pressed={screen === 'routines'} onClick={() => setScreen('routines')}>Routinen</button>
-        <button type="button" aria-pressed={screen === 'history'} onClick={() => setScreen('history')}>Entwicklung</button>
-        <button type="button" aria-pressed={screen === 'catalog'} onClick={() => setScreen('catalog')}>Übungen</button>
-      </div></div>}
+      {/* One page head: the title, the three sub-pages below. A running workout has the whole screen: no head until it is done. */}
+      {!(running && screen === 'workout') && <div className="tk-screen tk-headblock">
+        <PageHead title="Kraft" />
+        <div className="tk-seg" role="group" aria-label="Kraft">
+          <button type="button" aria-pressed={screen === 'workout'} onClick={() => { setRoutine(null); setScreen('workout'); }}>Training</button>
+          <button type="button" aria-pressed={screen === 'routines'} onClick={() => setScreen('routines')}>Routinen</button>
+          <button type="button" aria-pressed={screen === 'exercises'} onClick={() => setScreen('exercises')}>Übungen</button>
+        </div>
+      </div>}
       {screen === 'workout' && <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={resume} onActive={setRunning} plan={routine ? null : plan?.workout ?? null} routine={routine} now={env.now} newId={env.newId} />}
-      {screen === 'history' && <DevelopmentScreen port={port} />}
-      {screen === 'catalog' && <CatalogScreen port={port} now={env.now} newId={env.newId} />}
+      {screen === 'exercises' && <ExercisesScreen port={port} now={env.now} newId={env.newId} />}
       {screen === 'routines' && <RoutinesScreen port={port} now={env.now} newId={env.newId} onStart={(r) => { setRoutine(r); setScreen('workout'); }} />}
     </>
   );
@@ -327,9 +327,23 @@ function PushSettings({ push, port, now }: { push: PushState; port: WebPort; now
   );
 }
 
-type Tab = 'heute' | 'coach' | 'training' | 'essen' | 'ausdauer' | 'statistik' | 'profil';
-// At most six tabs: the history is on Woche, Entwicklung lives in Kraft, the profile is the round button at the top right.
-const TABS: [Tab, string][] = [['heute', 'Heute'], ['coach', 'Woche'], ['training', 'Kraft'], ['essen', 'Essen'], ['ausdauer', 'Ausdauer'], ['statistik', 'Statistik']];
+type Tab = 'heute' | 'coach' | 'training' | 'essen' | 'ausdauer' | 'profil';
+// At most five tabs in a fixed order: the look back (Rückblick) is on Woche, the profile is the round button at the top right.
+const TABS: [Tab, string][] = [['heute', 'Heute'], ['coach', 'Woche'], ['training', 'Kraft'], ['essen', 'Essen'], ['ausdauer', 'Ausdauer']];
+
+/** The "Essensplan" switch lives with the account's coach; the last value seen is kept per account, so Essen shows from the start. */
+const mealsOnKey = (account: string) => `pandafit.essensplan.${account}`;
+const readMealsOn = (env: Env, account: string): boolean => { try { return env.storage.getItem(mealsOnKey(account)) === 'on'; } catch { return false; } };
+const saveMealsOn = (env: Env, account: string, on: boolean): void => { try { env.storage.setItem(mealsOnKey(account), on ? 'on' : 'off'); } catch { /* shown again once the plan is there */ } };
+const NO_LINK = { view: null, unavailable: false };
+const noSub = () => () => {};
+
+/**
+ * Which tabs show. They follow the profile switches, and data that is there: Essen once "Essensplan" is on or a plan is there;
+ * Ausdauer once "Laufen planen" is on, the run coach suggests running, or there is a bike plan or ride. Heute, Woche and Kraft always.
+ */
+export const visibleTabs = (o: { meals: boolean; endurance: boolean }): Tab[] =>
+  TABS.map(([t]) => t).filter((t) => (t !== 'essen' || o.meals) && (t !== 'ausdauer' || o.endurance));
 
 type Endurance = 'rad' | 'laufen';
 const enduranceKey = (account: string) => `pandafit.ausdauer.${account}`;
@@ -344,14 +358,18 @@ function Ausdauer({ port, env, account, hasRun, hasBike }: { port: WebPort; env:
   const [kind, setKind] = useState<Endurance>(stored ?? (hasBike ? 'rad' : 'laufen'));
   const shown: Endurance = kind === 'rad' && !hasBike ? 'laufen' : kind === 'laufen' && !hasRun ? 'rad' : kind;
   const pick = (k: Endurance) => { setKind(k); saveEndurance(env, account, k); };
+  // One page head: the title on top, the switch below it, no second title in the screen.
   return (
     <>
-      {hasRun && hasBike && (
-        <div className="tk-screen"><div className="tk-seg" role="group" aria-label="Ausdauer">
-          <button type="button" aria-pressed={shown === 'rad'} onClick={() => pick('rad')}>Rad</button>
-          <button type="button" aria-pressed={shown === 'laufen'} onClick={() => pick('laufen')}>Laufen</button>
-        </div></div>
-      )}
+      <div className="tk-screen tk-headblock">
+        <PageHead title="Ausdauer" />
+        {hasRun && hasBike && (
+          <div className="tk-seg" role="group" aria-label="Ausdauer">
+            <button type="button" aria-pressed={shown === 'rad'} onClick={() => pick('rad')}>Rad</button>
+            <button type="button" aria-pressed={shown === 'laufen'} onClick={() => pick('laufen')}>Laufen</button>
+          </div>
+        )}
+      </div>
       {shown === 'rad' ? <BikeScreen port={port} /> : <RunScreen port={port} now={env.now} newId={env.newId} />}
     </>
   );
@@ -368,7 +386,7 @@ const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; last
 };
 
 /** The account on this device, a few switches, the coach's timing, and the way out. Rows, not cards. */
-function Profil({ account, port, now, status, onLogout, onBack, push, persistRefused, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; onBack: () => void; push: PushState | null; persistRefused: boolean }) {
+function Profil({ account, port, now, status, onLogout, push, persistRefused, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null; persistRefused: boolean }) {
   const [confirming, setConfirming] = useState(false);
   usePortRecords(port, 'workout'); // re-renders when the port changes
   const c = port.syncState();
@@ -377,7 +395,6 @@ function Profil({ account, port, now, status, onLogout, onBack, push, persistRef
   const quiet = sync.startsWith('Alles gesichert');
   return (
     <div className="tk-screen">
-      <button type="button" className="link tk-back" onClick={onBack}>‹ Zurück</button>
       <PageHead title="Profil" />
       <RowList>
         <Row title={`Angemeldet als ${account}`} value={quiet ? sync : undefined} />
@@ -402,7 +419,6 @@ function Profil({ account, port, now, status, onLogout, onBack, push, persistRef
 }
 
 function Shell({ account, env, port, onLogout, onRelogin }: { account: string; env: Env; port: WebPort; onLogout: () => void; onRelogin: (name: string) => void }) {
-  const [back, setBack] = useState<Tab>('heute');
   // "Weitermachen" on Heute opens the open workout itself, once; every other way into Kraft shows the start screen.
   const [resume, setResume] = useState(false);
   const openTab = (t: string): void => {
@@ -434,23 +450,25 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   const workouts = usePortRecords(port, 'workout').records;
   // Essen only when the Mac sent a plan for this account: the meal plan is off by default.
   const mealRecords = usePortRecords(port, 'mealplan').records;
-  const hasMeals = mealWeeks(mealRecords, env.now()).length > 0;
+  const linkSnap = useSyncExternalStore(link?.subscribe ?? noSub, link?.snapshot ?? (() => NO_LINK));
+  const linkMeals = linkSnap.view ? linkSnap.view.meals?.on === true : null;
+  const [storedMeals, setStoredMeals] = useState(() => readMealsOn(env, account));
+  useEffect(() => { if (linkMeals !== null) { saveMealsOn(env, account, linkMeals); setStoredMeals(linkMeals); } }, [env, account, linkMeals]);
+  const hasMeals = (linkMeals ?? storedMeals) || mealWeeks(mealRecords, env.now()).length > 0;
   // Set by "Essensplan" on Heute; any other way into Essen keeps the usual default week.
   const [mealsToday, setMealsToday] = useState(false);
   useEffect(() => { if (tab !== 'essen') setMealsToday(false); }, [tab]);
-  // Laufen only once the run coach's status says on or suggest: nothing of it for a person who does not run.
+  // Laufen once "Laufen planen" is on or the run coach suggests it: nothing of it for a person who does not run.
   const runRecords = usePortRecords(port, 'run').records;
-  const hasRun = runView(runRecords ?? [], env.now()).visible;
+  const run = runView(runRecords ?? [], env.now());
+  const hasRun = run.visible || run.settings?.on === true;
   // Rad once the coach published a plan to ride or a ride: nothing of it for a person who does not ride.
   const bikeRecords = usePortRecords(port, 'bike').records;
   const rideRecords = usePortRecords(port, 'ride').records;
   const hasBike = bikeVisible(bikeOf(bikeRecords), ridesOf(rideRecords));
   const hasEndurance = hasRun || hasBike;
-  // Statistik once there is a stats record or a finished workout.
-  const statsRecords = usePortRecords(port, 'stats').records;
-  const hasStats = statsVisible(statsRecords, workouts);
-  const tabs = TABS.filter(([t]) => (t !== 'essen' || hasMeals) && (t !== 'ausdauer' || hasEndurance) && (t !== 'statistik' || hasStats));
-  useEffect(() => { if (tab === 'statistik' && statsRecords !== null && workouts !== null && !hasStats) setTab('heute'); }, [tab, hasStats, statsRecords, workouts]);
+  const shown = visibleTabs({ meals: hasMeals, endurance: hasEndurance });
+  const tabs = TABS.filter(([t]) => shown.includes(t));
   useEffect(() => { if (tab === 'ausdauer' && runRecords !== null && bikeRecords !== null && rideRecords !== null && !hasEndurance) setTab('heute'); }, [tab, hasEndurance, runRecords, bikeRecords, rideRecords]);
   useEffect(() => { if (tab === 'essen' && mealRecords !== null && !hasMeals) setTab('heute'); }, [tab, hasMeals, mealRecords]);
 
@@ -487,7 +505,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   return (
     <>
       <main className="web-main" onClick={() => setTimeout(() => tick((n) => n + 1), 50)}>
-        <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => { if (tab !== 'profil') setBack(tab); setTab('profil'); }}>
+        <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => setTab('profil')}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
         </button>
         {status === 'login' && (
@@ -508,8 +526,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} focusToday={mealsToday} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
-          {tab === 'statistik' && hasStats && <StatsScreen port={port} now={env.now} />}
-          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} onBack={() => setTab(back)} push={push.state} persistRefused={persistRefused} />}
+          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} persistRefused={persistRefused} />}
         </ErrorBoundary>
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>

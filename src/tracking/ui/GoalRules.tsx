@@ -10,7 +10,7 @@ import type { TrackingPort } from '../ports';
 import { familyLabel, familyLine, familyOf } from '../../shared/families';
 import type { Exercise } from '../../shared/exercises';
 import { ExercisePicker } from './ExercisePicker';
-import { ChoiceRow, ConfirmLink, Row, RowList, Sheet } from './kit';
+import { ChoiceRow, ConfirmLink, ExpandMark, Row, RowList, Sheet } from './kit';
 import { minuteChoices, type Frame } from '../../shared/frame';
 import { finishedWorkouts, useCatalog, useGoal, usePortRecords } from './hooks';
 import { usedSports } from './used-sports';
@@ -129,7 +129,7 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
   const focusText = goal.focus.length ? focusLabel(goal.focus) : 'keiner';
 
   return (
-    <Sheet title="Mein Ziel" onClose={onClose} actions={<button type="button" onClick={onClose}>Fertig</button>}>
+    <Sheet title="Mein Ziel" onClose={onClose}>
       <ChoiceRow label="Ziel" value={goal.strength} options={(Object.keys(STRENGTH_LABEL) as Strength[]).map((s) => ({ value: s, label: STRENGTH_LABEL[s] }))}
         onChange={(strength) => void saveGoal({ ...stored, strength })} />
       {goal.ended && (
@@ -144,7 +144,7 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
       )}
       <button type="button" className="tk-rowbtn tk-choice" aria-expanded={focusOpen} onClick={() => setFocusOpen(!focusOpen)}>
         <span className="tk-row-title">{`Schwerpunkt: ${focusText}${goal.temporary?.focus && goal.focus.length ? ` – bis ${dayLabel(goal.temporary.until)}` : ''}`}</span>
-        <span className={`tk-chevron${focusOpen ? ' open' : ''}`} aria-hidden="true">›</span>
+        <ExpandMark open={focusOpen} />
       </button>
       {focusOpen && (
         <>
@@ -212,7 +212,7 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
   };
 
   return (
-    <Sheet title="Regeln" onClose={onClose} actions={<button type="button" onClick={onClose}>Fertig</button>}>
+    <Sheet title="Regeln" onClose={onClose}>
       {complaints.length > 0 && <p className="muted tk-sheet-note">Rücksicht: {complaints.join(', ')}</p>}
       {rules.length === 0 && tasks.length === 0 ? <p className="muted">Noch keine Regeln. Schreib dem Coach „künftig …“ oder füge eine hinzu.</p> : (
         <RowList label="Regeln">

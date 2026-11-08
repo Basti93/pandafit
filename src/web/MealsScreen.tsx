@@ -329,7 +329,7 @@ export function MealsScreen({ port, now, fetchFn, focusToday }: { port: WebPort;
   const chat = useMemo(() => mealChats(records), [records]);
   const requests = useMemo(() => linkRequests(records), [records]);
   const own = useMemo(() => ownRecipes(records), [records]);
-  if (!week) return <div className="tk-screen"><PageHead title="Essen" /><p className="muted">Noch kein Essensplan da. Der Mac plant samstagmorgens die kommende Woche.</p></div>;
+  if (!week) return <div className="tk-screen"><PageHead title="Essen" /><p className="muted">Noch kein Essensplan. Er kommt am Samstagmorgen für die nächste Woche.</p></div>;
 
   const change = (f: (s: MealState, at: number) => MealState) => changeWeek(week.plan.week, f);
   /** A link to add: a record of its own, answered by the coach on the server. */

@@ -47,7 +47,7 @@ export function ActivityHistory({ port, now, onClose }: { port: TrackingPort; no
 
   const record = picked ? workoutOf(picked) : null;
   const ride = picked ? rideOf(picked) : null;
-  if (picked && record) return <Sheet title="Verlauf" onClose={onClose}><WorkoutDetail port={port} record={record} now={now} onBack={() => setPicked(null)} /></Sheet>;
+  if (picked && record) return <Sheet title="Verlauf" onClose={onClose} onBack={() => setPicked(null)}><WorkoutDetail port={port} record={record} now={now} onBack={() => setPicked(null)} inSheet /></Sheet>;
   return (
     <Sheet title="Verlauf" onClose={onClose}>
       {items.length === 0 && <p className="muted">Hier erscheinen deine Aktivitäten.</p>}

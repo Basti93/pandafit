@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TrackedRecord } from '../../src/shared/records';
-import { App, ErrorBoundary } from '../../src/web/App';
+import { App, ErrorBoundary, visibleTabs } from '../../src/web/App';
 import { openIdb } from '../../src/web/idbStore';
 import { mobilityToShow, shouldShowInstallHint } from '../../src/web/logic';
 import { dayIndex, itemKey, weekOf } from '../../src/shared/meals';
@@ -15,6 +15,7 @@ import { MealCoach } from '../../src/coach/meals/meal-coach';
 import { MEAL_SYSTEM_PROMPT } from '../../src/coach/meals/prompt';
 import { RecordStore } from '../../src/coach/tracking/store';
 import { runFp } from '../../src/shared/run';
+import type { LiveSocket } from '../../src/web/live';
 
 afterEach(cleanup);
 
@@ -27,7 +28,7 @@ const plan = (atMs: number, mobility: unknown = null): TrackedRecord => ({
 });
 const session = (triggerMs: number) => ({ id: `mobility-bike-${triggerMs}`, forSession: 'bike', minutes: 8, exercises: [{ id: 'm1', title: 'Hüftbeuger dehnen', howTo: 'Ausfallschritt, ruhig atmen.', area: 'hueftbeuger' }], reason: 'Nach der Radfahrt tut das gut.' });
 
-type Opts = { startTab?: string; onOpenTab?: (f: (tab: string) => void) => () => void; logoutStatus?: number; hold?: { me: Promise<void> | null }; flaky?: { fail: boolean }; me?: number; hangMe?: boolean; noIdb?: 'null' | 'throws'; flags?: Record<string, string>; logoutFails?: boolean; loginStatus?: number; offline?: boolean; syncStatus?: number; seed?: TrackedRecord[]; account?: string; ua?: string; standalone?: boolean; persist?: boolean; recipes?: (url: string) => Response | Promise<Response> };
+type Opts = { openLive?: () => LiveSocket; startTab?: string; onOpenTab?: (f: (tab: string) => void) => () => void; logoutStatus?: number; hold?: { me: Promise<void> | null }; flaky?: { fail: boolean }; me?: number; hangMe?: boolean; noIdb?: 'null' | 'throws'; flags?: Record<string, string>; logoutFails?: boolean; loginStatus?: number; offline?: boolean; syncStatus?: number; seed?: TrackedRecord[]; account?: string; ua?: string; standalone?: boolean; persist?: boolean; recipes?: (url: string) => Response | Promise<Response> };
 async function boot(o: Opts = {}) {
   const factory = new IDBFactory();
   if (o.seed) { const s = await openIdb('anna', factory); for (const r of o.seed) await s.put(r); s.close(); }
@@ -44,6 +45,7 @@ async function boot(o: Opts = {}) {
     if (url === '/me') return o.me === 401 ? json(401, {}) : json(200, { name: 'anna' });
     if (url === '/login') return json(o.loginStatus ?? 200, { ok: true });
     if (url === '/logout') return json(200, { ok: true });
+    if (url === '/coach/status') return json(200, { profileId: 'pa', moved: true });
     if (o.syncStatus && o.syncStatus !== 200) return json(o.syncStatus, {});
     if (init.method === 'POST') return json(200, { accepted: 1, refused: [] });
     return json(200, { records: [], cursor: 0, more: false, reset: false });
@@ -53,12 +55,26 @@ async function boot(o: Opts = {}) {
   const ui = render(<App env={{
     fetchFn, idbFactory: o.flaky ? ({ open: (n: string, v?: number) => { if (o.flaky!.fail) throw new Error('denied'); return factory.open(n, v); } } as unknown as IDBFactory) : o.noIdb === 'null' ? null : o.noIdb === 'throws' ? ({ open: () => { throw new Error('denied'); } } as unknown as IDBFactory) : factory, now: () => NOW, newId: () => `id-${Math.random().toString(36).slice(2)}`,
     storage: { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => { storage.set(k, v); }, removeItem: (k: string) => { storage.delete(k); } },
-    persist, ua: o.ua ?? 'Mozilla/5.0 Android', standalone: o.standalone ?? false, onWorkoutOpen, startTab: o.startTab, onOpenTab: o.onOpenTab,
+    persist, ua: o.ua ?? 'Mozilla/5.0 Android', standalone: o.standalone ?? false, onWorkoutOpen, startTab: o.startTab, onOpenTab: o.onOpenTab, openLive: o.openLive,
   }} />);
   return { ...ui, factory, storage, calls, persist, onWorkoutOpen };
 }
 
 describe('web app', () => {
+  it('tabs: fixed order; a new account has Heute, Woche, Kraft; Essen and Ausdauer follow their switches', () => {
+    expect(visibleTabs({ meals: false, endurance: false })).toEqual(['heute', 'coach', 'training']);
+    expect(visibleTabs({ meals: true, endurance: false })).toEqual(['heute', 'coach', 'training', 'essen']);
+    expect(visibleTabs({ meals: false, endurance: true })).toEqual(['heute', 'coach', 'training', 'ausdauer']);
+    expect(visibleTabs({ meals: true, endurance: true })).toEqual(['heute', 'coach', 'training', 'essen', 'ausdauer']);
+  });
+
+  it('a new account shows Heute, Woche and Kraft in the tab bar', async () => {
+    await boot({ account: 'anna', seed: [] });
+    const nav = await screen.findByRole('navigation');
+    await new Promise((r) => setTimeout(r, 30));
+    expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual(['Heute', 'Woche', 'Kraft']);
+  });
+
   it('login failure shows a calm message', async () => {
     await boot({ me: 401, loginStatus: 401 });
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'anna' } });
@@ -76,11 +92,12 @@ describe('web app', () => {
     expect(a.calls.some((c) => c.includes('/login'))).toBe(false);
   });
 
-  it('Profil has a way back and the coach timing switches', async () => {
+  it('Profil has the coach timing switches; the tab bar is the way out, no second back link', async () => {
     await boot({ account: 'anna', seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
     expect(await screen.findByRole('switch', { name: /Wochengespräch/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+    expect(screen.queryByRole('button', { name: /Zurück/ })).toBeNull();
+    fireEvent.click(within(screen.getByRole('navigation')).getByRole('button', { name: 'Heute' }));
     expect(await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u })).toBeTruthy();
   });
 
@@ -499,6 +516,37 @@ describe('Essen on the phone', () => {
     await boot({ account: 'anna', seed: [] });
     await screen.findByRole('navigation');
     expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
+  });
+
+  it('Essen follows the "Essensplan" switch: it shows at once, says when the first plan comes, and is remembered', async () => {
+    const sockets: { s: LiveSocket; sent: string[] }[] = [];
+    const openLive = (): LiveSocket => {
+      const entry = { sent: [] as string[], s: null as unknown as LiveSocket };
+      entry.s = { send: (d: string) => { entry.sent.push(d); }, close: () => {}, onopen: null, onmessage: null, onclose: null, onerror: null };
+      sockets.push(entry);
+      return entry.s;
+    };
+    const coachState = (on: boolean) => JSON.stringify({ type: 'coach-state', state: {}, hevy: { state: 'idle' }, garmin: { state: 'idle' }, gym: null,
+      meals: { settings: { on, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'zuhause', abend: 'zuhause' } } } });
+    const a = await boot({ account: 'anna', seed: [], openLive });
+    fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
+    // The coach's socket subscribes; its state says the meal plan is on.
+    await waitFor(() => expect(sockets.length).toBeGreaterThan(0));
+    let link!: { s: LiveSocket; sent: string[] };
+    await waitFor(() => { act(() => { for (const x of sockets) x.s.onopen?.(); }); link = sockets.find((x) => x.sent.some((d) => d.includes('subscribe')))!; expect(link).toBeTruthy(); });
+    expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
+    act(() => link.s.onmessage?.({ data: coachState(true) }));
+    expect(await screen.findByRole('button', { name: 'Essen' })).toBeTruthy();
+    expect(a.storage.get('pandafit.essensplan.anna')).toBe('on');
+    // Switched off again: the tab goes.
+    act(() => link.s.onmessage?.({ data: coachState(false) }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull());
+    expect(a.storage.get('pandafit.essensplan.anna')).toBe('off');
+    cleanup();
+    // The last value seen counts from the start, before the coach is asked again; the page says when the first plan comes.
+    await boot({ account: 'anna', seed: [], flags: { 'pandafit.essensplan.anna': 'on' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    expect(await screen.findByText('Noch kein Essensplan. Er kommt am Samstagmorgen für die nächste Woche.')).toBeTruthy();
   });
 
   describe('on Heute', () => {
@@ -925,22 +973,38 @@ describe('Laufen on the phone', () => {
   const review = run(`review-${week}`, { type: 'review', week, atMs: NOW - 500, km: 12.5, minutes: 90, plannedMinutes: 90, runs: 3, longestKm: 6, easyPace: null, testM: null, focus: 'Ruhig weiter.' });
   const planWeek = run(`week-${week}`, { type: 'week', week, announce: true, atMs: NOW - 900, phase: 1, source: 'rules', reason: 'r', note: null, runs: [{ ...planned, fp: runFp(planned), done: null }], garmin: null });
 
-  it('the Laufen tab appears only with a run status that is on or suggest', async () => {
+  it('Ausdauer for running appears once "Laufen planen" is on or the run coach says on or suggest', async () => {
+    const settings = (on: boolean) => run('settings', { type: 'settings', on, weekdays: null, answers: null });
     await boot({ account: 'anna', seed: [] });
     await screen.findByRole('navigation');
     expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
     cleanup();
-    await boot({ account: 'anna', seed: [status({ on: false, suggest: false })] });
+    await boot({ account: 'anna', seed: [status({ on: false, suggest: false }), settings(false)] });
     await screen.findByRole('navigation');
     expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
     cleanup();
     await boot({ account: 'anna', seed: [status()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
-    expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
     cleanup();
     await boot({ account: 'anna', seed: [status({ on: false, suggest: true })] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
     expect(await screen.findByRole('button', { name: 'Laufen einschalten' })).toBeTruthy();
+    cleanup();
+    // The switch is on, the coach has not answered yet: the tab is there and says what comes.
+    await boot({ account: 'anna', seed: [settings(true)] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
+    expect(await screen.findByText('Laufen ist an. Dein Laufplan erscheint hier, sobald der Coach ihn angelegt hat.')).toBeTruthy();
+  });
+
+  it('switching "Laufen planen" on in Profil shows Ausdauer at once', async () => {
+    await boot({ account: 'anna', seed: [] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
+    const sw = await screen.findByRole('switch', { name: 'Laufen planen' });
+    await waitFor(() => expect((sw as HTMLInputElement).disabled).toBe(false));
+    expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
+    fireEvent.click(sw);
+    expect(await screen.findByRole('button', { name: 'Ausdauer' })).toBeTruthy();
   });
 
   it('a record whose body type does not match its id is ignored', async () => {
@@ -964,14 +1028,19 @@ describe('Laufen on the phone', () => {
   it('a notification for Laufen without a run status stays on Heute', async () => {
     await boot({ account: 'anna', seed: [], startTab: 'laufen' });
     await screen.findByRole('navigation');
-    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Laufen' })).toBeNull());
+    expect(await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Ausdauer' })).toBeNull();
   });
 
-  it('Entwicklung is part of Kraft', async () => {
+  it('Kraft: one page head, then three sub-pages; Übungen holds your exercises and the catalog', async () => {
     await boot({ account: 'anna', seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Entwicklung' }));
-    expect(await screen.findByRole('heading', { name: 'Entwicklung' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Kraft' })).toBeTruthy();
+    const group = screen.getByRole('group', { name: 'Kraft' });
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Training', 'Routinen', 'Übungen']);
+    fireEvent.click(within(group).getByRole('button', { name: 'Übungen' }));
+    expect(await screen.findByRole('heading', { name: 'Anleitungen nachschlagen' })).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
   it('Laufen shows the run look back only when a review exists', async () => {
@@ -1005,22 +1074,27 @@ describe('Laufen on the phone', () => {
 
 });
 
-describe('Statistik on the phone', () => {
+describe('Rückblick in Woche', () => {
   const statsRec: TrackedRecord = { kind: 'stats', id: 'stats', updatedMs: NOW - 1000, deleted: false, body: { type: 'stats', atMs: NOW - 1000, goal: null, days: [], muscles: {} } };
   const done: TrackedRecord = { kind: 'workout', id: 'w1', updatedMs: NOW - 1000, deleted: false, body: { id: 'w1', title: 'Training', startMs: NOW - 2 * DAY, endMs: NOW - 2 * DAY + 3_600_000, source: 'pandafit', exercises: [] } };
 
-  it('the Statistik tab appears with a stats record or a finished workout, and not without', async () => {
+  it('there is no Statistik tab; Woche has the Rückblick, with its rows once there is a stats record or a finished workout', async () => {
     await boot({ account: 'anna', seed: [] });
-    await screen.findByRole('navigation');
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    const empty = await screen.findByRole('region', { name: 'Rückblick' });
     await new Promise((r) => setTimeout(r, 30));
+    expect(within(empty).getAllByRole('button').map((b) => b.textContent)).toEqual(['Verlauf›']);
     expect(screen.queryByRole('button', { name: 'Statistik' })).toBeNull();
     cleanup();
     await boot({ account: 'anna', seed: [statsRec] });
-    fireEvent.click(await screen.findByRole('button', { name: 'Statistik' }));
-    expect(await screen.findByRole('heading', { name: 'Statistik' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Zeit pro Woche' }));
+    expect(await screen.findByRole('dialog', { name: 'Zeit pro Woche' })).toBeTruthy();
     cleanup();
     await boot({ account: 'anna', seed: [done] });
-    expect(await screen.findByRole('button', { name: 'Statistik' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    expect(await screen.findByRole('button', { name: 'Zeit pro Woche' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Statistik' })).toBeNull();
   });
 });
 
@@ -1049,7 +1123,8 @@ describe('Rad on the phone', () => {
     cleanup();
     await boot({ account: 'anna', seed: [bikeRec()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
-    expect(await screen.findByRole('heading', { name: 'Rad' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Nächste Fahrt' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Ausdauer' })).toBeTruthy();
     expect(screen.queryByRole('group', { name: 'Ausdauer' })).toBeNull(); // no switch with Rad alone
   });
 
@@ -1091,16 +1166,18 @@ describe('Rad on the phone', () => {
   it('with Rad and Laufen a switch shows, remembers the choice and the old tab name still works', async () => {
     const a = await boot({ account: 'anna', seed: [bikeRec(), runStatus()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
-    await screen.findByRole('heading', { name: 'Rad' });
+    await screen.findByRole('region', { name: 'Nächste Fahrt' });
+    // One page head: the title, the switch below it, no second title for the chosen half.
+    expect(screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent)).toEqual(['Ausdauer']);
     fireEvent.click(within(screen.getByRole('group', { name: 'Ausdauer' })).getByRole('button', { name: 'Laufen' }));
-    expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
     expect(a.storage.get('pandafit.ausdauer.anna')).toBe('laufen');
     cleanup();
     await boot({ account: 'anna', seed: [bikeRec(), runStatus()], startTab: 'laufen' });
-    expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
     cleanup();
     await boot({ account: 'anna', seed: [bikeRec(), runStatus()], flags: { 'pandafit.ausdauer.anna': 'laufen' }, startTab: 'ausdauer' });
-    expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
   });
 
   const bikeWeek = async (): Promise<TrackedRecord> => {
@@ -1116,7 +1193,7 @@ describe('Rad on the phone', () => {
     const card = screen.getByRole('region', { name: /^Heute/ });
     expect(card.textContent).toContain('am Mac');
     fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
-    expect(await screen.findByRole('heading', { name: 'Rad' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Nächste Fahrt' })).toBeTruthy();
   });
 
   it('Heute on a bike day without a published plan keeps the note about the Mac', async () => {

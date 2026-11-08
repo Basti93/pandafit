@@ -16,7 +16,7 @@ const openSheet = () => { fireEvent.click(screen.getByRole('button', { name: /^S
 
 async function start(f: ReturnType<typeof fakePort>) {
   render(<WorkoutScreen port={f.port} {...ids} />);
-  await screen.findByRole('heading', { name: 'Training starten' });
+  await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
 }
 async function create(name: string) {
   fireEvent.click(within(openSheet()).getByRole('button', { name: 'Neues Studio …' }));

@@ -10,7 +10,7 @@ import { dateLabel } from './labels';
 import { MuscleIcon } from './MuscleIcon';
 import { progressRows, type ProgressRow } from '../progress';
 import { runView } from './run-view';
-import { PageHead, Row, RowList, Sheet } from './kit';
+import { Row, RowList, Sheet } from './kit';
 import { HealthSheet } from './HealthSheet';
 import { healthOf } from './health-view';
 
@@ -26,10 +26,6 @@ const statsOf = (records: TrackedRecord[] | null): StatsBody | null => {
   const r = (records ?? []).find((x) => x.id === STATS_ID && !x.deleted);
   return r ? readStats(r.body) : null;
 };
-
-/** The statistics page exists once there is a stats record or at least one finished workout. */
-export const statsVisible = (stats: TrackedRecord[] | null, workouts: TrackedRecord[] | null): boolean =>
-  statsOf(stats) !== null || countable((workouts ?? []).filter((r) => !r.deleted)).length > 0;
 
 const half = (n: number) => String(Math.round(n * 2) / 2).replace('.', ',');
 /** This week's effective sets against the target, in words. */
@@ -47,15 +43,6 @@ function MuscleRow({ b, open, onToggle }: { b: GroupBalance; open: boolean; onTo
     >
       <p className="muted tk-small">{detailText(b)}</p>
     </Row>
-  );
-}
-
-function ThisWeek({ sentence, verdicts }: { sentence: string; verdicts: string[] }) {
-  return (
-    <section className="card tk-stats" aria-label="Diese Woche">
-      <p className="tk-week-line">{sentence}</p>
-      {verdicts.length > 0 && <ul className="tk-verdicts">{verdicts.map((t) => <li key={t}>{verdictText(t)}</li>)}</ul>}
-    </section>
   );
 }
 
@@ -119,10 +106,12 @@ function Progress({ rows }: { rows: ProgressRow[] }) {
   );
 }
 
-export function StatsScreen({ port, now }: { port: TrackingPort; now: () => number }) {
-  const [details, setDetails] = useState(false);
-  const [musclesOpen, setMusclesOpen] = useState(false);
-  const [healthOpen, setHealthOpen] = useState(false);
+/**
+ * Woche > Rückblick: how it went, in one place. Verlauf, Muskeln, Gesundheit and Zeit pro Woche as rows; each opens a sheet.
+ * What is worth saying about the last weeks stands above the rows. Rows without data are left out; Verlauf is always there.
+ */
+export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort; now: () => number; /** The newest activity in a few words. */ latest?: string; onHistory: () => void }) {
+  const [sheet, setSheet] = useState<'time' | 'muscles' | 'health' | null>(null);
   const health = healthOf(usePortRecords(port, 'health').records);
   const statsQ = usePortRecords(port, 'stats');
   const workoutsQ = usePortRecords(port, 'workout');
@@ -138,19 +127,14 @@ export function StatsScreen({ port, now }: { port: TrackingPort; now: () => numb
   const progress = useMemo(() => progressRows({
     nowMs, ftp: stats?.ftp ?? [], weightKg: stats?.weightKg ?? null, runPace: runView(runRecords ?? [], nowMs).status?.numbers.easyPace ?? null,
     workouts,
-  }), [stats, runRecords, workouts, v, nowMs]);
-  if (statsQ.failed || workoutsQ.failed) {
-    const retry = () => { if (statsQ.failed) statsQ.retry(); if (workoutsQ.failed) workoutsQ.retry(); };
-    return (
-      <div className="tk-screen">
-        <p role="status" className="tk-note">Die Statistik konnte gerade nicht gelesen werden. Es ist nichts verloren, versuch es gleich nochmal.</p>
-        <button type="button" onClick={retry}>Nochmal versuchen</button>
-      </div>
-    );
-  }
-  if (statsRecords === null || workoutRecords === null) return <div className="tk-screen" aria-busy="true" />;
+  }), [stats, runRecords, workouts, nowMs]);
+  const failed = statsQ.failed || workoutsQ.failed;
+  const retry = () => { if (statsQ.failed) statsQ.retry(); if (workoutsQ.failed) workoutsQ.retry(); };
+  const loaded = statsRecords !== null && workoutRecords !== null && !failed;
+  // Something to look back on: a stats record from the coach or a finished workout.
+  const any = loaded && (stats !== null || workouts.length > 0);
 
-  const muscles = workouts.length > 0;
+  const muscles = any && workouts.length > 0;
   const weeks = v.weeks.slice(0, v.weeks.length - 1);
   const minutes = v.sports.length > 0;
   const w = v.thisWeek;
@@ -159,23 +143,24 @@ export function StatsScreen({ port, now }: { port: TrackingPort; now: () => numb
   const sentence = total > 0 || sessions > 0
     ? `Diese Woche: ${sessions} ${sessions === 1 ? 'Einheit' : 'Einheiten'}, ${durationText(total)}`
     : 'Diese Woche noch keine Einheit.';
-  const hasDetails = minutes || progress.length > 0 || v.unknown.length > 0;
   return (
-    <div className="tk-screen">
-      <PageHead title="Statistik" subtitle={v.asOfMs !== null ? `Stand: ${dateLabel(v.asOfMs)}` : 'Minuten und harte Tage erscheinen nach dem nächsten Lauf des Coaches.'} />
-      <ThisWeek sentence={sentence} verdicts={v.verdicts} />
-      {(muscles || hasDetails || health) && (
-        <RowList>
-          {health && <Row title="Gesundheit" onClick={() => setHealthOpen(true)} />}
-          {muscles && <Row title="Muskeln" onClick={() => setMusclesOpen(true)} />}
-          {hasDetails && <Row title="Details" onClick={() => setDetails(true)} />}
-        </RowList>
-      )}
-      {healthOpen && health && <HealthSheet health={health} onClose={() => setHealthOpen(false)} />}
-      {musclesOpen && <MusclesSheet v={v} onClose={() => setMusclesOpen(false)} />}
-      {details && (
-        <Sheet title="Details" onClose={() => setDetails(false)}>
+    <section className="tk-lookback" aria-label="Rückblick">
+      <h2 className="tk-section">Rückblick</h2>
+      {failed && <p role="status" className="tk-note">Der Rückblick konnte gerade nicht gelesen werden. Es ist nichts verloren. <button type="button" onClick={retry}>Nochmal versuchen</button></p>}
+      {any && v.verdicts.length > 0 && <ul className="tk-verdicts">{v.verdicts.map((t) => <li key={t}>{verdictText(t)}</li>)}</ul>}
+      <RowList label="Rückblick">
+        <Row title="Verlauf" value={latest ? <span className="tk-ellipsis">{latest}</span> : undefined} onClick={onHistory} />
+        {muscles && <Row title="Muskeln" onClick={() => setSheet('muscles')} />}
+        {health && <Row title="Gesundheit" onClick={() => setSheet('health')} />}
+        {any && <Row title="Zeit pro Woche" onClick={() => setSheet('time')} />}
+      </RowList>
+      {sheet === 'health' && health && <HealthSheet health={health} onClose={() => setSheet(null)} />}
+      {sheet === 'muscles' && <MusclesSheet v={v} onClose={() => setSheet(null)} />}
+      {sheet === 'time' && (
+        <Sheet title="Zeit pro Woche" onClose={() => setSheet(null)}>
           <div className="tk-stats">
+            <p className="tk-week-line">{sentence}</p>
+            <p className="muted tk-small">{v.asOfMs !== null ? `Stand: ${dateLabel(v.asOfMs)}` : 'Minuten und harte Tage erscheinen nach dem nächsten Lauf des Coaches.'}</p>
             {minutes && (
               <dl className="tk-pace" aria-label="Diese Woche nach Sportart">
                 {v.sports.map((s) => <div key={s}><dt>{SPORT_LABEL[s]}</dt><dd>{durationText(w.minutes[s])}</dd></div>)}
@@ -187,6 +172,6 @@ export function StatsScreen({ port, now }: { port: TrackingPort; now: () => numb
           </div>
         </Sheet>
       )}
-    </div>
+    </section>
   );
 }
