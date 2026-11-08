@@ -28,6 +28,7 @@ import { TogetherCard, TogetherPage, togetherOf } from './TogetherScreen';
 import type { PushEnv, SubJson } from './push';
 import { ContactSettings, UpdatesSwitch } from './ContactSettings';
 import { ConnectionSettings, ProfileGroup } from './ConnectionSettings';
+import { readTheme, saveTheme, type Theme } from './theme';
 import { CoachLink } from './coachLink';
 import { LiveClient, type LiveSocket } from './live';
 import { LiveRide } from './LiveRide';
@@ -453,8 +454,10 @@ const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; last
 };
 
 /** The account on this device, a few switches, the coach's timing, and the way out. Rows, not cards. */
-function Profil({ account, port, now, status, onLogout, push, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null }) {
+function Profil({ account, port, now, status, onLogout, push, link, storage }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null; storage: Env['storage'] }) {
   const [confirming, setConfirming] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => readTheme(storage));
+  const pickTheme = (t: Theme) => { saveTheme(storage, t); setTheme(t); };
   usePortRecords(port, 'workout'); // re-renders when the port changes
   const hasBike = bikeVisible(bikeOf(usePortRecords(port, 'bike').records), ridesOf(usePortRecords(port, 'ride').records));
   const c = port.syncState();
@@ -477,6 +480,14 @@ function Profil({ account, port, now, status, onLogout, push, link }: { link: Co
         {push && <PushSettings push={push} port={port} now={now} />}
         {/* The coach's timing is about notifications: it shows under them once they are on (always where the shell has no push at all). */}
         {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
+      </ProfileGroup>
+      <ProfileGroup title="Darstellung">
+        <div className="tk-seg" role="group" aria-label="Darstellung">
+          {([['light', 'Hell'], ['dark', 'Dunkel'], ['system', 'System']] as const).map(([t, label]) => (
+            <button key={t} type="button" aria-pressed={theme === t} onClick={() => pickTheme(t)}>{label}</button>
+          ))}
+        </div>
+        <p className="muted">Mit „System“ folgt Pandafit der Einstellung deines Geräts. Die Wahl gilt nur auf diesem Gerät.</p>
       </ProfileGroup>
       {confirming ? (
         <p role="status" className="tk-note">
@@ -603,7 +614,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} showPrefs={false} openChat={chatOnOpen} />}
-          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} />}
+          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}
         </ErrorBoundary>
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>

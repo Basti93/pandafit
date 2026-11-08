@@ -78,6 +78,9 @@
   --fs-2xl: 1.3rem;
   --fs-3xl: 1.4rem;
 }
+/* A choice in Profil sets data-theme on <html>; native controls follow it. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #fbf8ef;

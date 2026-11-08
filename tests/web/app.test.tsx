@@ -107,6 +107,20 @@ describe('web app', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
   });
 
+  it('Profil: Darstellung starts on System and switches to Hell and Dunkel on this device', async () => {
+    await boot({ account: 'anna', seed: [] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
+    const group = await screen.findByRole('group', { name: 'Darstellung' });
+    expect(within(group).getByRole('button', { name: 'System' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(within(group).getByRole('button', { name: 'Dunkel' }));
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(within(group).getByRole('button', { name: 'Dunkel' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(within(group).getByRole('button', { name: 'Hell' }));
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    fireEvent.click(within(group).getByRole('button', { name: 'System' }));
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+  });
+
   it('Profil: the e-mail address saves and removes, the weekly switch needs an address', async () => {
     const a = await boot({ account: 'anna', seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));

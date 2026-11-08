@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import { themeChoice } from './src/web/theme-css';
 
 const outDir = resolve('out/web');
 
@@ -38,6 +39,7 @@ export default defineConfig(({ command }) => ({
   root: 'src/web',
   publicDir: 'public',
   plugins: [react(), ...(command === 'build' ? [precache()] : [])],
+  css: { postcss: { plugins: [themeChoice()] } },
   build: {
     outDir,
     emptyOutDir: true,
