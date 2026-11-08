@@ -79,32 +79,44 @@ export function applyNextChanges(plan: GymWorkout, changes: readonly NextChange[
   let exercises: GymExercise[] = plan.exercises.map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s })) }));
   const notes: string[] = [];
   const applied: string[] = [];
-  for (const c of changes) for (const o of c.ops) {
-    let i = exercises.findIndex((e) => e.templateId === o.exerciseId);
-    if (i < 0 && o.op === 'swap') {
-      // The original is not planned: the swap still counts when its target is, or it takes the place of a planned exercise for the same muscle.
-      const to = catalog.find((x) => x.id === o.toId);
-      const muscle = catalog.find((x) => x.id === o.exerciseId)?.primaryMuscle;
-      if (exercises.some((e) => e.templateId === o.toId)) { applied.push(c.id); continue; }
-      if (to && !excluded?.has(to.id) && muscle) i = exercises.findIndex((e) => catalog.find((x) => x.id === e.templateId)?.primaryMuscle === muscle && !excluded?.has(e.templateId));
-      if (i < 0) { notes.push('Ein Tausch passte nicht zu diesem Training und bleibt fürs nächste.'); continue; }
+  const NOT_FITTING = 'Ein Tausch passte nicht zu diesem Training und bleibt fürs nächste.';
+  // A fallback never takes an exercise that a swap produced, that another op names, or that a taken swap wants as its target.
+  const targets = new Set(changes.flatMap((c) => c.ops.flatMap((o) => (o.op === 'swap' ? [o.toId] : []))));
+  const named = new Set(changes.flatMap((c) => c.ops.map((o) => o.exerciseId)));
+  const produced = new Set<string>();
+  // One change applies whole or not at all: its ops run on a working copy that is kept only when every op worked.
+  for (const c of changes) {
+    let work = exercises.map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s })) }));
+    const madeHere: string[] = [];
+    let failed: NextOp['op'] | null = null;
+    for (const o of c.ops) {
+      let i = work.findIndex((e) => e.templateId === o.exerciseId);
+      if (i < 0 && o.op === 'swap') {
+        const to = catalog.find((x) => x.id === o.toId);
+        const muscle = catalog.find((x) => x.id === o.exerciseId)?.primaryMuscle;
+        if (work.some((e) => e.templateId === o.toId)) continue; // the target is planned already
+        if (to && !excluded?.has(to.id) && muscle) i = work.findIndex((e) => catalog.find((x) => x.id === e.templateId)?.primaryMuscle === muscle && !excluded?.has(e.templateId) && !produced.has(e.templateId) && !madeHere.includes(e.templateId) && !named.has(e.templateId) && !targets.has(e.templateId));
+      }
+      if (i < 0) { failed = o.op; break; }
+      const e = work[i]!;
+      if (o.op === 'drop') work = work.filter((_, k) => k !== i);
+      else if (o.op === 'swap') {
+        const to = catalog.find((x) => x.id === o.toId);
+        if (!to || excluded?.has(to.id)) { failed = 'swap'; break; }
+        work[i] = { ...e, templateId: to.id, title: to.title, sets: e.sets.map((s) => ({ ...s, weightKg: null })) };
+        madeHere.push(to.id);
+      } else if (o.op === 'sets') {
+        const warm = e.sets.filter((s) => s.type === 'warmup');
+        const rows = e.sets.filter((s) => s.type !== 'warmup');
+        if (rows.length === 0) { failed = 'sets'; break; }
+        const fitted = o.sets <= rows.length ? rows.slice(0, o.sets) : [...rows, ...Array.from({ length: o.sets - rows.length }, () => ({ ...rows[rows.length - 1]! }))].filter(Boolean);
+        work[i] = { ...e, sets: [...warm, ...fitted] };
+      } else work[i] = { ...e, sets: e.sets.map((s) => (s.weightKg !== null ? { ...s, weightKg: lower(e.templateId, s.weightKg * (1 - LIGHTER_PCT / 100)) } : s)) };
     }
-    if (i < 0) { notes.push('Eine Änderung fürs Training passte nicht mehr zum Plan.'); continue; }
-    const e = exercises[i]!;
-    if (o.op === 'drop') { exercises = exercises.filter((_, k) => k !== i); applied.push(c.id); }
-    else if (o.op === 'swap') {
-      const to = catalog.find((x) => x.id === o.toId);
-      if (!to || excluded?.has(to.id)) { notes.push('Eine Änderung fürs Training passte nicht mehr zum Plan.'); continue; }
-      exercises[i] = { ...e, templateId: to.id, title: to.title, sets: e.sets.map((s) => ({ ...s, weightKg: null })) };
-      applied.push(c.id);
-    } else if (o.op === 'sets') {
-      const warm = e.sets.filter((s) => s.type === 'warmup');
-      const work = e.sets.filter((s) => s.type !== 'warmup');
-      if (work.length === 0) { notes.push('Eine Änderung fürs Training passte nicht mehr zum Plan.'); continue; }
-      const fitted = o.sets <= work.length ? work.slice(0, o.sets) : [...work, ...Array.from({ length: o.sets - work.length }, () => ({ ...work[work.length - 1]! }))].filter(Boolean);
-      exercises[i] = { ...e, sets: [...warm, ...fitted] };
-      applied.push(c.id);
-    } else { exercises[i] = { ...e, sets: e.sets.map((s) => (s.weightKg !== null ? { ...s, weightKg: lower(e.templateId, s.weightKg * (1 - LIGHTER_PCT / 100)) } : s)) }; applied.push(c.id); }
+    if (failed) { notes.push(failed === 'swap' ? NOT_FITTING : 'Eine Änderung fürs Training passte nicht mehr zum Plan.'); continue; }
+    exercises = work;
+    madeHere.forEach((id) => produced.add(id));
+    applied.push(c.id);
   }
   return { plan: { ...plan, exercises }, notes: [...new Set(notes)], applied: [...new Set(applied)] };
 }

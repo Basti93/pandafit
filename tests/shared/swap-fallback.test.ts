@@ -52,3 +52,23 @@ test('the gym prompt names confirmed swaps as data, and not without any', async 
   expect(p).toContain('<tausch-nur-daten>\n[{"statt":"Bankdrücken","nimm":"Brustpresse"}]');
   expect(p).toContain('Bestätigte Tausche gelten: plane die Übung aus nimm statt der aus statt.');
 });
+
+test('a change applies whole: a failing swap keeps its drop from happening', () => {
+  const c = readChange('chg-x', moveChange(changeRecord('x', [{ op: 'swap', exerciseId: 'pf-pull-up', toId: 'pf-lat-pulldown' }, { op: 'drop', exerciseId: 'pf-squat' }], 'r', 1), 'taken', 2)!.body)!;
+  const r = applyNextChanges(plan, [c], EXERCISES);
+  expect(r.applied).toEqual([]);
+  expect(r.plan.exercises.map((e) => e.templateId)).toEqual(['pf-incline-bench-press', 'pf-squat']);
+  expect(r.notes).toEqual([NOT_FITTING]);
+});
+
+test('two swaps of one muscle hit different exercises; one candidate serves only the first', () => {
+  const two: GymWorkout = { name: 'P', exercises: [ex('pf-incline-bench-press', 'a'), ex('pf-bench-press-db', 'b')] };
+  const a = swapChange('pf-bench-press', 'pf-chest-press-machine', 'a');
+  const b = swapChange('pf-pec-deck', 'pf-incline-press-db', 'b');
+  const r = applyNextChanges(two, [a, b], EXERCISES);
+  expect(r.applied).toEqual(['chg-a', 'chg-b']);
+  expect(r.plan.exercises.map((e) => e.templateId).sort()).toEqual(['pf-chest-press-machine', 'pf-incline-press-db']);
+  const one = applyNextChanges(plan, [a, b], EXERCISES);
+  expect(one.applied).toEqual(['chg-a']);
+  expect(one.notes).toEqual([NOT_FITTING]);
+});
