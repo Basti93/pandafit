@@ -9,6 +9,8 @@ import { exerciseImages, videoSearchUrl } from '../media';
 import { resolveExercise } from '../exercise-identity';
 import { dateKey } from '../../shared/day-rating';
 import { frameOf } from '../../shared/frame';
+import { mergedActivities } from './done-days';
+import { complaintsOpenIn } from './finisher';
 import { HARDNESS_LABEL, hasSport, planFor, SPORT_LABEL } from '../../shared/week-plan';
 import { describeExercise } from '../similar';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
@@ -442,6 +444,9 @@ export function WorkoutScreen({ port, plan = null, routine = null, resume = fals
   const [message, setMessage] = useState<string | null>(null);
   const [summaryId, setSummaryId] = useState<string | null>(pendingSummary);
   const statsQ = usePortRecords(port, 'stats').records;
+  const weekplansQ = usePortRecords(port, 'weekplan').records;
+  const activitiesQ = usePortRecords(port, 'activities').records;
+  const complaintsQ = usePortRecords(port, 'complaint').records;
   const starting = useRef(false);
   const started = useRef<GymWorkout | null>(null);
   const history = finishedWorkouts(workouts);
@@ -553,7 +558,8 @@ export function WorkoutScreen({ port, plan = null, routine = null, resume = fals
   return (
     <div className="tk-screen">
       {message && <p role="status" className="tk-note">{message}</p>}
-      {summary && <WorkoutSummary workout={summary} next={nextSteps} onDone={() => { setPendingSummary(null); setSummaryId(null); onDone?.(); }} />}
+      {summary && <WorkoutSummary workout={summary} next={nextSteps} onDone={() => { setPendingSummary(null); setSummaryId(null); onDone?.(); }}
+        nowMs={now()} today={planFor(weekplansQ ?? [], dateKey(now()))} activities={mergedActivities(activitiesQ, workouts).items} complaintsOpen={complaintsOpenIn(complaintsQ)} />}
       <SyncNote port={port} />
       {!summary && (
         <>

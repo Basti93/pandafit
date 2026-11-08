@@ -133,4 +133,44 @@ describe('Heute as a day page', () => {
     await boot([]);
     expect(screen.queryByText('Dein Körper')).toBeNull();
   });
+
+  describe('Zum Abschluss', () => {
+    const workout = (endMs: number | null) => rec('workout', 'w1', { id: 'w1', title: 'Beine', startMs: NOW - 4_000_000, endMs, source: 'pandafit', exercises: [] });
+    const planWithMobility = rec('plan', 'current', {
+      workout: null, reason: 'x', source: 'ai', note: null, questions: [], atMs: NOW - 1000,
+      mobility: { id: `mobility-bike-${NOW - 3_600_000}`, forSession: 'bike', minutes: 8, exercises: [{ id: 'm1', title: 'Hüftbeuger dehnen', howTo: 'Ruhig atmen.', area: 'hueftbeuger' }], reason: 'Tut gut.' },
+    });
+    it('after a finished workout the card holds the mobility row', async () => {
+      await boot([workout(NOW - 600_000), planWithMobility]);
+      const card = await screen.findByRole('region', { name: 'Zum Abschluss' });
+      expect(card.textContent).toContain('20 Min locker Cardio');
+      expect(card.contains(await screen.findByRole('button', { name: /^Beweglichkeit/ }))).toBe(true);
+      expect(card.textContent).not.toContain('Ein paar Minuten dehnen');
+    });
+    it('without a coach session the plain stretch line shows', async () => {
+      await boot([workout(NOW - 600_000)]);
+      const card = await screen.findByRole('region', { name: 'Zum Abschluss' });
+      expect(card.textContent).toContain('Ein paar Minuten dehnen, was sich fest anfühlt.');
+    });
+    it('a ride today leaves only stretching', async () => {
+      const items = [{ key: 'rad-1', kind: 'rad', title: null, sport: 'cycling', startMs: NOW - 300_000, minutes: 30, distanceM: null, avgHr: null, ref: null }];
+      await boot([workout(NOW - 600_000), rec('activities', 'activities', { type: 'activities', atMs: NOW, items })]);
+      const card = await screen.findByRole('region', { name: 'Zum Abschluss' });
+      expect(card.textContent).toContain('Heute reicht Dehnen.');
+      expect(card.textContent).not.toContain('20 Min locker Cardio');
+    });
+    it('shows nothing without a finished workout, while one is open, or after three hours; the mobility row stays', async () => {
+      await boot([planWithMobility]);
+      await screen.findByRole('button', { name: /^Beweglichkeit/ });
+      expect(screen.queryByText('Zum Abschluss')).toBeNull();
+      cleanup();
+      await boot([workout(null), planWithMobility]);
+      await screen.findByRole('button', { name: /^Beweglichkeit/ });
+      expect(screen.queryByText('Zum Abschluss')).toBeNull();
+      cleanup();
+      await boot([workout(NOW - 3 * 3_600_000 - 60_000), planWithMobility]);
+      await screen.findByRole('button', { name: /^Beweglichkeit/ });
+      expect(screen.queryByText('Zum Abschluss')).toBeNull();
+    });
+  });
 });
