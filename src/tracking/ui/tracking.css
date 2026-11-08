@@ -36,7 +36,7 @@
 .tk-set .tk-num { width: 100%; min-width: 0; text-align: center; font-size: 1.1rem; }
 .tk-chip-wrap { position: relative; width: 44px; height: 44px; }
 .tk-chip { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: .7rem; background: var(--tk-field); border: 1px solid var(--tk-line); font-weight: 700; font-size: 1.05rem; }
-.tk-chip-warm { color: var(--low, #f2bd55); }
+.tk-chip-warm { color: var(--low, #f2bd55); font-size: .72rem; border-style: dashed; }
 .tk-chip-fail { color: #f08a7a; }
 .tk-chip-drop { color: #8cc4f0; }
 .tk-chip-wrap:focus-within .tk-chip { outline: 2px solid var(--tk-accent); outline-offset: 1px; }
@@ -49,7 +49,6 @@
 .tk-edit .tk-hint, .tk-edit .tk-plates { grid-column: 3 / 5; }
 .tk-step select { width: auto; min-height: 36px; padding: .2rem .6rem; }
 .tk-step { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; font-size: .9rem; }
-.tk-done .tk-num { opacity: .75; }
 .tk-ex-head { display: flex; align-items: flex-start; gap: .5rem; }
 .tk-ex-head h2 { flex: 1; min-width: 0; overflow-wrap: anywhere; padding-top: .55rem; }
 .tk-ex-head .muted { padding-top: .6rem; }
@@ -107,7 +106,7 @@
 .tk-desc p.tk-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .tk-info-pic a, .tk-info .tk-credit a { color: inherit; }
 .tk-info-empty { display: flex; align-items: center; gap: .5rem; }
-.tk-info a.tk-video { align-self: flex-start; min-height: 40px; display: inline-flex; align-items: center; color: var(--tk-accent); text-decoration: underline; font-weight: 600; }
+.tk-info a.tk-video { align-self: flex-start; min-height: 40px; display: inline-flex; align-items: center; color: var(--tk-muted); text-decoration: underline; font-weight: 600; }
 .tk-info a.tk-video::after { content: ' ↗'; white-space: pre; }
 .tk-muscle-icon { display: block; flex: none; }
 .tk-ex-icon { flex: none; padding-top: .65rem; }
@@ -131,11 +130,10 @@
 
 .tk-elapsed { font-variant-numeric: tabular-nums; font-weight: 600; }
 /* Done sets: a green row. Done exercises: green edge, a badge, the rest calmer. The current exercise: accent edge. */
-.tk-set.tk-done { background: color-mix(in srgb, var(--tk-good) 16%, transparent); border-radius: .7rem; }
-.tk-done .tk-num { opacity: .6; text-decoration: none; }
+.tk-set.tk-done { background: color-mix(in srgb, var(--tk-good) 22%, transparent); border-radius: .7rem; }
+.tk-done .tk-num { opacity: 1; text-decoration: none; color: var(--tk-text); border-color: var(--tk-good); }
 .tk-ex-done { border-left: 5px solid var(--tk-good); }
 .tk-ex-done .tk-ex-head h2 { color: var(--tk-good); }
-.tk-ex-done > :not(.tk-ex-head) { opacity: .7; }
 .tk-ex-badge { flex: none; align-self: center; padding: .15rem .6rem; border-radius: 999px; background: var(--tk-good); color: var(--tk-ink); font-size: .8rem; font-weight: 700; }
 .tk-ex-current { border-left: 5px solid var(--tk-accent); scroll-margin-top: 4.5rem; }
 /* The statistics page. Sport colours come from the palette (accent and muted tones), told apart by the legend and by position. */
@@ -456,3 +454,17 @@
 .tk-sheet-body:has(.tk-chat) { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1rem); mask-image: linear-gradient(to bottom, transparent 0, #000 1rem); }
 .tk-notes { margin-bottom: .5rem; }
 .tk-chat-form textarea:focus-visible { outline: none; border-color: var(--tk-accent, var(--accent, #e8964a)); }
+
+/* Calmer strength screens (X4). */
+.tk-ex-sub { display: block; font-weight: 400; font-size: .8rem; line-height: 1.2; }
+.tk-screen button.tk-rowbtn-main { font-weight: 800; color: var(--tk-accent); }
+.tk-plan-preview button.tk-studio-line { padding: .5rem 1rem; text-decoration: none; }
+.tk-stepper { gap: .5rem; }
+.tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; }
+.tk-sheet .tk-stepper button.tk-step-btn { border: 1px solid var(--tk-line); border-radius: 50%; text-decoration: none; }
+.tk-stepcount { min-width: 5rem; text-align: center; }
+.tk-pick-group { position: sticky; top: 0; z-index: 1; background: var(--tk-bg); }
+.tk-open .tk-links { margin-top: 0; }
+.tk-sheet-actions button:disabled { opacity: .6; }
+.tk-sheet .tk-rows .tk-rowitem > button.tk-rowbtn[aria-expanded="true"] { position: sticky; top: 0; z-index: 1; background: var(--bg, #12201a); }
+.tk-sheet .tk-stepper button.tk-step-btn { display: inline-flex; align-items: center; justify-content: center; padding: 0; }

@@ -40,6 +40,7 @@ export function StudioSheet({ value, known, onChange, onRename, onAway, onClose 
           onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
       ) : (
         <>
+          <p className="muted">Jedes Studio merkt sich seine Gewichte.</p>
           <ul className="tk-rows">
             {names.map((n) => (
               <li key={n} className="tk-rowitem">
@@ -54,9 +55,9 @@ export function StudioSheet({ value, known, onChange, onRename, onAway, onClose 
           </ul>
           {value && (
             <div className="tk-links">
-              <button type="button" className="link" onClick={() => { setText(value); setMode('rename'); }}>Umbenennen</button>
-              {onAway && !onAway.used && <ConfirmLink label="Entfernen" question="Studio wirklich entfernen?" onConfirm={() => { onAway.run(value, false); onClose(); }} />}
-              {onAway && onAway.used && <button type="button" className="link" onClick={() => { onAway.run(value, true); onClose(); }}>Ausblenden</button>}
+              <button type="button" className="link" onClick={() => { setText(value); setMode('rename'); }}>{value} umbenennen</button>
+              {onAway && !onAway.used && <ConfirmLink label={`${value} entfernen`} question="Studio wirklich entfernen?" onConfirm={() => { onAway.run(value, false); onClose(); }} />}
+              {onAway && onAway.used && <button type="button" className="link" onClick={() => { onAway.run(value, true); onClose(); }}>{value} ausblenden</button>}
             </div>
           )}
         </>

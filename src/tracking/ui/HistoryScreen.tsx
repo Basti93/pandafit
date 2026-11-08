@@ -45,15 +45,20 @@ export function Development({ exerciseId, title, history, onBack, inSheet = fals
     const sets = ex.flatMap((e) => e.sets as TrackedSet[]);
     const timed = ex.some((e) => (e as { timed?: boolean }).timed);
     const b = best(sets, timed);
-    return b ? { id: w.id, end: w.endMs ?? w.startMs, best: describe(b, timed), all: setsLine(sets, timed), warm: warmups(sets) } : null;
+    return b ? { id: w.id, end: w.endMs ?? w.startMs, kg: timed ? null : b.weightKg, best: describe(b, timed), all: setsLine(sets, timed), warm: warmups(sets) } : null;
   }).filter((r): r is NonNullable<typeof r> => r !== null), [exerciseId, history]);
+  // "Seit August von 50 auf 57,5 kg": oldest against newest best weight, only when it changed.
+  const first = rows[rows.length - 1], last = rows[0];
+  const progress = first && last && first.kg !== null && last.kg !== null && first.kg !== last.kg
+    ? `Seit ${new Date(first.end).toLocaleDateString('de-DE', { month: 'long' })} von ${formatDecimal(first.kg)} auf ${formatDecimal(last.kg)} kg` : null;
   return (
     <div className="tk-screen">
       {!inSheet && <button type="button" className="link tk-back" onClick={onBack}>‹ Zurück</button>}
       <h1 className="tk-title">{title}</h1>
       {rows.length === 0 ? <p className="muted">Noch keine erledigten Sätze.</p> : (
         <>
-          <p>Letztes Mal: {rows[0]!.best}</p>
+          {progress && <p>{progress}</p>}
+          <p className="muted tk-sub">Bester Satz je Training</p>
           <RowList label="Entwicklung">
             {rows.map((r) => (
               <Row key={r.id} title={dateLabel(r.end)} value={r.best} expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)}>

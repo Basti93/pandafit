@@ -4,7 +4,7 @@ import type { LoggedSet } from '../../src/shared/records';
 const s = (type: LoggedSet['type'], weightKg: number | null = null, reps: number | null = null, durationS: number | null = null): LoggedSet => ({ type, weightKg, reps, durationS, doneMs: 1 });
 
 test('chips: A for warmup, running numbers for working sets, F and D for failure and drop sets', () => {
-  expect(setLabels([s('warmup'), s('normal'), s('normal'), s('failure'), s('dropset'), s('normal')])).toEqual(['A', '1', '2', 'F', 'D', '5']);
+  expect(setLabels([s('warmup'), s('normal'), s('normal'), s('failure'), s('dropset'), s('normal')])).toEqual(['Aufw.', '1', '2', 'F', 'D', '5']);
   expect(setLabels([])).toEqual([]);
 });
 

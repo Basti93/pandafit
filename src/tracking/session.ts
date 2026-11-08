@@ -243,8 +243,32 @@ function mapSet(w: TrackedWorkout, ex: string, set: string, f: (s: TrackedSet) =
   return mapEx(w, ex, (x) => ({ ...x, sets: x.sets.map((s) => (s.rid === set ? f(s) : s)) }));
 }
 
+/** The values a set shows as a preset while it is empty: those of the nearest set before it of the same kind (warm-up or working). */
+export function presetOf(sets: readonly TrackedSet[], index: number): Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS'> {
+  const me = sets[index];
+  const out = { weightKg: null as number | null, reps: null as number | null, durationS: null as number | null };
+  if (!me) return out;
+  for (let i = index - 1; i >= 0; i--) {
+    const o = sets[i]!;
+    if ((o.type === 'warmup') !== (me.type === 'warmup')) continue;
+    if (out.weightKg === null) out.weightKg = o.weightKg;
+    if (out.reps === null) out.reps = o.reps;
+    if (out.durationS === null) out.durationS = o.durationS;
+  }
+  return out;
+}
+type Values = Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS'>;
+/** What an empty set takes from its preset: all three when it is entirely empty, else only the missing reps or seconds of a set that has a weight. A cleared weight next to reps is meant (bodyweight) and stays. */
+export function filled(s: Values, preset: Values): Partial<Values> {
+  if (s.weightKg === null && s.reps === null && s.durationS === null) return { weightKg: preset.weightKg, reps: preset.reps, durationS: preset.durationS };
+  if (s.weightKg !== null && s.reps === null && s.durationS === null) return { reps: preset.reps, durationS: preset.durationS };
+  return {};
+}
+/** Confirming a set without any value takes the preset (the set before it), so one tap logs "the same again". */
 export function confirmSet(w: TrackedWorkout, ex: string, set: string, nowMs: number, catalog: readonly Exercise[] = EXERCISES): TrackedWorkout {
-  const next = mapSet(w, ex, set, (s) => ({ ...s, doneMs: nowMs }));
+  const sets = w.exercises.find((x) => x.rid === ex)?.sets ?? [];
+  const preset = presetOf(sets, sets.findIndex((s) => s.rid === set));
+  const next = mapSet(w, ex, set, (s) => ({ ...s, ...filled(s, preset), doneMs: nowMs }));
   if (next === w) return w;
   const setIndex = next.exercises.find((x) => x.rid === ex)?.sets.findIndex((s) => s.rid === set) ?? 0;
   const durationS = restAfterSet(next, ex, setIndex, catalog);

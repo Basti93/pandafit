@@ -6,11 +6,11 @@ type SetType = LoggedSet['type'];
 /** Full names, shown in the set type choice. The row itself only shows the short chip. */
 export const TYPE_NAMES: Record<SetType, string> = { warmup: 'Aufwärmen', normal: 'Normaler Satz', failure: 'Bis zum Versagen', dropset: 'Dropset' };
 
-/** The chip of each set: A for warmup, F for failure, D for a drop set, otherwise its number. Warmups do not count. */
+/** The chip of each set: "Aufw." for warmup, F for failure, D for a drop set, otherwise its number. Warmups do not count. */
 export function setLabels(sets: { type: SetType }[]): string[] {
   let n = 0;
   return sets.map((x) => {
-    if (x.type === 'warmup') return 'A';
+    if (x.type === 'warmup') return 'Aufw.';
     n += 1;
     return x.type === 'failure' ? 'F' : x.type === 'dropset' ? 'D' : String(n);
   });
@@ -46,6 +46,21 @@ export function setHint(set: { type?: SetType; repRange?: { start: number; end: 
 /** True when the plan left every weight open: the screen then says "Gewicht nach Gefühl" once, under the title. */
 export const exerciseHasNoWeight = (e: { timed?: boolean; sets: { weightKg: number | null }[] }): boolean =>
   !e.timed && e.sets.length > 0 && e.sets.every((x) => x.weightKg === null);
+
+/** Last time once, for the exercise head: its working sets, same weights joined ("70 kg × 8, 8, 7 · 72,5 kg × 6"). Null when there was none. */
+export function lastTimeLine(last: readonly LoggedSet[], timed: boolean): string | null {
+  const work = last.filter((x) => x.type !== 'warmup');
+  const sets = work.length > 0 ? work : [...last];
+  if (sets.length === 0) return null;
+  if (timed) return sets.map((x) => (x.durationS !== null ? `${x.durationS} Sek.` : '–')).join(', ');
+  const groups: { kg: number | null; reps: string[] }[] = [];
+  for (const s of sets) {
+    const g = groups[groups.length - 1];
+    const reps = s.reps !== null ? String(s.reps) : '–';
+    if (g && g.kg === s.weightKg) g.reps.push(reps); else groups.push({ kg: s.weightKg, reps: [reps] });
+  }
+  return groups.map((g) => (g.kg !== null ? `${formatDecimal(g.kg)} kg × ${g.reps.join(', ')}` : `${g.reps.join(', ')} Wdh.`)).join(' · ');
+}
 
 /** The line under the next open set: only what you did last time ("zuletzt 57,5 kg × 8"). Null when there is none. */
 export const setLastHint = (previous: LoggedSet | null, timed: boolean): string | null => {

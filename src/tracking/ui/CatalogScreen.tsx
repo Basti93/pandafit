@@ -52,9 +52,10 @@ export function CatalogScreen({ port, now = Date.now, newId = () => crypto.rando
     const fromChat = covering.filter((r) => r.source === 'chat');
     return (
       <ExerciseInfo title={e.title} description={descriptionOf(e)} images={exerciseImages(e.id)} video={videoSearchUrl(e)}>
-        {fam !== 'other' && <p className="muted tk-family">Familie: {familyLabel(fam)}</p>}
+        {fam !== 'other' && <p className="muted tk-family">Gleiche Übungsart: {familyLabel(fam)}</p>}
         {isOut ? (
           <>
+            <p className="muted">Der Coach schlägt sie nicht mehr vor. Zurücknehmen unter Woche &gt; Regeln.</p>
             {fromChat.length > 0 && <p className="muted tk-note">Ausgeschlossen durch die Regel „{fromChat[0].text}“. Du findest sie unter Woche.</p>}
             {own.length > 0 && <div className="tk-cat-actions"><button type="button" className="secondary" onClick={() => void allow(e)}>Wieder erlauben</button></div>}
           </>

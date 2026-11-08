@@ -28,13 +28,13 @@ export function ladderHere(exerciseId: string, equipment: string, history: reado
 /** "Gewichtsstufen hier: 5 kg (gelernt)". */
 export const stepLine = (s: { stepKg: number; own: boolean }): string => `Gewichtsstufen hier: ${formatDecimal(s.stepKg)} kg (${s.own ? 'von dir' : 'gelernt'})`;
 
-/** The plate line of a barbell set: "Pro Seite: 20 + 2,5", "Nicht genau auflegbar – 60 oder 62,5 kg" or "Leichter als die Stange (20 kg)". */
+/** The plate line of a barbell set: "Scheiben je Seite: 20 + 2,5", "Nicht genau auflegbar – 60 oder 62,5 kg" or "Leichter als die Stange (20 kg)". */
 export function plateLine(totalKg: number): string {
   const p = platesPerSide(totalKg);
   const bar = formatDecimal(ruleNumber('load.bar-kg'));
   if (p.status === 'below-bar') return `Leichter als die Stange (${bar} kg)`;
   if (p.status === 'between') return `Nicht genau auflegbar – ${formatDecimal(p.lower as number)} oder ${formatDecimal(p.upper as number)} kg`;
-  return p.perSide.length === 0 ? `Nur die Stange (${bar} kg)` : `Pro Seite: ${p.perSide.map(formatDecimal).join(' + ')}`;
+  return p.perSide.length === 0 ? `Nur die Stange (${bar} kg)` : `Scheiben je Seite: ${p.perSide.map(formatDecimal).join(' + ')}`;
 }
 
 /** The record that sets the step here, or with `stepKg` null the tombstone ("gelernt"). Stamped above what is stored, tombstones included. */

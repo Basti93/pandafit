@@ -532,7 +532,7 @@ async function main() {
   await fresh('Kraft');
   await shot('kraft-training-start');
   await step('kraft-studio', async () => { await page.getByRole('button', { name: /^Studio/ }).click({ timeout: 1000 }); await shot('kraft-training-start-studio'); await closeDialog(); });
-  await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Anderes Training' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
+  await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Routine oder leer' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
   await seg('Routinen');
   await shot('kraft-routinen');
   await step('kraft-routine-edit', async () => {
@@ -685,7 +685,7 @@ async function main() {
       await page.getByRole('button', { name: 'Training beenden' }).click();
       await page.waitForTimeout(800);
       await shot('kraft-training-beendet');
-      await page.getByRole('button', { name: 'Weglassen' }).click();
+      await page.getByRole('button', { name: 'Offene Sätze nicht eintragen' }).click();
       await page.waitForTimeout(1200);
       await shot('kraft-training-zusammenfassung');
     });

@@ -270,7 +270,7 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
         </Sheet>
       )}
       {error && <p role="alert" className="tk-note">{error}</p>}
-      {picking && <ExercisePicker port={port} onPick={pick} onClose={() => setPicking(false)} now={now} newId={newId} />}
+      {picking && <ExercisePicker port={port} title="Übung ausschließen" onPick={pick} onClose={() => setPicking(false)} now={now} newId={newId} />}
       {chosen && (
         <div className="tk-row" role="group" aria-label={`${chosen.title} ausschließen`}>
           <button type="button" className="secondary" onClick={() => exclude(chosen)}>Nur diese Übung</button>

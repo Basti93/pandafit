@@ -74,7 +74,8 @@ test('the menu actions reach the same functions: add a set, a note on request, m
   expect(screen.getByLabelText('Notiz zu Kniebeuge')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Kniebeuge nach unten' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Reihenfolge ändern Kniebeuge' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Kniebeuge nach unten' })); // the one list: arrows (or a drag) there
   await waitFor(() => expect(bodyOf(f.map).exercises.map((e) => e.title)).toEqual(['Bankdrücken', 'Kreuzheben', 'Kniebeuge']));
 });
 
@@ -85,19 +86,19 @@ test('an existing note is shown without asking', async () => {
   expect((screen.getByLabelText('Notiz zu Kniebeuge') as HTMLTextAreaElement).value).toBe('Tiefer gehen');
 });
 
-test('the end sheet: Weglassen is the primary choice, Als erledigt zählen the second, Zurück changes nothing', async () => {
+test('the end sheet: not entering is the primary choice, Trotzdem als gemacht eintragen the second, Zurück changes nothing', async () => {
   const f = await running();
   fireEvent.click(screen.getByRole('button', { name: 'Training beenden' }));
   const sheet = await screen.findByRole('dialog', { name: '3 Sätze offen' });
   const buttons = within(sheet).getAllByRole('button').filter((b) => b.getAttribute('aria-label') !== 'Schließen');
-  expect(buttons.map((b) => b.textContent)).toEqual(['Weglassen', 'Als erledigt zählen', 'Zurück']);
+  expect(buttons.map((b) => b.textContent)).toEqual(['Offene Sätze nicht eintragen', 'Trotzdem als gemacht eintragen', 'Zurück']);
   expect(buttons[0]!.className).not.toMatch(/secondary|link/); // the filled one
   expect(buttons[1]!.className).toContain('secondary');
   fireEvent.click(within(sheet).getByRole('button', { name: 'Zurück' }));
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(bodyOf(f.map).endMs).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Training beenden' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Als erledigt zählen' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Trotzdem als gemacht eintragen' }));
   await waitFor(() => expect(bodyOf(f.map).exercises.flatMap((e) => e.sets).every((s) => s.doneMs !== null)).toBe(true));
   expect(bodyOf(f.map).endMs).not.toBeNull();
 });
@@ -111,7 +112,7 @@ test('the header menu: discard asks first and then removes the workout; Studio a
   expect(f.map.get('workout:w1')!.deleted).toBe(false);
   fireEvent.click(within(menu).getByRole('button', { name: 'Ja' }));
   await waitFor(() => expect(f.map.get('workout:w1')!.deleted).toBe(true));
-  expect(await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ })).toBeTruthy();
 });
 
 test('Coach fragen from the header menu opens the coach panel', async () => {
@@ -133,14 +134,14 @@ test('the rest bar is one button that skips, with +30 s next to it', async () =>
   await waitFor(() => expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull());
 });
 
-test('the start screen: studio is a row, the others live behind "Anderes Training"', async () => {
+test('the start screen: studio is a row, the others live behind "Routine oder leer"', async () => {
   const f = fakePort([]);
   const plan = { name: 'Plan', exercises: [{ templateId: 'pf-squat', title: 'Kniebeuge', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal' as const, weightKg: 60, reps: 8 }] }] };
   render(<WorkoutScreen port={f.port} plan={plan} {...ids} />);
-  await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
+  await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ });
   expect(screen.queryByRole('button', { name: 'Leeres Training starten' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Anderes Training' }));
-  fireEvent.click(within(screen.getByRole('dialog', { name: 'Anderes Training' })).getByRole('button', { name: 'Leeres Training starten' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Routine oder leer' }));
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'Routine oder leer' })).getByRole('button', { name: 'Leeres Training starten' }));
   await waitFor(() => expect(f.state.puts.some((p) => p.kind === 'workout')).toBe(true));
 });
 

@@ -207,7 +207,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   );
 }
 
-function Training({ port, env, resume }: { port: WebPort; env: Env; resume: boolean }) {
+function Training({ port, env, resume, onDone }: { port: WebPort; env: Env; resume: boolean; onDone: () => void }) {
   const [running, setRunning] = useState(false);
   const plans = usePortRecords(port, 'plan').records;
   const [screen, setScreen] = useState<'workout' | 'routines' | 'exercises'>('workout');
@@ -224,7 +224,7 @@ function Training({ port, env, resume }: { port: WebPort; env: Env; resume: bool
           <button type="button" aria-pressed={screen === 'exercises'} onClick={() => setScreen('exercises')}>Übungen</button>
         </div>
       </div>}
-      {screen === 'workout' && <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={resume} onActive={setRunning} plan={routine ? null : plan?.workout ?? null} routine={routine} now={env.now} newId={env.newId} />}
+      {screen === 'workout' && <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={resume} onActive={setRunning} onDone={onDone} plan={routine ? null : plan?.workout ?? null} routine={routine} now={env.now} newId={env.newId} />}
       {screen === 'exercises' && <ExercisesScreen port={port} now={env.now} newId={env.newId} />}
       {screen === 'routines' && <RoutinesScreen port={port} now={env.now} newId={env.newId} onStart={(r) => { setRoutine(r); setScreen('workout'); }} />}
     </>
@@ -538,7 +538,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
-          {tab === 'training' && <Training port={port} env={env} resume={resume} />}
+          {tab === 'training' && <Training port={port} env={env} resume={resume} onDone={() => setTab('heute')} />}
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}

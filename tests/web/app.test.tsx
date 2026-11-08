@@ -159,7 +159,7 @@ describe('web app', () => {
     const a = await boot({ offline: true, account: 'anna', seed: [plan(NOW - 1000)] });
     expect(await screen.findByText('Beine A')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Anderes Training' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Routine oder leer' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leeres Training starten' }));
     await waitFor(async () => {
       const s = await openIdb('anna', a.factory);

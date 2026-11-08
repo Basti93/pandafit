@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { exerciseBlocks, type TrackedWorkout } from '../session';
 import { Sheet } from './kit';
 
-/** What starts a drag: the row that was held, and where the finger is. */
+/** What starts a drag: the row that was held, and where the finger is. A negative pointerId only opens the list (from the exercise menu). */
 export type DragStart = { rid: string; pointerId: number; y: number };
 
 /**
@@ -29,7 +29,7 @@ export function ReorderSheet({ workout, start, onDrop, onStep, onClose }: {
     rects.current = blocksRef.current.map((_, i) => { const r = els.current[i]?.getBoundingClientRect(); return { top: r?.top ?? 0, height: r?.height ?? 0 }; });
     setDrag({ rid, pointerId, y0: y, dy: 0 });
   };
-  useLayoutEffect(() => { if (start) begin(start.rid, start.pointerId, start.y); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => { if (start && start.pointerId >= 0) begin(start.rid, start.pointerId, start.y); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const from = drag ? blocks.findIndex((b) => b.some((e) => e.rid === drag.rid)) : -1;
   const target = (dy: number, i: number): number => {

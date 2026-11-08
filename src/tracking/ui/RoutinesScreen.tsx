@@ -24,7 +24,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
 
   const write = async (r: TrackedRecord): Promise<boolean> => { try { await port.put(r); setFailed(false); return true; } catch { setFailed(true); return false; } };
 
-  const names = (b: GymWorkout) => b.exercises.map((e) => e.title).join(', ');
+  const count = (b: GymWorkout) => `${b.exercises.length} ${b.exercises.length === 1 ? 'Übung' : 'Übungen'}`;
   const openRecord = (records ?? []).find((r) => r.id === open);
   const note = failed && <p role="status" className="tk-note">Gerade nicht gespeichert. Versuch es gleich nochmal.</p>;
 
@@ -39,7 +39,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
       return (
         <Sheet title={draft.isNew ? 'Neue Routine' : 'Routine bearbeiten'} onClose={closeAll}
           actions={<>
-            {!valid && <p className="muted tk-oneline">Name und mindestens eine Übung</p>}
+            {!valid && (draft.name !== '' || draft.exercises.length > 0) && <p className="muted tk-oneline">Name und mindestens eine Übung</p>}
             <button type="button" disabled={!valid} onClick={async () => {
               if (saving.current) return; // a double tap saves once
               saving.current = true;
@@ -55,15 +55,19 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
             {draft.exercises.map((e, i) => (
               <li key={i} className="tk-rowitem tk-stepper">
                 <span className="tk-row-title">{e.title}</span>
-                <button type="button" className="link" aria-label={`Satz entfernen ${e.title}`} disabled={e.sets.length <= 1} onClick={() => setEx(i, (x) => ({ ...x, sets: x.sets.slice(0, -1) }))}>−</button>
-                <span className="tk-stepcount" aria-label={`${e.sets.length} Sätze`}>{e.sets.length}</span>
-                <button type="button" className="link" aria-label={`Satz hinzufügen ${e.title}`} onClick={() => setEx(i, (x) => ({ ...x, sets: [...x.sets, emptySet()] }))}>+</button>
+                <button type="button" className="link tk-step-btn" aria-label={`Satz entfernen ${e.title}`} disabled={e.sets.length <= 1} onClick={() => setEx(i, (x) => ({ ...x, sets: x.sets.slice(0, -1) }))}>−</button>
+                <span className="tk-stepcount" aria-label={`${e.sets.length} Sätze`}>{e.sets.length} {e.sets.length === 1 ? 'Satz' : 'Sätze'}</span>
+                <button type="button" className="link tk-step-btn" aria-label={`Satz hinzufügen ${e.title}`} onClick={() => setEx(i, (x) => ({ ...x, sets: [...x.sets, emptySet()] }))}>+</button>
                 <button type="button" className="danger-link tk-del-ex" aria-label={`Übung entfernen ${e.title}`} onClick={() => setEx(i, () => null)}>×</button>
               </li>
             ))}
           </RowList>
           <button type="button" className="secondary" onClick={() => setPicking(true)}>Übung hinzufügen</button>
           {note}
+          {!draft.isNew && (() => {
+            const stored = (records ?? []).find((r) => r.id === draft.id);
+            return stored ? <div className="tk-links"><ConfirmLink label="Routine löschen" question="Routine wirklich löschen?" onConfirm={async () => { if (await write({ ...stored, updatedMs: after(now, Math.max(stored.updatedMs, draft.updatedMs)), deleted: true })) closeAll(); }} /></div> : null;
+          })()}
         </Sheet>
       );
     }
@@ -79,7 +83,6 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
           <RowList label="Übungen">{body.exercises.map((e, i) => <Row key={i} title={e.title} value={`${e.sets.length} Sätze`} />)}</RowList>
         )}
         {note}
-        <div className="tk-links"><ConfirmLink label="Löschen" question="Routine wirklich löschen?" onConfirm={async () => { if (await write({ ...openRecord, updatedMs: after(now, openRecord.updatedMs), deleted: true })) setOpen(null); }} /></div>
       </Sheet>
     );
   })();
@@ -92,7 +95,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
         <RowList label="Routinen">
           {(records ?? []).map((r) => {
             const body = r.body as GymWorkout;
-            return <Row key={r.id} title={body.name} value={<span className="tk-ellipsis">{names(body)}</span>} onClick={() => setOpen(r.id)} />;
+            return <Row key={r.id} title={body.name} value={count(body)} onClick={() => setOpen(r.id)} />;
           })}
         </RowList>
       )}

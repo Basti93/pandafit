@@ -72,7 +72,7 @@ describe('catalog page', () => {
     const f = await open();
     search(squat.title);
     fireEvent.click(line(squat.title));
-    expect(screen.getByText(/^Familie: /)).toBeTruthy();
+    expect(screen.getByText(/^Gleiche Übungsart: /)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /^Nicht mehr vorschlagen/ }));
     fireEvent.click(screen.getByRole('button', { name: /^Alle Varianten \(/ }));
     await waitFor(() => expect(rules(f)).toHaveLength(1));

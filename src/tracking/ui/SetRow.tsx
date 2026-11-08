@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatDecimal, parseDecimal, type TrackedSet } from '../session';
+import { filled, formatDecimal, parseDecimal, type TrackedSet } from '../session';
 import { useDraft } from './hooks';
 import { TYPE_NAMES } from './setGrid';
 
@@ -41,12 +41,14 @@ export function SetHead({ timed, editing }: { timed: boolean; editing?: boolean 
 
 const CHIP_CLASS: Record<TrackedSet['type'], string> = { warmup: ' tk-chip-warm', normal: '', failure: ' tk-chip-fail', dropset: ' tk-chip-drop' };
 
-export function SetRow({ index, set, timed, label, hint, target, plates, editing, confirmedNow, onEdit, onToggle, onRemove }: {
+export function SetRow({ index, set, timed, label, preset, hint, target, plates, editing, confirmedNow, onEdit, onToggle, onRemove }: {
   index: number; set: TrackedSet; timed: boolean;
   /** Edit mode (from the exercise menu): each set gets its remove button. */
   editing?: boolean;
-  /** The short chip: A, F, D or the set's number. Defaults to the row number. */
+  /** The short chip: Aufw., F, D or the set's number. Defaults to the row number. */
   label?: string;
+  /** Shown in an empty field as the value a tap on the check takes (the set before). */
+  preset?: Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS'>;
   /** A muted line under the values: what you did last time. Tapping it shows the target range (`target`). */
   hint?: string | null;
   target?: string | null;
@@ -63,10 +65,11 @@ export function SetRow({ index, set, timed, label, hint, target, plates, editing
   const [asking, setAsking] = useState(false);
   const [showTarget, setShowTarget] = useState(false);
   const blocked = bad.w || bad.r;
+  const shown = preset ? filled(set, preset) : undefined; // an empty field shows what a tap on the check would put in it
   return (
     <div className={`tk-set${done ? ' tk-done' : ''}${editing ? ' tk-edit' : ''}`}>
       {editing && <button type="button" className="tk-del" aria-label={`Satz ${n} entfernen`} onClick={() => ((confirmedNow ? confirmedNow() : done) ? setAsking(true) : onRemove())}>×</button>}
-      <span className="tk-chip-wrap" title={set.type === 'warmup' ? 'Aufwärmen' : undefined}>
+      <span className="tk-chip-wrap">
         <span className={`tk-chip${CHIP_CLASS[set.type]}`} aria-hidden="true">{label ?? String(n)}</span>
         <select className="tk-type" aria-label={`Satztyp Satz ${n}`} value={set.type} onChange={(e) => onEdit({ type: e.target.value as TrackedSet['type'] })}>
           {Object.entries(TYPE_NAMES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -74,10 +77,10 @@ export function SetRow({ index, set, timed, label, hint, target, plates, editing
       </span>
       {timed
         ? <span />
-        : <NumField label={`Gewicht Satz ${n}`} value={set.weightKg} placeholder="–" onValidity={(w) => setBad((b) => ({ ...b, w }))} onCommit={(weightKg) => onEdit({ weightKg })} />}
+        : <NumField label={`Gewicht Satz ${n}`} value={set.weightKg} placeholder={shown?.weightKg != null ? formatDecimal(shown.weightKg) : '–'} onValidity={(w) => setBad((b) => ({ ...b, w }))} onCommit={(weightKg) => onEdit({ weightKg })} />}
       {timed
-        ? <NumField label={`Sekunden Satz ${n}`} value={set.durationS} placeholder="–" integer onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(durationS) => onEdit({ durationS })} />
-        : <NumField label={`Wiederholungen Satz ${n}`} value={set.reps} placeholder="–" integer onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(reps) => onEdit({ reps })} />}
+        ? <NumField label={`Sekunden Satz ${n}`} value={set.durationS} placeholder={shown?.durationS != null ? String(shown.durationS) : '–'} integer onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(durationS) => onEdit({ durationS })} />
+        : <NumField label={`Wiederholungen Satz ${n}`} value={set.reps} placeholder={shown?.reps != null ? String(shown.reps) : '–'} integer onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(reps) => onEdit({ reps })} />}
       {onToggle
         ? <button type="button" className={`tk-check${done ? ' on' : ''}`} aria-label={`Satz ${n} erledigt`} aria-pressed={done} disabled={blocked && !done} onClick={onToggle}><span aria-hidden="true">✓</span></button>
         : <span />}

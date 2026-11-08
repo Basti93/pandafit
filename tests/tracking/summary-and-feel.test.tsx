@@ -25,7 +25,7 @@ async function finish(seed: TrackedRecord[]) {
 test('after the finish the summary lists the next step per exercise, and Fertig dismisses it for good', async () => {
   const next = { exerciseId: 'pf-squat', title: 'Kniebeuge', weightKg: 82.5, reps: 5, why: 'progress', reason: 'weil du alle Wiederholungen geschafft hast', forWorkoutId: 'o1', atMs: 1000 };
   await finish([stats([next])]);
-  expect((await screen.findByText(/Gut gemacht · 1 Übung · 2 Min/))).toBeTruthy();
+  expect((await screen.findByText(/1 Übung · 2 Min/))).toBeTruthy();
   expect(screen.getByText(/Kniebeuge · Nächstes Mal: 82,5 kg × 5 – weil du alle/).className).toContain('muted');
   fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
   expect(screen.queryByRole('region', { name: 'Zusammenfassung' })).toBeNull();
@@ -34,15 +34,15 @@ test('after the finish the summary lists the next step per exercise, and Fertig 
 
 test('before the publish the summary shows no placeholder, and a reload still shows it', async () => {
   const { port } = await finish([]);
-  expect(await screen.findByText(/^Gut gemacht · 1 Übung/)).toBeTruthy();
+  expect(await screen.findByText(/^Gespeichert/)).toBeTruthy();
   expect(screen.queryByText(/nach der Auswertung/)).toBeNull();
   cleanup();
   render(<WorkoutScreen port={port} {...ids} />);
-  expect(await screen.findByText(/^Gut gemacht · 1 Übung/)).toBeTruthy();
+  expect(await screen.findByText(/^Gespeichert/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
   cleanup();
   render(<WorkoutScreen port={port} {...ids} />);
-  await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
+  await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ });
   expect(screen.queryByRole('region', { name: 'Zusammenfassung' })).toBeNull();
 });
 

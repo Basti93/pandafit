@@ -42,11 +42,11 @@ export function MuscleIcon({ group, size = 22 }: { group: MuscleGroup | null; si
   const rect = (x: number, w: number, y: number, h: number, region: MuscleGroup | null, key: string) => {
     const on = region !== null && region === shown;
     return <rect key={key} x={x} y={y} width={w} height={h} rx={Math.min(w, h) / 2.4} data-region={region ?? undefined}
-      fill={on ? 'var(--tk-accent)' : 'var(--tk-muted)'} fillOpacity={on ? 1 : 0.35} />;
+      fill={on ? 'var(--tk-accent)' : 'var(--tk-text)'} fillOpacity={on ? 1 : 0.4} />;
   };
   return (
     <svg className="tk-muscle-icon" role="img" aria-label={group === null ? 'Muskel unbekannt' : MUSCLE_TARGETS[group].label} width={size} height={size} viewBox="0 0 24 24">
-      <circle cx={12} cy={2.6} r={1.9} fill="var(--tk-muted)" fillOpacity={0.35} />
+      <circle cx={12} cy={2.6} r={1.9} fill="var(--tk-text)" fillOpacity={0.4} />
       {parts.flatMap(([x, y, w, h, region, pair], i) => [
         rect(x, w, y, h, region, `${i}`),
         ...(pair ? [rect(24 - x - w, w, y, h, region, `${i}m`)] : []),
