@@ -73,7 +73,7 @@ export function listedIds(workouts: readonly { changes?: { id: string }[] }[]): 
 
 /**
  * The plan with the taken changes applied, oldest first. An op whose exercise is not in the plan (any more) is skipped with a
- * short line. `lower`: where a lowered weight lands (default: the nearest 0.5 kg; the app passes the exercise's weight ladder). `applied`: the ids of the changes of which at least one op did something; the others are not used up.
+ * short line. `lower`: where a lowered weight lands (default: the nearest 0.5 kg; the app passes the exercise's weight ladder). `applied`: the ids of the changes whose ops all applied; a change applies whole or not at all, and the others stay open.
  */
 export function applyNextChanges(plan: GymWorkout, changes: readonly NextChange[], catalog: readonly Exercise[], lower: (exerciseId: string, kg: number) => number = (_id, kg) => half(kg), excluded?: ReadonlySet<string>): { plan: GymWorkout; notes: string[]; applied: string[] } {
   let exercises: GymExercise[] = plan.exercises.map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s })) }));
