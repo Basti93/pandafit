@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
-import { vi } from 'vitest';
+import { onTestFinished, vi } from 'vitest';
 import { createCoachRuntime, type RuntimeOptions } from '../../src/coach/runtime';
 import { AccountLinks } from '../../src/coach/tracking/link';
 import { RecordStore } from '../../src/coach/tracking/store';
@@ -293,6 +293,9 @@ describe('the run coach in the runtime', () => {
   });
 
   test('the planning ratings of the run coach count a run done yesterday', async () => {
+    // Pin the clock to a Wednesday: on a Monday "yesterday" belongs to the previous week.
+    vi.useFakeTimers({ now: new Date('2026-11-11T10:00:00'), toFake: ['Date'] });
+    onTestFinished(() => { vi.useRealTimers(); });
     const { root, runtime } = make();
     runSettings(runtime);
     const startMs = Date.now() - 24 * 3600_000;
