@@ -20,9 +20,11 @@ export function YesterdayTraining({ activities, workouts, mobility, date }: { ac
       {items !== null && items.length === 0 && doneMobility.length === 0 && <p className="muted">Gestern war ein Ruhetag.</p>}
       {(items ?? []).map((a) => {
         const ex = titles(a);
+        // activityText already names the minutes except for strength and a run with a distance.
+        const text = a.kind === 'kraft' || (a.kind === 'lauf' && a.distanceM !== null && a.distanceM > 0) ? `${activityText(a)} · ${Math.max(1, Math.round(a.minutes))} Min` : activityText(a);
         return (
           <div key={a.key}>
-            <p>{activityText(a)} · {Math.round(a.minutes)} Min</p>
+            <p>{text}</p>
             {ex.length > 0 && <p className="muted tk-clamp">{ex.join(', ')}</p>}
           </div>
         );

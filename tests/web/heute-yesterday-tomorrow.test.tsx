@@ -50,7 +50,9 @@ describe('Gestern', () => {
     await boot([activities([ride])]);
     go('Tag zurück');
     const card = screen.getByRole('region', { name: 'Training gestern' });
-    await waitFor(() => expect(card.textContent).toContain('Rad 45 Min · 45 Min'));
+    await waitFor(() => expect(card.textContent).toContain('Rad 45 Min'));
+    expect(card.textContent).not.toContain('Min · ');
+    expect(card.textContent!.match(/45 Min/g)).toHaveLength(1);
     expect(screen.queryByLabelText('Satz vom Coach')).toBeNull();
     expect(screen.queryByText('Dein Körper')).toBeNull();
     expect(screen.queryByRole('button', { name: /Gemeinsam/ })).toBeNull();
@@ -87,6 +89,15 @@ describe('Gestern', () => {
     await boot([meals([3])]);
     go('Tag zurück');
     expect(screen.queryByRole('region', { name: 'Essen gestern' })).toBeNull();
+  });
+});
+
+describe('Gestern without a local workout', () => {
+  it('shows no exercise line for a strength item from the server', async () => {
+    await boot([activities([{ ...ride, key: 'kraft-x', kind: 'kraft', title: 'Beine', sport: 'strength', minutes: 54, ref: 'x' }])]);
+    go('Tag zurück');
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Training gestern' }).textContent).toContain('Kraft Beine · 54 Min'));
+    expect(screen.getByRole('region', { name: 'Training gestern' }).querySelector('.muted')).toBeNull();
   });
 });
 

@@ -22,18 +22,23 @@ describe('activitiesOn', () => {
 });
 
 describe('mealDayOf', () => {
+  const dayBefore = (ms: number) => { const d = new Date(ms); d.setDate(d.getDate() - 1); return d.getTime(); };
+  const dayAfter = (ms: number) => { const d = new Date(ms); d.setDate(d.getDate() + 1); return d.getTime(); };
   it('finds last week for yesterday on a Monday', () => {
-    const r = mealDayOf([week('2026-11-02'), week('2026-11-09')], at(8, 12))!; // Sunday 8 Nov is in week 2026-11-02
+    const monday = at(9, 12); // Monday 9 Nov 2026
+    expect(new Date(monday).getDay()).toBe(1);
+    const r = mealDayOf([week('2026-11-02'), week('2026-11-09')], dayBefore(monday))!;
     expect(r.week.plan.week).toBe('2026-11-02');
     expect(r.day).toBe(6);
-    const mon = mealDayOf([week('2026-11-02')], at(2, 12) - 86_400_000 * 0 - 86_400_000)!; // Sunday 1 Nov
-    expect(mon).toBeNull();
-    expect(mealDayOf([week('2026-10-26')], at(1, 12))!.week.plan.week).toBe('2026-10-26');
+    expect(mealDayOf([week('2026-11-09')], dayBefore(monday))).toBeNull();
   });
   it('finds next week for tomorrow on a Sunday', () => {
-    const r = mealDayOf([week('2026-11-09')], at(9, 12))!;
+    const sunday = at(8, 12); // Sunday 8 Nov 2026
+    expect(new Date(sunday).getDay()).toBe(0);
+    const r = mealDayOf([week('2026-11-02'), week('2026-11-09')], dayAfter(sunday))!;
     expect(r.week.plan.week).toBe('2026-11-09');
     expect(r.day).toBe(0);
+    expect(mealDayOf([week('2026-11-02')], dayAfter(sunday))).toBeNull();
   });
   it('is null without a record', () => {
     expect(mealDayOf(null, at(4, 12))).toBeNull();
