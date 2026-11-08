@@ -454,3 +454,5 @@
 .tk-clip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; max-width: 12rem; }
 .tk-block { flex-basis: 100%; }
 .tk-sheet-body:has(.tk-chat) { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1rem); mask-image: linear-gradient(to bottom, transparent 0, #000 1rem); }
+.tk-notes { margin-bottom: .5rem; }
+.tk-chat-form textarea:focus-visible { outline: none; border-color: var(--tk-accent, var(--accent, #e8964a)); }

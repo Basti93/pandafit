@@ -13,6 +13,9 @@ import { planRows } from './done-days';
 import { openProposals, storedWeek, weekAnswer } from './chat-open';
 import { useCatalog, usePortRecords } from './hooks';
 import { Sheet } from './kit';
+import { dateLabel } from './labels';
+import { newestNotes } from '../../shared/change-notes';
+import { readStats, STATS_ID } from '../../shared/stats';
 
 /** The chat shows this many of the newest messages, and this many more each time. */
 const CHAT_PAGE = 30;
@@ -67,6 +70,10 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   const changeRecs = usePortRecords(port, 'change').all;
   const ruleRecs = usePortRecords(port, 'rule').all;
   const catalog = useCatalog(port);
+  const statsRecords = usePortRecords(port, 'stats').all;
+  const statsRec = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);
+  const notes = newestNotes((statsRec && readStats(statsRec.body)?.changes) || [], 5);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -142,6 +149,16 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
 
   return (
     <Sheet title="Coach" onClose={onClose} actions={pins}>
+      {notes.length > 0 && (
+        <div className="tk-notes">
+          <button type="button" className="link" aria-expanded={notesOpen} onClick={() => setNotesOpen(!notesOpen)}>Zuletzt geändert {notesOpen ? '⌃' : '⌄'}</button>
+          {notesOpen && (
+            <ul className="tk-changes" aria-label="Zuletzt geändert">
+              {notes.map((n, i) => <li key={`${n.atMs}-${i}`}>{dateLabel(n.atMs)} · {n.text}{n.reason ? ` – ${n.reason}` : ''}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
       <section className="tk-chat" aria-label="Unterhaltung mit dem Coach">
         {thread.length === 0 && <p className="muted">Zum Beispiel: „4 Tage diese Woche, Freitag bin ich sicher im Studio“ oder „Schlag mir eine Woche vor“.</p>}
         {visible.length > shown && <button type="button" className="link" onClick={older}>Ältere anzeigen</button>}

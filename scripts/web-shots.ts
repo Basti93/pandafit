@@ -519,13 +519,14 @@ async function main() {
   await step('woche-regeln-sheet', async () => { await fresh('Woche'); await row(/^Was der Coach beachtet/).click(); await page.getByRole('button', { name: /Ohne Kreuzheben/ }).click(); await shot('woche-regeln-sheet'); });
   await step('woche-exclude-picker', async () => { await fresh('Woche'); await row(/^Was der Coach beachtet/).click(); await page.getByRole('button', { name: '+ Regel hinzufügen' }).click(); await page.getByRole('button', { name: 'Übung ausschließen' }).click(); await shot('woche-exclude-exercise-picker'); });
   await step('woche-chat-sheet', async () => { await fresh('Woche'); await row(/^Coach/).click(); await page.waitForTimeout(500); await shot('woche-chat-sheet'); });
+  await step('woche-chat-vorschlaege', async () => { await shot('woche-chat-vorschlaege'); await page.getByRole('button', { name: 'Schließen' }).last().click(); await page.waitForTimeout(300); });
   await step('woche-chat-older', async () => {
     await page.getByRole('button', { name: 'Ältere anzeigen' }).click();
     await page.waitForTimeout(300);
     await shot('woche-chat-older-30');
   });
-  await step('woche-chat-vorschlaege', async () => { const strip = page.getByRole('button', { name: /^\d Vorschl/ }); if (await strip.count()) await strip.click(); await page.waitForTimeout(300); await shot('woche-chat-vorschlaege'); await closeDialog(); });
-  await step('woche-typing', async () => { await fresh('Woche'); await row(/^Coach/).click(); await page.getByLabel('Nachricht an den Coach').fill('Kannst du mir für nächste Woche etwas mit weniger Beinen vorschlagen?'); await page.getByLabel('Nachricht an den Coach').focus(); await shot('woche-chat-typing'); });
+  await step('woche-chat-strip', async () => { await page.getByRole('button', { name: /^\d Vorschl/ }).click(); await page.waitForTimeout(300); await shot('woche-chat-strip'); await closeDialog(); });
+  await step('woche-typing', async () => { await fresh('Woche'); await row(/^Coach/).click(); await page.waitForTimeout(400); await page.getByRole('button', { name: 'Schließen' }).last().click(); await page.waitForTimeout(300); await page.getByLabel('Nachricht an den Coach').fill('Kannst du mir für nächste Woche etwas mit weniger Beinen vorschlagen?'); await page.getByLabel('Nachricht an den Coach').focus(); await shot('woche-chat-typing'); });
 
   // Kraft.
   await fresh('Kraft');

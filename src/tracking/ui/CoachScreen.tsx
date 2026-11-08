@@ -63,7 +63,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const asking = waitingMessage(thread) !== null;
   const preview = waiting ? 'Vorschlag wartet' : asking ? 'Der Coach denkt nach …' : last ? <>{last.text} <small>{timeLabel(last.atMs)}</small></> : 'Schreib dem Coach';
   // Fixed order: Nächste Woche, Ziel und Planung, Was der Coach beachtet, Coach. The last change is the Coach row's second line.
-  const changed = notes[0] ? <small className="tk-row-sub muted tk-clip">Zuletzt geändert: {notes[0].text}</small> : null;
+  const changed = notes[0] ? <small className="tk-row-sub muted tk-clip">Zuletzt geändert: {notes[0].text}{notes[0].reason ? ` – ${notes[0].reason}` : ''}</small> : null;
   const coachRow = <Row key="coach" title={<>Coach{changed}</>} value={<span className={waiting ? 'tk-ellipsis tk-waiting' : 'tk-ellipsis'}>{preview}</span>} onClick={() => setSheet('chat')} />;
   const ruleCount = rules.length + tasks.length;
   const rest = [
