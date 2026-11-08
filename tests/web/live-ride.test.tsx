@@ -226,6 +226,47 @@ describe('the ride view', () => {
   });
 });
 
+describe('the skip confirmation goes stale safely', () => {
+  const ask = () => {
+    mount();
+    say({ type: 'live-state', profileId: 'pa', state: state() });
+    openScreen();
+    fireEvent.click(screen.getByRole('button', { name: 'Überspringen' }));
+    expect(screen.getByText('Weiter mit Locker.')).toBeTruthy();
+  };
+  const noUsableSkip = () => {
+    expect(screen.queryByText('Weiter mit Locker.')).toBeNull();
+    for (const b of screen.queryAllByRole('button', { name: 'Überspringen' })) {
+      if (!(b as HTMLButtonElement).disabled) fireEvent.click(b);
+    }
+    expect(sock.commands().filter((c) => c.kind === 'skip')).toEqual([]);
+  };
+
+  it('closes when the data gets older than the freshness limit', async () => {
+    ask();
+    await advance(11_000);
+    noUsableSkip();
+  });
+
+  it('closes when the ride ended', () => {
+    ask();
+    say({ type: 'live-end', profileId: 'pa', rideId: 'ride-1' });
+    noUsableSkip();
+  });
+
+  it('closes when another ride takes over', () => {
+    ask();
+    say({ type: 'live-state', profileId: 'pa', state: state({ rideId: 'ride-2' }) });
+    noUsableSkip();
+  });
+
+  it('closes when the step moved on', () => {
+    ask();
+    say({ type: 'live-state', profileId: 'pa', state: state({ step: { name: 'Locker', index: 2, count: 4, remainingS: 300 }, nextStep: { label: 'Ende' } }) });
+    noUsableSkip();
+  });
+});
+
 describe('in the app', () => {
   it('the strip shows at the top of every tab while a ride runs; the app works without the socket', async () => {
     vi.useRealTimers();

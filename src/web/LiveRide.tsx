@@ -85,7 +85,7 @@ export function LiveRide({ client, now }: { client: LiveClient; now: () => numbe
 function LiveScreen({ client, now, onClose }: { client: LiveClient; now: () => number; onClose: () => void }) {
   const snap = useSyncExternalStore(client.subscribe, client.snapshot);
   const [shown, setShown] = useState<Partial<Record<Key, Shown>>>({});
-  const [sure, setSure] = useState(false);
+  const [asked, setAsked] = useState<{ rideId: string; stepIndex: number } | null>(null);
   const s = snap.state!;
   const stale = now() - snap.receivedMs > LIVE_FRESH_MS;
   const ended = snap.endedMs !== null;
@@ -105,6 +105,19 @@ function LiveScreen({ client, now, onClose }: { client: LiveClient; now: () => n
     ? (s.powerW < s.targetW * (1 - ON_TARGET) ? 'low' : s.powerW > s.targetW * (1 + ON_TARGET) ? 'high' : 'ok') : null;
   const zoneText = zone === 'ok' ? 'im Ziel' : zone === 'low' ? 'zu niedrig' : zone === 'high' ? 'zu hoch' : '';
   const last = s.step.index >= s.step.count - 1;
+  // The question counts only for the ride and interval it was asked about, and only while the data is live.
+  const sure = asked !== null && !dead && !last && s.paused !== true && s.rideId === asked.rideId && s.step.index === asked.stepIndex;
+  useEffect(() => { if (asked && !sure) setAsked(null); }, [asked, sure]);
+  const confirmSkip = () => {
+    const a = asked;
+    setAsked(null);
+    // Check the latest data again at the moment of the tap, not the picture of the last render.
+    const cur = client.snapshot();
+    const c = cur.state;
+    if (!a || !c || cur.endedMs !== null || now() - cur.receivedMs > LIVE_FRESH_MS) return;
+    if (c.rideId !== a.rideId || c.step.index !== a.stepIndex || c.step.index >= c.step.count - 1 || c.paused === true) return;
+    run('skip', 'skip');
+  };
 
   return (
     <Sheet title="Fahrt" onClose={onClose} actions={
@@ -112,7 +125,7 @@ function LiveScreen({ client, now, onClose }: { client: LiveClient; now: () => n
         <button type="button" className="secondary" disabled={dead} onClick={() => run('down', 'adjust', -LIVE_ADJUST_PCT)}>{label('down', 'Leichter')}</button>
         <button type="button" className="secondary" disabled={dead} onClick={() => run('up', 'adjust', LIVE_ADJUST_PCT)}>{label('up', 'Schwerer')}</button>
         <button type="button" className="secondary" disabled={dead} onClick={() => run('mark', 'mark')}>{label('mark', 'Markieren')}</button>
-        <button type="button" className="secondary" disabled={dead || last || s.paused === true} onClick={() => setSure(true)}>{label('skip', 'Überspringen')}</button>
+        <button type="button" className="secondary" disabled={dead || last || s.paused === true} onClick={() => setAsked({ rideId: s.rideId, stepIndex: s.step.index })}>{label('skip', 'Überspringen')}</button>
       </div>
     }>
       <p className="live-head muted">Seit {MIN(s.elapsedS)} Min · Intervall {s.step.index + 1} von {s.step.count} · Beenden am Mac</p>
@@ -132,10 +145,10 @@ function LiveScreen({ client, now, onClose }: { client: LiveClient; now: () => n
       </div>
       {ended ? <p role="status" className="live-note">Fahrt beendet</p> : stale ? <p role="status" className="live-note">Keine Verbindung zum Mac. Die Fahrt läuft dort weiter und wird gespeichert.</p> : null}
       {sure && (
-        <Sheet title="Überspringen?" size="small" onClose={() => setSure(false)} actions={
+        <Sheet title="Überspringen?" size="small" onClose={() => setAsked(null)} actions={
           <div className="live-buttons">
-            <button type="button" className="secondary" onClick={() => setSure(false)}>Abbrechen</button>
-            <button type="button" className="primary" onClick={() => { setSure(false); run('skip', 'skip'); }}>Überspringen</button>
+            <button type="button" className="secondary" onClick={() => setAsked(null)}>Abbrechen</button>
+            <button type="button" className="primary" onClick={confirmSkip}>Überspringen</button>
           </div>
         }>
           <p className="muted">{s.nextStep ? `Weiter mit ${s.nextStep.label}.` : 'Weiter mit dem nächsten Teil.'}</p>

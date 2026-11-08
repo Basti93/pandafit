@@ -262,3 +262,30 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
   .web-top { max-width: 1040px; }
   .web-profile { right: calc((100% - 1040px) / 2 + 1rem); }
 }
+
+/* ---- Task 4: Essen, Ausdauer, Profil, login, ride companion ---- */
+/* Visible keyboard focus on every control, in the accent colour. */
+.web-main :is(button, a, summary, [role='tab'], [role='checkbox'], [role='switch']):focus-visible,
+.web-live-strip:focus-visible, .web-nav button:focus-visible, .tk-sheet :is(button, a, summary):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+/* Profil: each group is a card, like the cards on Heute. */
+.tk-pgroup { background: var(--card); border-radius: var(--radius-card); padding: .25rem var(--space-4) var(--space-3); margin-top: var(--space-3); }
+.tk-pgroup > .tk-section { margin-top: var(--space-3); }
+/* Essen: the shopping groups are cards; the list items stay plain, with 44 px targets. */
+.pm-group { background: var(--card); border-radius: var(--radius-card); padding: var(--space-2) var(--space-4) var(--space-1); margin-top: var(--space-2); }
+.pm-group > .tk-section { margin-top: var(--space-1); }
+.pm-days button { min-height: 44px; }
+/* Login: the still Panda sits over the wordmark. */
+.web-login .web-login-panda { width: 7rem; height: auto; align-self: flex-start; }
+/* Ride companion: the figures stay big and dark on light; the pairs and the interval sit on cards. */
+.live-pair > div, .live-step { background: var(--card); border-radius: var(--radius-card); padding: var(--space-3); }
+.live-pair b { color: var(--text); }
+.live-gone .live-pair > div, .live-gone .live-step { background: transparent; }
+.tk-screen .live-buttons button:focus-visible { outline: 3px solid var(--accent-text); outline-offset: 2px; }
+/* 320 px: nothing pushes the page wider. */
+@media (max-width: 340px) {
+  .pm-addline { grid-template-columns: 1fr; }
+  .live-big { font-size: 5rem; }
+  .live-pair b { font-size: 2.1rem; }
+  .tk-pgroup, .pm-group { padding-left: var(--space-3); padding-right: var(--space-3); }
+}
+@media (max-width: 340px) { .web-nav button { font-size: .72rem; letter-spacing: -.01em; } }

@@ -103,6 +103,7 @@ function LoginForm({ env, onDone, note, before, failed }: { env: Env; onDone: (n
   };
   return (
     <form className="web-login tk-screen" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+      <img className="web-login-panda" src="/brand/panda-still.svg" alt="" width={198} height={164} />
       <h1 className="tk-title">Pandafit</h1>
       <p className="muted">Ein Konto bekommst du von der Person, die Pandafit eingerichtet hat.</p>
       {note && <p role="status" className="tk-note">{note}</p>}
