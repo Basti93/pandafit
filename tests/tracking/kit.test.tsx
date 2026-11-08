@@ -115,3 +115,44 @@ test('a row with onClick is a button with a chevron and shows its details only w
   rerender(<RowList><Row title="Bankdrücken" value="70 kg" onClick={() => {}} expanded>Details</Row></RowList>);
   expect(screen.getByText('Details')).toBeTruthy();
 });
+
+test('row language: "›" opens a new page, "⌄" opens the row in place', () => {
+  render(<RowList><Row title="Muskeln" onClick={() => {}} /><Row title="Ruhepuls" onClick={() => {}} expanded={false}>mehr</Row></RowList>);
+  expect(screen.getByRole('button', { name: /^Muskeln/ }).textContent).toBe('Muskeln›');
+  expect(screen.getByRole('button', { name: 'Ruhepuls' }).textContent).toBe('Ruhepuls⌄');
+});
+
+function Nested() {
+  const [inner, setInner] = useState(false);
+  const [outer, setOuter] = useState(true);
+  return outer ? (
+    <Sheet title="Außen" onClose={() => setOuter(false)}>
+      <button type="button" onClick={() => setInner(true)}>Weiter</button>
+      {inner && <Sheet title="Innen" onClose={() => setInner(false)}><p>Unterseite</p></Sheet>}
+    </Sheet>
+  ) : null;
+}
+
+test('one close pattern: × closes a sheet; a full sheet over another has "‹ Zurück" instead and leads back', () => {
+  render(<Nested />);
+  const outer = screen.getByRole('dialog', { name: 'Außen' });
+  expect(screen.getByRole('button', { name: 'Schließen' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '‹ Zurück' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+  const inner = screen.getByRole('dialog', { name: 'Innen' });
+  expect(inner.querySelector('.tk-sheet-x')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+  expect(screen.queryByRole('dialog', { name: 'Innen' })).toBeNull();
+  expect(outer.isConnected).toBe(true);
+});
+
+test('a sheet with onBack shows "‹ Zurück", and Escape goes back instead of closing', () => {
+  const back = vi.fn();
+  function Paged() { return <Sheet title="Verlauf" onClose={() => {}} onBack={back}><p>Training</p></Sheet>; }
+  render(<Paged />);
+  expect(screen.queryByRole('button', { name: 'Schließen' })).toBeNull();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(back).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+  expect(back).toHaveBeenCalledTimes(2);
+});

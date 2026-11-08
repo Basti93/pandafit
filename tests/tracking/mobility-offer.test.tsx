@@ -32,7 +32,7 @@ const offer = (storage = memory(), now = DAY) => {
 
 test('one row with the minutes; the exercises, Gemacht and "Heute nicht" are in a sheet', () => {
   offer();
-  expect(screen.getByText('8 Min')).toBeTruthy();
+  expect(screen.getByText('Beweglichkeit · 8 Min')).toBeTruthy();
   expect(screen.queryByText('Waden an der Wand')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /^Beweglichkeit/ }));
   expect(screen.getByRole('dialog')).toBeTruthy();
@@ -40,6 +40,13 @@ test('one row with the minutes; the exercises, Gemacht and "Heute nicht" are in 
   expect(screen.getByText('Hände an die Wand.')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
   expect(screen.queryByText('Waden an der Wand')).toBeNull();
+});
+test('the sheet does not say "Nach dem Training"; "Heute nicht" is a link, "Gemacht" the main button', () => {
+  offer();
+  fireEvent.click(screen.getByRole('button', { name: /^Beweglichkeit/ }));
+  expect(screen.queryByText(/Nach dem/)).toBeNull();
+  expect(screen.getByRole('button', { name: 'Heute nicht' }).className).toBe('link');
+  expect(screen.getByRole('button', { name: 'Gemacht' }).className).toBe('primary');
 });
 test('Gemacht reports done and closes the sheet', () => {
   const { onDone } = offer();

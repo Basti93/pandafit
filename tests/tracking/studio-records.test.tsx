@@ -16,7 +16,7 @@ const openSheet = () => { fireEvent.click(screen.getByRole('button', { name: /^S
 
 async function start(f: ReturnType<typeof fakePort>) {
   render(<WorkoutScreen port={f.port} {...ids} />);
-  await screen.findByRole('heading', { name: 'Training starten' });
+  await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ });
 }
 async function create(name: string) {
   fireEvent.click(within(openSheet()).getByRole('button', { name: 'Neues Studio …' }));
@@ -52,7 +52,7 @@ describe('studio records on the start screen', () => {
     const f = fakePort([past('a', 1000, 'Alpha'), past('b', 2000, 'Beta')]);
     await start(f);
     await waitFor(() => expect(current()).toBe('Beta'));
-    fireEvent.click(within(openSheet()).getByRole('button', { name: 'Umbenennen' }));
+    fireEvent.click(within(openSheet()).getByRole('button', { name: /umbenennen/ }));
     const input = await screen.findByLabelText('Neuer Name des Studios');
     fireEvent.change(input, { target: { value: 'alpha' } });
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -72,7 +72,7 @@ describe('removing and hiding studios', () => {
     const f = fakePort([past('a', 1000, 'Alpha'), studioRecord('Leer', 5000, 5000)]);
     await start(f);
     await waitFor(() => expect(current()).toBe('Leer'));
-    fireEvent.click(within(openSheet()).getByRole('button', { name: 'Entfernen' }));
+    fireEvent.click(within(openSheet()).getByRole('button', { name: /entfernen/ }));
     expect(f.state.puts.some((r) => r.kind === 'studio' && r.deleted)).toBe(false); // a confirm comes first
     fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
     await waitFor(() => expect(f.state.puts.some((r) => r.kind === 'studio' && r.deleted)).toBe(true));
@@ -88,8 +88,8 @@ describe('removing and hiding studios', () => {
     await start(f);
     await waitFor(() => expect(current()).toBe('Beta'));
     const sheet = openSheet();
-    expect(within(sheet).queryByRole('button', { name: 'Entfernen' })).toBeNull();
-    fireEvent.click(within(sheet).getByRole('button', { name: 'Ausblenden' }));
+    expect(within(sheet).queryByRole('button', { name: /entfernen/ })).toBeNull();
+    fireEvent.click(within(sheet).getByRole('button', { name: /ausblenden/ }));
     await waitFor(() => expect(f.state.puts.some((r) => r.kind === 'studio' && (r.body as { hidden?: boolean }).hidden === true)).toBe(true));
     cleanup();
     await start(f);

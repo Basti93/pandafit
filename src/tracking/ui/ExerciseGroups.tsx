@@ -21,12 +21,14 @@ export function ExerciseGroups({ exercises, used, searching, label = 'Muskelgrup
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [all, setAll] = useState<ReadonlySet<string>>(new Set());
   const groups = useMemo(() => groupExercises(exercises), [exercises]);
+  // A search lists the hits plainly: a group head over them says nothing.
+  if (searching) return <RowList label={label}>{groups.flatMap(([, list]) => list.map(item))}</RowList>;
   return (
     <RowList label={label}>
       {groups.map(([group, list]) => {
-        const open = searching || openGroup === group;
+        const open = openGroup === group;
         const first = list.filter((e) => e.source !== 'fedb' || used.has(e.id));
-        const showAll = searching || first.length === 0 || first.length === list.length || all.has(group);
+        const showAll = first.length === 0 || first.length === list.length || all.has(group);
         const shown = showAll ? list : first;
         return (
           <Row key={group} title={group} expanded={open} onClick={() => setOpenGroup(openGroup === group ? null : group)}>

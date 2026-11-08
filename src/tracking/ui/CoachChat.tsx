@@ -13,6 +13,9 @@ import { planRows } from './done-days';
 import { openProposals, storedWeek, weekAnswer } from './chat-open';
 import { useCatalog, usePortRecords } from './hooks';
 import { Sheet } from './kit';
+import { dateLabel } from './labels';
+import { newestNotes } from '../../shared/change-notes';
+import { readStats, STATS_ID } from '../../shared/stats';
 
 /** The chat shows this many of the newest messages, and this many more each time. */
 const CHAT_PAGE = 30;
@@ -46,7 +49,7 @@ function PinnedWeek({ m, warnings, loading, onTake, onDecline }: { m: WeekEntry;
   return (
     <div className="tk-pin" role="group" aria-label={`Vorschlag Wochenplan ${when(p)}`}>
       <b>Vorschlag: Woche {when(p)}</b>
-      <Week rows={planRows(p.days)} label={`Vorschlag für die Woche ab ${shortDateOfKey(p.weekStart)}`} />
+      <Week brief rows={planRows(p.days)} label={`Vorschlag für die Woche ab ${shortDateOfKey(p.weekStart)}`} />
       {warnings && warnings.length > 0 && <p className="tk-note">Mehr als unsere Regeln für Erholung empfehlen: {warnings.join(' ')}</p>}
       <div className="tk-row">
         <button type="button" disabled={loading} onClick={onTake}>{TAKE}</button>
@@ -67,18 +70,27 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   const changeRecs = usePortRecords(port, 'change').all;
   const ruleRecs = usePortRecords(port, 'rule').all;
   const catalog = useCatalog(port);
+  const statsRecords = usePortRecords(port, 'stats').all;
+  const statsRec = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);
+  const notes = newestNotes((statsRec && readStats(statsRec.body)?.changes) || [], 5);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(CHAT_PAGE);
   const [proposalsOpen, setProposalsOpen] = useState(false);
+  const autoOpened = useRef(false);
+  const [typing, setTyping] = useState(false);
   const grew = useRef<{ top: number; height: number } | null>(null);
   const thread = chatThread(chat ?? []);
   const waiting = waitingMessage(thread);
   const visible = thread.filter((m) => !(m.takes || m.declines || m.undoes));
   const monday = mondayOf(localDayKey(now()));
-  const pinned = openProposals(thread, plans ?? [], changeRecs ?? [], ruleRecs ?? [], monday);
+  // The week plan is the biggest decision: it comes first.
+  const pinned = [...openProposals(thread, plans ?? [], changeRecs ?? [], ruleRecs ?? [], monday)].sort((a, b) => Number(!!b.proposal) - Number(!!a.proposal));
   useEffect(() => { if (pinned.length === 0) setProposalsOpen(false); }, [pinned.length]);
+  // Waiting proposals are shown open the first time the chat has them; the strip brings them back after a close.
+  useEffect(() => { if (!autoOpened.current && chat !== null && pinned.length > 0) { autoOpened.current = true; setProposalsOpen(true); } }, [chat, pinned.length]);
   const scroller = () => endRef.current?.closest('.tk-sheet-body') as HTMLElement | null;
 
   // Opening and a new message scroll to the end; loading older ones keeps what the person was looking at where it was.
@@ -119,7 +131,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   const decline = (m: ChatEntry) => void write({ role: 'rider', text: 'Nein danke.', atMs: now(), declines: m.id });
 
   // Open proposals are not stacked above the input: one slim strip opens them in a small sheet, with the same take and decline buttons.
-  const strip = pinned.length > 0 && (
+  const strip = pinned.length > 0 && !typing && (
     <button type="button" className="tk-strip" aria-haspopup="dialog" onClick={() => setProposalsOpen(true)}>
       <span>{pinned.length === 1 ? '1 Vorschlag' : `${pinned.length} Vorschläge`}</span><span aria-hidden="true">›</span>
     </button>
@@ -129,7 +141,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
       {strip}
       {error && <p role="alert" className="tk-note">{error}</p>}
       <form className="tk-chat-form" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-        <textarea aria-label="Nachricht an den Coach" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} placeholder="Nachricht an den Coach" />
+        <textarea aria-label="Nachricht an den Coach" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} placeholder="z. B. Samstag habe ich keine Zeit" />
         <button type="submit" className="tk-send" aria-label="Senden" disabled={!text.trim()}>↑</button>
       </form>
     </>
@@ -137,6 +149,16 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
 
   return (
     <Sheet title="Coach" onClose={onClose} actions={pins}>
+      {notes.length > 0 && (
+        <div className="tk-notes">
+          <button type="button" className="link" aria-expanded={notesOpen} onClick={() => setNotesOpen(!notesOpen)}>Zuletzt geändert {notesOpen ? '⌃' : '⌄'}</button>
+          {notesOpen && (
+            <ul className="tk-changes" aria-label="Zuletzt geändert">
+              {notes.map((n, i) => <li key={`${n.atMs}-${i}`}>{dateLabel(n.atMs)} · {n.text}{n.reason ? ` – ${n.reason}` : ''}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
       <section className="tk-chat" aria-label="Unterhaltung mit dem Coach">
         {thread.length === 0 && <p className="muted">Zum Beispiel: „4 Tage diese Woche, Freitag bin ich sicher im Studio“ oder „Schlag mir eine Woche vor“.</p>}
         {visible.length > shown && <button type="button" className="link" onClick={older}>Ältere anzeigen</button>}
@@ -150,7 +172,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
             </ChatBubble>
           </Fragment>
         ))}
-        {waiting && <ChatNote>{now() - waiting.atMs > STALE_MS ? 'Darauf kam keine Antwort mehr. Schreib gern nochmal.' : now() - waiting.atMs > SLOW_MS ? 'Der Coach antwortet, sobald er wieder erreichbar ist.' : 'Der Coach denkt nach …'}</ChatNote>}
+        {waiting && <ChatNote>{now() - waiting.atMs > STALE_MS ? 'Darauf kam keine Antwort mehr. Schreib gern nochmal.' : now() - waiting.atMs > SLOW_MS ? 'Der Coach antwortet, sobald er wieder erreichbar ist.' : 'Gesendet. Der Coach antwortet, sobald er kann.'}</ChatNote>}
         <div ref={endRef} />
       </section>
       {proposalsOpen && pinned.length > 0 && (

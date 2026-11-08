@@ -51,6 +51,12 @@ describe('todayAdvice', () => {
     expect(a).toMatchObject({ sport: 'gym', hardness: 'moderate', also: { sport: 'bike', hardness: 'easy' }, fromPlan: true, reason: 'laut deinem Wochenplan', label: 'Kraft, mittel + Rad, locker' });
   });
 
+  it('without any history the reason is a calm start, not "longest ago"', () => {
+    const a = todayAdvice(base({ ratings: {}, frame: { mode: 'spontaneous' } }));
+    expect(a).toMatchObject({ hardness: 'moderate', reason: 'ein ruhiger Einstieg' });
+    expect(a.line).toBe(`${a.label} – ein ruhiger Einstieg`);
+  });
+
   it('5: spontaneous, the focus sport done longest ago, else the one done longest ago, at moderate', () => {
     const ratings = rated(past(1, { hardness: 'easy', sports: ['bike'] }), past(3, { hardness: 'moderate', sports: ['gym'] }), past(6, { hardness: 'easy', sports: ['run'] }));
     const eq = todayAdvice(base({ ratings, frame: { mode: 'spontaneous' }, goal: { sports: { gym: 'equal', bike: 'equal', run: 'equal' } } }));

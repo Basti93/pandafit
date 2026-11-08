@@ -37,7 +37,7 @@ describe('what fits today in the hint', () => {
   const ctx = (mode: 'week' | 'spontaneous') => ({ ratings: {}, goal: { sports: { run: 'focus' as const } }, frame: { mode } });
   it('spontaneous mode gives the advice as the hint, even with a plan', () => {
     const h = planHint([], NOW, 'run', ctx('spontaneous'));
-    expect(h).toContain('Heute passt: Laufen, mittel – weil du Laufen am längsten nicht gemacht hast.');
+    expect(h).toContain('Heute passt: Laufen, mittel – ein ruhiger Einstieg.');
     expect(planHint([plan('2026-11-02', { 5: 'gym' })], NOW, 'run', ctx('spontaneous'))).not.toContain('wochenplan');
   });
   it('week mode: no extra line when the plan day stands, the advice line when it differs', () => {

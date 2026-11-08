@@ -10,15 +10,16 @@ import { dateLabel } from './labels';
 import { MuscleIcon } from './MuscleIcon';
 import { progressRows, type ProgressRow } from '../progress';
 import { runView } from './run-view';
-import { PageHead, Row, RowList, Sheet } from './kit';
+import { Row, RowList, Sheet } from './kit';
 import { HealthSheet } from './HealthSheet';
-import { healthOf } from './health-view';
+import { healthOf, healthWord } from './health-view';
 
 const SPORT_LABEL: Record<Sport, string> = { bike: 'Rad', strength: 'Kraft', run: 'Laufen', mobility: 'Mobility', other: 'Andere' };
 const shortDate = (iso: string) => `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
 const weekTotal = weekMinutes;
 /** The pair verdict "Schulter vorn 3 Sätze, Schulter hinten 12: Schulter vorn kommt zu kurz." reads without the numbers; other verdicts stay as they are. */
-const verdictText = (t: string) => t.match(/^.+ [\d.,]+ Sätze, .+ [\d.,]+: (.+)$/)?.[1] ?? t;
+const PAIR_VERDICT = /^.+ [\d.,]+ Sätze, .+ [\d.,]+: (.+)$/;
+const verdictText = (t: string) => t.match(PAIR_VERDICT)?.[1] ?? t;
 /** Finished workouts the page can count; a broken body is skipped. */
 const countable = (records: TrackedRecord[] | null): LoggedWorkout[] => wellFormed(finishedWorkouts(records));
 
@@ -27,35 +28,31 @@ const statsOf = (records: TrackedRecord[] | null): StatsBody | null => {
   return r ? readStats(r.body) : null;
 };
 
-/** The statistics page exists once there is a stats record or at least one finished workout. */
-export const statsVisible = (stats: TrackedRecord[] | null, workouts: TrackedRecord[] | null): boolean =>
-  statsOf(stats) !== null || countable((workouts ?? []).filter((r) => !r.deleted)).length > 0;
-
 const half = (n: number) => String(Math.round(n * 2) / 2).replace('.', ',');
 /** This week's effective sets against the target, in words. */
 function detailText(b: GroupBalance): string {
   return b.target.max > 0 ? `${half(b.effective7)} von ${b.target.min}–${b.target.max} Sätzen diese Woche` : `${half(b.effective7)} Sätze diese Woche`;
 }
 
-function MuscleRow({ b, open, onToggle }: { b: GroupBalance; open: boolean; onToggle: () => void }) {
+/**
+ * One rule for the summary sentence and the list: a group is a gap when the pair verdict names it as short ("Brust kommt zu kurz").
+ * Only gaps are orange and come first; a group that is merely low this week keeps its word "Wenig" in the quiet colour.
+ */
+export const gapGroups = (v: StatsView): Set<string> => {
+  const named = v.pairs.map((p) => p.shortLabel).filter((l): l is string => l !== null);
+  return new Set(v.balance.filter((b) => named.some((l) => l.includes(b.label))).map((b) => b.group));
+};
+
+function MuscleRow({ b, gap, open, onToggle }: { b: GroupBalance; gap: boolean; open: boolean; onToggle: () => void }) {
   const state = b.state ?? 'none';
   return (
     <Row
       title={<span className="tk-muscle-title"><MuscleIcon group={b.group} />{b.label}</span>}
-      value={b.state !== null ? <span className={`tk-state tk-state-${state}`}><span className="tk-state-dot" aria-hidden="true" />{STATE_LABELS[state]}</span> : undefined}
+      value={b.state !== null ? <span className={`tk-state tk-state-${state === 'low' && !gap ? 'quiet' : state}`}><span className="tk-state-dot" aria-hidden="true" />{STATE_LABELS[state]}</span> : undefined}
       expanded={open} onClick={onToggle}
     >
       <p className="muted tk-small">{detailText(b)}</p>
     </Row>
-  );
-}
-
-function ThisWeek({ sentence, verdicts }: { sentence: string; verdicts: string[] }) {
-  return (
-    <section className="card tk-stats" aria-label="Diese Woche">
-      <p className="tk-week-line">{sentence}</p>
-      {verdicts.length > 0 && <ul className="tk-verdicts">{verdicts.map((t) => <li key={t}>{verdictText(t)}</li>)}</ul>}
-    </section>
   );
 }
 
@@ -65,11 +62,13 @@ function MusclesSheet({ v, onClose }: { v: StatsView; onClose: () => void }) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const allRows = v.balance.filter((b) => b.state !== null || b.direct7 + b.indirect7 > 0);
   const shown = allRows.filter((b) => b.direct7 + b.indirect7 > 0);
-  const rows = all ? allRows : shown;
+  // Real gaps first, then the rest in the usual order.
+  const gaps = gapGroups(v);
+  const rows = (all ? allRows : shown).slice().sort((a, b) => Number(gaps.has(b.group)) - Number(gaps.has(a.group)));
   return (
     <Sheet title="Muskeln" onClose={onClose}>
       <div className="tk-stats" aria-label="Muskeln">
-        {rows.length > 0 && <RowList>{rows.map((b) => <MuscleRow key={b.group} b={b} open={openGroup === b.group} onToggle={() => setOpenGroup(openGroup === b.group ? null : b.group)} />)}</RowList>}
+        {rows.length > 0 && <RowList>{rows.map((b) => <MuscleRow key={b.group} b={b} gap={gaps.has(b.group)} open={openGroup === b.group} onToggle={() => setOpenGroup(openGroup === b.group ? null : b.group)} />)}</RowList>}
         {rows.length === 0 && !all && <p className="muted">Diese Woche noch keine Sätze.</p>}
         {allRows.length > shown.length && (
           <button type="button" className="link" onClick={() => setAll(!all)}>{all ? 'Weniger Muskelgruppen' : 'Alle Muskelgruppen anzeigen'}</button>
@@ -81,9 +80,11 @@ function MusclesSheet({ v, onClose }: { v: StatsView; onClose: () => void }) {
 
 function MinutesChart({ v, weeks }: { v: StatsView; weeks: WeekStats[] }) {
   const max = Math.max(1, ...weeks.map(weekTotal));
+  const average = weeks.length > 0 ? weeks.reduce((a, w) => a + weekTotal(w), 0) / weeks.length : 0;
   return (
     <>
-      <h3 className="tk-section">Zeit pro Woche</h3>
+      <h3 className="tk-section">Letzte 8 Wochen</h3>
+      <p className="tk-week-line">Im Schnitt {durationText(average)} pro Woche</p>
       <ul className="tk-legend">
         {v.sports.map((s) => <li key={s}><span className={`tk-swatch tk-sport-${s}`} aria-hidden="true" />{SPORT_LABEL[s]}</li>)}
       </ul>
@@ -104,6 +105,7 @@ function MinutesChart({ v, weeks }: { v: StatsView; weeks: WeekStats[] }) {
           );
         })}
       </div>
+      <p className="muted tk-small">Bis zur letzten vollen Woche</p>
     </>
   );
 }
@@ -119,10 +121,12 @@ function Progress({ rows }: { rows: ProgressRow[] }) {
   );
 }
 
-export function StatsScreen({ port, now }: { port: TrackingPort; now: () => number }) {
-  const [details, setDetails] = useState(false);
-  const [musclesOpen, setMusclesOpen] = useState(false);
-  const [healthOpen, setHealthOpen] = useState(false);
+/**
+ * Woche > Rückblick: how it went, in one place. Verlauf, Muskeln, Gesundheit and Zeit pro Woche as rows; each opens a sheet.
+ * What is worth saying about the last weeks stands above the rows. Rows without data are left out; Verlauf is always there.
+ */
+export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort; now: () => number; /** The newest activity in a few words. */ latest?: string; onHistory: () => void }) {
+  const [sheet, setSheet] = useState<'time' | 'muscles' | 'health' | null>(null);
   const health = healthOf(usePortRecords(port, 'health').records);
   const statsQ = usePortRecords(port, 'stats');
   const workoutsQ = usePortRecords(port, 'workout');
@@ -138,55 +142,53 @@ export function StatsScreen({ port, now }: { port: TrackingPort; now: () => numb
   const progress = useMemo(() => progressRows({
     nowMs, ftp: stats?.ftp ?? [], weightKg: stats?.weightKg ?? null, runPace: runView(runRecords ?? [], nowMs).status?.numbers.easyPace ?? null,
     workouts,
-  }), [stats, runRecords, workouts, v, nowMs]);
-  if (statsQ.failed || workoutsQ.failed) {
-    const retry = () => { if (statsQ.failed) statsQ.retry(); if (workoutsQ.failed) workoutsQ.retry(); };
-    return (
-      <div className="tk-screen">
-        <p role="status" className="tk-note">Die Statistik konnte gerade nicht gelesen werden. Es ist nichts verloren, versuch es gleich nochmal.</p>
-        <button type="button" onClick={retry}>Nochmal versuchen</button>
-      </div>
-    );
-  }
-  if (statsRecords === null || workoutRecords === null) return <div className="tk-screen" aria-busy="true" />;
+  }), [stats, runRecords, workouts, nowMs]);
+  const failed = statsQ.failed || workoutsQ.failed;
+  const retry = () => { if (statsQ.failed) statsQ.retry(); if (workoutsQ.failed) workoutsQ.retry(); };
+  const loaded = statsRecords !== null && workoutRecords !== null && !failed;
+  // Something to look back on: a stats record from the coach or a finished workout.
+  const any = loaded && (stats !== null || workouts.length > 0);
 
-  const muscles = workouts.length > 0;
+  const muscles = any && workouts.length > 0;
   const weeks = v.weeks.slice(0, v.weeks.length - 1);
   const minutes = v.sports.length > 0;
   const w = v.thisWeek;
   const sessions = weekSessions(stats, w);
   const total = weekTotal(w);
   const sentence = total > 0 || sessions > 0
-    ? `Diese Woche: ${sessions} ${sessions === 1 ? 'Einheit' : 'Einheiten'}, ${durationText(total)}`
-    : 'Diese Woche noch keine Einheit.';
-  const hasDetails = minutes || progress.length > 0 || v.unknown.length > 0;
+    ? `${sessions} ${sessions === 1 ? 'Einheit' : 'Einheiten'}, ${durationText(total)}`
+    : 'Noch keine Einheit.';
+  const gaps = [...gapGroups(v)].length;
   return (
-    <div className="tk-screen">
-      <PageHead title="Statistik" subtitle={v.asOfMs !== null ? `Stand: ${dateLabel(v.asOfMs)}` : 'Minuten und harte Tage erscheinen nach dem nächsten Lauf des Coaches.'} />
-      <ThisWeek sentence={sentence} verdicts={v.verdicts} />
-      {(muscles || hasDetails || health) && (
-        <RowList>
-          {health && <Row title="Gesundheit" onClick={() => setHealthOpen(true)} />}
-          {muscles && <Row title="Muskeln" onClick={() => setMusclesOpen(true)} />}
-          {hasDetails && <Row title="Details" onClick={() => setDetails(true)} />}
-        </RowList>
-      )}
-      {healthOpen && health && <HealthSheet health={health} onClose={() => setHealthOpen(false)} />}
-      {musclesOpen && <MusclesSheet v={v} onClose={() => setMusclesOpen(false)} />}
-      {details && (
-        <Sheet title="Details" onClose={() => setDetails(false)}>
+    <section className="tk-lookback" aria-label="Rückblick">
+      <h2 className="tk-section">Rückblick</h2>
+      {failed && <p role="status" className="tk-note">Der Rückblick konnte gerade nicht gelesen werden. Es ist nichts verloren. <button type="button" onClick={retry}>Nochmal versuchen</button></p>}
+      {any && v.verdicts.length > 0 && <ul className="tk-verdicts">{v.verdicts.map((t) => <li key={t}>{verdictText(t)}</li>)}</ul>}
+      <RowList label="Rückblick">
+        <Row title="Verlauf" value={latest ? <span className="tk-ellipsis">{latest}</span> : undefined} onClick={onHistory} />
+        {muscles && <Row title="Muskeln" value={gaps > 0 ? `${gaps} ${gaps === 1 ? 'Lücke' : 'Lücken'}` : 'ausgewogen'} onClick={() => setSheet('muscles')} />}
+        {health && <Row title="Gesundheit" value={healthWord(health)} onClick={() => setSheet('health')} />}
+        {any && <Row title="Zeit pro Woche" onClick={() => setSheet('time')} />}
+      </RowList>
+      {sheet === 'health' && health && <HealthSheet health={health} onClose={() => setSheet(null)} />}
+      {sheet === 'muscles' && <MusclesSheet v={v} onClose={() => setSheet(null)} />}
+      {sheet === 'time' && (
+        <Sheet title="Zeit pro Woche" onClose={() => setSheet(null)}>
           <div className="tk-stats">
+            <h3 className="tk-section">Diese Woche</h3>
+            <p className="tk-week-line">{sentence}</p>
+            <p className="muted tk-small">{v.asOfMs !== null ? `Stand: ${dateLabel(v.asOfMs)}` : 'Minuten und harte Tage erscheinen nach dem nächsten Lauf des Coaches.'}</p>
             {minutes && (
               <dl className="tk-pace" aria-label="Diese Woche nach Sportart">
                 {v.sports.map((s) => <div key={s}><dt>{SPORT_LABEL[s]}</dt><dd>{durationText(w.minutes[s])}</dd></div>)}
               </dl>
             )}
-            {minutes && <section className="tk-stats" aria-label="Letzte 8 Wochen"><MinutesChart v={v} weeks={weeks} /></section>}
+            {minutes && <section className="tk-stats" aria-label="Zeit der letzten Wochen"><MinutesChart v={v} weeks={weeks} /></section>}
             <Progress rows={progress} />
             {v.unknown.length > 0 && <p className="muted">Ohne bekannten Muskel: {v.unknown.join(', ')}</p>}
           </div>
         </Sheet>
       )}
-    </div>
+    </section>
   );
 }

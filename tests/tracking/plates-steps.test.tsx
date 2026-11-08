@@ -23,7 +23,7 @@ async function running(open: LoggedWorkout, past: LoggedWorkout[] = []) {
 
 describe('plate line texts', () => {
   test('exact, between and below the bar', () => {
-    expect(plateLine(65)).toBe('Pro Seite: 20 + 2,5');
+    expect(plateLine(65)).toBe('Scheiben je Seite: 20 + 2,5');
     expect(plateLine(62)).toBe('Nicht genau auflegbar – 60 oder 62,5 kg');
     expect(plateLine(15)).toBe('Leichter als die Stange (20 kg)');
   });
@@ -32,18 +32,18 @@ describe('plate line texts', () => {
 describe('plates in the workout', () => {
   test('barbell: only the next open set with a weight gets the line', async () => {
     await running(wo('o', 1000, null, [ex('pf-squat', 'Kniebeuge', [s(40, 5), s(65), s(65)])]));
-    expect(screen.getAllByText(/Pro Seite/)).toHaveLength(1);
-    expect(screen.getByText('Pro Seite: 20 + 2,5')).toBeTruthy();
+    expect(screen.getAllByText(/Scheiben je Seite/)).toHaveLength(1);
+    expect(screen.getByText('Scheiben je Seite: 20 + 2,5')).toBeTruthy();
   });
 
   test('a set without a weight is skipped for the next one with a weight', async () => {
     await running(wo('o', 1000, null, [ex('pf-squat', 'Kniebeuge', [s(null), s(60)])]));
-    expect(screen.getByText('Pro Seite: 20')).toBeTruthy();
+    expect(screen.getByText('Scheiben je Seite: 20')).toBeTruthy();
   });
 
   test('not for a machine or dumbbell', async () => {
     await running(wo('o', 1000, null, [ex('pf-leg-press', 'Beinpresse', [s(80)]), ex('pf-dumbbell-curl', 'Bizepscurl', [s(12)])]));
-    expect(screen.queryByText(/Pro Seite|auflegbar|Stange/)).toBeNull();
+    expect(screen.queryByText(/Scheiben je Seite|auflegbar|Stange/)).toBeNull();
   });
 });
 
@@ -51,7 +51,7 @@ describe('the weight step line', () => {
   const info = async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Kniebeuge' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
   };
   const past = (n: number, kg: number[]) => wo(`p${n}`, 100 + n, 200 + n, [ex('pf-squat', 'Kniebeuge', kg.map((k) => s(k, 5)))]);
 
@@ -71,7 +71,7 @@ describe('the weight step line', () => {
     expect(put.deleted).toBe(false);
     expect(put.body).toMatchObject({ exerciseId: 'pf-squat', stepKg: 2.5 });
     await screen.findByText('Gewichtsstufen hier: 2,5 kg (von dir)');
-    fireEvent.change(within(screen.getByRole('note', { name: 'Ausführung Kniebeuge' })).getByLabelText('Gewichtsstufe Kniebeuge'), { target: { value: '' } });
+    fireEvent.change(within(screen.getByRole('note', { name: 'Anleitung Kniebeuge' })).getByLabelText('Gewichtsstufe Kniebeuge'), { target: { value: '' } });
     await waitFor(() => expect(f.state.puts.filter((r) => r.kind === 'loadstep')).toHaveLength(2));
     const tomb = f.state.puts.filter((r) => r.kind === 'loadstep')[1];
     expect(tomb.deleted).toBe(true);
@@ -104,7 +104,7 @@ describe('studio line', () => {
   test('a typed new studio is saved on the started workout, reusing a known name by case', async () => {
     const f = fakePort([]);
     render(<WorkoutScreen port={f.port} {...ids} />);
-    await screen.findByRole('heading', { name: 'Training starten' });
+    await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ });
     fireEvent.click(screen.getByRole('button', { name: /^Studio/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Neues Studio …' }));
     const input = await screen.findByLabelText('Name des neuen Studios');

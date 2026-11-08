@@ -68,11 +68,11 @@ describe('forwarded requests on the week page', () => {
   it('lists open tasks with the coach and the end, removes with a tombstone, hides expired ones', async () => {
     const { port, map } = fakePort([rec('chat', 'gym', 'Nur eine Trizepsübung', false, NOW - DAY), rec('bike', 'run', 'Beine schonen', true, NOW - 2 * DAY), rec('chat', 'gym', 'Uralt', false, NOW - 29 * DAY)]);
     render(<CoachScreen port={port} {...env} />);
-    fireEvent.click(await screen.findByRole('button', { name: /^Regeln/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Was der Coach beachtet/ }));
     const list = within(await screen.findByRole('list', { name: 'Regeln' }));
     const row = (re: RegExp) => list.getByRole('button', { name: re });
-    expect(row(/Nur eine Trizepsübung/).textContent).toContain('für Kraft');
-    expect(row(/Beine schonen/).textContent).toContain('für Laufen');
+    expect(row(/Nur eine Trizepsübung/).textContent).toContain('Kraft · aktiv');
+    expect(row(/Beine schonen/).textContent).toContain('Laufen · aktiv');
     expect(list.queryByText(/Uralt/)).toBeNull();
     fireEvent.click(row(/Beine schonen/));
     expect(list.getByText('dauerhaft')).toBeTruthy();

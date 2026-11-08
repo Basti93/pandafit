@@ -50,8 +50,8 @@ try {
   step('service worker controls the page');
 
   await page.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true }).click();
-  // Start an empty workout: directly, or through the "Anderes Training" sheet when a plan or routines exist.
-  const anderes = page.getByRole('button', { name: 'Anderes Training' });
+  // Start an empty workout: directly, or through the "Routine oder leer" sheet when a plan or routines exist.
+  const anderes = page.getByRole('button', { name: 'Routine oder leer' });
   const empty = page.getByRole('button', { name: 'Leeres Training starten' });
   await empty.or(anderes).first().waitFor();
   if (await anderes.count() > 0 && await empty.count() === 0) await anderes.click();
@@ -68,7 +68,7 @@ try {
   await page.getByRole('button', { name: 'Satz 1 erledigt' }).click();
   await page.getByRole('button', { name: 'Training beenden', exact: true }).click();
   // Everything is confirmed, so the summary shows; an end sheet only appears when sets are open.
-  const endSheet = page.getByRole('button', { name: 'Als erledigt zählen' });
+  const endSheet = page.getByRole('button', { name: 'Trotzdem als gemacht eintragen' });
   const summary = page.getByRole('region', { name: 'Zusammenfassung' });
   await endSheet.or(summary).first().waitFor();
   if (await endSheet.count() > 0) await endSheet.click();
@@ -77,8 +77,8 @@ try {
   const nav = (p: Page) => p.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true });
   const seeWorkout = async (p: Page, timeout = 15_000) => {
     await nav(p).click();
-    await seg(p, 'Entwicklung').click();
-    await p.getByRole('button', { name: pickedTitle, exact: true }).waitFor({ timeout });
+    await seg(p, 'Übungen').click();
+    await p.getByRole('list', { name: 'Deine Übungen' }).getByText(pickedTitle, { exact: true }).waitFor({ timeout });
   };
   await seeWorkout(page);
   step('workout tracked and finished');

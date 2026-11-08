@@ -4,10 +4,11 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TrackedRecord } from '../../src/shared/records';
-import { App, ErrorBoundary } from '../../src/web/App';
+import { App, ErrorBoundary, visibleTabs } from '../../src/web/App';
 import { openIdb } from '../../src/web/idbStore';
 import { mobilityToShow, shouldShowInstallHint } from '../../src/web/logic';
-import { dayIndex, itemKey, weekOf } from '../../src/shared/meals';
+import { addWeeks, dayIndex, itemKey, weekOf } from '../../src/shared/meals';
+import { MealDetail, type Week } from '../../src/web/MealsScreen';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,6 +16,7 @@ import { MealCoach } from '../../src/coach/meals/meal-coach';
 import { MEAL_SYSTEM_PROMPT } from '../../src/coach/meals/prompt';
 import { RecordStore } from '../../src/coach/tracking/store';
 import { runFp } from '../../src/shared/run';
+import type { LiveSocket } from '../../src/web/live';
 
 afterEach(cleanup);
 
@@ -27,7 +29,7 @@ const plan = (atMs: number, mobility: unknown = null): TrackedRecord => ({
 });
 const session = (triggerMs: number) => ({ id: `mobility-bike-${triggerMs}`, forSession: 'bike', minutes: 8, exercises: [{ id: 'm1', title: 'Hüftbeuger dehnen', howTo: 'Ausfallschritt, ruhig atmen.', area: 'hueftbeuger' }], reason: 'Nach der Radfahrt tut das gut.' });
 
-type Opts = { startTab?: string; onOpenTab?: (f: (tab: string) => void) => () => void; logoutStatus?: number; hold?: { me: Promise<void> | null }; flaky?: { fail: boolean }; me?: number; hangMe?: boolean; noIdb?: 'null' | 'throws'; flags?: Record<string, string>; logoutFails?: boolean; loginStatus?: number; offline?: boolean; syncStatus?: number; seed?: TrackedRecord[]; account?: string; ua?: string; standalone?: boolean; persist?: boolean; recipes?: (url: string) => Response | Promise<Response> };
+type Opts = { now?: number; openLive?: () => LiveSocket; startTab?: string; onOpenTab?: (f: (tab: string) => void) => () => void; logoutStatus?: number; hold?: { me: Promise<void> | null }; flaky?: { fail: boolean }; me?: number; hangMe?: boolean; noIdb?: 'null' | 'throws'; flags?: Record<string, string>; logoutFails?: boolean; loginStatus?: number; offline?: boolean; syncStatus?: number; seed?: TrackedRecord[]; account?: string; ua?: string; standalone?: boolean; persist?: boolean; recipes?: (url: string) => Response | Promise<Response> };
 async function boot(o: Opts = {}) {
   const factory = new IDBFactory();
   if (o.seed) { const s = await openIdb('anna', factory); for (const r of o.seed) await s.put(r); s.close(); }
@@ -44,6 +46,7 @@ async function boot(o: Opts = {}) {
     if (url === '/me') return o.me === 401 ? json(401, {}) : json(200, { name: 'anna' });
     if (url === '/login') return json(o.loginStatus ?? 200, { ok: true });
     if (url === '/logout') return json(200, { ok: true });
+    if (url === '/coach/status') return json(200, { profileId: 'pa', moved: true });
     if (o.syncStatus && o.syncStatus !== 200) return json(o.syncStatus, {});
     if (init.method === 'POST') return json(200, { accepted: 1, refused: [] });
     return json(200, { records: [], cursor: 0, more: false, reset: false });
@@ -51,14 +54,33 @@ async function boot(o: Opts = {}) {
   const persist = vi.fn(async () => o.persist ?? true);
   const onWorkoutOpen = vi.fn();
   const ui = render(<App env={{
-    fetchFn, idbFactory: o.flaky ? ({ open: (n: string, v?: number) => { if (o.flaky!.fail) throw new Error('denied'); return factory.open(n, v); } } as unknown as IDBFactory) : o.noIdb === 'null' ? null : o.noIdb === 'throws' ? ({ open: () => { throw new Error('denied'); } } as unknown as IDBFactory) : factory, now: () => NOW, newId: () => `id-${Math.random().toString(36).slice(2)}`,
+    fetchFn, idbFactory: o.flaky ? ({ open: (n: string, v?: number) => { if (o.flaky!.fail) throw new Error('denied'); return factory.open(n, v); } } as unknown as IDBFactory) : o.noIdb === 'null' ? null : o.noIdb === 'throws' ? ({ open: () => { throw new Error('denied'); } } as unknown as IDBFactory) : factory, now: () => o.now ?? NOW, newId: () => `id-${Math.random().toString(36).slice(2)}`,
     storage: { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => { storage.set(k, v); }, removeItem: (k: string) => { storage.delete(k); } },
-    persist, ua: o.ua ?? 'Mozilla/5.0 Android', standalone: o.standalone ?? false, onWorkoutOpen, startTab: o.startTab, onOpenTab: o.onOpenTab,
+    persist, ua: o.ua ?? 'Mozilla/5.0 Android', standalone: o.standalone ?? false, onWorkoutOpen, startTab: o.startTab, onOpenTab: o.onOpenTab, openLive: o.openLive,
   }} />);
   return { ...ui, factory, storage, calls, persist, onWorkoutOpen };
 }
 
 describe('web app', () => {
+  it('tabs: fixed order; a new account has Heute, Woche, Kraft; Essen and Ausdauer follow their switches', () => {
+    expect(visibleTabs({ meals: false, endurance: false })).toEqual(['heute', 'coach', 'training']);
+    expect(visibleTabs({ meals: true, endurance: false })).toEqual(['heute', 'coach', 'training', 'essen']);
+    expect(visibleTabs({ meals: false, endurance: true })).toEqual(['heute', 'coach', 'training', 'ausdauer']);
+    expect(visibleTabs({ meals: true, endurance: true })).toEqual(['heute', 'coach', 'training', 'essen', 'ausdauer']);
+  });
+
+  it('a new account shows Heute, Woche and Kraft in the tab bar', async () => {
+    await boot({ account: 'anna', seed: [] });
+    const nav = await screen.findByRole('navigation');
+    await new Promise((r) => setTimeout(r, 30));
+    expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual(['Heute', 'Woche', 'Kraft']);
+  });
+
+  it('the login says where an account comes from', async () => {
+    await boot({ me: 401 });
+    expect(await screen.findByText('Ein Konto bekommst du von der Person, die Pandafit eingerichtet hat.')).toBeTruthy();
+  });
+
   it('login failure shows a calm message', async () => {
     await boot({ me: 401, loginStatus: 401 });
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'anna' } });
@@ -76,11 +98,12 @@ describe('web app', () => {
     expect(a.calls.some((c) => c.includes('/login'))).toBe(false);
   });
 
-  it('Profil has a way back and the coach timing switches', async () => {
+  it('Profil has the coach timing switches; the tab bar is the way out, no second back link', async () => {
     await boot({ account: 'anna', seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
     expect(await screen.findByRole('switch', { name: /Wochengespräch/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+    expect(screen.queryByRole('button', { name: /Zurück/ })).toBeNull();
+    fireEvent.click(within(screen.getByRole('navigation')).getByRole('button', { name: 'Heute' }));
     expect(await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u })).toBeTruthy();
   });
 
@@ -116,14 +139,15 @@ describe('web app', () => {
     expect((screen.getByRole('switch', { name: 'Wochenübersicht per E-Mail' }) as HTMLInputElement).checked).toBe(false);
   });
 
-  it('storage persistence is requested at login, and a refusal gets a single calm line', async () => {
+  it('storage persistence is requested at login, and a refusal says nothing on Profil', async () => {
     const a = await boot({ me: 401, persist: false });
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'anna' } });
     fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'pw' } });
     fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
     await waitFor(() => expect(a.persist).toHaveBeenCalled());
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
-    expect((await screen.findAllByText(/Browser kann Daten löschen/)).length).toBe(1);
+    await screen.findByText(/Angemeldet als/);
+    expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
   });
 
   it('says nothing about storage when persistence is granted', async () => {
@@ -137,7 +161,7 @@ describe('web app', () => {
     const a = await boot({ offline: true, account: 'anna', seed: [plan(NOW - 1000)] });
     expect(await screen.findByText('Beine A')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Anderes Training' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Routine oder leer' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leeres Training starten' }));
     await waitFor(async () => {
       const s = await openIdb('anna', a.factory);
@@ -147,10 +171,17 @@ describe('web app', () => {
     await waitFor(() => expect(a.onWorkoutOpen).toHaveBeenCalledWith('open'));
   });
 
+  it('an open workout from an earlier day says so in its heading', async () => {
+    const open: TrackedRecord = { kind: 'workout', id: 'w-old', updatedMs: NOW - 500, deleted: false, body: { id: 'w-old', title: 'Pull', startMs: NOW - 26 * 3_600_000, endMs: null, source: 'pandafit', exercises: [] } };
+    await boot({ seed: [plan(NOW - 1000), open] });
+    expect(await screen.findByRole('heading', { name: /^Pull läuft – gestartet gestern \d\d:\d\d$/ })).toBeTruthy();
+  });
+
   it('an open workout shows on Heute with "Weitermachen", which leads to the workout', async () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w-open', updatedMs: NOW - 500, deleted: false, body: { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] } };
     await boot({ seed: [plan(NOW - 1000), open] });
-    expect(await screen.findByRole('heading', { name: /^Pull läuft noch – seit \d\d:\d\d$/ })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /^Pull läuft – gestartet \d\d:\d\d$/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Etwas anderes heute?' })).toBeNull(); // no day card beside the open workout
     fireEvent.click(screen.getByRole('button', { name: 'Weitermachen' }));
     // one tap: the workout itself opens, not the start screen with its card
     expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();
@@ -176,15 +207,36 @@ describe('web app', () => {
 
   it('without a plan there is a calm note and a workout can still be started', async () => {
     await boot({ seed: [] });
-    expect(await screen.findByText(/Noch kein Krafttraining geplant/)).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
     expect(await screen.findByRole('button', { name: 'Leeres Training starten' })).toBeTruthy();
+    expect(screen.getByText('Oder leg unter Routinen einen Ablauf an.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Studio/ }).textContent).toContain('noch keins');
+  });
+
+  it('a new account sees what Pandafit can plan, with the way to Profil; it goes once something is on', async () => {
+    await boot({ seed: [] });
+    expect(await screen.findByRole('heading', { name: 'Was soll Pandafit für dich planen?' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Woche planen' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Im Profil auswählen' }));
+    expect(await screen.findByRole('heading', { name: 'Profil' })).toBeTruthy();
+    expect(screen.getByText('Rad · startet mit der ersten Fahrt am Mac')).toBeTruthy();
+    // Profil is ordered: Planen first (with the run switch), then Nachrichten; the e-mail waits under its switch.
+    const heads = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(heads.indexOf('Planen')).toBeGreaterThanOrEqual(0);
+    expect(heads.indexOf('Planen')).toBeLessThan(heads.indexOf('Nachrichten'));
+    expect(screen.getByRole('switch', { name: 'Wochenübersicht per E-Mail' }).getAttribute('aria-describedby')).toBeTruthy();
+    expect(screen.getByText('Zuerst E-Mail eintragen')).toBeTruthy();
+    cleanup();
+    await boot({ seed: [plan(NOW - 1000)] });
+    await screen.findByRole('button', { name: 'Zum Krafttraining' });
+    expect(screen.queryByRole('heading', { name: 'Was soll Pandafit für dich planen?' })).toBeNull();
   });
 
   it('the mobility card comes from the plan and Gemacht writes the done record', async () => {
     const s = session(NOW - 3600_000);
     const a = await boot({ seed: [plan(NOW - 1000, s)] });
-    expect(await screen.findByText('8 Min')).toBeTruthy();
+    expect(await screen.findByText('Beweglichkeit · 8 Min')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /^Beweglichkeit/ }));
     expect(await screen.findByText('Hüftbeuger dehnen')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Gemacht' }));
@@ -227,7 +279,7 @@ describe('web app', () => {
   it('the tab bar steps aside while a field has focus, so the keyboard never pushes it over an input', async () => {
     await boot({ seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
-    fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
     const field = await screen.findByLabelText('Nachricht an den Coach');
     const nav = screen.getByRole('navigation', { name: 'Seiten' });
     fireEvent.focusIn(field);
@@ -367,13 +419,14 @@ describe('web app', () => {
     expect(screen.queryByText(/privat/i)).toBeNull(); // private mode is never claimed
   });
 
-  it('the persistence notice sits on Profil only, not over the other tabs', async () => {
+  it('a refused storage persistence shows no notice, on no tab', async () => {
     const again = await boot({ persist: false, seed: [] });
     await screen.findByRole('navigation');
     await waitFor(() => expect(again.persist).toHaveBeenCalled());
     expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
-    expect(await screen.findByText(/Browser kann Daten löschen/)).toBeTruthy();
+    await screen.findByText(/Angemeldet als/);
+    expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
   });
 
   it('the workout state is unknown until read, open for a fresh open workout, and none for a stale one', async () => {
@@ -389,7 +442,7 @@ describe('web app', () => {
 
   it('a malformed plan record does not white-screen the page', async () => {
     await boot({ seed: [{ kind: 'plan', id: 'current', updatedMs: 1, deleted: false, body: { workout: { name: 'X', exercises: [{ title: 'Ohne Sätze' }] } } }, { kind: 'complaint', id: 'c', updatedMs: 1, deleted: false, body: null }] });
-    expect(await screen.findByText(/Noch kein Krafttraining geplant/)).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
   });
 
   it('an error boundary shows a calm message and still offers the workout page', () => {
@@ -501,6 +554,59 @@ describe('Essen on the phone', () => {
     expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
   });
 
+  type FakeSocket = { s: LiveSocket; sent: string[]; closed: boolean };
+  const fakeSockets = () => {
+    const sockets: FakeSocket[] = [];
+    const openLive = (): LiveSocket => {
+      const entry: FakeSocket = { sent: [], closed: false, s: null as unknown as LiveSocket };
+      entry.s = { send: (d: string) => { entry.sent.push(d); }, close: () => { entry.closed = true; }, onopen: null, onmessage: null, onclose: null, onerror: null };
+      sockets.push(entry);
+      return entry.s;
+    };
+    return { sockets, openLive };
+  };
+  const coachState = (on: boolean) => JSON.stringify({ type: 'coach-state', state: {}, hevy: { state: 'idle' }, garmin: { state: 'idle' }, gym: null,
+    meals: { settings: { on, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'zuhause', abend: 'zuhause' } } } });
+  /** The coach link's socket: the one that subscribed once opened. */
+  const subscribed = async (sockets: FakeSocket[]): Promise<FakeSocket> => {
+    let link!: FakeSocket;
+    await waitFor(() => { act(() => { for (const x of sockets) if (!x.sent.length) x.s.onopen?.(); }); link = sockets.find((x) => !x.closed && x.sent.some((d) => d.includes('subscribe')))!; expect(link).toBeTruthy(); });
+    return link;
+  };
+
+  it('a new device with empty storage: the switch on and no plan shows Essen after the coach answers, without a Profil visit; then the link closes', async () => {
+    const { sockets, openLive } = fakeSockets();
+    const a = await boot({ account: 'anna', seed: [], openLive });
+    await screen.findByRole('navigation');
+    expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
+    const link = await subscribed(sockets);
+    act(() => link.s.onmessage?.({ data: coachState(true) }));
+    expect(await screen.findByRole('button', { name: 'Essen' })).toBeTruthy();
+    expect(a.storage.get('pandafit.essensplan.anna')).toBe('on');
+    expect(link.closed).toBe(true); // asked once, nothing keeps running
+  });
+
+  it('Essen follows the "Essensplan" switch: it shows at once, says when the first plan comes, and is remembered', async () => {
+    const { sockets, openLive } = fakeSockets();
+    const a = await boot({ account: 'anna', seed: [], openLive });
+    fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
+    // The coach's socket subscribes; its state says the meal plan is on.
+    const link = await subscribed(sockets);
+    expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
+    act(() => link.s.onmessage?.({ data: coachState(true) }));
+    expect(await screen.findByRole('button', { name: 'Essen' })).toBeTruthy();
+    expect(a.storage.get('pandafit.essensplan.anna')).toBe('on');
+    // Switched off again: the tab goes.
+    act(() => link.s.onmessage?.({ data: coachState(false) }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull());
+    expect(a.storage.get('pandafit.essensplan.anna')).toBe('off');
+    cleanup();
+    // The last value seen counts from the start, before the coach is asked again; the page says when the first plan comes.
+    await boot({ account: 'anna', seed: [], flags: { 'pandafit.essensplan.anna': 'on' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    expect(await screen.findByText('Noch kein Essensplan. Er kommt am Samstagmorgen für die nächste Woche.')).toBeTruthy();
+  });
+
   describe('on Heute', () => {
     const withPlan = (meals: unknown[]): TrackedRecord => ({ ...mealPlan, body: { ...(mealPlan.body as object), meals } });
     it('is hidden without a plan, and when the plan has nothing for today', async () => {
@@ -513,22 +619,20 @@ describe('Essen on the phone', () => {
       expect(screen.queryByText('Essen heute')).toBeNull();
     });
 
-    it('one row per slot of today in order, tapping opens the meal, the link goes to Essen', async () => {
+    it('one row per slot of today in order, tapping opens the meal', async () => {
       await boot({ account: 'anna', seed: [mealPlan] });
       const list = await screen.findByRole('list', { name: 'Essen heute' });
       const rows = within(list).getAllByRole('listitem').map((r) => r.textContent ?? '');
       expect(rows[0]).toContain('Frühstück · Skyr mit Beeren');
-      expect(rows[1]).toContain('Mittag · Linsen-Bolognese');
-      expect(rows[0]).toContain('5 Min');
+      expect(rows[1]).toContain('Mittagessen · Linsen-Bolognese');
+      expect(rows[0]).not.toContain('Min'); // how long it takes is for the plan, not for Heute
       expect(rows.some((r) => r.includes('Tomatensuppe'))).toBe(false);
       expect(screen.queryByText(/Heute vorkochen/)).toBeNull();
       fireEvent.click(within(list).getByRole('button', { name: /Linsen-Bolognese/ }));
       expect(await screen.findByRole('dialog')).toBeTruthy();
       expect(screen.getByText('Verrühren.')).toBeTruthy();
       fireEvent.keyDown(document, { key: 'Escape' });
-      fireEvent.click(await within(list).findByRole('button', { name: /Essensplan/ }));
-      expect(await screen.findByRole('heading', { name: 'Heute' })).toBeTruthy();
-      expect(screen.getByRole('group', { name: 'Ansicht' })).toBeTruthy();
+      expect(within(list).queryByRole('button', { name: /Essensplan/ })).toBeNull(); // the Essen tab is the way in, no second one
     });
 
     it('says rest and cook-ahead in words', async () => {
@@ -610,6 +714,47 @@ describe('Essen on the phone', () => {
     const skyr = (await screen.findByText('Skyr')).closest('li')!;
     fireEvent.click(within(skyr).getByRole('button', { name: 'Haben wir' }));
     expect(await screen.findByRole('heading', { name: 'Schon da' })).toBeTruthy();
+    // Under "Schon da" there is no box, only the way back.
+    expect(screen.queryByRole('checkbox', { name: 'Skyr gekauft' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Doch kaufen' })).toBeTruthy();
+  });
+
+  it('from Saturday the shopping list opens on next week when its plan is there, and the switch back works', async () => {
+    const next = addWeeks(week, 1);
+    const nextPlan: TrackedRecord = { ...mealPlan, id: `week-${next}`, body: { ...(mealPlan.body as object), week: next, meals: [{ day: 0, slot: 'abend', dish: { ...dish('Nudeln'), ingredients: [{ name: 'Nudeln', amount: 100, unit: 'g', section: 'Vorrat' }] }, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false }] } };
+    await boot({ account: 'anna', seed: [mealPlan, nextPlan], now: NOW + ((5 - today + 7) % 7) * DAY });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Einkauf/ }));
+    expect(screen.getByRole('button', { name: 'Nächste Woche' }).getAttribute('aria-pressed')).toBe('true');
+    expect(await screen.findByText('Nudeln')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Diese Woche' }));
+    expect(await screen.findByText('Skyr')).toBeTruthy();
+    expect(screen.queryByText('Nudeln')).toBeNull();
+  });
+
+  it('the reader\'s own chip comes first, whatever the case; no match leaves the order', () => {
+    const w = { plan: { ...(mealPlan.body as object), people: [{ id: 'pa', name: 'Max' }, { id: 'pb', name: 'Lena' }], meals: [{ day: 0, slot: 'mittag', dish: dish('X'), reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false }], trainingDays: [] }, state: { items: {}, eaters: {} } } as unknown as Week;
+    const meal = (w.plan as { meals: Week['plan']['meals'] }).meals[0]!;
+    const order = (me?: string) => { const r = render(<MealDetail week={w} meal={meal} onEater={() => {}} onView={() => {}} me={me} />); const names = [...r.container.querySelectorAll('.pm-person')].map((b) => b.textContent!.replace(/[^A-Za-z]/g, '').replace(/^[ML]/, '')); r.unmount(); return names; };
+    expect(order('lena')).toEqual(['Lena', 'Max']);
+    expect(order(' Lena ')).toEqual(['Lena', 'Max']);
+    expect(order('nobody')).toEqual(['Max', 'Lena']);
+    expect(order(undefined)).toEqual(['Max', 'Lena']);
+  });
+
+  it('the shopping list says for when and for whom, counts what is open, and keeps own items below the plan\'s', async () => {
+    await boot({ account: 'anna', seed: [mealPlan] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Einkauf · \d+ offen$/ }));
+    expect(screen.getByText(/für Mo–So, 2 Personen/)).toBeTruthy();
+    // The field to add comes first; "Menge (optional)" says it may stay empty.
+    const add = screen.getByLabelText('Etwas dazuschreiben');
+    expect(screen.getByPlaceholderText('Menge (optional)')).toBeTruthy();
+    fireEvent.change(add, { target: { value: 'Kaffee' } });
+    fireEvent.submit(add.closest('form')!);
+    const own = await screen.findByRole('heading', { name: 'Eigenes' });
+    const plan = screen.getByText('Skyr');
+    expect(plan.compareDocumentPosition(own) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('a message to the coach: written as a record, waiting until the Mac answers, then the reply and the change for both', async () => {
@@ -633,6 +778,7 @@ describe('Essen on the phone', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Änderung wünschen' }));
     fireEvent.change(await screen.findByLabelText('Nachricht an den Coach'), { target: { value: 'Heute Abend lieber was mit Nudeln' } });
     fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
+    expect(await screen.findByText('Wunsch gesendet')).toBeTruthy();
     expect(await screen.findByText('Der Coach antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeTruthy();
     expect(screen.getByText(/Heute Abend lieber was mit Nudeln/)).toBeTruthy();
     // Through the account to the Mac, which answers at its next tick.
@@ -656,7 +802,7 @@ describe('Essen on the phone', () => {
     expect(store.all('pa').some((r) => r.id.startsWith('chat-'))).toBe(false);
   });
 
-  it('shows where a dish comes from: a recipe link for a real recipe, "vom Coach" for an invented dish, nothing for the list', async () => {
+  it('shows one source link for a dish taken from the web, no labels, nothing for the list', async () => {
     const real = { ...dish('Linsen-Bolognese'), source: 'rezept', sourceUrl: 'https://rezepte.example/linsen' };
     const plan = { ...mealPlan, body: { ...(mealPlan.body as object), meals: [
       { day: today, slot: 'fruehstueck', dish: { ...dish('Skyr mit Beeren'), source: 'coach' }, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false },
@@ -666,21 +812,24 @@ describe('Essen on the phone', () => {
     await boot({ account: 'anna', seed: [plan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /Skyr mit Beeren/ }));
-    expect(screen.getByText('vom Coach')).toBeTruthy();
+    expect(screen.queryByText('vom Coach')).toBeNull();
+    expect(screen.queryByText(/nach Rezept/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Linsen-Bolognese/ }));
-    const link = screen.getByRole('link', { name: 'Rezept ›' });
+    const link = screen.getByRole('link', { name: 'Originalrezept ↗' });
     expect(link.getAttribute('href')).toBe('https://rezepte.example/linsen');
     expect(link.getAttribute('rel')).toContain('noopener');
     // A link that is not https is never shown; the dish falls back to the list.
     fireEvent.click(screen.getByRole('button', { name: /Tomatensuppe/ }));
-    expect(screen.queryAllByRole('link', { name: 'Rezept ›' })).toHaveLength(0);
+    expect(screen.queryAllByRole('link', { name: 'Originalrezept ↗' })).toHaveLength(0);
   });
 
   it('adds a recipe by link as a record, shows the coach\'s answer, lists own recipes and deletes one', async () => {
     const own = (id: string, title: string): TrackedRecord => ({ kind: 'mealplan', id, updatedMs: NOW - 500, deleted: false, body: { title, sourceUrl: 'https://rezepte.example/x', minutes: 20 } });
-    const a = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry')] });
+    const a = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry')], recipes: (url) => (url.includes('/search') ? json(200, { items: [{ id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [] }], more: false })
+      : json(200, { id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [], ingredients: [], steps: ['Kochen.'], sourceUrl: '' })) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Rezept hinzufügen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '+ Rezept per Link' }));
     const field = await screen.findByLabelText('Link zum Rezept');
     // Only https links can be sent.
     fireEvent.change(field, { target: { value: 'http://rezepte.example/a' } });
@@ -696,16 +845,20 @@ describe('Essen on the phone', () => {
     const answered = { ...sent[0]!, updatedMs: sent[0]!.updatedMs + 5, body: { ...(sent[0]!.body as object), atMs: Date.now() - 1000, result: { state: 'veg' }, answeredMs: Date.now() } };
     phone.close();
     cleanup();
-    const again = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry'), answered] });
+    const again = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry'), answered], recipes: (url) => (url.includes('/search') ? json(200, { items: [{ id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [] }], more: false })
+      : json(200, { id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [], ingredients: [], steps: ['Kochen.'], sourceUrl: '' })) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Rezept hinzufügen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '+ Rezept per Link' }));
     expect(await screen.findByText('Nicht vegetarisch – nicht gespeichert')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
-    fireEvent.click(screen.getByRole('button', { name: /^Eigene Rezepte/ }));
-    expect(await screen.findByText('Erfundenes Curry')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(screen.getByText(/erscheint unter „Von mir“/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+    // An own recipe is listed as "von dir" and deleted in its own view, after a question.
+    expect(await screen.findByText('20 Min · von dir')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^Erfundenes Curry\s?20 Min/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rezept löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
-    expect(await screen.findByText('Noch keine eigenen Rezepte.')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText('Erfundenes Curry')).toBeNull());
     const store = await openIdb('anna', again.factory);
     expect((await store.list('mealplan')).find((r) => r.id === 'recipe-l-aaaa1111')?.deleted).toBe(true);
     store.close();
@@ -775,18 +928,15 @@ describe('Rezepte on the phone', () => {
     await open({ recipes: route(urls) });
     await screen.findByText('Erfundener Topf 1');
     const chips = within(screen.getByRole('group', { name: 'Filter' }));
-    expect(chips.getAllByRole('button').map((b) => b.textContent)).toEqual(['Favoriten', 'Eigene', 'Frühstück', 'Mittag', 'Abend', 'schnell', 'proteinreich', 'Saison']);
+    expect(chips.getAllByRole('button').map((b) => b.textContent)).toEqual(['Favoriten', 'Von mir', 'schnell', 'proteinreich', 'Saison']);
     fireEvent.click(chips.getByRole('button', { name: 'Favoriten' }));
     await waitFor(() => expect(urls.at(-1)).toContain('fav=1'));
-    fireEvent.click(chips.getByRole('button', { name: 'Eigene' }));
+    fireEvent.click(chips.getByRole('button', { name: 'Von mir' }));
     await waitFor(() => expect(urls.at(-1)).toContain('own=1'));
-    fireEvent.click(chips.getByRole('button', { name: 'Frühstück' }));
-    fireEvent.click(chips.getByRole('button', { name: 'Abend' }));
     fireEvent.click(chips.getByRole('button', { name: 'schnell' }));
     fireEvent.click(chips.getByRole('button', { name: 'Saison' }));
-    // One meal chip at a time; the season is the current one (January: winter).
-    await waitFor(() => expect(decodeURIComponent(urls.at(-1)!)).toContain('tags=mahlzeit:abend,schnell,saison:winter'));
-    expect(chips.getByRole('button', { name: 'Frühstück' }).getAttribute('aria-pressed')).toBe('false');
+    // The season is the current one (January: winter).
+    await waitFor(() => expect(decodeURIComponent(urls.at(-1)!)).toContain('tags=schnell,saison:winter'));
     fireEvent.change(screen.getByLabelText('Rezept suchen'), { target: { value: 'linsen' } });
     await waitFor(() => expect(urls.at(-1)).toContain('q=linsen'));
   });
@@ -850,15 +1000,16 @@ describe('Rezepte on the phone', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Eine Portion weniger' }));
     expect(screen.getByText('100 g')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Eine Portion weniger' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByRole('link', { name: 'Zum Originalrezept ›' }).getAttribute('href')).toBe('https://rezepte.example/topf');
+    expect(screen.getByRole('link', { name: 'Zum Originalrezept ↗' }).getAttribute('href')).toBe('https://rezepte.example/topf');
   });
 
   it('the heart in the recipe view toggles the favourite too', async () => {
     const a = await open({ recipes: route([]) });
     fireEvent.click(await screen.findByRole('button', { name: /^Erfundener Topf 1\s?21 Min/ }));
-    fireEvent.click(await screen.findByRole('button', { name: '♡ Zu Favoriten' }));
+    const hearts = await screen.findAllByRole('button', { name: 'Erfundener Topf 1 zu den Favoriten' });
+    fireEvent.click(hearts.at(-1)!);
     await waitFor(async () => expect(await records(a, 'fav-')).toHaveLength(1));
-    expect(await screen.findByRole('button', { name: '♥ Favorit' })).toBeTruthy();
+    expect((await screen.findAllByRole('button', { name: 'Erfundener Topf 1 aus den Favoriten nehmen' })).length).toBe(2);
   });
 
   it('In den Plan: pick a day and a meal, it replaces that one and is sent as a request the coach answers', async () => {
@@ -870,7 +1021,7 @@ describe('Rezepte on the phone', () => {
     const names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     names.forEach((n, i) => expect((day.getByRole('button', { name: new RegExp(`^${n}`) }) as HTMLButtonElement).disabled).toBe(i < today));
     fireEvent.click(within(screen.getByRole('group', { name: 'Mahlzeit' })).getByRole('button', { name: 'Frühstück' }));
-    expect(screen.getByText(/Ersetzt: Skyr mit Beeren/)).toBeTruthy();
+    expect(screen.getByText(/Tauscht Skyr mit Beeren aus/)).toBeTruthy();
     expect(screen.getByText(/isst mit: Max, Lena/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Eintragen' }));
     expect(await screen.findByText('Der Coach trägt es gleich ein.')).toBeTruthy();
@@ -897,19 +1048,19 @@ describe('Rezepte on the phone', () => {
     fireEvent.error(thumbs[0]!);
     expect(document.querySelectorAll('img.pm-thumb')).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: /Erfundener Linsentopf/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Erfundener Linsentopf ansehen ›' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rezept ansehen ›' }));
     expect(await screen.findByText('Linsen kochen.')).toBeTruthy();
     // A dish without a recipe has neither picture nor link.
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     fireEvent.click(screen.getByRole('button', { name: /Skyr mit Beeren/ }));
-    expect(screen.queryByRole('button', { name: /Skyr mit Beeren ansehen/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Rezept ansehen ›' })).toBeNull();
   });
 
   it('a recipe that cannot be opened says so calmly', async () => {
     await boot({ account: 'anna', seed: [mealPlan], recipes: () => json(404, {}) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /Erfundener Linsentopf/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Erfundener Linsentopf ansehen ›' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rezept ansehen ›' }));
     expect(await screen.findByText('Dieses Rezept ist gerade nicht zu öffnen.')).toBeTruthy();
   });
 });
@@ -925,22 +1076,38 @@ describe('Laufen on the phone', () => {
   const review = run(`review-${week}`, { type: 'review', week, atMs: NOW - 500, km: 12.5, minutes: 90, plannedMinutes: 90, runs: 3, longestKm: 6, easyPace: null, testM: null, focus: 'Ruhig weiter.' });
   const planWeek = run(`week-${week}`, { type: 'week', week, announce: true, atMs: NOW - 900, phase: 1, source: 'rules', reason: 'r', note: null, runs: [{ ...planned, fp: runFp(planned), done: null }], garmin: null });
 
-  it('the Laufen tab appears only with a run status that is on or suggest', async () => {
+  it('Ausdauer for running appears once "Laufen planen" is on or the run coach says on or suggest', async () => {
+    const settings = (on: boolean) => run('settings', { type: 'settings', on, weekdays: null, answers: null });
     await boot({ account: 'anna', seed: [] });
     await screen.findByRole('navigation');
     expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
     cleanup();
-    await boot({ account: 'anna', seed: [status({ on: false, suggest: false })] });
+    await boot({ account: 'anna', seed: [status({ on: false, suggest: false }), settings(false)] });
     await screen.findByRole('navigation');
     expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
     cleanup();
     await boot({ account: 'anna', seed: [status()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
-    expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
     cleanup();
     await boot({ account: 'anna', seed: [status({ on: false, suggest: true })] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
     expect(await screen.findByRole('button', { name: 'Laufen einschalten' })).toBeTruthy();
+    cleanup();
+    // The switch is on, the coach has not answered yet: the tab is there and says what comes.
+    await boot({ account: 'anna', seed: [settings(true)] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
+    expect(await screen.findByText('Laufen ist an. Dein Laufplan erscheint hier, sobald der Coach ihn angelegt hat.')).toBeTruthy();
+  });
+
+  it('switching "Laufen planen" on in Profil shows Ausdauer at once', async () => {
+    await boot({ account: 'anna', seed: [] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
+    const sw = await screen.findByRole('switch', { name: 'Laufen planen' });
+    await waitFor(() => expect((sw as HTMLInputElement).disabled).toBe(false));
+    expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
+    fireEvent.click(sw);
+    expect(await screen.findByRole('button', { name: 'Ausdauer' })).toBeTruthy();
   });
 
   it('a record whose body type does not match its id is ignored', async () => {
@@ -964,14 +1131,19 @@ describe('Laufen on the phone', () => {
   it('a notification for Laufen without a run status stays on Heute', async () => {
     await boot({ account: 'anna', seed: [], startTab: 'laufen' });
     await screen.findByRole('navigation');
-    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Laufen' })).toBeNull());
+    expect(await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Ausdauer' })).toBeNull();
   });
 
-  it('Entwicklung is part of Kraft', async () => {
+  it('Kraft: one page head, then three sub-pages; Übungen holds your exercises and the catalog', async () => {
     await boot({ account: 'anna', seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Entwicklung' }));
-    expect(await screen.findByRole('heading', { name: 'Entwicklung' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Kraft' })).toBeTruthy();
+    const group = screen.getByRole('group', { name: 'Kraft' });
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Training', 'Routinen', 'Übungen']);
+    fireEvent.click(within(group).getByRole('button', { name: 'Übungen' }));
+    expect(await screen.findByRole('heading', { name: 'Anleitungen nachschlagen' })).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
   it('Laufen shows the run look back only when a review exists', async () => {
@@ -984,7 +1156,7 @@ describe('Laufen on the phone', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
     expect(screen.queryByRole('heading', { name: 'Wochenrückblick' })).toBeNull();
     fireEvent.click(await screen.findByRole('button', { name: /^Entwicklung/ }));
-    fireEvent.click(await screen.findByRole('button', { name: /^Mehr/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Ältere Wochen/ }));
     expect(await screen.findByRole('heading', { name: 'Wochenrückblick' })).toBeTruthy();
     expect(screen.getByText(/12,5 km/)).toBeTruthy();
   });
@@ -1005,22 +1177,27 @@ describe('Laufen on the phone', () => {
 
 });
 
-describe('Statistik on the phone', () => {
+describe('Rückblick in Woche', () => {
   const statsRec: TrackedRecord = { kind: 'stats', id: 'stats', updatedMs: NOW - 1000, deleted: false, body: { type: 'stats', atMs: NOW - 1000, goal: null, days: [], muscles: {} } };
   const done: TrackedRecord = { kind: 'workout', id: 'w1', updatedMs: NOW - 1000, deleted: false, body: { id: 'w1', title: 'Training', startMs: NOW - 2 * DAY, endMs: NOW - 2 * DAY + 3_600_000, source: 'pandafit', exercises: [] } };
 
-  it('the Statistik tab appears with a stats record or a finished workout, and not without', async () => {
+  it('there is no Statistik tab; Woche has the Rückblick, with its rows once there is a stats record or a finished workout', async () => {
     await boot({ account: 'anna', seed: [] });
-    await screen.findByRole('navigation');
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    const empty = await screen.findByRole('region', { name: 'Rückblick' });
     await new Promise((r) => setTimeout(r, 30));
+    expect(within(empty).getAllByRole('button').map((b) => b.textContent)).toEqual(['Verlauf›']);
     expect(screen.queryByRole('button', { name: 'Statistik' })).toBeNull();
     cleanup();
     await boot({ account: 'anna', seed: [statsRec] });
-    fireEvent.click(await screen.findByRole('button', { name: 'Statistik' }));
-    expect(await screen.findByRole('heading', { name: 'Statistik' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Zeit pro Woche' }));
+    expect(await screen.findByRole('dialog', { name: 'Zeit pro Woche' })).toBeTruthy();
     cleanup();
     await boot({ account: 'anna', seed: [done] });
-    expect(await screen.findByRole('button', { name: 'Statistik' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    expect(await screen.findByRole('button', { name: 'Zeit pro Woche' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Statistik' })).toBeNull();
   });
 });
 
@@ -1049,7 +1226,8 @@ describe('Rad on the phone', () => {
     cleanup();
     await boot({ account: 'anna', seed: [bikeRec()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
-    expect(await screen.findByRole('heading', { name: 'Rad' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Nächste Fahrt' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Ausdauer' })).toBeTruthy();
     expect(screen.queryByRole('group', { name: 'Ausdauer' })).toBeNull(); // no switch with Rad alone
   });
 
@@ -1059,22 +1237,22 @@ describe('Rad on the phone', () => {
     expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
   });
 
-  it('the next card names the session and Aufbau opens one row per block', async () => {
+  it('the next card names the session and the card opens the Ablauf with one row per block', async () => {
     await boot({ account: 'anna', seed: [bikeRec()], startTab: 'rad' });
     const card = await screen.findByRole('region', { name: 'Nächste Fahrt' });
     expect(card.textContent).toContain('Schwellen-Intervalle · 60 Min · hart');
     expect(card.textContent).toContain('Die letzten Tage waren locker.');
-    fireEvent.click(screen.getByRole('button', { name: /^Aufbau/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Schwellen-Intervalle/ }));
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByText('10 Min locker')).toBeTruthy();
-    expect(within(sheet).getByText('3 × 8 Min bei 95 %, dazwischen 4 Min locker')).toBeTruthy();
+    expect(within(sheet).getByText('3 × 8 Min bei 95 % (200 W), dazwischen 4 Min locker')).toBeTruthy();
   });
 
   it('the last ride opens the ride sheet with the facts, the sentence and the chart', async () => {
     await boot({ account: 'anna', seed: [bikeRec(), rideRec('r1', 3 * DAY), rideRec('r0', 60 * DAY, 'Locker')], startTab: 'rad' });
     fireEvent.click(await screen.findByRole('button', { name: /Grundlage/ }));
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText(/Ø 150 W · Ø Puls 130 · Belastung 40 · geschafft 100 %/)).toBeTruthy();
+    expect(within(sheet).getByText(/Alles geschafft, ruhig gefahren · Ø 150 W · Ø Puls 130/)).toBeTruthy();
     expect(within(sheet).getByText('Ruhig und gleichmäßig gefahren.')).toBeTruthy();
     expect(within(sheet).getByRole('img', { name: /Leistung und Puls/ }).querySelectorAll('polyline').length).toBe(2);
   });
@@ -1083,24 +1261,26 @@ describe('Rad on the phone', () => {
     await boot({ account: 'anna', seed: [bikeRec()], startTab: 'rad' });
     fireEvent.click(await screen.findByRole('button', { name: /^Entwicklung/ }));
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText(/^FTP 210 W – seit .* 10 W mehr$/)).toBeTruthy();
-    expect(within(sheet).getByText('Aufbau – noch 3 Wochen')).toBeTruthy();
+    expect(within(sheet).getByText(/^FTP \(Dauerleistung\) 210 W – seit .* 10 W mehr$/)).toBeTruthy();
+    expect(within(sheet).getByText('Phase Aufbau – noch 3 Wochen bis zur nächsten Phase')).toBeTruthy();
     expect(within(sheet).getAllByRole('img').length).toBe(2);
   });
 
   it('with Rad and Laufen a switch shows, remembers the choice and the old tab name still works', async () => {
     const a = await boot({ account: 'anna', seed: [bikeRec(), runStatus()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
-    await screen.findByRole('heading', { name: 'Rad' });
+    await screen.findByRole('region', { name: 'Nächste Fahrt' });
+    // One page head: the title, the switch below it, no second title for the chosen half.
+    expect(screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent)).toEqual(['Ausdauer']);
     fireEvent.click(within(screen.getByRole('group', { name: 'Ausdauer' })).getByRole('button', { name: 'Laufen' }));
-    expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
     expect(a.storage.get('pandafit.ausdauer.anna')).toBe('laufen');
     cleanup();
     await boot({ account: 'anna', seed: [bikeRec(), runStatus()], startTab: 'laufen' });
-    expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
     cleanup();
     await boot({ account: 'anna', seed: [bikeRec(), runStatus()], flags: { 'pandafit.ausdauer.anna': 'laufen' }, startTab: 'ausdauer' });
-    expect(await screen.findByRole('heading', { name: 'Laufen' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
   });
 
   const bikeWeek = async (): Promise<TrackedRecord> => {
@@ -1116,7 +1296,7 @@ describe('Rad on the phone', () => {
     const card = screen.getByRole('region', { name: /^Heute/ });
     expect(card.textContent).toContain('am Mac');
     fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
-    expect(await screen.findByRole('heading', { name: 'Rad' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Nächste Fahrt' })).toBeTruthy();
   });
 
   it('Heute on a bike day without a published plan keeps the note about the Mac', async () => {

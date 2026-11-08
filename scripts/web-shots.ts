@@ -450,7 +450,7 @@ async function main() {
         const m = JSON.parse(String(raw)) as { type?: string; id?: string };
         if (m.type === 'live-watch' && liveOn) pushLive(ws);
         // Profil: the settings the account's coach holds (invented): Hevy connected, Garmin not, strength planned, meals on.
-        if (m.type === 'subscribe') ws.send(JSON.stringify({ type: 'coach-state', state: {}, thinking: false, together: {}, hevy: { state: 'connected', workouts: 42, loading: false, lastSyncMs: null }, garmin: { state: 'idle' }, gym: { state: {} }, meals: { settings: { on: true, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' } } } }));
+        if (m.type === 'subscribe') ws.send(JSON.stringify({ type: 'coach-state', state: {}, thinking: false, together: {}, hevy: { state: 'connected', workouts: 42, loading: false, lastSyncMs: null }, garmin: { state: 'idle' }, gym: EMPTY ? null : { state: {} }, meals: { settings: { on: !EMPTY, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' } } } }));
         if (m.type === 'live-command') ws.send(JSON.stringify({ type: 'live-ack', profileId: 'pa', id: m.id, ok: true }));
       } catch { /* not ours */ }
     });
@@ -481,7 +481,7 @@ async function main() {
     await shot('neu-profil');
     return;
   }
-  await page.getByRole('navigation').getByRole('button', { name: 'Statistik', exact: true }).waitFor({ timeout: 30_000 });
+  await page.getByRole('navigation').getByRole('button', { name: 'Ausdauer', exact: true }).waitFor({ timeout: 30_000 });
   await page.waitForFunction(() => document.body.innerText.includes('Pull'), null, { timeout: 30_000 }).catch(() => {});
   await page.waitForTimeout(1500);
 
@@ -495,10 +495,10 @@ async function main() {
     await page.getByRole('button', { name: /Fahrt läuft/ }).click();
     await page.getByLabel('Leistung').waitFor();
     await shot('fahrt-laeuft');
-    await page.getByRole('button', { name: '+5 %' }).click();
+    await page.getByRole('button', { name: 'Schwerer' }).click();
     await page.waitForTimeout(250);
     await shot('fahrt-laeuft-gesendet');
-    await page.getByRole('button', { name: 'Intervall überspringen' }).click();
+    await page.getByRole('button', { name: 'Überspringen' }).click();
     await shot('fahrt-laeuft-ueberspringen');
     await page.getByRole('button', { name: 'Abbrechen' }).click();
     liveOn = false;
@@ -507,7 +507,7 @@ async function main() {
     await closeDialog();
     await page.waitForTimeout(400);
   });
-  await step('heute-anders', async () => { await page.getByRole('button', { name: /^Anders heute/ }).click(); await shot('heute-anders-heute'); await closeDialog(); });
+  await step('heute-anders', async () => { await page.getByRole('button', { name: /^Etwas anderes heute/ }).click(); await shot('heute-anders-heute'); await closeDialog(); });
   await step('heute-beweglichkeit', async () => { await page.getByRole('button', { name: /^Beweglichkeit/ }).click(); await page.waitForTimeout(300); await shot('heute-beweglichkeit-sheet'); await closeDialog(); });
 
   // Woche: the week and three rows; goal, rules and the coach chat are sheets.
@@ -515,23 +515,24 @@ async function main() {
   await page.waitForTimeout(800);
   await shot('woche');
   const row = (name: RegExp) => page.getByRole('button', { name });
-  await step('woche-ziel-sheet', async () => { await row(/^Mein Ziel/).click(); await shot('woche-ziel-sheet'); await closeDialog(); });
-  await step('woche-regeln-sheet', async () => { await fresh('Woche'); await row(/^Regeln/).click(); await page.getByRole('button', { name: /Ohne Kreuzheben/ }).click(); await shot('woche-regeln-sheet'); });
-  await step('woche-exclude-picker', async () => { await fresh('Woche'); await row(/^Regeln/).click(); await page.getByRole('button', { name: '+ Hinzufügen' }).click(); await page.getByRole('button', { name: 'Übung ausschließen' }).click(); await shot('woche-exclude-exercise-picker'); });
+  await step('woche-ziel-sheet', async () => { await row(/^Ziel und Planung/).click(); await shot('woche-ziel-sheet'); await closeDialog(); });
+  await step('woche-regeln-sheet', async () => { await fresh('Woche'); await row(/^Was der Coach beachtet/).click(); await page.getByRole('button', { name: /Ohne Kreuzheben/ }).click(); await shot('woche-regeln-sheet'); });
+  await step('woche-exclude-picker', async () => { await fresh('Woche'); await row(/^Was der Coach beachtet/).click(); await page.getByRole('button', { name: '+ Regel hinzufügen' }).click(); await page.getByRole('button', { name: 'Übung ausschließen' }).click(); await shot('woche-exclude-exercise-picker'); });
   await step('woche-chat-sheet', async () => { await fresh('Woche'); await row(/^Coach/).click(); await page.waitForTimeout(500); await shot('woche-chat-sheet'); });
+  await step('woche-chat-vorschlaege', async () => { await shot('woche-chat-vorschlaege'); await page.getByRole('button', { name: 'Schließen' }).last().click(); await page.waitForTimeout(300); });
   await step('woche-chat-older', async () => {
     await page.getByRole('button', { name: 'Ältere anzeigen' }).click();
     await page.waitForTimeout(300);
     await shot('woche-chat-older-30');
   });
-  await step('woche-chat-vorschlaege', async () => { await page.getByRole('button', { name: /^\d Vorschl/ }).click(); await page.waitForTimeout(300); await shot('woche-chat-vorschlaege'); await closeDialog(); });
-  await step('woche-typing', async () => { await fresh('Woche'); await row(/^Coach/).click(); await page.getByLabel('Nachricht an den Coach').fill('Kannst du mir für nächste Woche etwas mit weniger Beinen vorschlagen?'); await page.getByLabel('Nachricht an den Coach').focus(); await shot('woche-chat-typing'); });
+  await step('woche-chat-strip', async () => { await page.getByRole('button', { name: /^\d Vorschl/ }).click(); await page.waitForTimeout(300); await shot('woche-chat-strip'); await closeDialog(); });
+  await step('woche-typing', async () => { await fresh('Woche'); await row(/^Coach/).click(); await page.waitForTimeout(400); await page.getByRole('button', { name: 'Schließen' }).last().click(); await page.waitForTimeout(300); await page.getByLabel('Nachricht an den Coach').fill('Kannst du mir für nächste Woche etwas mit weniger Beinen vorschlagen?'); await page.getByLabel('Nachricht an den Coach').focus(); await shot('woche-chat-typing'); });
 
   // Kraft.
   await fresh('Kraft');
   await shot('kraft-training-start');
   await step('kraft-studio', async () => { await page.getByRole('button', { name: /^Studio/ }).click({ timeout: 1000 }); await shot('kraft-training-start-studio'); await closeDialog(); });
-  await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Anderes Training' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
+  await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Routine oder leer' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
   await seg('Routinen');
   await shot('kraft-routinen');
   await step('kraft-routine-edit', async () => {
@@ -542,22 +543,21 @@ async function main() {
       await page.locator('.tk-sheet .tk-rows .tk-rowbtn[aria-expanded]').first().click(); await shot('kraft-routinen-uebung-waehlen-gruppe');
       await page.getByLabel('Suchen').fill('zzzz'); await shot('kraft-routinen-uebung-waehlen-leer');
       await page.getByRole('button', { name: 'Eigene Übung anlegen' }).click(); await shot('kraft-routinen-uebung-eigene');
-      await page.getByRole('button', { name: 'Schließen' }).last().click(); await page.getByRole('button', { name: 'Schließen' }).last().click();
+      await page.getByRole('button', { name: '‹ Zurück' }).last().click(); await page.getByRole('button', { name: '‹ Zurück' }).last().click();
     });
     await page.getByRole('button', { name: 'Abbrechen' }).first().click();
   });
   await step('kraft-routine-new', async () => { await page.getByRole('button', { name: 'Neue Routine' }).click(); await shot('kraft-routinen-neu'); await page.getByRole('button', { name: 'Abbrechen' }).first().click(); });
-  await seg('Entwicklung');
-  await shot('kraft-entwicklung');
-  await step('kraft-entwicklung-uebung', async () => {
-    await page.locator('.tk-rows .tk-rowbtn').first().click();
-    await shot('kraft-entwicklung-uebung');
+  await seg('Übungen');
+  await shot('kraft-uebungen');
+  await step('kraft-uebungen-entwicklung', async () => {
+    await page.getByRole('list', { name: 'Deine Übungen' }).locator('.tk-rowbtn').first().click();
+    await shot('kraft-uebungen-entwicklung');
   });
   await fresh('Kraft'); await seg('Übungen');
-  await shot('kraft-uebungen-katalog');
-  await step('kraft-uebungen-group', async () => { await page.getByRole('button', { name: 'Brust', exact: true }).click(); await shot('kraft-uebungen-gruppe-offen'); await page.getByLabel('Übung suchen').fill('Kniebeuge mit Kurzhanteln'); await page.locator('.tk-row-more .tk-rowbtn').first().click(); await shot('kraft-uebungen-info-offen'); await page.getByRole('button', { name: /^Nicht mehr vorschlagen/ }).click(); await shot('kraft-uebungen-nicht-mehr-vorschlagen'); await page.keyboard.press('Escape'); });
+  await step('kraft-uebungen-group', async () => { await page.getByRole('button', { name: 'Brust', exact: true }).click(); await shot('kraft-uebungen-gruppe-offen'); await page.getByLabel('Übung suchen').fill('Kniebeuge mit Kurzhanteln'); await page.locator('.tk-rowbtn', { hasText: 'Kniebeuge mit Kurzhanteln' }).first().click(); await shot('kraft-uebungen-info-offen'); await page.getByRole('button', { name: /^Nicht mehr vorschlagen/ }).click(); await shot('kraft-uebungen-nicht-mehr-vorschlagen'); await page.keyboard.press('Escape'); });
 
-  // Essen, Laufen, Statistik, Profil.
+  // Essen, Ausdauer, Rückblick (in Woche), Profil.
   await fresh('Essen');
   await shot('essen-tage');
   await step('essen-mahlzeit-offen', async () => { await page.locator('.tk-rowbtn[aria-expanded]').first().click(); await shot('essen-tage-mahlzeit-offen'); });
@@ -581,12 +581,13 @@ async function main() {
     await page.keyboard.press('Escape'); await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
   });
   await step('essen-rezept-hinzufuegen', async () => {
-    await page.getByRole('button', { name: 'Rezept hinzufügen' }).click();
+    await page.getByRole('button', { name: /^Rezepte/ }).click();
+    await page.getByRole('button', { name: '+ Rezept per Link' }).click();
     await page.getByLabel('Link zum Rezept').fill('https://rezepte.example/gemuese-curry');
     await shot('essen-rezept-hinzufuegen');
     await page.keyboard.press('Escape');
   });
-  await step('essen-eigene-rezepte', async () => { await page.getByRole('button', { name: /^Eigene Rezepte/ }).click(); await shot('essen-eigene-rezepte'); await page.keyboard.press('Escape'); });
+  await step('essen-eigene-rezepte', async () => { await page.getByRole('group', { name: 'Filter' }).getByRole('button', { name: 'Von mir' }).click(); await page.waitForTimeout(500); await shot('essen-eigene-rezepte'); await page.keyboard.press('Escape'); });
   await step('essen-einkauf', async () => { await page.getByRole('button', { name: /^Einkauf/ }).click(); await shot('essen-einkauf'); });
   await step('essen-einkauf-haben-wir', async () => { await page.locator('.pm-have').first().click(); await shot('essen-einkauf-haben-wir'); await page.locator('.pm-have').first().click(); });
   await step('essen-einkauf-eigenes', async () => {
@@ -601,7 +602,7 @@ async function main() {
   await nav('Ausdauer');
   await page.waitForTimeout(500);
   await shot('rad');
-  await step('rad-aufbau', async () => { await page.getByRole('button', { name: /^Aufbau/ }).click(); await shot('rad-aufbau'); await closeDialog(); });
+  await step('rad-aufbau', async () => { await page.getByRole('button', { name: /Ablauf ansehen/ }).click(); await shot('rad-aufbau'); await closeDialog(); });
   await step('rad-fahrt', async () => { await page.getByRole('button', { name: /Grundlage|Locker|Schwellen/ }).first().click(); await shot('rad-fahrt'); await closeDialog(); });
   await step('rad-entwicklung', async () => { await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('rad-entwicklung'); await closeDialog(); });
   const enduranceSeg = (label: string) => page.getByRole('group', { name: 'Ausdauer' }).getByRole('button', { name: label, exact: true }).click().then(() => page.waitForTimeout(400));
@@ -610,20 +611,21 @@ async function main() {
   await shot('laufen');
   await step('laufen-eintragen', async () => { await page.getByRole('button', { name: 'Lauf eintragen' }).click(); await shot('laufen-lauf-eintragen'); await page.getByRole('button', { name: /^Mehr/ }).click(); await shot('laufen-lauf-eintragen-mehr'); await page.keyboard.press('Escape'); });
   await step('laufen-entwicklung', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('laufen-entwicklung'); await page.keyboard.press('Escape'); });
-  await step('laufen-einstellungen', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Lauftage und Angaben/ }).click(); await shot('laufen-lauftage-aendern'); await page.keyboard.press('Escape'); });
-  await nav('Statistik');
+  await step('laufen-einstellungen', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Lauftage/ }).click(); await shot('laufen-lauftage-aendern'); await page.keyboard.press('Escape'); });
+  await nav('Woche');
   await page.waitForTimeout(500);
-  await shot('statistik');
-  await step('statistik-muscle', async () => { await page.getByRole('button', { name: 'Muskeln' }).click(); await page.getByRole('dialog', { name: 'Muskeln' }).locator('.tk-rowbtn').first().click(); await shot('statistik-muskel-offen'); await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Details' }).click(); await shot('statistik-details'); await page.keyboard.press('Escape'); });
+  await step('rueckblick', async () => { await page.getByRole('region', { name: 'Rückblick' }).scrollIntoViewIfNeeded(); await shot('woche-rueckblick'); });
+  await step('rueckblick-muscle', async () => { await page.getByRole('region', { name: 'Rückblick' }).getByRole('button', { name: /^Muskeln/ }).click(); await page.getByRole('dialog', { name: 'Muskeln' }).locator('.tk-rowbtn').first().click(); await shot('rueckblick-muskel-offen'); await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Zeit pro Woche' }).click(); await shot('rueckblick-zeit-pro-woche'); await page.keyboard.press('Escape'); });
+  await step('rueckblick-verlauf', async () => { await page.getByRole('button', { name: /^Verlauf/ }).click(); await shot('rueckblick-verlauf'); await page.getByRole('dialog', { name: 'Verlauf' }).locator('.tk-rowbtn').first().click(); await page.waitForTimeout(300); await shot('rueckblick-verlauf-training'); await page.getByRole('button', { name: '‹ Zurück' }).first().click(); await closeDialog(); });
   await step('gesundheit', async () => {
-    await page.getByRole('button', { name: 'Gesundheit' }).click();
+    await page.getByRole('button', { name: /^Gesundheit/ }).click();
     await page.getByRole('dialog', { name: 'Gesundheit' }).waitFor();
     await shot('gesundheit');
     await page.getByRole('dialog', { name: 'Gesundheit' }).getByRole('button', { name: /^Ruhepuls/ }).click();
     await shot('gesundheit-ruhepuls');
     await page.getByRole('button', { name: /^Quellen/ }).click();
     await shot('gesundheit-quellen');
-    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: '‹ Zurück' }).click();
     await page.waitForTimeout(400);
     await closeDialog();
   });
@@ -631,8 +633,8 @@ async function main() {
     const dbh = openDb(dbPath);
     putRecords(dbh, accountId, [rec('health', 'health', healthBody(true), NOW + 5000)], NOW + 5000);
     dbh.close();
-    await fresh('Statistik');
-    await page.getByRole('button', { name: 'Gesundheit' }).click();
+    await fresh('Woche');
+    await page.getByRole('button', { name: /^Gesundheit/ }).click();
     await page.getByRole('dialog', { name: 'Gesundheit' }).waitFor();
     await shot('gesundheit-arzt');
     await closeDialog();
@@ -676,7 +678,7 @@ async function main() {
       await page.mouse.up();
       await page.waitForTimeout(300);
       await shot('kraft-training-active-reihenfolge-danach');
-      await page.getByRole('button', { name: 'Fertig' }).click();
+      await closeDialog();
     });
     await step('kraft-training-active-picker', async () => { await page.getByRole('button', { name: 'Übung hinzufügen' }).click(); await shot('kraft-training-active-uebung-hinzufuegen'); await closeDialog(); });
     await step('kraft-training-active-set-edit', async () => { await page.getByLabel('Gewicht Satz 1').first().focus(); await shot('kraft-training-active-tippen'); await page.getByLabel('Gewicht Satz 1').first().blur(); });
@@ -684,7 +686,7 @@ async function main() {
       await page.getByRole('button', { name: 'Training beenden' }).click();
       await page.waitForTimeout(800);
       await shot('kraft-training-beendet');
-      await page.getByRole('button', { name: 'Weglassen' }).click();
+      await page.getByRole('button', { name: 'Offene Sätze nicht eintragen' }).click();
       await page.waitForTimeout(1200);
       await shot('kraft-training-zusammenfassung');
     });

@@ -27,22 +27,22 @@ export const rideTitle = (r: RideBody): string => `${shortDate(r.startedAtMs)} �
 /** "52 Min · locker" */
 export const rideValue = (r: RideBody): string => `${minText(r.durationS / 60)} · ${HARDNESS_LABEL[r.hardness]}`;
 
-/** The numbers of a ride in one muted line; a missing value is left out. */
+/** One sentence on how it went ("Alles geschafft, ruhig gefahren"), then the power and the pulse; a missing value is left out. */
 export function rideFacts(r: RideBody): string {
-  const parts: string[] = [];
+  const done = r.completedFraction >= 0.95 ? 'Alles geschafft' : `Zu ${Math.round(r.completedFraction * 100)} % geschafft`;
+  const how = { easy: 'ruhig gefahren', moderate: 'zügig gefahren', hard: 'kräftig gefahren' }[r.hardness];
+  const parts = [`${done}, ${how}`];
   if (r.avgPowerW !== null) parts.push(`Ø ${r.avgPowerW} W`);
   if (r.avgHrBpm !== null) parts.push(`Ø Puls ${r.avgHrBpm}`);
-  if (r.tss > 0) parts.push(`Belastung ${r.tss}`);
-  parts.push(`geschafft ${Math.round(r.completedFraction * 100)} %`);
   return parts.join(' · ');
 }
 
 const monthName = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { month: 'long' });
 const MIN_BACK_MS = 14 * 86_400_000;
 
-/** "FTP 245 W – seit Sept. 10 W mehr": against the oldest value of the history that is at least two weeks old. */
+/** "FTP (Dauerleistung) 245 W – seit Sept. 10 W mehr": against the oldest value of the history that is at least two weeks old. */
 export function ftpSentence(b: BikeBody): string {
-  const base = `FTP ${Math.round(b.ftpW)} W`;
+  const base = `FTP (Dauerleistung) ${Math.round(b.ftpW)} W`;
   const first = [...b.ftpHistory].sort((x, y) => x.atMs - y.atMs)[0];
   const newest = b.ftpHistory.reduce((m, h) => Math.max(m, h.atMs), 0);
   if (!first || newest - first.atMs < MIN_BACK_MS) return base;
@@ -54,5 +54,5 @@ export function ftpSentence(b: BikeBody): string {
 export const phaseText = (b: BikeBody): string | null => {
   if (!b.phase) return null;
   const w = b.phase.weeksLeft;
-  return `${b.phase.name}${w > 0 ? ` – noch ${w} ${w === 1 ? 'Woche' : 'Wochen'}` : ''}`;
+  return `Phase ${b.phase.name}${w > 0 ? ` – noch ${w} ${w === 1 ? 'Woche' : 'Wochen'} bis zur nächsten Phase` : ''}`;
 };

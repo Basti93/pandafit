@@ -6,10 +6,10 @@ import { openStoreCount } from '../tracking/registry';
 import { PageHead, Row, RowList, Switch } from '../tracking/ui/kit';
 import { CoachPrefs } from '../tracking/ui/CoachPrefs';
 import { localDayKey, shortDate, timeLabel } from '../shared/dates';
-import { BikeScreen, bikeOf, hasBike as bikeVisible, ridesOf, CatalogScreen, DevelopmentScreen, RoutinesScreen, RunScreen, RunSettingsCard, StatsScreen, WorkoutScreen } from '../tracking/ui';
-import { statsVisible } from '../tracking/ui/StatsScreen';
+import { BikeScreen, bikeOf, hasBike as bikeVisible, ridesOf, ExercisesScreen, RoutinesScreen, RunScreen, RunSettingsCard, WorkoutScreen } from '../tracking/ui';
 import { CoachScreen } from '../tracking/ui/CoachScreen';
 import { TodayCard, todayPlan } from '../tracking/ui/TodayCard';
+import { useWaitingProposal, WaitingProposal } from '../tracking/ui/WaitingProposal';
 import { runView } from '../tracking/ui/run-view';
 import { MobilityOffer } from '../tracking/ui/MobilityOffer';
 import { GymOutlook } from '../tracking/ui/GymOutlook';
@@ -22,7 +22,7 @@ import { MealsScreen, mealWeeks, TodayMeals } from './MealsScreen';
 import { TogetherCard, TogetherPage, togetherOf } from './TogetherScreen';
 import type { PushEnv, SubJson } from './push';
 import { ContactSettings, UpdatesSwitch } from './ContactSettings';
-import { ConnectionSettings } from './ConnectionSettings';
+import { ConnectionSettings, ProfileGroup } from './ConnectionSettings';
 import { CoachLink } from './coachLink';
 import { LiveClient, type LiveSocket } from './live';
 import { LiveRide } from './LiveRide';
@@ -91,6 +91,7 @@ function LoginForm({ env, onDone, note, before, failed }: { env: Env; onDone: (n
   return (
     <form className="web-login tk-screen" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
       <h1 className="tk-title">Pandafit</h1>
+      <p className="muted">Ein Konto bekommst du von der Person, die Pandafit eingerichtet hat.</p>
       {note && <p role="status" className="tk-note">{note}</p>}
       <label>Name<input ref={nameRef} aria-label="Name" autoComplete="username" autoCapitalize="none" value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label>Passwort<input ref={passRef} aria-label="Passwort" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
@@ -118,9 +119,15 @@ export class ErrorBoundary extends Component<{ children: ReactNode; onTraining: 
 /** "Samstag, 7. November" */
 const todayTitle = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 /** "14:05", or with the day when it was not today. */
-const sinceText = (ms: number, now: number): string => (localDayKey(ms) === localDayKey(now) ? timeLabel(ms) : `${shortDate(ms)} ${timeLabel(ms)}`);
+/** "14:44" today, "gestern 13:34" the day before, "Sa., 13:34" earlier: an old open workout shows as old. */
+export const sinceText = (ms: number, now: number): string => {
+  if (localDayKey(ms) === localDayKey(now)) return timeLabel(ms);
+  const day = new Date(now); day.setDate(day.getDate() - 1);
+  if (localDayKey(ms) === localDayKey(day.getTime())) return `gestern ${timeLabel(ms)}`;
+  return `${new Date(ms).toLocaleDateString('de-DE', { weekday: 'short' })}, ${timeLabel(ms)}`;
+};
 
-function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goMeals?: () => void }) {
+function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
   const weekplans = usePortRecords(port, 'weekplan').records;
@@ -134,6 +141,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals
   const now = env.now();
   const session = useMemo(() => mobilityToShow(plan, mobility ?? [], now), [plan, mobility, now]);
   const today = todayPlan(weekplans, now);
+  const waiting = useWaitingProposal(port, now);
   // A workout still open (here or on another device) is the next thing to do: the newest one.
   const workouts = usePortRecords(port, 'workout').records;
   const open = (workouts ?? []).filter((r) => (r.body as LoggedWorkout).endMs === null).sort((x, y) => (y.body as LoggedWorkout).startMs - (x.body as LoggedWorkout).startMs)[0];
@@ -145,7 +153,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals
 
   // The strength plan: on a strength day inside the week plan's card, without a week plan as its own card.
   // Name and time in one line, the exercises in two; the reason, the sets and the outlook behind "Details".
-  const toTraining = <button type="button" className={open ? 'secondary' : undefined} onClick={() => goTraining()}>Zum Krafttraining</button>;
+  const toTraining = <button type="button" onClick={() => goTraining()}>Zum Krafttraining</button>;
   const gym = p ? (
     <>
       {p.workout && <p className="muted"><span>{p.workout.name}</span>{p.workout.exercises.length > 0 ? ` · ${durationNote(p.workout)}` : ''}</p>}
@@ -164,7 +172,6 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals
     </>
   ) : (
     <>
-      <p className="muted">Noch kein Krafttraining geplant. Du kannst trotzdem jederzeit trainieren.</p>
       {toTraining}
     </>
   );
@@ -182,45 +189,49 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals
       <PageHead title={todayTitle(now)} />
       {open && (
         <section className="card" aria-label="Training läuft noch">
-          <h2>{(open.body as LoggedWorkout).title} läuft noch – seit {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
+          <h2>{(open.body as LoggedWorkout).title} läuft – gestartet {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
           <button type="button" onClick={() => goTraining(true)}>Weitermachen</button>
         </section>
       )}
       {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
-      {today ? <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} quiet={!!open} /> : (
-        <>
-          <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} quiet={!!open} />
-          <section className="card">{gym}</section>
-          <section className="card">
-            <p className="muted">Noch kein Wochenplan für heute. Mit dem Coach plant ihr die Woche über alle Sportarten.</p>
+      {/* A workout that is open is the one thing to do: no day card beside it. */}
+      {!open && <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} />}
+      {!open && weekplans !== null && plans !== null && !today && !planning && !p && (
+        <section className="card" aria-label="Was Pandafit planen kann">
+          <h2>Was soll Pandafit für dich planen?</h2>
+          <p className="muted">Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit dem Coach.</p>
+          <div className="tk-row">
             <button type="button" className="secondary" onClick={goCoach}>Woche planen</button>
-          </section>
-        </>
+            <button type="button" className="link" onClick={goProfile}>Im Profil auswählen</button>
+          </div>
+        </section>
       )}
-      {goMeals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} onOpenPlan={goMeals} />}
+      {!open && waiting && <WaitingProposal onOpen={goCoach} />}
+      {meals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
       {session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />}
     </div>
   );
 }
 
-function Training({ port, env, resume }: { port: WebPort; env: Env; resume: boolean }) {
+function Training({ port, env, resume, onDone }: { port: WebPort; env: Env; resume: boolean; onDone: () => void }) {
   const [running, setRunning] = useState(false);
   const plans = usePortRecords(port, 'plan').records;
-  const [screen, setScreen] = useState<'workout' | 'routines' | 'history' | 'catalog'>('workout');
+  const [screen, setScreen] = useState<'workout' | 'routines' | 'exercises'>('workout');
   const [routine, setRoutine] = useState<GymWorkout | null>(null);
   const plan = readPlan((plans ?? []).find((r) => r.id === 'current'));
   return (
     <>
-      {/* A running workout has the whole screen: no sub-navigation until it is done. */}
-      {!(running && screen === 'workout') && <div className="tk-screen"><div className="tk-seg" role="group" aria-label="Kraft">
-        <button type="button" aria-pressed={screen === 'workout'} onClick={() => { setRoutine(null); setScreen('workout'); }}>Training</button>
-        <button type="button" aria-pressed={screen === 'routines'} onClick={() => setScreen('routines')}>Routinen</button>
-        <button type="button" aria-pressed={screen === 'history'} onClick={() => setScreen('history')}>Entwicklung</button>
-        <button type="button" aria-pressed={screen === 'catalog'} onClick={() => setScreen('catalog')}>Übungen</button>
-      </div></div>}
-      {screen === 'workout' && <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={resume} onActive={setRunning} plan={routine ? null : plan?.workout ?? null} routine={routine} now={env.now} newId={env.newId} />}
-      {screen === 'history' && <DevelopmentScreen port={port} />}
-      {screen === 'catalog' && <CatalogScreen port={port} now={env.now} newId={env.newId} />}
+      {/* One page head: the title, the three sub-pages below. A running workout has the whole screen: no head until it is done. */}
+      {!(running && screen === 'workout') && <div className="tk-screen tk-headblock">
+        <PageHead title="Kraft" />
+        <div className="tk-seg" role="group" aria-label="Kraft">
+          <button type="button" aria-pressed={screen === 'workout'} onClick={() => { setRoutine(null); setScreen('workout'); }}>Training</button>
+          <button type="button" aria-pressed={screen === 'routines'} onClick={() => setScreen('routines')}>Routinen</button>
+          <button type="button" aria-pressed={screen === 'exercises'} onClick={() => setScreen('exercises')}>Übungen</button>
+        </div>
+      </div>}
+      {screen === 'workout' && <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={resume} onActive={setRunning} onDone={onDone} plan={routine ? null : plan?.workout ?? null} routine={routine} now={env.now} newId={env.newId} />}
+      {screen === 'exercises' && <ExercisesScreen port={port} now={env.now} newId={env.newId} />}
       {screen === 'routines' && <RoutinesScreen port={port} now={env.now} newId={env.newId} onStart={(r) => { setRoutine(r); setScreen('workout'); }} />}
     </>
   );
@@ -327,9 +338,25 @@ function PushSettings({ push, port, now }: { push: PushState; port: WebPort; now
   );
 }
 
-type Tab = 'heute' | 'coach' | 'training' | 'essen' | 'ausdauer' | 'statistik' | 'profil';
-// At most six tabs: the history is on Woche, Entwicklung lives in Kraft, the profile is the round button at the top right.
-const TABS: [Tab, string][] = [['heute', 'Heute'], ['coach', 'Woche'], ['training', 'Kraft'], ['essen', 'Essen'], ['ausdauer', 'Ausdauer'], ['statistik', 'Statistik']];
+type Tab = 'heute' | 'coach' | 'training' | 'essen' | 'ausdauer' | 'profil';
+// At most five tabs in a fixed order: the look back (Rückblick) is on Woche, the profile is the round button at the top right.
+const TABS: [Tab, string][] = [['heute', 'Heute'], ['coach', 'Woche'], ['training', 'Kraft'], ['essen', 'Essen'], ['ausdauer', 'Ausdauer']];
+
+/** The "Essensplan" switch lives with the account's coach; the last value seen is kept per account, so Essen shows from the start. */
+const mealsOnKey = (account: string) => `pandafit.essensplan.${account}`;
+const readMealsOn = (env: Env, account: string): boolean => { try { return env.storage.getItem(mealsOnKey(account)) === 'on'; } catch { return false; } };
+const saveMealsOn = (env: Env, account: string, on: boolean): void => { try { env.storage.setItem(mealsOnKey(account), on ? 'on' : 'off'); } catch { /* shown again once the plan is there */ } };
+const NO_LINK = { view: null, unavailable: false };
+/** How long the app start waits for the coach's switches before it lets the link go. */
+const COACH_ASK_MS = 30_000;
+const noSub = () => () => {};
+
+/**
+ * Which tabs show. They follow the profile switches, and data that is there: Essen once "Essensplan" is on or a plan is there;
+ * Ausdauer once "Laufen planen" is on, the run coach suggests running, or there is a bike plan or ride. Heute, Woche and Kraft always.
+ */
+export const visibleTabs = (o: { meals: boolean; endurance: boolean }): Tab[] =>
+  TABS.map(([t]) => t).filter((t) => (t !== 'essen' || o.meals) && (t !== 'ausdauer' || o.endurance));
 
 type Endurance = 'rad' | 'laufen';
 const enduranceKey = (account: string) => `pandafit.ausdauer.${account}`;
@@ -344,15 +371,19 @@ function Ausdauer({ port, env, account, hasRun, hasBike }: { port: WebPort; env:
   const [kind, setKind] = useState<Endurance>(stored ?? (hasBike ? 'rad' : 'laufen'));
   const shown: Endurance = kind === 'rad' && !hasBike ? 'laufen' : kind === 'laufen' && !hasRun ? 'rad' : kind;
   const pick = (k: Endurance) => { setKind(k); saveEndurance(env, account, k); };
+  // One page head: the title on top, the switch below it, no second title in the screen.
   return (
     <>
-      {hasRun && hasBike && (
-        <div className="tk-screen"><div className="tk-seg" role="group" aria-label="Ausdauer">
-          <button type="button" aria-pressed={shown === 'rad'} onClick={() => pick('rad')}>Rad</button>
-          <button type="button" aria-pressed={shown === 'laufen'} onClick={() => pick('laufen')}>Laufen</button>
-        </div></div>
-      )}
-      {shown === 'rad' ? <BikeScreen port={port} /> : <RunScreen port={port} now={env.now} newId={env.newId} />}
+      <div className="tk-screen tk-headblock">
+        <PageHead title="Ausdauer" />
+        {hasRun && hasBike && (
+          <div className="tk-seg" role="group" aria-label="Ausdauer">
+            <button type="button" aria-pressed={shown === 'rad'} onClick={() => pick('rad')}>Rad</button>
+            <button type="button" aria-pressed={shown === 'laufen'} onClick={() => pick('laufen')}>Laufen</button>
+          </div>
+        )}
+      </div>
+      {shown === 'rad' ? <BikeScreen port={port} now={env.now} /> : <RunScreen port={port} now={env.now} newId={env.newId} />}
     </>
   );
 }
@@ -360,36 +391,39 @@ function Ausdauer({ port, env, account, hasRun, hasBike }: { port: WebPort; env:
 /** The sync state in a few words: the value of the account row, or a short sentence when something needs saying. */
 const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; lastOkMs: number | null; refused?: number }): string => {
   if (status === 'login') return 'Bitte melde dich neu an. Bis dahin bleibt alles auf diesem Gerät.';
-  if (status === 'offline') return 'Gerade keine Verbindung. Alles bleibt auf diesem Gerät.';
+  if (status === 'offline') return `Gerade keine Verbindung. Alles bleibt auf diesem Gerät.${c.lastOkMs === null ? '' : ` Zuletzt gesichert ${timeLabel(c.lastOkMs)}.`}`;
   if ((c.refused ?? 0) > 0) return 'Ein Eintrag wurde nicht angenommen. Er bleibt auf diesem Gerät.';
   if (c.pending > 0) return c.pending === 1 ? 'Ein Eintrag wartet aufs Senden.' : `${c.pending} Einträge warten aufs Senden.`;
   if (c.lastOkMs === null) return 'Der erste Abgleich folgt gleich.';
-  return `Alles gesichert · ${localDayKey(c.lastOkMs) === localDayKey(Date.now()) ? '' : `${shortDate(c.lastOkMs)} `}${timeLabel(c.lastOkMs)}`;
+  return 'Alles gesichert';
 };
 
 /** The account on this device, a few switches, the coach's timing, and the way out. Rows, not cards. */
-function Profil({ account, port, now, status, onLogout, onBack, push, persistRefused, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; onBack: () => void; push: PushState | null; persistRefused: boolean }) {
+function Profil({ account, port, now, status, onLogout, push, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null }) {
   const [confirming, setConfirming] = useState(false);
   usePortRecords(port, 'workout'); // re-renders when the port changes
+  const hasBike = bikeVisible(bikeOf(usePortRecords(port, 'bike').records), ridesOf(usePortRecords(port, 'ride').records));
   const c = port.syncState();
   const tryLogout = () => { if (c.pending > 0 || (c.refused ?? 0) > 0) setConfirming(true); else onLogout(); };
   const sync = syncText(status, c);
   const quiet = sync.startsWith('Alles gesichert');
   return (
     <div className="tk-screen">
-      <button type="button" className="link tk-back" onClick={onBack}>‹ Zurück</button>
       <PageHead title="Profil" />
       <RowList>
         <Row title={`Angemeldet als ${account}`} value={quiet ? sync : undefined} />
       </RowList>
       {!quiet && <p role="status" className="muted">{sync}</p>}
-      <RunSettingsCard port={port} now={now} />
-      <ContactSettings port={port} now={now} />
-      {link && <ConnectionSettings link={link} />}
-      {push && <PushSettings push={push} port={port} now={now} />}
-      {/* The coach's timing is about notifications: it shows under them once they are on (always where the shell has no push at all). */}
-      {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
-      {persistRefused && <p role="status" className="muted">Dein Browser kann Daten löschen – sie sind aber auf dem Server gesichert.</p>}
+      <ConnectionSettings link={link} plan={<>
+        <RunSettingsCard port={port} now={now} />
+        <p className="muted">{hasBike ? 'Rad · gefahren wird am Mac' : 'Rad · startet mit der ersten Fahrt am Mac'}</p>
+      </>} />
+      <ProfileGroup title="Nachrichten">
+        <ContactSettings port={port} now={now} />
+        {push && <PushSettings push={push} port={port} now={now} />}
+        {/* The coach's timing is about notifications: it shows under them once they are on (always where the shell has no push at all). */}
+        {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
+      </ProfileGroup>
       {confirming ? (
         <p role="status" className="tk-note">
           Einiges ist noch nicht gesendet. Es bleibt auf diesem Gerät gespeichert und geht beim nächsten Anmelden raus.
@@ -402,7 +436,6 @@ function Profil({ account, port, now, status, onLogout, onBack, push, persistRef
 }
 
 function Shell({ account, env, port, onLogout, onRelogin }: { account: string; env: Env; port: WebPort; onLogout: () => void; onRelogin: (name: string) => void }) {
-  const [back, setBack] = useState<Tab>('heute');
   // "Weitermachen" on Heute opens the open workout itself, once; every other way into Kraft shows the start screen.
   const [resume, setResume] = useState(false);
   const openTab = (t: string): void => {
@@ -419,7 +452,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   // The ride companion: optional, a socket of its own, and nothing else in the app depends on it.
   const live = useMemo(() => (env.openLive ? new LiveClient({ open: env.openLive, now: env.now, newId: env.newId }) : null), [env]);
   useEffect(() => { live?.start(); return () => live?.stop(); }, [live]);
-  // Hevy, Garmin, Krafttraining and the meal plan are set on the coach's socket; it opens only while Profil is shown.
+  // Hevy, Garmin, Krafttraining and the meal plan are set on the coach's socket; it opens while Profil is shown, and once at the start.
   const link = useMemo(() => (env.openLive ? new CoachLink({ open: env.openLive, status: async () => {
     const res = await get(env, '/coach/status');
     if (!res.ok) return null;
@@ -427,30 +460,38 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
     return { profileId: typeof j.profileId === 'string' ? j.profileId : null, moved: j.moved === true };
   } }) : null), [env]);
   useEffect(() => env.onOpenTab?.((t) => { const next = tabFor(t); if (!next) return; if (t === 'rad' || t === 'laufen') saveEndurance(env, account, t); setTab(next); }), [env, account]);
-  const [persistRefused, setPersistRefused] = useState(false);
   const [hint, setHint] = useState(false);
   const [, tick] = useState(0);
   const status = useSyncExternalStore(port.onStatus, port.status);
   const workouts = usePortRecords(port, 'workout').records;
   // Essen only when the Mac sent a plan for this account: the meal plan is off by default.
   const mealRecords = usePortRecords(port, 'mealplan').records;
-  const hasMeals = mealWeeks(mealRecords, env.now()).length > 0;
-  // Set by "Essensplan" on Heute; any other way into Essen keeps the usual default week.
-  const [mealsToday, setMealsToday] = useState(false);
-  useEffect(() => { if (tab !== 'essen') setMealsToday(false); }, [tab]);
-  // Laufen only once the run coach's status says on or suggest: nothing of it for a person who does not run.
+  const linkSnap = useSyncExternalStore(link?.subscribe ?? noSub, link?.snapshot ?? (() => NO_LINK));
+  const linkMeals = linkSnap.view ? linkSnap.view.meals?.on === true : null;
+  const [storedMeals, setStoredMeals] = useState(() => readMealsOn(env, account));
+  useEffect(() => { if (linkMeals !== null) { saveMealsOn(env, account, linkMeals); setStoredMeals(linkMeals); } }, [env, account, linkMeals]);
+  // Once per session: ask the account's coach for its switches, then let go. The stored value is only the fast first guess.
+  useEffect(() => {
+    if (!link) return;
+    let held = true;
+    const release = () => { if (held) { held = false; link.stop(); } };
+    const unsub = link.subscribe(() => { const s = link.snapshot(); if (s.view || s.unavailable) release(); });
+    link.start();
+    const give = setTimeout(release, COACH_ASK_MS); // not reached: keep what is stored
+    return () => { clearTimeout(give); unsub(); release(); };
+  }, [link]);
+  const hasMeals = (linkMeals ?? storedMeals) || mealWeeks(mealRecords, env.now()).length > 0;
+  // Laufen once "Laufen planen" is on or the run coach suggests it: nothing of it for a person who does not run.
   const runRecords = usePortRecords(port, 'run').records;
-  const hasRun = runView(runRecords ?? [], env.now()).visible;
+  const run = runView(runRecords ?? [], env.now());
+  const hasRun = run.visible || run.settings?.on === true;
   // Rad once the coach published a plan to ride or a ride: nothing of it for a person who does not ride.
   const bikeRecords = usePortRecords(port, 'bike').records;
   const rideRecords = usePortRecords(port, 'ride').records;
   const hasBike = bikeVisible(bikeOf(bikeRecords), ridesOf(rideRecords));
   const hasEndurance = hasRun || hasBike;
-  // Statistik once there is a stats record or a finished workout.
-  const statsRecords = usePortRecords(port, 'stats').records;
-  const hasStats = statsVisible(statsRecords, workouts);
-  const tabs = TABS.filter(([t]) => (t !== 'essen' || hasMeals) && (t !== 'ausdauer' || hasEndurance) && (t !== 'statistik' || hasStats));
-  useEffect(() => { if (tab === 'statistik' && statsRecords !== null && workouts !== null && !hasStats) setTab('heute'); }, [tab, hasStats, statsRecords, workouts]);
+  const shown = visibleTabs({ meals: hasMeals, endurance: hasEndurance });
+  const tabs = TABS.filter(([t]) => shown.includes(t));
   useEffect(() => { if (tab === 'ausdauer' && runRecords !== null && bikeRecords !== null && rideRecords !== null && !hasEndurance) setTab('heute'); }, [tab, hasEndurance, runRecords, bikeRecords, rideRecords]);
   useEffect(() => { if (tab === 'essen' && mealRecords !== null && !hasMeals) setTab('heute'); }, [tab, hasMeals, mealRecords]);
 
@@ -462,10 +503,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
-    void env.persist().then((ok) => {
-      // A quiet line on Profil only, as long as the browser refuses; no banner over the other tabs.
-      if (!ok) setPersistRefused(true);
-    }, () => {});
+    void env.persist().catch(() => {});
     if (shouldShowInstallHint({ ua: env.ua, standalone: env.standalone, seen: env.storage.getItem(HINT_KEY) === '1' })) {
       setHint(true);
       env.storage.setItem(HINT_KEY, '1');
@@ -487,7 +525,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   return (
     <>
       <main className="web-main" onClick={() => setTimeout(() => tick((n) => n + 1), 50)}>
-        <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => { if (tab !== 'profil') setBack(tab); setTab('profil'); }}>
+        <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => setTab('profil')}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
         </button>
         {status === 'login' && (
@@ -503,13 +541,12 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
-          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} goMeals={hasMeals ? () => { setMealsToday(true); setTab('essen'); } : undefined} />}
-          {tab === 'training' && <Training port={port} env={env} resume={resume} />}
-          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} focusToday={mealsToday} />}
+          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
+          {tab === 'training' && <Training port={port} env={env} resume={resume} onDone={() => setTab('heute')} />}
+          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
-          {tab === 'statistik' && hasStats && <StatsScreen port={port} now={env.now} />}
-          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} onBack={() => setTab(back)} push={push.state} persistRefused={persistRefused} />}
+          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} />}
         </ErrorBoundary>
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>

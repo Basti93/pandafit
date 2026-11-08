@@ -243,8 +243,31 @@ function mapSet(w: TrackedWorkout, ex: string, set: string, f: (s: TrackedSet) =
   return mapEx(w, ex, (x) => ({ ...x, sets: x.sets.map((s) => (s.rid === set ? f(s) : s)) }));
 }
 
+const kindOf = (t: TrackedSet['type']): string => (t === 'warmup' ? 'w' : t === 'dropset' ? 'd' : 'n');
+/** The preset of an empty set: all values of the nearest set before it of the same kind (warm-up, drop set or working) that has any value. Never mixed from several sets. */
+export function presetOf(sets: readonly TrackedSet[], index: number): Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS'> {
+  const me = sets[index];
+  const none = { weightKg: null, reps: null, durationS: null };
+  if (!me) return none;
+  for (let i = index - 1; i >= 0; i--) {
+    const o = sets[i]!;
+    if (kindOf(o.type) !== kindOf(me.type)) continue;
+    if (o.weightKg !== null || o.reps !== null || o.durationS !== null) return { weightKg: o.weightKg, reps: o.reps, durationS: o.durationS };
+  }
+  return none;
+}
+type Values = Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS'>;
+/** What an empty set takes from its preset: all three when it is entirely empty, else only the missing reps or seconds of a set that has a weight. A cleared weight next to reps is meant (bodyweight) and stays. */
+export function filled(s: Values, preset: Values): Partial<Values> {
+  if (s.weightKg === null && s.reps === null && s.durationS === null) return { weightKg: preset.weightKg, reps: preset.reps, durationS: preset.durationS };
+  if (s.weightKg !== null && s.reps === null && s.durationS === null) return { reps: preset.reps, durationS: preset.durationS };
+  return {};
+}
+/** Confirming a set without any value takes the preset (the set before it), so one tap logs "the same again". */
 export function confirmSet(w: TrackedWorkout, ex: string, set: string, nowMs: number, catalog: readonly Exercise[] = EXERCISES): TrackedWorkout {
-  const next = mapSet(w, ex, set, (s) => ({ ...s, doneMs: nowMs }));
+  const sets = w.exercises.find((x) => x.rid === ex)?.sets ?? [];
+  const preset = presetOf(sets, sets.findIndex((s) => s.rid === set));
+  const next = mapSet(w, ex, set, (s) => ({ ...s, ...filled(s, preset), doneMs: nowMs }));
   if (next === w) return w;
   const setIndex = next.exercises.find((x) => x.rid === ex)?.sets.findIndex((s) => s.rid === set) ?? 0;
   const durationS = restAfterSet(next, ex, setIndex, catalog);
@@ -310,6 +333,9 @@ export function swapExercise(w: TrackedWorkout, ex: string, e: Exercise, history
 export const restRemainingS = (w: TrackedWorkout, nowMs: number): number =>
   w.rest ? Math.max(0, Math.ceil((w.rest.startMs + w.rest.durationS * 1000 - nowMs) / 1000)) : 0;
 
+/** A first confirmed set later than this after the start moves the start to that set. */
+const LATE_FIRST_SET_MS = 3 * 3600_000;
+
 /**
  * Asks before anything is dropped. 'discard' only works when no set is confirmed; otherwise it is ignored and the
  * normal question comes. A workout whose last confirmed set is over 6 hours old ends at that set, not now.
@@ -327,11 +353,19 @@ export function finish(w: TrackedWorkout, nowMs: number, choice?: FinishChoice):
   const last = confirmed ? Math.max(...doneTimes) : null;
   const endMs = last !== null && nowMs - last > STALE_OPEN_MS ? last : nowMs;
   const exercises = choice === 'complete'
-    ? w.exercises.map((e) => ({ ...e, sets: e.sets.map((s) => (isDone(s) ? s : { ...s, doneMs: endMs })) }))
+    ? w.exercises.map((e) => {
+      // Open sets are entered as shown: an empty one takes its preset, like a tap on the check.
+      const sets: TrackedSet[] = [];
+      e.sets.forEach((s, i) => { sets.push(isDone(s) ? s : { ...s, ...filled(s, presetOf([...sets, ...e.sets.slice(i)], i)), doneMs: endMs }); });
+      return { ...e, sets };
+    })
     : w.exercises;
   // The undo data of a coach change is of no use once the workout is over; the ids stay (a second start must not apply them again).
   const changes = w.changes?.map((c) => ({ id: c.id, atMs: c.atMs, prior: [], pos: [], after: [] })); // anchor left out too
-  return { status: 'finished', workout: { ...w, exercises, endMs, rest: null, ...(changes ? { changes } : {}) } };
+  // Started long before the first confirmed set (left open overnight): the workout dates from that set. Only startMs changes, never the sets.
+  const first = confirmed ? Math.min(...doneTimes) : null;
+  const startMs = first !== null && first - w.startMs > LATE_FIRST_SET_MS ? first : w.startMs;
+  return { status: 'finished', workout: { ...w, startMs, exercises, endMs, rest: null, ...(changes ? { changes } : {}) } };
 }
 
 /** A running time: "1:39", past an hour "1:02:05". */

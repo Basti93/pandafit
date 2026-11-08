@@ -27,50 +27,46 @@ async function running() {
   await screen.findByText('Kniebeuge');
 }
 
-describe('workout: Ausführung in the exercise menu', () => {
-  test('collapsed by default; the menu entry opens it with the wger credit, and hides it again', async () => {
+describe('workout: Anleitung behind the info icon on the card', () => {
+  test('collapsed by default; the info icon opens it with the wger credit, and hides it again', async () => {
     await running();
     expect(screen.queryByText(/Füße etwas mehr als hüftbreit/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Kniebeuge' }));
-    const note = screen.getByRole('note', { name: 'Ausführung Kniebeuge' });
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
+    const note = screen.getByRole('note', { name: 'Anleitung Kniebeuge' });
     expect(note.textContent).toMatch(/Füße etwas mehr als hüftbreit/);
     expect(note.textContent).toContain('Quelle: wger.de, CC-BY-SA 3.0');
     expect(screen.queryByRole('button', { name: 'Kniebeuge tauschen' })).toBeNull(); // the menu closed
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung ausblenden' }));
-    expect(screen.queryByRole('note', { name: 'Ausführung Kniebeuge' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung ausblenden' }));
+    expect(screen.queryByRole('note', { name: 'Anleitung Kniebeuge' })).toBeNull();
   });
 
-  test('the menu entry toggles: a second tap hides it', async () => {
+  test('the info icon toggles: a second tap hides it; the menu has no such entry any more', async () => {
     await running();
+    const icon = screen.getByRole('button', { name: 'Anleitung Kniebeuge' });
+    expect(icon.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(icon);
+    expect(screen.getByRole('note', { name: 'Anleitung Kniebeuge' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }).getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
+    expect(screen.queryByRole('note', { name: 'Anleitung Kniebeuge' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Kniebeuge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    const entry = screen.getByRole('button', { name: 'Ausführung Kniebeuge' });
-    expect(entry.getAttribute('aria-expanded')).toBe('true');
-    fireEvent.click(entry);
-    expect(screen.queryByRole('note', { name: 'Ausführung Kniebeuge' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Anleitung Kniebeuge' })).toHaveLength(1); // only the icon, none in the menu
+    expect(within(screen.getByRole('list', { name: 'Mehr zu Kniebeuge' })).queryByText('Anleitung')).toBeNull();
   });
 
   test('an own text shows without a credit line', async () => {
     await running();
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Frontkniebeuge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Frontkniebeuge' }));
-    const note = screen.getByRole('note', { name: 'Ausführung Frontkniebeuge' });
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Frontkniebeuge' }));
+    const note = screen.getByRole('note', { name: 'Anleitung Frontkniebeuge' });
     expect(note.textContent).toMatch(/Ellbogen/);
     expect(note.textContent).not.toContain('Quelle');
   });
 
   test('an exercise without a description still opens: no text yet, but the video link', async () => {
     await running();
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Meine Übung' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Meine Übung' }));
-    const note = screen.getByRole('note', { name: 'Ausführung Meine Übung' });
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Meine Übung' }));
+    const note = screen.getByRole('note', { name: 'Anleitung Meine Übung' });
     expect(note.textContent).toContain('Noch keine Beschreibung.');
     const video = within(note).getByRole('link', { name: 'Video ansehen' });
     expect(video.getAttribute('href')).toBe('https://www.youtube.com/results?search_query=Meine%20%C3%9Cbung%20exercise%20form');
@@ -78,10 +74,8 @@ describe('workout: Ausführung in the exercise menu', () => {
 
   test('the video link searches the English Hevy name in a new window; no picture means no image', async () => {
     await running();
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Kniebeuge' }));
-    const note = screen.getByRole('note', { name: 'Ausführung Kniebeuge' });
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
+    const note = screen.getByRole('note', { name: 'Anleitung Kniebeuge' });
     const video = within(note).getByRole('link', { name: 'Video ansehen' });
     expect(video.getAttribute('href')).toBe('https://www.youtube.com/results?search_query=Squat%20(Barbell)%20exercise%20form');
     expect(video.getAttribute('target')).toBe('_blank');
@@ -129,10 +123,8 @@ describe('workout: imported exercises resolve by identity', () => {
 
   test('a Smith machine squat shows no free-weight text and no pictures', async () => {
     await runningWith([good]);
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Squat (Smith Machine)' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Squat (Smith Machine)' }));
-    const note = screen.getByRole('note', { name: 'Ausführung Squat (Smith Machine)' });
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Squat (Smith Machine)' }));
+    const note = screen.getByRole('note', { name: 'Anleitung Squat (Smith Machine)' });
     expect(note.textContent).toContain('Noch keine Beschreibung.');
     expect(note.textContent).not.toContain('Beschrieben am Beispiel');
     expect(within(note).queryByRole('img', { name: /Ausführung/ })).toBeNull();
@@ -140,10 +132,8 @@ describe('workout: imported exercises resolve by identity', () => {
 
   test('the machine reverse fly from Hevy shows its machine text', async () => {
     await runningWith([]);
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Rear Delt Reverse Fly (Machine)' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Rear Delt Reverse Fly (Machine)' }));
-    const note = screen.getByRole('note', { name: 'Ausführung Rear Delt Reverse Fly (Machine)' });
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Rear Delt Reverse Fly (Machine)' }));
+    const note = screen.getByRole('note', { name: 'Anleitung Rear Delt Reverse Fly (Machine)' });
     expect(note.textContent).toContain(exerciseDescription('pf-rear-delt-fly-machine')!.text);
     expect(note.textContent).not.toMatch(/Kurzhantel/);
   });
@@ -156,7 +146,7 @@ describe('ExerciseInfo pictures', () => {
     expect(imgs).toHaveLength(2);
     expect(imgs[0]!.getAttribute('src')).toBe('/exercises/pf-bench-press-1.jpg');
     expect(imgs[0]!.getAttribute('loading')).toBe('lazy');
-    const note = screen.getByRole('note', { name: 'Ausführung Bankdrücken' });
+    const note = screen.getByRole('note', { name: 'Anleitung Bankdrücken' });
     expect(note.textContent).toContain('Bild: wger.de, Everkinetic, CC-BY-SA 3.0');
     const source = within(note).getAllByRole('link', { name: 'wger.de' })[0]!;
     expect(source.getAttribute('href')).toBe('https://wger.de/en/exercise/73/view/');
@@ -169,7 +159,7 @@ describe('ExerciseInfo base-catalog pictures', () => {
   test('credits the public-domain source, and a picture that fails to load hides its frame', () => {
     const images = [{ file: 'exercises/fedb/fedb-x-1.jpg', author: 'free-exercise-db (gemeinfrei)', licence: 'Unlicense', sourceUrl: 'https://example.invalid/fedb' }];
     render(<ExerciseInfo title="Übung" description={null} images={images} video="https://example.invalid/v" />);
-    const note = screen.getByRole('note', { name: 'Ausführung Übung' });
+    const note = screen.getByRole('note', { name: 'Anleitung Übung' });
     expect(note.textContent).toContain('Bild: free-exercise-db (gemeinfrei)');
     const img = screen.getByRole('img', { name: 'Übung, Ausführung' });
     fireEvent.error(img);
@@ -200,22 +190,23 @@ describe('MuscleIcon', () => {
 describe('picker: info toggle per exercise', () => {
   const mine: TrackedRecord = { kind: 'exercise', id: 'mine-1', updatedMs: 1, deleted: false, body: { id: 'mine-1', title: 'Seilspringen am Hof', type: 'reps_only', primaryMuscle: 'cardio', equipment: 'none' } };
 
-  test('the i toggle shows and hides the text inline without picking, credit included', async () => {
+  test('the mark shows and hides the text inline without picking, credit included', async () => {
     const { port } = fakePort();
     const onPick = vi.fn();
     render(<ExercisePicker port={port} onPick={onPick} onClose={() => {}} />);
     fireEvent.change(screen.getByLabelText('Suchen'), { target: { value: 'Bankdrücken' } });
-    const info = await screen.findByRole('button', { name: 'Ausführung Bankdrücken' });
+    const info = await screen.findByRole('button', { name: 'Anleitung Bankdrücken' });
+    expect(info.textContent).not.toContain('ⓘ');
     expect(info.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByRole('note', { name: 'Ausführung Bankdrücken' })).toBeNull();
+    expect(screen.queryByRole('note', { name: 'Anleitung Bankdrücken' })).toBeNull();
     fireEvent.click(info);
     expect(onPick).not.toHaveBeenCalled();
     expect(info.getAttribute('aria-expanded')).toBe('true');
-    const note = screen.getByRole('note', { name: 'Ausführung Bankdrücken' });
+    const note = screen.getByRole('note', { name: 'Anleitung Bankdrücken' });
     expect(note.textContent).toMatch(/Lege dich auf die Bank/);
     expect(note.textContent).toContain('Quelle: wger.de, sistab2, CC-BY-SA 3.0');
     fireEvent.click(info);
-    expect(screen.queryByRole('note', { name: 'Ausführung Bankdrücken' })).toBeNull();
+    expect(screen.queryByRole('note', { name: 'Anleitung Bankdrücken' })).toBeNull();
   });
 
   test('picking still works with the row; own exercises get the toggle too, with the video link only', async () => {
@@ -224,8 +215,8 @@ describe('picker: info toggle per exercise', () => {
     render(<ExercisePicker port={port} onPick={onPick} onClose={() => {}} />);
     fireEvent.change(screen.getByLabelText('Suchen'), { target: { value: 'Seilspringen' } });
     const row = await screen.findByRole('button', { name: /^Seilspringen am Hof/ });
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Seilspringen am Hof' }));
-    const note = screen.getByRole('note', { name: 'Ausführung Seilspringen am Hof' });
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Seilspringen am Hof' }));
+    const note = screen.getByRole('note', { name: 'Anleitung Seilspringen am Hof' });
     expect(note.textContent).toContain('Noch keine Beschreibung.');
     expect(within(note).getByRole('link', { name: 'Video ansehen' })).toBeTruthy();
     expect(onPick).not.toHaveBeenCalled();
@@ -238,8 +229,8 @@ describe('picker: info toggle per exercise', () => {
     render(<ExercisePicker port={port} onPick={() => {}} onClose={() => {}} />);
     fireEvent.change(screen.getByLabelText('Suchen'), { target: { value: 'Bankdrücken' } });
     const row = (await screen.findByRole('button', { name: 'Bankdrücken' })).closest('.tk-pick-row') as HTMLElement;
-    expect(within(row).queryByRole('img')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Ausführung Bankdrücken' }));
+    expect(within(row).queryByRole('img', { name: /Ausführung/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Bankdrücken' }));
     expect(screen.getAllByRole('img', { name: 'Bankdrücken, Ausführung' }).length).toBeGreaterThan(0);
   });
 });

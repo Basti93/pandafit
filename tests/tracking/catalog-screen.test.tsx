@@ -31,7 +31,7 @@ describe('catalog page', () => {
   test('groups are collapsed without counts; a tap opens one', async () => {
     await open();
     expect(queryLine(bench.title)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Brust' }).textContent).toBe('Brust›');
+    expect(screen.getByRole('button', { name: 'Brust' }).textContent).toBe('Brust⌄');
     fireEvent.click(screen.getByRole('button', { name: 'Brust' }));
     expect(line(bench.title)).toBeTruthy();
   });
@@ -72,7 +72,7 @@ describe('catalog page', () => {
     const f = await open();
     search(squat.title);
     fireEvent.click(line(squat.title));
-    expect(screen.getByText(/^Familie: /)).toBeTruthy();
+    expect(screen.getByText(/^Gleiche Übungsart: /)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /^Nicht mehr vorschlagen/ }));
     fireEvent.click(screen.getByRole('button', { name: /^Alle Varianten \(/ }));
     await waitFor(() => expect(rules(f)).toHaveLength(1));

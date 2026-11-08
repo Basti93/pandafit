@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import type { BikeBody, RideBody } from '../../shared/bike';
 import { dayMonthOfKey, shortDate, timeLabel } from '../../shared/dates';
-import { HARDNESS_LABEL } from '../../shared/week-plan';
+import { HARDNESS_LABEL, nextPlanDate } from '../../shared/week-plan';
+import { shortDateOfKey } from '../../shared/dates';
+import { dateKeyOf } from './run-view';
 import type { TrackingPort } from '../ports';
 import { bikeOf, ftpSentence, minText, phaseText, rideFacts, rideName, rideTitle, rideValue, ridesOf, type BikeRide } from './bike-view';
 import { usePortRecords } from './hooks';
-import { PageHead, Row, RowList, Sheet } from './kit';
+import { Row, RowList, Sheet } from './kit';
 
 const W = 300, H = 90;
 
@@ -21,13 +23,19 @@ function RideChart({ ride }: { ride: RideBody }) {
     const lo = zero ? 0 : Math.min(...vals) - 10, hi = Math.max(...vals) * (zero ? 1.1 : 1), span = Math.max(1, hi - lo);
     return pts.flatMap((p) => { const v = pick(p); return v === null ? [] : [`${((p.t / tMax) * W).toFixed(1)},${(H - 4 - ((v - lo) / span) * (H - 8)).toFixed(1)}`]; }).join(' ');
   };
+  const powers = pts.map((p) => p.powerW).filter((v): v is number => v !== null);
+  const hrs = pts.map((p) => p.hrBpm).filter((v): v is number => v !== null);
+  const num = (v: number) => Math.round(v).toLocaleString('de-DE');
   return (
     <figure className="tk-ridechart" aria-label="Verlauf der Fahrt">
-      <p className="tk-chart-legend tk-small"><span className="tk-chart-key-power">Leistung</span> · <span className="tk-chart-key-hr">Puls</span></p>
+      <p className="tk-chart-legend tk-small"><span className="tk-chart-key-power">Leistung</span> · <span className="tk-chart-key-hr">Puls{hrs.length > 1 ? ` ${num(Math.min(...hrs))}–${num(Math.max(...hrs))}` : ''}</span></p>
+      <div className="tk-spark-box">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Leistung und Puls über die Fahrt" preserveAspectRatio="none">
         <polyline className="tk-chart-hr" points={line((p) => p.hrBpm)} fill="none" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
         <polyline className="tk-chart-power" points={line((p) => p.powerW, true)} fill="none" strokeWidth="2" vectorEffect="non-scaling-stroke" />
       </svg>
+      {powers.length > 1 && <span className="tk-spark-scale" aria-hidden="true"><span>{num(Math.max(...powers))} W</span><span>0</span></span>}
+      </div>
       <figcaption className="muted tk-small"><span>{timeLabel(ride.startedAtMs)}</span><span>{timeLabel(ride.startedAtMs + ride.durationS * 1000)}</span></figcaption>
     </figure>
   );
@@ -47,10 +55,13 @@ export function RideSheet({ ride, onClose }: { ride: BikeRide; onClose: () => vo
   );
 }
 
-function PlanSheet({ blocks, name, onClose }: { blocks: { label: string }[]; name: string; onClose: () => void }) {
+/** "3 × 8 Min bei 95 %" becomes "… bei 95 % (195 W)": the percent alone says nothing without the FTP. */
+export const withWatts = (label: string, ftpW: number): string => label.replace(/bei (\d+) %/g, (_, p: string) => `bei ${p} % (${Math.round((ftpW * Number(p)) / 100)} W)`);
+
+function PlanSheet({ blocks, name, ftpW, onClose }: { blocks: { label: string }[]; name: string; ftpW: number | null; onClose: () => void }) {
   return (
     <Sheet title={name} size="small" onClose={onClose}>
-      <RowList label="Aufbau">{blocks.map((b, i) => <Row key={i} title={b.label} />)}</RowList>
+      <RowList label="Ablauf">{blocks.map((b, i) => <Row key={i} title={ftpW ? withWatts(b.label, ftpW) : b.label} />)}</RowList>
     </Sheet>
   );
 }
@@ -70,7 +81,7 @@ function DevelopmentSheet({ bike, onClose }: { bike: BikeBody; onClose: () => vo
           <div className="tk-hourbars">
             {weeks.map((w) => <span key={w.week} className="tk-hourbar" role="img" aria-label={`${dayMonthOfKey(w.week)}: ${String(w.hours).replace('.', ',')} Std.`} style={{ height: `${Math.max(3, (w.hours / max) * 100)}%` }} />)}
           </div>
-          <p className="muted tk-small tk-hourdates"><span>{dayMonthOfKey(weeks[0]!.week)}</span><span>{dayMonthOfKey(weeks[weeks.length - 1]!.week)}</span></p>
+          <p className="muted tk-small tk-hourdates"><span>{dayMonthOfKey(weeks[0]!.week)}</span><span>{dayMonthOfKey(weeks[weeks.length - 1]!.week)}: {String(weeks[weeks.length - 1]!.hours).replace('.', ',')} Std.</span></p>
         </section>
       )}
     </Sheet>
@@ -78,24 +89,38 @@ function DevelopmentSheet({ bike, onClose }: { bike: BikeBody; onClose: () => vo
 }
 
 /** The bike on the phone: read only. What is planned next, the last ride, the development. */
-export function BikeScreen({ port }: { port: TrackingPort }) {
+export function BikeScreen({ port, now }: { port: TrackingPort; now?: () => number }) {
   const bike = bikeOf(usePortRecords(port, 'bike').records);
   const rides = ridesOf(usePortRecords(port, 'ride').records);
   const [sheet, setSheet] = useState<'plan' | 'development' | null>(null);
   const [ride, setRide] = useState<BikeRide | null>(null);
+  const weekplans = usePortRecords(port, 'weekplan').records;
   const next = bike?.next ?? null;
+  // The session always names its day: "Heute" or the date of the next bike day in the week plan.
+  const todayKey = now ? dateKeyOf(now()) : null;
+  const bikeDate = todayKey && weekplans ? nextPlanDate(weekplans, todayKey, 'bike') : null;
+  const day = bikeDate === null ? null : bikeDate === todayKey ? 'Heute' : shortDateOfKey(bikeDate);
   const last = rides[0];
   return (
     <div className="tk-screen tk-bike">
-      <PageHead title="Rad" />
       {next ? (
         <section className="card" aria-label="Nächste Fahrt">
-          <p className="tk-today-line"><b>{next.name}</b> · {minText(next.minutes)} · {HARDNESS_LABEL[next.hardness]}</p>
-          {next.reason && <p className="muted tk-clamp">{next.reason}</p>}
+          {(() => {
+            const text = (
+              <span className="tk-cardtext">
+                <span className="muted">{day ? `${day} · ` : ''}Fahren am Mac</span>
+                <span className="tk-today-line"><b>{next.name}</b> · {minText(next.minutes)} · {HARDNESS_LABEL[next.hardness]}</span>
+                {next.reason && <span className="muted tk-clamp">{next.reason}</span>}
+              </span>
+            );
+            // The card opens the sequence of the session (the "Ablauf") when there is one.
+            return next.blocks.length > 0
+              ? <button type="button" className="tk-rowbtn tk-cardbtn" aria-label={`${next.name}, Ablauf ansehen`} onClick={() => setSheet('plan')}>{text}<span className="tk-chevron" aria-hidden="true">›</span></button>
+              : text;
+          })()}
         </section>
       ) : <p className="muted">Noch keine Fahrt geplant.</p>}
       <RowList>
-        {next && next.blocks.length > 0 && <Row title="Aufbau" onClick={() => setSheet('plan')} />}
         {bike && <Row title="Entwicklung" onClick={() => setSheet('development')} />}
       </RowList>
       {last && (
@@ -104,7 +129,7 @@ export function BikeScreen({ port }: { port: TrackingPort }) {
           <RowList><Row title={rideTitle(last.body)} value={rideValue(last.body)} onClick={() => setRide(last)} /></RowList>
         </section>
       )}
-      {sheet === 'plan' && next && <PlanSheet name={next.name} blocks={next.blocks} onClose={() => setSheet(null)} />}
+      {sheet === 'plan' && next && <PlanSheet name={next.name} blocks={next.blocks} ftpW={bike?.ftpW ?? null} onClose={() => setSheet(null)} />}
       {sheet === 'development' && bike && <DevelopmentSheet bike={bike} onClose={() => setSheet(null)} />}
       {ride && <RideSheet ride={ride} onClose={() => setRide(null)} />}
     </div>

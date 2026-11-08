@@ -36,12 +36,12 @@ export function ContactSettings({ port, now }: { port: WebPort; now: () => numbe
   const remove = () => { void save({ email: null, weekly: false }); setOpen(false); };
   return (
     <>
+      <Switch label="Wochenübersicht per E-Mail" hint={contact.email === null ? 'Zuerst E-Mail eintragen' : 'Sonntagabend: Rückblick und nächste Woche'}
+        checked={contact.weekly && contact.email !== null} disabled={contact.email === null}
+        onChange={(weekly) => void save({ email: contact.email, weekly })} />
       <RowList>
         <Row title="E-Mail" value={contact.email ?? 'keine'} onClick={show} />
       </RowList>
-      <Switch label="Wochenübersicht per E-Mail" hint="Sonntagabend: Rückblick und nächste Woche"
-        checked={contact.weekly && contact.email !== null} disabled={contact.email === null}
-        onChange={(weekly) => void save({ email: contact.email, weekly })} />
       {open && (
         <Sheet title="E-Mail" size="small" onClose={() => setOpen(false)}
           actions={<><button type="button" className="primary" onClick={submit}>Speichern</button>{contact.email !== null && <button type="button" className="link" onClick={remove}>Entfernen</button>}</>}>

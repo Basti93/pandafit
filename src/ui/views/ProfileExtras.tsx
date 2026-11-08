@@ -32,7 +32,7 @@ export const ProfileExtras = ({ profileId, coachConnected, send, garmin, garminS
       )}
       <section className="connections" aria-label="Verbindungen">
         <h2>Verbindungen</h2>
-        {!linked && <p className="muted">Kraft, Laufen, Essen und Statistik gibt es in der Web-App – dafür das Konto verbinden.</p>}
+        {!linked && <p className="muted">Kraft, Laufen, Essen und den Rückblick gibt es in der Web-App – dafür das Konto verbinden.</p>}
         {!coachConnected ? <p className="notice" role="status">Der Coach ist gerade nicht erreichbar. Sobald er wieder da ist, kannst du hier verbinden.</p> : (
           <>
             {onServer ? <p className="muted">Hevy, Garmin, Krafttraining und Essensplan stellst du in der Web-App unter Profil ein.</p> : (

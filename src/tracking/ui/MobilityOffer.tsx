@@ -18,27 +18,29 @@ export const hideToday = (storage: KeyStore, key: string, nowMs: number): void =
 };
 
 /**
- * Mobility, offered and never owed. One row with the minutes; the exercises, "Gemacht" and "Heute nicht" in a sheet.
+ * Mobility, offered and never owed. One separate row with the minutes; the exercises, "Gemacht" and "Heute nicht" in a sheet.
  * "Heute nicht" hides it for today on this device only: nothing is sent and nothing is asked.
  */
 export function MobilityOffer({ session, hideKey, storage, now, onDone }: { session: Session; hideKey: string; storage: KeyStore; now: () => number; onDone: () => void }) {
   const [hidden, setHidden] = useState(() => hiddenToday(storage, hideKey, now()));
   const [open, setOpen] = useState(false);
   if (hidden) return null;
+  const omitted = /Bereiche, die dich gerade stören[^.]*\./.exec(session.reason)?.[0] ?? '';
   return (
     <section aria-label="Beweglichkeit" className="tk-mob">
       <RowList>
-        <Row title="Beweglichkeit" value={`${session.minutes} Min`} onClick={() => setOpen(true)} />
+        <Row title={`Beweglichkeit · ${session.minutes} Min`} onClick={() => setOpen(true)} />
       </RowList>
       {open && (
         <Sheet title="Beweglichkeit" onClose={() => setOpen(false)}
           actions={<>
             <button type="button" className="primary" onClick={() => { setOpen(false); onDone(); }}>Gemacht</button>
-            <button type="button" className="secondary" onClick={() => { hideToday(storage, hideKey, now()); setHidden(true); }}>Heute nicht</button>
+            <button type="button" className="link" onClick={() => { hideToday(storage, hideKey, now()); setHidden(true); }}>Heute nicht</button>
           </>}>
-          <p className="muted">{session.reason}</p>
+          {/* The stored reason opens with "Nach dem Training …", which is wrong on a rest day: only its note on left-out areas stays. */}
+          <p>Kurz und ruhig, nur wenn du magst.{omitted ? ` ${omitted}` : ''}</p>
           <ol className="tk-mob-list">
-            {session.exercises.map((e) => <li key={e.id}><b>{e.title}</b><span className="muted">{e.howTo}</span></li>)}
+            {session.exercises.map((e) => <li key={e.id}><b>{e.title}</b><span>{e.howTo}</span></li>)}
           </ol>
         </Sheet>
       )}

@@ -4,27 +4,26 @@ import type { Exercise } from '../../shared/exercises';
 import { muscleGroupOf } from '../../shared/muscle-targets';
 import { exerciseImages, videoSearchUrl } from '../media';
 import type { TrackingPort } from '../ports';
+import { ChoiceRow, ExpandMark, RowList, Sheet } from './kit';
+import { ExerciseGroups } from './ExerciseGroups';
 import { ExerciseInfo } from './ExerciseInfo';
 import { MuscleIcon } from './MuscleIcon';
-import { ChoiceRow, RowList, Sheet } from './kit';
-import { ExerciseGroups } from './ExerciseGroups';
 import { matchesSearch, similarExercises } from '../similar';
 import { finishedWorkouts, useCatalog, useExcluded, usePortRecords } from './hooks';
 import { EQUIPMENT, MUSCLES, TYPES } from './labels';
 
 /** `like` is the exercise being swapped; similar ones then come first. */
-export function ExercisePicker({ port, onPick, onClose, like, now = Date.now, newId = () => crypto.randomUUID() }: {
-  port: TrackingPort; onPick: (e: Exercise) => void; onClose: () => void; like?: { title: string; exerciseId: string };
+export function ExercisePicker({ port, onPick, onClose, like, title = 'Übung wählen', now = Date.now, newId = () => crypto.randomUUID() }: {
+  port: TrackingPort; onPick: (e: Exercise) => void; onClose: () => void; like?: { title: string; exerciseId: string }; title?: string;
   now?: () => number; newId?: () => string;
 }) {
   const catalog = useCatalog(port);
   const workouts = usePortRecords(port, 'workout').records;
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
-  // Equipment and type start with the usual choice, so a new exercise needs only a name and a muscle.
-  const [draft, setDraft] = useState({ name: '', muscle: '', equipment: 'dumbbell', type: 'weight_reps' });
-  const [error, setError] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
+  const [draft, setDraft] = useState({ name: '', muscle: '', equipment: '', type: 'weight_reps' });
+  const [error, setError] = useState(false);
   const excluded = useExcluded(port);
   const done = useMemo(() => new Set(finishedWorkouts(workouts).flatMap((w) => w.exercises.map((x) => x.exerciseId))), [workouts]);
 
@@ -50,6 +49,7 @@ export function ExercisePicker({ port, onPick, onClose, like, now = Date.now, ne
     } catch { setError(true); }
   }
 
+  // One tap on the row chooses it; the mark at its end opens the how-to in place.
   const item = (e: Exercise) => {
     const icon = <MuscleIcon group={muscleGroupOf(e)} />;
     return (
@@ -58,8 +58,8 @@ export function ExercisePicker({ port, onPick, onClose, like, now = Date.now, ne
           <button type="button" className="tk-rowbtn" onClick={() => choose(e)}>
             <span className="tk-row-title">{e.title}</span>
           </button>
-          <button type="button" className="link tk-info-toggle" aria-label={`Ausführung ${e.title}`} aria-expanded={info === e.id}
-            onClick={() => setInfo(info === e.id ? null : e.id)}>ⓘ</button>
+          <button type="button" className="link tk-info-toggle" aria-label={`Anleitung ${e.title}`} aria-expanded={info === e.id}
+            onClick={() => setInfo(info === e.id ? null : e.id)}><ExpandMark open={info === e.id} /></button>
         </div>
         {info === e.id && (
           <div className="tk-row-more"><ExerciseInfo title={e.title} description={descriptionOf(e)} images={exerciseImages(e.id)} video={videoSearchUrl(e)} icon={icon} /></div>
@@ -79,9 +79,9 @@ export function ExercisePicker({ port, onPick, onClose, like, now = Date.now, ne
         <form id="tk-own-exercise" className="tk-form" onSubmit={(e) => { e.preventDefault(); if (valid) void save(); }}>
           <label className="tk-field">Name<input value={draft.name} autoFocus onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></label>
           <ChoiceRow label="Muskelgruppe" placeholder="Wählen" value={draft.muscle} options={options(MUSCLES)} onChange={(muscle) => setDraft({ ...draft, muscle })} />
-          <ChoiceRow label="Equipment" placeholder="Wählen" value={draft.equipment} options={options(EQUIPMENT)} onChange={(equipment) => setDraft({ ...draft, equipment })} />
-          <ChoiceRow label="Art" placeholder="Wählen" value={draft.type} options={options(TYPES)} onChange={(type) => setDraft({ ...draft, type })} />
-          {!valid && <p className="muted">Name und Muskelgruppe fehlen noch.</p>}
+          <ChoiceRow label="Gerät" placeholder="Wählen" value={draft.equipment} options={options(EQUIPMENT)} onChange={(equipment) => setDraft({ ...draft, equipment })} />
+          <ChoiceRow label="Zählt nach" placeholder="Wählen" value={draft.type} options={options(TYPES)} onChange={(type) => setDraft({ ...draft, type })} />
+          {!valid && <p className="muted">Es fehlt noch: {[draft.name.trim() === '' && 'Name', draft.muscle === '' && 'Muskelgruppe', draft.equipment === '' && 'Gerät'].filter(Boolean).join(', ')}.</p>}
           {error && <p role="status" className="tk-note">Konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}
         </form>
       </Sheet>
@@ -90,7 +90,7 @@ export function ExercisePicker({ port, onPick, onClose, like, now = Date.now, ne
 
   const own = <button type="button" className="secondary" onClick={() => setCreating(true)}>Eigene Übung anlegen</button>;
   return (
-    <Sheet title="Übung wählen" onClose={onClose}>
+    <Sheet title={title} onClose={onClose}>
       <input className="tk-search" aria-label="Suchen" placeholder="Übung oder Muskel suchen" value={q} onChange={(e) => setQ(e.target.value)} />
       {needle ? (
         found.length > 0 ? <RowList label="Gefunden">{found.map(item)}</RowList> : <p className="muted">Nichts gefunden.</p>

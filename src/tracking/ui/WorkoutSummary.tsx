@@ -16,7 +16,8 @@ export function WorkoutSummary({ workout: w, next, onDone }: { workout: LoggedWo
   const rows = w.exercises.map((e) => ({ e, n: nextOf(mine, e) })).filter((r) => r.n);
   return (
     <section className="card tk-summary" aria-label="Zusammenfassung">
-      <h2>Gut gemacht · {w.exercises.length} {w.exercises.length === 1 ? 'Übung' : 'Übungen'} · {minutes} Min</h2>
+      <h2>Gespeichert</h2>
+      <p className="muted">{w.exercises.length} {w.exercises.length === 1 ? 'Übung' : 'Übungen'} · {minutes} Min</p>
       {rows.map(({ e, n }, i) => <p key={i} className="muted tk-sub">{e.title} · {nextLine(n!)}</p>)}
       <button type="button" onClick={onDone}>Fertig</button>
     </section>

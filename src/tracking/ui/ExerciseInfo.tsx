@@ -59,7 +59,7 @@ export function ExerciseInfo({ title, description, images = [], video, icon, chi
 }) {
   const credit = description && descriptionCredit(description);
   return (
-    <div className="tk-info" role="note" aria-label={`Ausführung ${title}`}>
+    <div className="tk-info" role="note" aria-label={`Anleitung ${title}`}>
       {images.length > 0 && (
         <div className="tk-info-pics">
           {images.map((img) => (

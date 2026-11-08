@@ -19,22 +19,23 @@ test('Woche shows the week and the rows Mein Ziel, Regeln and Coach; the old for
   const { port } = fakePort([riderMsg, coachMsg, { kind: 'weekplan', id: '2026-11-02', updatedMs: 1, deleted: false, body: { ...proposal, fromMessage: 'c1', acceptedMs: 1 } }]);
   render(<CoachScreen port={port} {...env} />);
   expect(await screen.findByRole('list', { name: 'Wochenplan diese Woche' })).toBeTruthy();
-  for (const name of [/^Mein Ziel/, /^Regeln/, /^Coach/]) expect(screen.getByRole('button', { name })).toBeTruthy();
-  expect(screen.getByRole('button', { name: /^Mein Ziel/ }).textContent).toContain('Muskeln aufbauen');
-  expect(screen.getByRole('button', { name: /^Regeln/ }).textContent).toContain('keine');
+  for (const name of [/^Ziel und Planung/, /^Was der Coach beachtet/, /^Coach/]) expect(screen.getByRole('button', { name })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /^Ziel und Planung/ }).textContent).toContain('Muskeln aufbauen');
+  expect(screen.getByRole('button', { name: /^Was der Coach beachtet/ }).textContent).toContain('nichts');
   expect(screen.queryByLabelText('Nachricht an den Coach')).toBeNull();
   expect(screen.queryByLabelText('Neue Regel')).toBeNull();
   expect(screen.queryByLabelText('Planung')).toBeNull();
 });
 
-test('the Coach row previews the last message and says when a proposal waits', async () => {
+test('the Coach row previews the last message and shows no second "waiting" while the card does', async () => {
   const { port } = fakePort([riderMsg, { ...coachMsg, body: { ...(coachMsg.body as object), proposal: undefined, text: 'Alles klar.' } }]);
   render(<CoachScreen port={port} {...env} />);
   expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).toContain('Alles klar.');
   cleanup();
   const waiting = fakePort([riderMsg, coachMsg]);
   render(<CoachScreen port={waiting.port} {...env} />);
-  expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).toContain('Vorschlag wartet');
+  expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).not.toContain('Vorschlag wartet');
+  expect(screen.getAllByText('Vorschlag wartet')).toHaveLength(1);
 });
 
 test('the chat opens as a sheet with the input in it, and closes on × and on Escape', async () => {
@@ -84,7 +85,7 @@ test('sends a message and shows that the coach is thinking', async () => {
   fireEvent.change(screen.getByLabelText('Nachricht an den Coach'), { target: { value: '  3× Rad bitte ' } });
   fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
   await waitFor(() => expect(records(map, 'chat').map((r) => r.body)).toEqual([{ role: 'rider', text: '3× Rad bitte', atMs: NOW }]));
-  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Der Coach denkt nach …');
+  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Gesendet. Der Coach antwortet, sobald er kann.');
 });
 
 test('taking a proposal writes the week plan and shows it; then it cannot be taken twice', async () => {
@@ -137,4 +138,22 @@ test('the coach writes by itself only when switched on here; the settings are sa
   fireEvent.click(evening);
   await waitFor(() => expect(records(map, 'coachprefs')[0]?.body).toEqual({ week: { on: false, day: 6, hour: 18 }, evening: { on: true, hour: 19 } }));
   expect(await screen.findByRole('button', { name: /Uhrzeit am Vorabend/ })).toBeTruthy();
+});
+
+test('without a week plan: one "Woche planen" button, no empty day list, no second Coach row; the goal is a suggestion', async () => {
+  const { port } = fakePort();
+  render(<CoachScreen port={port} {...env} />);
+  expect(await screen.findByRole('button', { name: 'Woche planen' })).toBeTruthy();
+  expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Coach/ })).toBeNull();
+  expect(screen.getByRole('button', { name: /^Ziel und Planung/ }).textContent).toContain('Vorschlag: Muskeln aufbauen');
+  await openChat();
+});
+
+test('a waiting proposal gets a card under the week with Ansehen, which opens the chat', async () => {
+  const { port } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  const card = await screen.findByRole('region', { name: 'Vorschlag wartet' });
+  fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
+  expect(await screen.findByRole('dialog', { name: 'Coach' })).toBeTruthy();
 });

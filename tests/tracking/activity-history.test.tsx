@@ -45,7 +45,7 @@ test('a Kraft entry opens the workout detail; one without local record falls bac
   render(<ActivityHistory port={port} now={() => NOW} onClose={() => {}} />);
   fireEvent.click(await screen.findByRole('button', { name: /^Kraft Oberkörper/ }));
   expect(await screen.findByRole('heading', { name: 'Oberkörper' })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
+  fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
   fireEvent.click(await screen.findByRole('button', { name: /^Kraft Beine/ }));
   expect(await screen.findByRole('dialog', { name: 'Kraft Beine' })).toBeTruthy();
 });
@@ -54,7 +54,21 @@ test('the row Verlauf on the week page shows the newest activity and opens the l
   const { port } = fakePort(seed);
   render(<CoachScreen port={port} now={() => NOW} newId={() => 'x'} />);
   const row = await screen.findByRole('button', { name: /^Verlauf/ });
-  await screen.findByText('Kraft Oberkörper', { selector: '.tk-ellipsis' });
+  await screen.findByText(/^\S\S · Kraft Oberkörper$/, { selector: '.tk-ellipsis' });
   fireEvent.click(row);
   expect(await screen.findByRole('dialog', { name: 'Verlauf' })).toBeTruthy();
+});
+
+test('inside the Verlauf sheet an exercise has one "‹ Zurück", and it steps back one level', async () => {
+  const ex = { rid: 'e1', exerciseId: 'pf-bench-press', title: 'Bankdrücken', restS: null, supersetId: null, notes: '', sets: [{ rid: 's1', type: 'normal', weightKg: 60, reps: 8, doneMs: at(6, 9) }] };
+  const w: TrackedRecord = { ...workout, body: { ...(workout.body as object), exercises: [ex] } };
+  const { port } = fakePort([w]);
+  render(<ActivityHistory port={port} now={() => NOW} onClose={() => {}} />);
+  fireEvent.click(await screen.findByRole('button', { name: /^Kraft Oberkörper/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /Bankdrücken/ }));
+  expect(await screen.findByRole('heading', { name: 'Bankdrücken' })).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: '‹ Zurück' })).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+  expect(await screen.findByRole('heading', { name: 'Oberkörper' })).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: '‹ Zurück' })).toHaveLength(1);
 });

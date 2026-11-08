@@ -19,8 +19,8 @@ test('the planning and time rows in the goal sheet write the frame, stamped abov
   const stored = { ...frameRecord({ mode: 'week', minutes: null }, NOW + 5000), updatedMs: NOW + 9000 };
   const { port, map } = fakePort([stored]);
   render(<CoachScreen port={port} {...env} />);
-  fireEvent.click(await screen.findByRole('button', { name: /^Mein Ziel/ }));
-  fireEvent.click(await screen.findByRole('button', { name: /^Planung/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Ziel und Planung/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Wochenplan/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'Spontan' }));
   await waitFor(() => expect(frameBody(map)).toMatchObject({ mode: 'spontaneous', minutes: null }));
   expect(frames(map)[0]!.updatedMs).toBeGreaterThan(NOW + 9000);
@@ -32,7 +32,7 @@ test('the planning and time rows in the goal sheet write the frame, stamped abov
 test('spontaneous mode shows the advice instead of the week', async () => {
   const { port } = fakePort([plan(['gym', 'bike', 'run']), frameRecord({ mode: 'spontaneous', minutes: null }, 1)]);
   render(<CoachScreen port={port} {...env} />);
-  expect(await screen.findByRole('heading', { name: /^Heute: .* – weil / })).toBeTruthy();
+  expect(await screen.findByRole('heading', { name: /^Heute: .* – (weil |ein ruhiger Einstieg)/ })).toBeTruthy();
   expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
 });
 
@@ -41,7 +41,7 @@ test('spontaneous mode lists Monday to today without any plan', async () => {
   render(<CoachScreen port={port} {...env} />);
   const week = await screen.findByRole('list', { name: 'Diese Woche' });
   const items = within(week).getAllByRole('listitem');
-  expect(items.map((li) => li.textContent)).toEqual(['Montag', 'Dienstag', 'Mittwoch']);
+  expect(items.map((li) => li.textContent)).toEqual(['Montag–', 'Dienstag–', 'MittwochHeute']);
   expect(items).toHaveLength(3);
   expect(week.textContent).not.toMatch(/Kraft|Rad|Laufen/);
 });
@@ -50,8 +50,8 @@ test('"Heute nur" writes frame.today for today only', async () => {
   const { port, map } = fakePort([plan(['gym', 'bike', 'run'])]);
   render(<TodayCard port={port} weekplans={[plan(['gym', 'bike', 'run'])]} runs={[]} nowMs={NOW} gym={null} />);
   expect(screen.queryByRole('group', { name: 'Heute nur' })).toBeNull();
-  fireEvent.click(await screen.findByRole('button', { name: /^Anders heute/ }));
-  expect(screen.getByRole('dialog', { name: 'Anders heute?' })).toBeTruthy(); // a small sheet, and no line about tomorrow
+  fireEvent.click(await screen.findByRole('button', { name: /^Etwas anderes heute/ }));
+  expect(screen.getByRole('dialog', { name: 'Etwas anderes heute?' })).toBeTruthy(); // a small sheet, and no line about tomorrow
   expect(screen.queryByText(/Morgen/)).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: '30 Min' }));
   await waitFor(() => expect(frameBody(map)).toMatchObject({ mode: 'week', today: { date: '2026-11-04', minutes: 30 } }));
@@ -61,8 +61,8 @@ test('the start screen without a plan shows the advice with its reason', async (
   const { port } = fakePort([]);
   render(<TodayCard port={port} weekplans={[]} runs={[]} nowMs={NOW} gym={null} />);
   expect(await screen.findByRole('heading')).toBeTruthy();
-  expect(screen.getByText(/^weil /)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: /^Anders heute/ }));
+  expect(screen.getByText(/^(weil |ein ruhiger Einstieg)/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: /^Etwas anderes heute/ }));
   expect(screen.getByRole('group', { name: 'Heute nur' })).toBeTruthy();
 });
 
