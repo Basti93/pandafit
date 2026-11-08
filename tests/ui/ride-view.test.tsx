@@ -164,6 +164,42 @@ test('low cadence gets a tip only if the whole minute was low', () => {
 test('a tip is not repeated', () => {
   expect(pickTip(ctx({ cadences: [50] }), new Set(['cadence-0']))).toBeNull();
 });
+// Task 6: warnings and the end path beat decoration.
+test('storage error and lost trainer: both warnings and Beenden stay reachable', () => {
+  const send = view({ storageError: true, devices: { trainer: 'searching', hr: 'connected', clicker: 'connected' } });
+  expect(screen.getByRole('alert').textContent).toContain('Speichern');
+  expect(document.body.textContent).toContain('Trainer wird gesucht');
+  expect(document.body.textContent).toContain('Die Fahrt läuft weiter und ist gespeichert');
+  fireEvent.click(screen.getByText('Beenden'));
+  expect(send).not.toHaveBeenCalled();
+});
+test('saving sends stop; discarding is a separate explicit button; continuing sends nothing', () => {
+  const send = view({ storageError: true });
+  fireEvent.click(screen.getByText('Beenden'));
+  expect(screen.getByRole('dialog').textContent).toContain('Verwerfen');
+  fireEvent.click(screen.getByText('Weiterfahren'));
+  expect(send).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Beenden'));
+  fireEvent.click(screen.getByText('Speichern und beenden'));
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(send).toHaveBeenCalledWith({ type: 'stop' });
+  fireEvent.click(screen.getByText('Beenden'));
+  fireEvent.click(screen.getByText('Verwerfen'));
+  expect(send).toHaveBeenLastCalledWith({ type: 'discard' });
+});
+test('recovery keeps two distinct choices: resume and end here', () => {
+  const send = vi.fn();
+  const onClose = vi.fn();
+  render(<RecoveryDialog offer={{ type: 'recovery-offer', rideId: 'r', profileId: 'A', sessionName: 'Berg', rideElapsedS: 80 }} profileName="Anna" send={send} onClose={onClose} />);
+  fireEvent.click(screen.getByText('Fahrt hier beenden'));
+  expect(send).toHaveBeenCalledWith({ type: 'discard-resume', rideId: 'r' });
+  expect(send).not.toHaveBeenCalledWith({ type: 'resume', rideId: 'r' });
+  expect(onClose).toHaveBeenCalled();
+});
+test('film mode keeps the storage warning', () => {
+  film({ storageError: true });
+  expect(screen.getByRole('alert').textContent).toContain('Speichern');
+});
 test('prepares for a harder section ahead', () => {
   const session = { ...tipSession!, steps: [tipSession!.steps[0], { kind: 'erg' as const, ftpFraction: 0.9, durationS: 240, label: 'Block' }] };
   expect(pickTip(ctx({ session, engine: { ...tipEngine(100), stepRemainingS: 60 } }), new Set())?.id).toBe('prepare-0');
