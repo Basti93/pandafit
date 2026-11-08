@@ -33,6 +33,8 @@ import { LiveClient, type LiveSocket } from './live';
 import { LiveRide } from './LiveRide';
 import { DayHead } from './today/DayHead';
 import { CoachLine } from './today/CoachLine';
+import { dayClip } from '../tracking/ui/panda-day';
+import type { PandaEvent } from '../tracking/ui/PandaPortrait';
 import { BodyCard } from './today/BodyCard';
 import { shiftDay, swipeIgnored, swipeStep, type DayOffset } from './today/day-nav';
 import { dayLine } from '../shared/day-text';
@@ -139,6 +141,8 @@ export const sinceText = (ms: number, now: number): string => {
 /** The time one calendar day before or after, at the same clock time. */
 const shiftMs = (ms: number, days: number): number => { const d = new Date(ms); d.setDate(d.getDate() + days); return d.getTime(); };
 
+const GREET: PandaEvent = { kind: 'greet', id: 'heute-greet' };
+
 function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { port: WebPort; env: Env; account: string; goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
@@ -162,6 +166,9 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   const session = useMemo(() => mobilityToShow(plan, mobility ?? [], now), [plan, mobility, now]);
   const today = todayPlan(weekplans, now);
   const waiting = useWaitingProposal(port, now);
+  // Panda greets once when Heute opens; coming back from Gestern or Morgen does not greet again.
+  const greeted = useRef(false);
+  useEffect(() => { greeted.current = true; }, []);
   // A workout still open (here or on another device) is the next thing to do: the newest one.
   const workouts = usePortRecords(port, 'workout').records;
   const activities = usePortRecords(port, 'activities').records;
@@ -227,7 +234,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
           <button type="button" onClick={() => goTraining('resume')}>Weitermachen</button>
         </section>
       )}
-      <CoachLine text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} />
+      <CoachLine text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} gesture={greeted.current ? undefined : GREET} dayClip={dayClip({ today, dateKey: dayKey, mobility: !!session, finisher: !!finisher, open: !!open, offset })} />
       {/* A workout that is open is the one thing to do: no day card beside it. */}
       {!open && <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} />}
       {!open && weekplans !== null && plans !== null && !today && !planning && !p && (
