@@ -50,6 +50,19 @@ export type DayRow = { date: string; done: string[]; plan: PlanDay | null; rest:
 
 const SPORT_KIND: Record<Sport, ActivityKind | null> = { bike: 'rad', gym: 'kraft', run: 'lauf', mobility: 'andere', rest: null };
 
+/** The plan day without the parts already done today (same kind of activity); null when nothing is left. */
+function openParts(d: PlanDay, items: ActivityItem[]): PlanDay | null {
+  const parts = dayParts(d);
+  const open = parts.filter((p) => { const k = SPORT_KIND[p.sport]; return k === null || !items.some((a) => a.kind === k); });
+  // Rest has nothing to hide: a rest day stays as it is.
+  if (open.length === parts.length) return d;
+  const real = open.filter((p) => p.sport !== 'rest');
+  if (real.length === 0) return null;
+  const { also: _also, long, ...base } = d;
+  const keepsFirst = real[0] === parts[0];
+  return { ...base, ...(keepsFirst && long ? { long } : {}), sport: real[0]!.sport, hardness: real[0]!.hardness, ...(real[1] ? { also: real[1] } : {}) };
+}
+
 /** Past days show only what was done (or Ruhetag), today the done part plus the rest of the plan, later days the plan. */
 export function doneDays(dates: string[], today: string, plan: PlanDay[] | null, merged: Merged): DayRow[] {
   return dates.map((date): DayRow => {
@@ -58,9 +71,7 @@ export function doneDays(dates: string[], today: string, plan: PlanDay[] | null,
     const items = merged.items.filter((a) => localDayKey(a.startMs) === date).sort((a, b) => a.startMs - b.startMs);
     const done = items.map(activityText);
     if (date < today) return { date, done, plan: null, rest: done.length === 0 && merged.known };
-    const planned = planDay ? dayParts(planDay).map((p) => SPORT_KIND[p.sport]).filter((k): k is ActivityKind => k !== null) : [];
-    const finished = planned.length > 0 && planned.every((k) => items.some((a) => a.kind === k));
-    return { date, done, plan: finished ? null : planDay, rest: false };
+    return { date, done, plan: planDay ? openParts(planDay, items) : null, rest: false };
   });
 }
 

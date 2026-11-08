@@ -43,8 +43,9 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const runs = runView(runRecords ?? [], now()).week?.runs ?? [];
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   // Without a week plan (or in Spontan) the week still shows Monday to today, from what was done.
-  const rowDates = current ? weekDates : weekDates.filter((d) => d <= today);
-  const dayRows = doneDays(rowDates, today, current?.days ?? null, mergedActivities(activityRecords, workoutRecords));
+  const spontaneous = fr.frame.mode === 'spontaneous';
+  const rowDates = current && !spontaneous ? weekDates : weekDates.filter((d) => d <= today);
+  const dayRows = doneDays(rowDates, today, spontaneous ? null : current?.days ?? null, mergedActivities(activityRecords, workoutRecords));
   const recent = Object.values(fr.ratings).filter((r) => r.sports?.length).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 4)
     .map((r) => `${dayName(r.date).slice(0, 2)} ${r.sports!.map((k) => SPORT_LABEL[k]).join(' + ')}`).join(' · ');
 

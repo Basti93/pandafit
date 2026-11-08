@@ -1,6 +1,7 @@
 import type { ActivityItem } from '../../src/shared/activities';
 import type { TrackedRecord } from '../../src/shared/records';
 import type { PlanDay } from '../../src/shared/week-plan';
+import { planDayText } from '../../src/tracking/ui/plan-text';
 import { activityText, doneDays, mergedActivities } from '../../src/tracking/ui/done-days';
 
 const original = process.env.TZ;
@@ -73,4 +74,13 @@ test('activityText', () => {
   expect(activityText(item({ key: 'a', startMs: 0, kind: 'kraft', sport: 'strength', title: 'Oberkörper' }))).toBe('Kraft Oberkörper');
   expect(activityText(item({ key: 'a', startMs: 0, kind: 'andere', sport: 'yoga', minutes: 30, distanceM: null }))).toBe('Yoga 30 Min');
   expect(activityText(item({ key: 'a', startMs: 0, kind: 'rad', sport: 'cycling', minutes: 45, distanceM: 20000 }))).toBe('Rad 45 Min');
+});
+
+test('today with several parts keeps only the open parts', () => {
+  const d: PlanDay = { ...day('2026-11-04', 'bike'), also: { sport: 'gym', hardness: 'moderate' } };
+  const row = doneDays(['2026-11-04'], '2026-11-04', [d], merge([item({ key: 'kraft-1', kind: 'kraft', sport: 'strength', title: 'Beine', startMs: at(4, 7), distanceM: null })]))[0]!;
+  expect(row.done).toEqual(['Kraft Beine']);
+  expect(planDayText(row.plan!)).toBe('Rad · mittel');
+  const both = doneDays(['2026-11-04'], '2026-11-04', [d], merge([]))[0]!;
+  expect(planDayText(both.plan!)).toBe('Rad · mittel + Kraft · mittel');
 });
