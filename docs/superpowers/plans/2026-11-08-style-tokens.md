@@ -51,3 +51,19 @@
 - [ ] Take shots light (390×844) and dark (`SHOTS_DARK=1`) after the change; compare byte for byte with the shots taken before (`cmp`). Look at every differing pair; fix until none differs, or explain a difference that is only antialiasing.
 - [ ] `docs/roadmap.md`: a row and a short brief; in `.superpowers/next-after-v.md` mark the wish done.
 - [ ] Commit `docs(roadmap): style tokens done`.
+
+### Task 3: Einheitliche Bedienelemente (visible changes allowed)
+
+User, 08.11.2026: „wenn etwas anders aussieht nach dem umbau ist das auch ok … wenn man gemeinsame komponenten und styles hat und dann z.B. ‚Mit dem Coach reden‘ nicht wie ein Link aussieht obwohl es ein Button ist.“
+
+Rule (one per control; written into `src/tracking/ui/kit/index.ts` as the kit's doc comment):
+- `primary` (filled accent): the one main action of a card or sheet.
+- `secondary` (outline): every other real action and every jump to another place („Mit dem Coach reden“, „Ansehen“, „Im Profil auswählen“, „Woche planen“).
+- `link` (text): only quiet, optional or dismissing actions („Heute nicht“, „Abbrechen“, „Details“, „Später“).
+- `danger-link`: only delete/remove.
+- Shared pieces: cards, section headings and rows use the kit classes/components; no screen-local copy of the same look.
+
+- [ ] Audit every `<button>` in `src/web/**` and `src/tracking/ui/**` against the rule; list mismatches with file:line in the report.
+- [ ] Fix them; consolidate duplicated card/heading/row styles into the kit; update tests that pin classes.
+- [ ] Shots before/after (light, dark, 360 px) of every changed screen for the controller.
+- [ ] Commit `feat(web): one look per kind of control`.
