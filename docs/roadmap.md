@@ -45,6 +45,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **R Gesundheit** | Garmin-Gesundheit in der Web-App: Ruhepuls, Fitness, Alltagsbewegung, Schlaf, ruhig in Sätzen, belegte Regeln mit Quellen, wöchentliche Coach-Auswertung ohne Diagnose. | Wunsch 07.11.2026 |
 | ✅ | **S Echte Rezepte** | Vegetarische Rezeptsammlung auf dem Heimserver (wächst langsam, frei ab 1.000), eigene Rezepte per Link sofort; der Plan wählt echte Rezepte statt zu erfinden. | Wunsch 07.11.2026 |
 | ✅ | **T Rezepte ansehen** | Rezepte in der Web-App suchen und ansehen, mit Bild, Portionen, „In den Plan“ und Favoriten pro Person, die der Plan bevorzugt. | Wunsch 07.11.2026 |
+| | **U Was ich gemacht habe** | Die Woche zeigt rückwirkend das Gemachte oder „Ruhetag“; ein Verlauf über alle Sportarten; ein Garmin-Lauf ist nach spätestens einer Stunde da. | Wunsch 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -280,6 +281,27 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 3. Der alte Abgleich (config.json → Vorgänger-Server) und dessen Code sind entfernt; der Vorgänger-Dienst ist abgeschaltet, seine Daten gesichert.
 
 **Nicht dabei:** Garmin-Rohdaten (werden neu geholt), Geräte-Kopplungen.
+
+## Meilenstein U — Brief (freigegeben 08.11.2026)
+
+**Ziel:** Auf der Wochenseite sehe ich auf einen Blick, was ich diese Woche erledigt habe, und an einer Stelle meine letzten Aktivitäten aus allen Sportarten.
+
+**Anlass (08.11.2026):** Ein Morgenlauf fehlte mittags noch. Der Garmin-Abgleich läuft nur alle 3–6 Stunden; der letzte Lauf um 09:00 fand ihn noch nicht. Die Woche zeigt nur den Plan (nur Fahrten bekommen „gefahren“), der Verlauf ist auf Kraft, Rad und Laufen verteilt.
+
+**Abnahme:**
+1. Ein vergangener Tag der Woche zeigt nur, was wirklich gemacht wurde (z. B. „Lauf 6 km“, „Kraft Oberkörper“), egal was geplant war. Ohne Aktivität steht ruhig „Ruhetag“, kein „verpasst“, nichts wird nachgeholt.
+2. Heute zeigt das schon Gemachte und dazu, was noch geplant ist („Lauf 6 km ✓ · Kraft Oberkörper“). Kommende Tage zeigen den Plan wie bisher.
+3. Auf der Wochenseite gibt es unter der Woche die Zeile „Verlauf“. Sie öffnet eine Liste der letzten Aktivitäten aller Sportarten, neueste oben, eine Zeile pro Aktivität. Antippen öffnet bei Kraft und Fahrten die vorhandene Detailansicht (Krafttraining bleibt dort korrigierbar); Läufe und andere Garmin-Aktivitäten öffnen ein kleines Blatt mit Datum, Dauer, Strecke und Puls, soweit vorhanden.
+4. Die getrennten Listen sind entfernt: „Verlauf“ im Kraft-Tab und die Zeile „Fahrten“ unter Ausdauer. Die Karten „Letzter Lauf“ (mit der Frage „Wie war der Lauf?“) und „Letzte Fahrt“ bleiben.
+5. Eine neue Garmin-Aktivität steht spätestens eine Stunde nach dem Hochladen zu Garmin Connect in der App, ohne den großen Abgleich öfter laufen zu lassen. Während einer offenen Fahrt wird nie geprüft.
+
+**Stand vorher (geprüft 08.11.2026):** Garmin-Aktivitäten sind keine Datensätze; die Web-App kennt sie nur zusammengefasst (Minuten pro Tag, letzter Lauf). Der Coach-Server führt alles schon mit `allActivities` zusammen und muss die Liste neu veröffentlichen. Eine neue Datensatzart ändert die Sync-Signatur: jedes Gerät holt einmal alles neu.
+
+**Fällt weg:** „Verlauf“ im Kraft-Tab, die Zeile „Fahrten“ unter Ausdauer, die Sonderanzeige „gefahren“.
+
+**Nicht dabei:** Statistik, Filter oder Suche im Verlauf, Knopf „Jetzt abgleichen“, Umplanen der restlichen Woche, wenn ein Tag ausfiel.
+
+**Von Claude entschieden (08.11.2026):** Alle Aktivitäten zählen, auch Garmin-Aktivitäten ohne eigenen Bereich (z. B. Yoga), jede nur einmal (wie `allActivities`). Auch im Modus „Spontan“ zeigt die Woche die vergangenen Tage mit dem Gemachten. Für neue Aktivitäten prüft der Server stündlich nur die erste Seite der Aktivitätsliste; nur wenn etwas neu ist, planen die Coaches neu (wie heute). Nur Web-App: die Mac-App ist nur fürs Rad (Q).
 
 ## Parkplatz
 
