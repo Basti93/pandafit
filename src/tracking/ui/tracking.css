@@ -20,9 +20,10 @@
 }
 .tk-screen button:disabled, .tk-picker button:disabled { opacity: .4; cursor: default; }
 .tk-screen button.secondary, .tk-picker button.secondary { background: transparent; color: var(--text); border: 1px solid var(--muted); }
-/* Calm UI kit (see kit/index.ts): buttons are primary (the default), secondary (outline), link (text) and danger-link (muted red text). ghost is the old name of link. */
+/* Calm UI kit (see kit/index.ts): buttons are primary (the default), secondary (outline), link (text) and danger-link (muted red text). */
 .tk-screen button.primary, .tk-picker button.primary { background: var(--accent); color: var(--ink); border: 0; }
-.tk-screen button.ghost, .tk-picker button.ghost, .tk-screen button.link, .tk-picker button.link, .tk-screen button.danger-link, .tk-picker button.danger-link { background: transparent; border: 0; border-radius: var(--radius-s); color: var(--muted); font-weight: 600; text-decoration: underline; text-underline-offset: .2em; padding: var(--space-2) .6rem; }
+/* A text link lines up with the text around it: no side padding; its height still gives the 44 px target. */
+.tk-screen button.link, .tk-picker button.link, .tk-screen button.danger-link, .tk-picker button.danger-link { background: transparent; border: 0; border-radius: var(--radius-s); color: var(--muted); font-weight: 600; text-decoration: underline; text-underline-offset: .2em; padding: var(--space-2) 0; }
 .tk-screen button.danger-link, .tk-picker button.danger-link { color: var(--danger); font-weight: 500; }
 .tk-screen input:focus-visible, .tk-screen select:focus-visible, .tk-screen textarea:focus-visible, .tk-picker input:focus-visible, .tk-picker select:focus-visible, .tk-picker textarea:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
@@ -101,7 +102,7 @@
 .tk-info-pic { margin: 0; display: flex; flex-direction: column; gap: .2rem; }
 .tk-info-pics { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--space-2); }
 .tk-info-pic img { display: block; width: 100%; height: 9rem; object-fit: cover; background: var(--card); border-radius: var(--radius-xs); }
-.tk-info button.link { padding-left: 0; padding-right: 0; align-self: flex-start; }
+.tk-info button.link { align-self: flex-start; }
 .tk-desc { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
 .tk-desc p.tk-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .tk-info-pic a, .tk-info .tk-credit a { color: inherit; }
@@ -187,8 +188,6 @@
 /* The plan of the day before starting: what is coming, then one button. */
 .tk-plan-preview ul { margin: .2rem 0 .8rem; padding-left: 1.1rem; }
 .tk-plan-preview li { margin: .15rem 0; }
-/* "Coach fragen" is a quiet helper, not a main action. */
-.tk-coach-open { font-size: var(--fs-s); min-height: 0; padding: .3rem .8rem; }
 
 /* The gym coach's outlook: the workouts after the next one, folded. */
 .tk-outlook { margin-top: 1rem; }
@@ -329,7 +328,6 @@
 .tk-plan-preview { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-plan-preview .tk-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .tk-open .tk-links { margin-top: .25rem; }
-.tk-sheet .tk-links button { padding-left: 0; }
 
 /* Picker, Routinen, Verlauf */
 .tk-sheet .tk-search { flex: none; }
@@ -359,7 +357,6 @@
 .tk-feel .tk-chips { align-items: center; gap: .4rem; }
 .tk-screen .tk-feel .tk-chips button { min-height: 36px; padding: .2rem var(--space-3); }
 .tk-feel p { margin: 0; }
-.tk-screen button.tk-skip-feel { min-height: 44px; padding-left: 0; padding-right: 0; }
 .tk-sheet section > .tk-section { margin: var(--space-2) 0 var(--space-1); }
 .tk-sheet input[type="date"] { width: 100%; }
 .tk-form label.tk-switchrow { flex-direction: row; align-items: center; color: inherit; }
@@ -377,7 +374,7 @@
 .tk-screen .tk-section { margin: 1.25rem 0 var(--space-1); }
 .tk-screen > .tk-section, .tk-sheet-body > .tk-section { margin: var(--space-4) 0 -.25rem; }
 .tk-group { display: flex; flex-direction: column; }
-.tk-screen button.link, .tk-screen button.ghost, .tk-screen button.danger-link, .tk-picker button.link, .tk-picker button.danger-link { min-height: 44px; display: inline-flex; align-items: center; justify-content: flex-start; }
+.tk-screen button.link, .tk-screen button.danger-link, .tk-picker button.link, .tk-picker button.danger-link { min-height: 44px; display: inline-flex; align-items: center; justify-content: flex-start; }
 .tk-pagehead { display: flex; flex-direction: column; gap: .15rem; min-height: 2.5rem; justify-content: center; margin-bottom: .5rem; }
 .tk-subtitle { margin: 0; font-size: var(--fs-s); }
 .tk-screen .tk-title { overflow-wrap: anywhere; }
@@ -393,7 +390,6 @@
 .tk-pins { max-height: none; overflow: visible; }
 .tk-week li { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); column-gap: .25rem; }
 .tk-pin .tk-week li { grid-template-columns: 5.4rem minmax(0, 1fr); }
-.tk-screen button.tk-logout { padding-left: 0; }
 /* Profile groups: a thin line only between groups, none between the rows of one group. */
 .tk-pgroup { border-top: 1px solid var(--line); margin-top: .75rem; display: flex; flex-direction: column; }
 .tk-pgroup .tk-switchrow, .tk-pgroup .tk-rowitem { border-top: 0; }

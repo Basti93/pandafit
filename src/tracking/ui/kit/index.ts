@@ -3,11 +3,12 @@
  *
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
- * Buttons (plain <button> classes):
- *   (none) or "primary"  filled orange; at most one per screen or sheet, the next action.
- *   "secondary"          outline.
- *   "link" (or "ghost")  a text link, for the quiet third choice.
- *   "danger-link"        muted red text link for Löschen, Verwerfen, Entfernen. Use ConfirmLink; never next to the primary button.
+ * Buttons (plain <button> classes), one look per role:
+ *   (none) or "primary"  filled accent: the one main action of a card or sheet (start, resume, save, take a proposal).
+ *   "secondary"          outline: every other real action and every jump to another place ("Mit dem Coach reden", "Ansehen", "Woche planen").
+ *   "link"               text: only quiet, optional or dismissing actions ("Heute nicht", "Abbrechen", "Details", "Später"). No side padding: it lines up with the text.
+ *   "danger-link"        muted red text: only delete and remove. Use ConfirmLink; never next to the primary button.
+ *   Exception: the ride display (LiveRide) keeps 64 px outline buttons for use on the bike.
  * Sheet: forms, pickers, chat and edit dialogs. Full screen, title, × top right, sticky action area, body behind stays put, Back or Escape closes.
  *   One close pattern: × closes; a sub-sheet (a full sheet over another, or `onBack`) has "‹ Zurück" top left instead. "Fertig" only where it really saves.
  *   It sits above all app chrome (header, profile button, rest bar, nav) with an opaque background.

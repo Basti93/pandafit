@@ -59,8 +59,8 @@ export function ExerciseProposals({ port, now = Date.now, newId }: { port: Track
             </span>
             <span className="tk-proposal-actions">
               <button type="button" className="secondary" onClick={() => void write((stored, cat) => { const cur = current(stored, r); return cur ? confirmProposal(cur, cat, now(), stored) : []; }, others)}>Bestätigen</button>
-              <button type="button" className="ghost" onClick={() => setChanging({ r, link: false })}>Ändern</button>
-              <button type="button" className="ghost" onClick={() => void write((stored) => { const cur = current(stored, r); return cur ? rejectProposal(cur, now()) : []; }, others)}>Verwerfen</button>
+              <button type="button" className="link" onClick={() => setChanging({ r, link: false })}>Ändern</button>
+              <button type="button" className="link" onClick={() => void write((stored) => { const cur = current(stored, r); return cur ? rejectProposal(cur, now()) : []; }, others)}>Verwerfen</button>
             </span>
           </li>
         ))}
@@ -68,8 +68,8 @@ export function ExerciseProposals({ port, now = Date.now, newId }: { port: Track
           <li key={r.id}>
             <span>‚{l.title}‘ als {title(l.targetId)} eingeordnet</span>
             <span className="tk-proposal-actions">
-              <button type="button" className="ghost" onClick={() => setChanging({ r, link: true })}>Ändern</button>
-              <button type="button" className="ghost" onClick={() => void write(async (stored) => { const cur = current(stored, r); return cur ? undoLinkAndUnused(cur, now(), stored, await port.list('workout')) : []; })}>Rückgängig</button>
+              <button type="button" className="link" onClick={() => setChanging({ r, link: true })}>Ändern</button>
+              <button type="button" className="link" onClick={() => void write(async (stored) => { const cur = current(stored, r); return cur ? undoLinkAndUnused(cur, now(), stored, await port.list('workout')) : []; })}>Rückgängig</button>
             </span>
           </li>
         ))}

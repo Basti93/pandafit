@@ -19,7 +19,7 @@ export function WaitingProposal({ onOpen }: { onOpen: () => void }) {
   return (
     <section className="card tk-waiting-card" aria-label="Vorschlag wartet">
       <p><b>Vorschlag wartet</b></p>
-      <button type="button" onClick={onOpen}>Ansehen</button>
+      <button type="button" className="secondary" onClick={onOpen}>Ansehen</button>
     </section>
   );
 }

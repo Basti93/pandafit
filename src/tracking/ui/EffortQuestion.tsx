@@ -16,9 +16,9 @@ export function EffortQuestion({ title, onAnswer, onOff }: { title: string; onAn
         {(Object.keys(EFFORT_LABEL) as Effort[]).map((k) => (
           <button key={k} type="button" className="secondary" onClick={() => onAnswer(k)}>{EFFORT_LABEL[k]}</button>
         ))}
-        <button type="button" className="ghost" onClick={() => onAnswer('skip')}>Überspringen</button>
+        <button type="button" className="link" onClick={() => onAnswer('skip')}>Überspringen</button>
       </div>
-      <button type="button" className="ghost tk-sub" onClick={() => { switchOff(); onOff(); }}>Nicht mehr fragen</button>
+      <button type="button" className="link tk-sub" onClick={() => { switchOff(); onOff(); }}>Nicht mehr fragen</button>
     </div>
   );
 }

@@ -22,7 +22,7 @@ export function RunFeelQuestion({ onAnswer }: { onAnswer: (feel: Feel | null) =>
       <div className="tk-chips">
         {(Object.keys(LABEL) as Feel[]).map((f) => <button key={f} type="button" className="secondary" onClick={() => tap(f)}>{LABEL[f]}</button>)}
       </div>
-      <button type="button" className="link tk-skip-feel" onClick={() => tap(null)}>Später</button>
+      <button type="button" className="link" onClick={() => tap(null)}>Später</button>
     </section>
   );
 }

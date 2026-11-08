@@ -127,7 +127,7 @@ export function MealDetail({ week, meal, onEater, onView, me, readOnly }: { week
   const askedBy = meal.askedBy ? week.plan.people.find((p) => p.id === meal.askedBy) : undefined;
   return (
     <>
-      {meal.dish.recipeId && <button type="button" className="link pm-viewlink" onClick={() => onView(meal.dish.recipeId!)}>Rezept ansehen ›</button>}
+      {meal.dish.recipeId && <button type="button" className="secondary pm-viewlink" onClick={() => onView(meal.dish.recipeId!)}>Rezept ansehen ›</button>}
       {!meal.reuseOf && cook.total > 0 && (
         <>
           <h3 className="tk-section">Rezept für {cook.total} {cook.total === 1 ? 'Portion' : 'Portionen'}</h3>

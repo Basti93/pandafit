@@ -78,7 +78,7 @@ export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUnd
     if (!why) onUndo(key(m));
   };
 
-  if (!shown) return openSignal !== undefined ? null : <button type="button" className="ghost tk-coach-open" onClick={() => { setOpen(true); setClosed(false); }}>Coach fragen</button>;
+  if (!shown) return openSignal !== undefined ? null : <button type="button" className="secondary tk-coach-open" onClick={() => { setOpen(true); setClosed(false); }}>Coach fragen</button>;
   return (
     <section className="card tk-coach-panel" aria-label="Coach im Training">
       {mine.length === 0 && <p className="muted">Zum Beispiel: „Gerät belegt“, „Schulter zwickt“ oder „nur noch 30 Minuten“.</p>}
@@ -92,11 +92,11 @@ export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUnd
               {proposalAnswer(thread, m.id) === null && !changeTaken(workout, key(m)) ? (
                 <div className="tk-row">
                   <button type="button" onClick={() => void take(m as ChatEntry & { workoutChange: WorkoutChange })}>{TAKE}</button>
-                  <button type="button" className="ghost" onClick={() => { setOpen(true); void write({ role: 'rider', text: 'Nein danke.', atMs: now(), declines: m.id, inWorkout: workout.id }); }}>{DECLINE}</button>
+                  <button type="button" className="link" onClick={() => { setOpen(true); void write({ role: 'rider', text: 'Nein danke.', atMs: now(), declines: m.id, inWorkout: workout.id }); }}>{DECLINE}</button>
                 </div>
               ) : changeTaken(workout, key(m)) ? (
                 <div className="tk-row"><span className="muted">Übernommen.</span>
-                  <button type="button" className="ghost" onClick={() => undo(m)}>{UNDO}</button></div>
+                  <button type="button" className="link" onClick={() => undo(m)}>{UNDO}</button></div>
               ) : <p className="muted">{proposalAnswer(thread, m.id) === 'declined' ? `${DECLINED}.` : 'Rückgängig gemacht.'}</p>}
             </>
           )}
@@ -109,7 +109,7 @@ export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUnd
         <textarea aria-label="Nachricht an den Coach im Training" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} placeholder="Was ist los?" />
         <button type="submit" disabled={!text.trim()}>Senden</button>
       </form>
-      {!pending && !proposedNext && !waiting && <button type="button" className="ghost" onClick={() => { setOpen(false); setClosed(true); }}>Schließen</button>}
+      {!pending && !proposedNext && !waiting && <button type="button" className="link" onClick={() => { setOpen(false); setClosed(true); }}>Schließen</button>}
     </section>
   );
 }

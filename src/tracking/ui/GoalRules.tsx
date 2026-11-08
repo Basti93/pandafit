@@ -253,7 +253,7 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
       {adding ? (
         <form className="tk-row" onSubmit={(e) => { e.preventDefault(); addWish(); }}>
           <input aria-label="Neue Regel" autoFocus value={text} maxLength={RULE_TEXT_MAX} placeholder="Neue Regel oder Wunsch" onChange={(e) => setText(e.target.value)} />
-          <button type="submit" className="secondary" disabled={!text.trim()}>Speichern</button>
+          <button type="submit" disabled={!text.trim()}>Speichern</button>
         </form>
       ) : (
         <>

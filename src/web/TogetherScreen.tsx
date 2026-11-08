@@ -53,7 +53,7 @@ export function TogetherPage({ t, now, onBack }: { t: TogetherBody; now: number;
   const max = Math.max(30, ...people.flatMap((p) => p.weeks));
   return (
     <div className="tk-screen gm">
-      <div className="tk-row"><h1 className="tk-title">Gemeinsam</h1><span className="spacer" /><button type="button" className="ghost" onClick={onBack}>Zurück</button></div>
+      <div className="tk-row"><h1 className="tk-title">Gemeinsam</h1><span className="spacer" /><button type="button" className="link" onClick={onBack}>Zurück</button></div>
       <p className="muted gm-stand">{standText(t.atMs)}{isThisWeek(t, now) ? '' : '. Neue Zahlen kommen, sobald der Mac wieder an ist.'}</p>
       <section className="card">
         <h2>Euer Berg</h2>

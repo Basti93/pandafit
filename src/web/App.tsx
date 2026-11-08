@@ -236,7 +236,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
           <p className="muted">Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit dem Coach.</p>
           <div className="tk-row">
             <button type="button" className="secondary" onClick={goCoach}>Woche planen</button>
-            <button type="button" className="link" onClick={goProfile}>Im Profil auswählen</button>
+            <button type="button" className="secondary" onClick={goProfile}>Im Profil auswählen</button>
           </div>
         </section>
       )}
@@ -348,14 +348,14 @@ function PushCard({ push }: { push: PushState }) {
         {push.env.support === 'install' ? (
           <>
             <p>{PUSH_INSTALL}</p>
-            <button type="button" className="ghost" onClick={push.closeCard}>Verstanden</button>
+            <button type="button" className="link" onClick={push.closeCard}>Verstanden</button>
           </>
         ) : (
           <>
             <p>Pandafit sagt dir Bescheid, wenn eine neue Version da ist, wenn dein Essensplan für die Woche kommt und wenn dein Laufplan da ist. Sonst nichts.</p>
             <div className="tk-row">
               <button type="button" disabled={push.busy} onClick={() => void push.enable()}>Einschalten</button>
-              <button type="button" className="ghost" onClick={push.closeCard}>Nicht jetzt</button>
+              <button type="button" className="link" onClick={push.closeCard}>Nicht jetzt</button>
             </div>
           </>
         )}
@@ -475,7 +475,7 @@ function Profil({ account, port, now, status, onLogout, push, link }: { link: Co
           <button type="button" className="secondary" onClick={onLogout}>Trotzdem abmelden</button>
           <button type="button" className="link" onClick={() => setConfirming(false)}>Doch nicht</button>
         </p>
-      ) : <button type="button" className="link tk-logout" onClick={tryLogout}>Abmelden</button>}
+      ) : <button type="button" className="link" onClick={tryLogout}>Abmelden</button>}
     </div>
   );
 }
