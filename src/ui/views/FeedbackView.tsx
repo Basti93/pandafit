@@ -9,6 +9,7 @@ import type { CoachState } from '../../coach/state';
 import { DebriefCard, debriefHandlers } from './DebriefCard';
 import type { GarminUploadSettings } from '../../coach/garmin-upload';
 import { GarminUploadButton } from './GarminUploadButton';
+import { PandaMark } from './PandaMark';
 import { RideCharts } from './RideCharts';
 
 type Props = {
@@ -30,6 +31,7 @@ export const FeedbackView = ({ profileId, rideId, send, together, summary, summa
   const rate = (rating: 'easy' | 'right' | 'hard') => send({ type: 'feedback', profileId, rideId, rating });
   return (
     <main>
+      <PandaMark small />
       <p className="muted">Schön gemacht, deine Fahrt ist gespeichert.{together ? ` Das waren ${together.lastRideMetres} Höhenmeter auf dem Weg zum ${together.peak.name}.` : ''}</p>
       {summary && (
         <>
