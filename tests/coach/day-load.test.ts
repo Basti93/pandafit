@@ -140,3 +140,13 @@ test('a bike and a gym session on the same day sum their minutes and take the ha
   expect(bike.minutes).toBeGreaterThan(0);
   expect(both).toMatchObject({ hardness: 'hard', legs: true, minutes: gym.minutes + bike.minutes });
 });
+
+test('a planned gym session is planned, not done', () => {
+  const r = dayRatings(input({ gymNext: { name: 'B', exercises: [] }, gymDays: [6] }), DATES)['2027-06-20'];
+  expect(r.sports).toBeUndefined();
+  expect(r.plannedSports).toEqual(['gym']);
+  expect(r.minutes).toBeGreaterThan(0);
+  const done = dayRatings(input({ gym: [lift(at(14), ['Bench Press'])] }), DATES)['2027-06-14'];
+  expect(done.sports).toEqual(['gym']);
+  expect(done.plannedSports).toBeUndefined();
+});

@@ -408,7 +408,7 @@ export class ChatCoach {
       const thread = chatThread(this.deps.store.all(id, 'chat'));
       const prompt = this.prompt(id, thread.slice(-CHAT_CONTEXT), now, [
         dataBlock('neueAktivitaeten', activities),
-        'Die Person hat dir gerade nicht geschrieben. Das sind neue Aktivitäten, geplant oder nicht. Prüf, ob der Rest dieser Woche (wocheJetzt) danach noch passt. '
+        'Die Person hat dir gerade nicht geschrieben. Das sind neue Aktivitäten, auch ohne Plan. Prüf, ob der Rest dieser Woche (wocheJetzt) danach noch passt. '
         + 'Wenn eine Aktivität den Plan verändert (zum Beispiel ungeplant, länger oder härter als geplant), schlag die angepasste Woche vor (wocheJetzt): '
         + 'vergangene Tage so, wie sie wirklich waren, die kommenden Tage angepasst. Sag in ein bis zwei Sätzen, was du warum änderst; '
         + 'die Person entscheidet, ob sie beim alten Plan bleibt. Passt der Plan weiterhin, gib proposal null.',

@@ -2,10 +2,10 @@ import type { SportKey } from './personal';
 
 /** How hard a day was. The same three steps as the week plan. */
 export type DayHardness = 'easy' | 'moderate' | 'hard';
-/** `sports`: which sports were done that day (for "done least recently"). */
-export type DayRating = { date: string; hardness: DayHardness | null; legs: boolean; minutes: number; sports?: SportKey[] };
+/** `sports`: which sports were really done that day (for "done least recently"). `plannedSports`: planned only, not done. Hardness, legs and minutes count both. */
+export type DayRating = { date: string; hardness: DayHardness | null; legs: boolean; minutes: number; sports?: SportKey[]; plannedSports?: SportKey[] };
 /** One finished or planned session, already rated. The apps and the coach both turn their own records into these. */
-export type RatingEntry = { date: string; hardness: DayHardness; legs: boolean; minutes: number; sport?: SportKey };
+export type RatingEntry = { date: string; hardness: DayHardness; legs: boolean; minutes: number; sport?: SportKey; planned?: true };
 
 // Our own choices: where a day turns moderate or hard.
 export const HARD_FRACTION = 0.8;
@@ -30,7 +30,9 @@ export const ratingsFromEntries = (entries: readonly RatingEntry[], dates: reado
     day.hardness = harder(day.hardness, e.hardness);
     day.legs = day.legs || e.legs;
     day.minutes += Math.round(e.minutes);
-    if (e.sport && !(day.sports ?? []).includes(e.sport)) day.sports = [...(day.sports ?? []), e.sport];
+    if (e.sport && e.planned) {
+      if (!(day.plannedSports ?? []).includes(e.sport)) day.plannedSports = [...(day.plannedSports ?? []), e.sport];
+    } else if (e.sport && !(day.sports ?? []).includes(e.sport)) day.sports = [...(day.sports ?? []), e.sport];
   }
   return out;
 };

@@ -54,3 +54,16 @@ describe('what fits today in the hint', () => {
     expect(planHint([], NOW, 'run', ctx('week'))).toBe('');
   });
 });
+
+describe('planned is never done', () => {
+  const rec = plan('2026-11-02', { 5: 'gym', 6: 'bike' });
+  test('today lists what was done, an empty list when nothing; future days have none', () => {
+    const h = planHint([rec], NOW, 'gym', undefined, {});
+    expect(h).toMatch(/"date":"2026-11-07"[^}]*"erledigt":\[\]/);
+    expect(h).toContain('Ein vergangener Plantag oder heute ohne den geplanten Sport in erledigt ist nicht gemacht.');
+    expect(h.match(/"erledigt"/g)).toHaveLength(1);
+  });
+  test('done sports of today are named', () => {
+    expect(planHint([rec], NOW, 'gym', undefined, { '2026-11-07': ['gym', 'run'] })).toContain('"erledigt":["gym","run"]');
+  });
+});

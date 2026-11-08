@@ -43,7 +43,7 @@ export const activitiesHint = (sessions: TrainingSession[], nowMs: number): stri
   const recent = sessions.filter((s) => s.startMs <= nowMs && nowMs - s.startMs <= HINT_DAYS * DAY).sort((a, b) => a.startMs - b.startMs);
   if (recent.length === 0) return '';
   const data = recent.map(activityData);
-  return `\n\n<aktivitaeten-nur-daten>\n${JSON.stringify(data)}\n</aktivitaeten-nur-daten>\nDas sind alle Aktivitäten der letzten ${HINT_DAYS} Tage aus allen Quellen (diese App, Hevy, Garmin, selbst eingetragen), geplant oder nicht. Plane mit dem, was wirklich gemacht wurde.`;
+  return `\n\n<aktivitaeten-nur-daten>\n${JSON.stringify(data)}\n</aktivitaeten-nur-daten>\nDas sind alle Aktivitäten der letzten ${HINT_DAYS} Tage aus allen Quellen (diese App, Hevy, Garmin, selbst eingetragen), auch ohne Plan. Plane mit dem, was wirklich gemacht wurde.`;
 };
 
 type Entry = { keys: string[]; version: number };

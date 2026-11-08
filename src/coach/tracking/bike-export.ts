@@ -121,8 +121,8 @@ export function exportBike(d: Deps): string[] {
 }
 
 /** What the week chat sees of the bike: the plan, FTP and phase, and the last rides in a few words. */
-export function radForChat(s: CoachState): { rad: { name: string; minuten: number; begruendung: string; ftp: number; phase: string }; radFahrten: { datum: string; name: string; minuten: number; haerte: string }[] } {
+export function radForChat(s: CoachState): { rad: { geplant: true; name: string; minuten: number; begruendung: string; ftp: number; phase: string }; radFahrten: { datum: string; name: string; minuten: number; haerte: string }[] } {
   const radFahrten = [...s.summaries].sort((a, b) => b.startedAtMs - a.startedAtMs).slice(0, 5)
     .map((r) => ({ datum: dateKey(r.startedAtMs), name: r.sessionName ?? 'Fahrt', minuten: Math.round(r.durationS / 60), haerte: HARDNESS_LABEL[rateIntensity(r.intensityFactor)] }));
-  return { rad: { name: s.next.session.name, minuten: sessionMinutes(s.next.session), begruendung: s.next.reason, ftp: Math.round(s.ftpW), phase: s.phase.name }, radFahrten };
+  return { rad: { geplant: true, name: s.next.session.name, minuten: sessionMinutes(s.next.session), begruendung: s.next.reason, ftp: Math.round(s.ftpW), phase: s.phase.name }, radFahrten };
 }
