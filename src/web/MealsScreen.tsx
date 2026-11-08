@@ -97,12 +97,11 @@ const listAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).j
 
 /** One meal as a row; opened, it shows the recipe, the protein and who eats. A deviation from the plan shows under the title. */
 /** A small picture of the recipe behind a dish; nothing at all when it has none. */
-/** The dish's picture, or a calm colour block with its first letter, so every row lines up. */
-export function MealThumb({ recipeId, title }: { recipeId?: string; title: string }) {
+/** The dish's picture; nothing at all when the recipe has none (no empty coloured square). */
+export function MealThumb({ recipeId }: { recipeId?: string; title?: string }) {
   const [failed, setFailed] = useState(false);
-  if (recipeId && !failed) return <img className="pm-thumb" src={`/coach/recipes/${recipeId}/image`} alt="" loading="lazy" onError={() => setFailed(true)} />;
-  const hue = [...title].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
-  return <span className="pm-thumb rc-blank" style={{ ['--rc-hue' as string]: String(hue) }} aria-hidden="true" />;
+  if (!recipeId || failed) return null;
+  return <img className="pm-thumb" src={`/coach/recipes/${recipeId}/image`} alt="" loading="lazy" onError={() => setFailed(true)} />;
 }
 
 /** What a meal shows opened, in Essen under its row and on Heute in a sheet: recipe, how long it keeps, who eats. */

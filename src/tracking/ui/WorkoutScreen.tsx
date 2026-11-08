@@ -259,8 +259,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
                 <button type="button" className="tk-rowbtn tk-hold" aria-expanded={isOpen} {...holdProps(e.rid)}
                   onClick={() => { if (held.current) { held.current = false; return; } setOpenRid(isOpen ? null : e.rid); }}>
                   <span className="tk-ex-icon">{icon}</span>
-                  <span className="tk-row-title">{e.title}{supersetNote && <small className="tk-ex-sub muted">{supersetNote}</small>}</span>
-                  {value && <span className="tk-row-value muted">{value}</span>}
+                  <span className="tk-row-title">{e.title}{(value || supersetNote) && <small className="tk-ex-sub muted">{[value, supersetNote].filter(Boolean).join(' · ')}</small>}</span>
                   <ExpandMark open={isOpen} />
                 </button>
               </h2>
@@ -307,7 +306,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
                 {exerciseHasNoWeight(e) && <p className="muted tk-sub">Gewicht nach Gefühl</p>}
                 {e.sets.length > 0 && <SetHead timed={timed} editing={editing === e.rid} />}
                 {e.sets.map((s, si) => (
-                  <SetRow key={s.rid} index={si} set={s} timed={timed} label={labels[si]} editing={editing === e.rid} preset={presetOf(e.sets, si)} hint={null} target={si === nextOpen && si === firstWork ? setTargetHint(s, timed, range) : null}
+                  <SetRow key={s.rid} index={si} set={s} timed={timed} label={labels[si]} editing={editing === e.rid} preset={presetOf(e.sets, si)} target={si === nextOpen && si === firstWork ? setTargetHint(s, timed, range) : null}
                     plates={s.rid === plateRid ? plateLine(s.weightKg as number) : null}
                     confirmedNow={() => store.current().exercises.find((x) => x.rid === e.rid)?.sets.find((x) => x.rid === s.rid)?.doneMs != null}
                     onEdit={(patch) => act((x) => editSet(x, e.rid, s.rid, patch))}

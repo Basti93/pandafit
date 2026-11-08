@@ -450,7 +450,7 @@ async function main() {
         const m = JSON.parse(String(raw)) as { type?: string; id?: string };
         if (m.type === 'live-watch' && liveOn) pushLive(ws);
         // Profil: the settings the account's coach holds (invented): Hevy connected, Garmin not, strength planned, meals on.
-        if (m.type === 'subscribe') ws.send(JSON.stringify({ type: 'coach-state', state: {}, thinking: false, together: {}, hevy: { state: 'connected', workouts: 42, loading: false, lastSyncMs: null }, garmin: { state: 'idle' }, gym: { state: {} }, meals: { settings: { on: true, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' } } } }));
+        if (m.type === 'subscribe') ws.send(JSON.stringify({ type: 'coach-state', state: {}, thinking: false, together: {}, hevy: { state: 'connected', workouts: 42, loading: false, lastSyncMs: null }, garmin: { state: 'idle' }, gym: EMPTY ? null : { state: {} }, meals: { settings: { on: !EMPTY, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' } } } }));
         if (m.type === 'live-command') ws.send(JSON.stringify({ type: 'live-ack', profileId: 'pa', id: m.id, ok: true }));
       } catch { /* not ours */ }
     });

@@ -107,7 +107,7 @@ function LiveScreen({ client, now, onClose }: { client: LiveClient; now: () => n
   const last = s.step.index >= s.step.count - 1;
 
   return (
-    <Sheet title={s.step.name ? `Fahrt · ${s.step.name}` : 'Fahrt'} onClose={onClose} actions={
+    <Sheet title="Fahrt" onClose={onClose} actions={
       <div className="live-buttons">
         <button type="button" className="secondary" disabled={dead} onClick={() => run('down', 'adjust', -LIVE_ADJUST_PCT)}>{label('down', 'Leichter')}</button>
         <button type="button" className="secondary" disabled={dead} onClick={() => run('up', 'adjust', LIVE_ADJUST_PCT)}>{label('up', 'Schwerer')}</button>

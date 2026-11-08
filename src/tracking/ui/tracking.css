@@ -413,7 +413,7 @@
 .tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; font-size: 1.4rem; opacity: .8; justify-content: center; }
 .tk-set .tk-num { min-height: 48px; }
 .tk-live-head .tk-elapsed { font-size: .95rem; }
-.tk-live .tk-ex-head .tk-row-title { flex: 1 1 50%; overflow-wrap: break-word; hyphens: auto; }
+.tk-live .tk-ex-head .tk-row-title { flex: 1 1 50%; overflow-wrap: break-word; }
 .tk-live .tk-ex-head .tk-row-value { flex: 0 1 45%; max-width: none; }
 .tk-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
 

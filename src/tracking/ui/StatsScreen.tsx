@@ -163,7 +163,7 @@ export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort;
     <section className="tk-lookback" aria-label="Rückblick">
       <h2 className="tk-section">Rückblick</h2>
       {failed && <p role="status" className="tk-note">Der Rückblick konnte gerade nicht gelesen werden. Es ist nichts verloren. <button type="button" onClick={retry}>Nochmal versuchen</button></p>}
-      {any && v.verdicts.length > 0 && <ul className="tk-verdicts">{v.verdicts.map((t) => <li key={t}>{muscles && PAIR_VERDICT.test(t) ? <button type="button" className="link" onClick={() => setSheet('muscles')}>{verdictText(t)} ›</button> : verdictText(t)}</li>)}</ul>}
+      {any && v.verdicts.length > 0 && <ul className="tk-verdicts">{v.verdicts.map((t) => <li key={t}>{verdictText(t)}</li>)}</ul>}
       <RowList label="Rückblick">
         <Row title="Verlauf" value={latest ? <span className="tk-ellipsis">{latest}</span> : undefined} onClick={onHistory} />
         {muscles && <Row title="Muskeln" value={gaps > 0 ? `${gaps} ${gaps === 1 ? 'Lücke' : 'Lücken'}` : 'ausgewogen'} onClick={() => setSheet('muscles')} />}

@@ -118,8 +118,9 @@ test('pairs are not listed as numbers; a short side is one plain sentence at the
   await show([workout('w3', new Date(2026, 9, 21, 18).getTime(), 'pf-bench-press', 'Bankdrücken', 12)]);
   const week = screen.getByRole('region', { name: 'Rückblick' });
   expect(week.textContent).toMatch(/Rücken kommt zu kurz/);
-  // the summary card opens Muskeln, where Rücken is the first row and orange
-  fireEvent.click(within(week).getByRole('button', { name: /Rücken kommt zu kurz/ }));
+  // the verdict is plain text; the Muskeln row is the way in, where Rücken is the first row
+  expect(within(week).queryByRole('button', { name: /Rücken kommt zu kurz/ })).toBeNull();
+  fireEvent.click(within(week).getByRole('button', { name: /^Muskeln/ }));
   const muscles = screen.getByRole('dialog', { name: 'Muskeln' });
   fireEvent.click(within(muscles).getByRole('button', { name: 'Alle Muskelgruppen anzeigen' }));
   expect(within(muscles).getAllByRole('button').filter((b) => b.hasAttribute('aria-expanded'))[0]!.textContent).toMatch(/^Rücken/);

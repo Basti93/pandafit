@@ -750,9 +750,9 @@ test('two exercises can be joined to a superset and taken apart again from the m
     expect(g[0]).not.toBeNull();
     expect(g[0]).toBe(g[1]);
   });
-  expect(screen.getAllByText(/^Supersatz mit /)).toHaveLength(2);
-  expect(screen.getByText('Supersatz mit Kniebeuge')).toBeTruthy();
-  expect(screen.getAllByText('0 von 1').length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/Supersatz mit /)).toHaveLength(2);
+  expect(screen.getAllByText(/Supersatz mit Kniebeuge/)[0]).toBeTruthy();
+  expect(screen.getAllByText(/0 von 1/).length).toBeGreaterThan(0);
   fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
   expect(screen.queryByRole('button', { name: /^Supersatz mit/ })).toBeNull(); // no partner left

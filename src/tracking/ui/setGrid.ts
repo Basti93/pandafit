@@ -16,14 +16,6 @@ export function setLabels(sets: { type: SetType }[]): string[] {
   });
 }
 
-/** Last time's set for each row: warmups against warmups, working sets against working sets, by position. No match is null. */
-export function previousSets(sets: { type: SetType }[], last: LoggedSet[]): (LoggedSet | null)[] {
-  const warm = last.filter((l) => l.type === 'warmup');
-  const work = last.filter((l) => l.type !== 'warmup');
-  const seen = { warm: 0, work: 0 };
-  return sets.map((x) => (x.type === 'warmup' ? warm[seen.warm++] : work[seen.work++]) ?? null);
-}
-
 const lastText = (p: LoggedSet, timed: boolean): string | null => {
   if (timed) return p.durationS !== null ? `${p.durationS} Sek.` : null;
   if (p.weightKg !== null && p.reps !== null) return `${formatDecimal(p.weightKg)} kg × ${p.reps}`;
@@ -61,12 +53,6 @@ export function lastTimeLine(last: readonly LoggedSet[], timed: boolean): string
   }
   return groups.map((g) => (g.kg !== null ? `${formatDecimal(g.kg)} kg × ${g.reps.join(', ')}` : `${g.reps.join(', ')} Wdh.`)).join(' · ');
 }
-
-/** The line under the next open set: only what you did last time ("zuletzt 57,5 kg × 8"). Null when there is none. */
-export const setLastHint = (previous: LoggedSet | null, timed: boolean): string | null => {
-  const last = previous ? lastText(previous, timed) : null;
-  return last ? `zuletzt ${last}` : null;
-};
 
 /** The target range ("Ziel 8–12"), shown when the last-time line is tapped. The plan's range wins; else the exercise's own, on working sets only. */
 export function setTargetHint(set: { type?: SetType; repRange?: { start: number; end: number } }, timed: boolean, range?: { min: number; max: number }): string | null {

@@ -106,4 +106,17 @@ describe('ConnectionSettings on the web Profil', () => {
     cleanup();
     expect(ws.closed).toBe(true);
   });
+
+  it('keeps the socket open until Profil closes when Profil opens during the shell-start window', async () => {
+    const ws = new FakeSocket();
+    const link = new CoachLink({ open: () => ws, status: async () => ({ profileId: 'p1', moved: true }) });
+    link.start(); // the shell start, until the first answer
+    await flush();
+    link.start(); // Profil opens in that window
+    act(() => { ws.onopen?.(); ws.say(coachState()); });
+    link.stop(); // the shell start lets go after the first answer
+    expect(ws.closed).toBe(false);
+    link.stop(); // Profil closes
+    expect(ws.closed).toBe(true);
+  });
 });
