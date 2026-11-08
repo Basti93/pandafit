@@ -126,7 +126,7 @@ function LiveScreen({ client, now, onClose }: { client: LiveClient; now: () => n
           <div><b>{shownW(s.cadenceRpm)}</b><span>Trittfrequenz</span></div>
         </div>
         <div className="live-step">
-          <p className="live-now"><strong>{s.step.name ?? 'Intervall'}</strong>{s.paused ? ' · Pause' : ` · noch ${clock(s.step.remainingS)}`}</p>
+          <p className="live-now"><strong>{s.step.name ?? 'Intervall'}</strong>{s.paused ? ' · Pause' : ` · noch ${dead ? '–' : clock(s.step.remainingS)}`}</p>
           {s.nextStep && <p className="muted">danach: {s.nextStep.label}</p>}
         </div>
       </div>

@@ -1,7 +1,7 @@
 /* Only the shell. Everything else comes from the tracking screens' own tracking.css and its variables. */
-:root { --bg: #12201a; --text: #f6eedd; --ink: #1f1408; --field: #101b16; --card: #1c2f26; --line: #33493c; --muted: #aebba9; --accent: #e8964a; --good: #9ccb68; --danger: #d9806f; color-scheme: dark light; }
+:root { --bg: #12201a; --text: #f6eedd; --ink: #1f1408; --field: #101b16; --card: #1c2f26; --line: #33493c; --muted: #aebba9; --accent: #e8964a; --good: #9ccb68; --good-text: #9ccb68; --danger: #d9806f; color-scheme: dark light; }
 @media (prefers-color-scheme: light) {
-  :root { --bg: #f7f3e8; --text: #1f2a24; --ink: #1f1408; --field: #ffffff; --card: #ece6d4; --line: #cfc7ad; --muted: #5d6a60; --danger: #a8372a; }
+  :root { --bg: #f7f3e8; --text: #1f2a24; --ink: #1f1408; --field: #ffffff; --card: #ece6d4; --line: #cfc7ad; --muted: #5d6a60; --danger: #a8372a; --good-text: #3f7a1f; }
   .tk-pick { background: #dcd5bd !important; color: var(--text) !important; }
   .tk-chip-warm { color: #9a6a00; } .tk-chip-fail { color: #b23a2a; } .tk-chip-drop { color: #2a6aa0; }
 }
@@ -172,7 +172,7 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .live-unit { font-size: 1.6rem; color: var(--muted); font-weight: 600; }
 .live-target { flex-basis: 100%; margin: .25rem 0 0; font-size: 1.3rem; color: var(--text); font-weight: 600; }
 .live-zone { font-weight: 500; color: var(--muted); }
-.live-big.live-ok { color: var(--good); }
+.live-big.live-ok { color: var(--good-text); }
 .live-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; text-align: center; }
 .live-pair div { display: flex; flex-direction: column; gap: .1rem; }
 .live-pair b { font-size: 2.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
