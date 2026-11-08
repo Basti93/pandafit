@@ -46,7 +46,8 @@ const startCoach = async (root: string, bin: string, extra: Record<string, strin
 const subscribe = (p: number) => new Promise<{ ws: WebSocket; last: () => any }>((resolve, reject) => {
   const ws = new WebSocket(`ws://127.0.0.1:${p}`);
   let last: any = null;
-  ws.on('message', (m) => { last = JSON.parse(String(m)); });
+  // Other pushes (records-changed) come between: the helper keeps the last coach state.
+  ws.on('message', (m) => { const x = JSON.parse(String(m)); if (x?.type !== 'records-changed') last = x; });
   ws.once('open', () => { ws.send(JSON.stringify({ type: 'subscribe', profileId: 'pa' })); resolve({ ws, last: () => last }); });
   ws.once('error', reject);
 });

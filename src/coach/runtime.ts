@@ -401,6 +401,9 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
   const exportDayTextNow = (profileIds: string[]): string[] =>
     exportDayText({ store: records, profileIds, coachHere, noOpenRide, nowMs: nowMs(), entry: (id) => dayTexts.get(id) });
   /** What the day sentence is made from: today's finished trainings, the last four weeks, the week plan, motives, the health note and open complaints. */
+  /** Reading every activity on each scan is costly: the day sentence looks at most once a minute per profile. */
+  const DAY_LOOK_EVERY_MS = 60_000;
+  const dayLooked = new Map<string, number>();
   const dayInputOf = (id: string, now: number): DayTextInput => {
     const date = dateKey(now);
     const sessions = activitiesOf(id);
@@ -757,7 +760,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       // The coach sentence of the day, renewed after each finished training: only on change, at most four AI calls a day, never with a ride open or in quiet hours (`scheduled()`). Never throws.
       if (free) {
         mealsChanged(exportDayTextNow(list.map((p) => p.id)));
-        if (scheduled()) for (const p of list) { try { if (!coachHere(p.id)) continue; const input = dayInputOf(p.id, now); if (dayHasData(input)) void dayText.tick(p.id, input).then((wrote) => { if (wrote) mealsChanged(exportDayTextNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
+        if (scheduled()) for (const p of list) { try { if (!coachHere(p.id)) continue; const last = dayLooked.get(p.id); if (last !== undefined && now - last < DAY_LOOK_EVERY_MS && now >= last) continue; dayLooked.set(p.id, now); const input = dayInputOf(p.id, now); if (dayHasData(input)) void dayText.tick(p.id, input).then((wrote) => { if (wrote) mealsChanged(exportDayTextNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
       }
       // All recent activities from every source for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportActivities({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: (id) => { try { return activityItems(activitiesOf(id), garminData(id)?.activities ?? []); } catch { return null; } } }));
