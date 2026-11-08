@@ -26,7 +26,7 @@ export const readTasks = (x: unknown): GivenTask[] => {
 };
 
 /** The optional tasks field of the bike, gym and run answer. */
-export const zTasks = z.array(z.object({ coach: z.enum(['bike', 'gym', 'run']), text: z.string(), lasting: z.boolean(), forDate: z.string().nullable() })).optional();
+export const zTasks = z.array(z.object({ coach: z.enum(['bike', 'gym', 'run']), text: z.string(), lasting: z.boolean(), forDate: z.string().nullable().default(null) })).optional();
 
 /** The JSON schema of the tasks field, the same for every coach. */
 export const tasksJsonSchema = {

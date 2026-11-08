@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { CoachTasks, readTasks } from '../../src/coach/coach-tasks';
+import { CoachTasks, readTasks, zTasks } from '../../src/coach/coach-tasks';
 import { taskAlive } from '../../src/shared/tasks';
 import { answerSchema } from '../../src/coach/coach';
 import { gymAnswerSchema } from '../../src/coach/gym/prompt';
@@ -111,4 +111,12 @@ test('a task for a day that is already over is not taken', () => {
   expect(t.add('p', { from: 'chat', to: 'gym', text: 'gestern', lasting: false, forDate: '2026-11-04' }, NOW)).toBe(false);
   expect(t.add('p', { from: 'chat', to: 'gym', text: 'heute', lasting: false, forDate: '2026-11-05' }, NOW)).toBe(true);
   expect(t.open('p', 'gym', NOW).map((x) => x.text)).toEqual(['heute']);
+});
+
+describe('a coach answer without forDate', () => {
+  it('still parses, with forDate null', () => {
+    const parsed = zTasks.safeParse([{ coach: 'gym', text: 'Beine schonen', lasting: false }]);
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.[0]?.forDate).toBeNull();
+  });
 });
