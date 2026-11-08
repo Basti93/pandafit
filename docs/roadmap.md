@@ -51,6 +51,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **X Erster Eindruck** | Eine neue Person versteht ohne Anleitung, was Pandafit kann und wo sie tippt: Tabs folgen den Profil-Schaltern, Rückblick statt Statistik-Tab, klare Wörter, ruhigere Kraft-, Essen-, Ausdauer- und Fahrt-Screens. | UX-Review 08.11.2026 |
 | ✅ | **Y Heute als Tagesseite** | Heute zeigt Gestern, Heute und Morgen (Pfeile, Wischen): oben ein persönlicher Satz vom Coach, neu nach jedem Training; dann Training, Essen, Dein Körper, Gemeinsam. Gestern zeigt, was gemacht wurde, Morgen, was ansteht. | Wunsch 08.11.2026 |
 | ✅ | **Z Zum Abschluss** | Nach dem Krafttraining schlägt die App ruhig einen Abschluss vor: 20 Min locker Cardio und Dehnen, oder nur Dehnen, wenn Ausdauer heute schon dran ist, eine Beschwerde offen ist oder das Training lang war. In der Zusammenfassung und 3 Stunden lang auf Heute. | Wunsch 08.11.2026 |
+| ✅ | **Style-System** | Alle Farben, Radien, Schriftgrößen und Abstände als Tokens in `src/web/tokens.css` (hell und dunkel), keine festen Farbwerte mehr in web.css und tracking.css (Test). Danach ein Aussehen pro Art von Element: Hauptknopf, Knopf mit Rahmen, Text-Link, Löschen, Chips, Umschalter, Überschriften, Zeilen. | Wunsch 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 

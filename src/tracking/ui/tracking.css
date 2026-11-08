@@ -288,7 +288,7 @@
 /* Chips: one look for every choice that toggles (time, feel, muscles, recipe filters, meal slot). A thin pill; chosen = accent ring, card fill, bold.
    Only tappable things get a pill: a plain tag is muted text. */
 .tk-chips { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.tk-screen .tk-chips button { min-height: 44px; padding: .3rem .9rem; border-radius: var(--radius-pill); background: transparent; border: 1px solid var(--field-line); color: var(--text); font-weight: 500; text-decoration: none; white-space: nowrap; }
+.tk-screen .tk-chips button { min-height: 44px; padding: .3rem .9rem; border-radius: var(--radius-pill); background: transparent; border: 1px solid var(--muted); color: var(--text); font-weight: 500; text-decoration: none; white-space: nowrap; }
 .tk-screen .tk-chips button[aria-pressed='true'] { background: var(--card); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700; }
 .tk-today-only { display: flex; flex-direction: column; gap: var(--space-2); }
 
@@ -493,4 +493,4 @@
 
 /* ---- One look per kind (task 3) ---- */
 /* Steppers (− count +): one round outline button, in the routine editor and on the recipe. */
-.tk-screen button.tk-step-btn { flex: none; width: 44px; min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--field-line); background: transparent; color: var(--text); font-size: var(--fs-2xl); line-height: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.tk-screen button.tk-step-btn { flex: none; width: 44px; min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--muted); background: transparent; color: var(--text); font-size: var(--fs-2xl); line-height: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
