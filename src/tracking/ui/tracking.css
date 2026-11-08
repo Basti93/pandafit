@@ -491,3 +491,8 @@
 .tk-screen button.tk-info-btn { flex: none; align-self: center; width: 44px; min-height: 44px; padding: 0; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .tk-info-btn span { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border: 1.5px solid currentColor; border-radius: 50%; font: italic 700 .95rem/1 Georgia, serif; color: var(--muted, #aebba9); }
 .tk-info-btn[aria-expanded='true'] span { color: var(--text, #f6eedd); background: var(--card, transparent); }
+
+/* ---- Zum Abschluss: a card on Heute, a plain block inside the summary card ---- */
+.tk-finisher { display: flex; flex-direction: column; gap: .5rem; }
+.tk-finisher .tk-mob { margin-top: 0; }
+.tk-summary .tk-finisher { border: 0; background: none; box-shadow: none; padding: .5rem 0 0; }

@@ -11,6 +11,9 @@ import { CoachScreen } from '../tracking/ui/CoachScreen';
 import { TodayCard, todayPlan } from '../tracking/ui/TodayCard';
 import { useWaitingProposal, WaitingProposal } from '../tracking/ui/WaitingProposal';
 import { runView } from '../tracking/ui/run-view';
+import { Finisher } from '../tracking/ui/FinisherCard';
+import { complaintsOpenIn, finisherOf, latestFinishedStrength } from '../tracking/ui/finisher';
+import { mergedActivities } from '../tracking/ui/done-days';
 import { MobilityOffer } from '../tracking/ui/MobilityOffer';
 import { GymOutlook } from '../tracking/ui/GymOutlook';
 import { usePortRecords } from '../tracking/ui/hooks';
@@ -164,10 +167,17 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   const activities = usePortRecords(port, 'activities').records;
   const open = (workouts ?? []).filter((r) => (r.body as LoggedWorkout).endMs === null).sort((x, y) => (y.body as LoggedWorkout).startMs - (x.body as LoggedWorkout).startMs)[0];
 
+  const complaints = usePortRecords(port, 'complaint').records;
+  const finished = latestFinishedStrength(workouts, now);
+  // A workout still open is the one thing to do: no finish card for an earlier one beside it.
+  const finisher = finished && !open ? finisherOf({ workout: finished, nowMs: now, today, activities: mergedActivities(activities, workouts).items, complaintsOpen: complaintsOpenIn(complaints) }) : null;
+
   const markDone = async () => {
     if (!session) return;
     try { await port.put({ kind: 'mobility', id: session.id, updatedMs: env.now(), deleted: false, body: { doneMs: env.now(), forSession: session.forSession } }); } catch { /* shown again next time */ }
   };
+
+  const mobilityRow = session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />;
 
   // The strength plan: on a strength day inside the week plan's card, without a week plan as its own card.
   // Name and time in one line, the exercises in two; the reason, the sets and the outlook behind "Details".
@@ -232,7 +242,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
       )}
       {!open && waiting && <WaitingProposal onOpen={goCoach} />}
       {meals && <DayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} offset={0} />}
-      {session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />}
+      {finisher ? <Finisher f={finisher} mobility={mobilityRow} /> : mobilityRow}
       <BodyCard health={health} onCoach={goCoach} />
       {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
       </>}

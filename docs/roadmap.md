@@ -50,6 +50,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ⬜ | **W Belastung nach Menge** | Ein Krafttag ist so hart, wie viel und was trainiert wurde: eine einzelne Beinübung sperrt die Beine nicht mehr 48 Stunden. | Trainingsaudit 08.11.2026 |
 | ✅ | **X Erster Eindruck** | Eine neue Person versteht ohne Anleitung, was Pandafit kann und wo sie tippt: Tabs folgen den Profil-Schaltern, Rückblick statt Statistik-Tab, klare Wörter, ruhigere Kraft-, Essen-, Ausdauer- und Fahrt-Screens. | UX-Review 08.11.2026 |
 | ✅ | **Y Heute als Tagesseite** | Heute zeigt Gestern, Heute und Morgen (Pfeile, Wischen): oben ein persönlicher Satz vom Coach, neu nach jedem Training; dann Training, Essen, Dein Körper, Gemeinsam. Gestern zeigt, was gemacht wurde, Morgen, was ansteht. | Wunsch 08.11.2026 |
+| ✅ | **Z Zum Abschluss** | Nach dem Krafttraining schlägt die App ruhig einen Abschluss vor: 20 Min locker Cardio und Dehnen, oder nur Dehnen, wenn Ausdauer heute schon dran ist, eine Beschwerde offen ist oder das Training lang war. In der Zusammenfassung und 3 Stunden lang auf Heute. | Wunsch 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -349,6 +350,10 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
 **Was kam:** neue Record-Art `daytext`; der Coach schreibt einmal am Tag und nach jedem fertigen Training einen Satz (höchstens 4 KI-Aufrufe pro Tag, nie bei offener Fahrt, Prüfung auf Druckwörter und fremde Zahlen, 60 s Zeitgrenze). Ohne Satz zeigt die Seite einen täglich wechselnden Spruch aus einer festen Liste. Kopf mit Pfeilen und Wischen; „Dein Körper“ in Worten ohne Zahlen; Gemeinsam unten; Gestern mit Training und Essen des Tages, Morgen mit Plan. Erledigt damit die Wünsche „Coach prominenter“ und „Spruch auf Heute“.
 
 **Geparkt:** Der Satz-Input wird bei jedem Scan neu gebaut (günstig, aber unnötig oft).
+
+## Meilenstein Z — Brief (umgesetzt 08.11.2026)
+
+**Ziel:** Ein ruhiger Abschluss nach dem Krafttraining, angeboten, nie verlangt. Plan: `docs/superpowers/plans/2026-11-08-milestone-z-finisher.md`. Nur Web, eine reine Regel `finisherOf` (`src/tracking/ui/finisher.ts`), gezeigt in der Zusammenfassung und auf Heute (dort mit der Beweglichkeits-Zeile des Coaches). Keine Server-Änderung.
 
 ## Parkplatz
 
