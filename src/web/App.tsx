@@ -227,7 +227,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
           <button type="button" onClick={() => goTraining('resume')}>Weitermachen</button>
         </section>
       )}
-      <CoachLine text={dayLine(daytexts, account, dayKey).text} />
+      <CoachLine text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} />
       {/* A workout that is open is the one thing to do: no day card beside it. */}
       {!open && <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} />}
       {!open && weekplans !== null && plans !== null && !today && !planning && !p && (
@@ -573,6 +573,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   return (
     <>
       <main className="web-main" onClick={() => setTimeout(() => tick((n) => n + 1), 50)}>
+        <div className="web-top"><span className="web-wordmark">Pandafit</span></div>
         <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => setTab('profil')}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
         </button>
