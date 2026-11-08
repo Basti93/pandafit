@@ -11,6 +11,9 @@ const OK_MS = 1500;
 const FAIL_MS = 3000;
 
 const clock = (s: number): string => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, Math.floor(s) % 60)).padStart(2, '0')}`;
+/** Within this share of the target counts as on target. */
+const ON_TARGET = 0.06;
+const MIN = (s: number): number => Math.max(1, Math.ceil(s / 60));
 const num = (n: number | null): string => (n === null ? '–' : String(Math.round(n)));
 
 type Key = 'down' | 'up' | 'mark' | 'skip';
@@ -70,8 +73,8 @@ export function LiveRide({ client, now }: { client: LiveClient; now: () => numbe
       {showStrip && !open && (
         <button type="button" className="web-live-strip" onClick={() => setOpen(true)}>
           <span className="web-live-dot" aria-hidden="true" />
-          <span>Fahrt läuft</span>
-          <span aria-hidden="true">›</span>
+          <span className="web-live-text">Fahrt läuft</span>
+          <span className="web-live-go" aria-hidden="true">Ansehen ›</span>
         </button>
       )}
       {open && !over && <LiveScreen client={client} now={now} onClose={() => setOpen(false)} />}
@@ -96,41 +99,46 @@ function LiveScreen({ client, now, onClose }: { client: LiveClient; now: () => n
       setTimeout(() => setShown((x) => ({ ...x, [key]: undefined })), r === 'ok' ? OK_MS : FAIL_MS);
     });
   };
-  const label = (key: Key, text: string): string => (shown[key] === 'wait' ? '…' : shown[key] === 'ok' ? '✓' : shown[key] === 'fail' ? 'nicht angekommen' : text);
+  const label = (key: Key, text: string): string => (shown[key] === 'wait' ? '…' : shown[key] === 'ok' ? 'Gesendet' : shown[key] === 'fail' ? 'nicht angekommen' : text);
+  const shownW = (n: number | null): string => (dead ? '–' : num(n));
+  const zone = !dead && s.powerW !== null && s.targetW !== null && s.targetW > 0
+    ? (s.powerW < s.targetW * (1 - ON_TARGET) ? 'low' : s.powerW > s.targetW * (1 + ON_TARGET) ? 'high' : 'ok') : null;
+  const zoneText = zone === 'ok' ? 'im Ziel' : zone === 'low' ? 'zu niedrig' : zone === 'high' ? 'zu hoch' : '';
   const last = s.step.index >= s.step.count - 1;
 
   return (
-    <Sheet title="Fahrt" onClose={onClose} actions={
+    <Sheet title={s.step.name ? `Fahrt · ${s.step.name}` : 'Fahrt'} onClose={onClose} actions={
       <div className="live-buttons">
-        <button type="button" className="secondary" disabled={dead} onClick={() => run('down', 'adjust', -LIVE_ADJUST_PCT)}>{label('down', '−5 %')}</button>
-        <button type="button" className="secondary" disabled={dead} onClick={() => run('up', 'adjust', LIVE_ADJUST_PCT)}>{label('up', '+5 %')}</button>
-        <button type="button" className="secondary" disabled={dead} onClick={() => run('mark', 'mark')}>{label('mark', 'Marker')}</button>
-        <button type="button" className="secondary" disabled={dead || last || s.paused === true} onClick={() => setSure(true)}>{label('skip', 'Intervall überspringen')}</button>
+        <button type="button" className="secondary" disabled={dead} onClick={() => run('down', 'adjust', -LIVE_ADJUST_PCT)}>{label('down', 'Leichter')}</button>
+        <button type="button" className="secondary" disabled={dead} onClick={() => run('up', 'adjust', LIVE_ADJUST_PCT)}>{label('up', 'Schwerer')}</button>
+        <button type="button" className="secondary" disabled={dead} onClick={() => run('mark', 'mark')}>{label('mark', 'Markieren')}</button>
+        <button type="button" className="secondary" disabled={dead || last || s.paused === true} onClick={() => setSure(true)}>{label('skip', 'Überspringen')}</button>
       </div>
     }>
+      <p className="live-head muted">Seit {MIN(s.elapsedS)} Min · Intervall {s.step.index + 1} von {s.step.count} · Beenden am Mac</p>
       <div className={`live-body${dead ? ' live-gone' : ''}`}>
         <div className="live-power">
-          <span className="live-big" aria-label="Leistung">{num(s.powerW)}</span><span className="live-unit">W</span>
-          <p className="live-target">{s.targetW === null ? '' : `Ziel ${num(s.targetW)} W`}</p>
+          <span className={`live-big${zone ? ` live-${zone}` : ''}`} aria-label="Leistung">{shownW(s.powerW)}</span><span className="live-unit">W</span>
+          <p className="live-target">{s.targetW === null ? '' : `Ziel ${shownW(s.targetW)} W`}{zoneText && <span className="live-zone"> · {zoneText}</span>}</p>
         </div>
         <div className="live-pair">
-          <div><b>{num(s.hrBpm)}</b><span>Puls</span></div>
-          <div><b>{num(s.cadenceRpm)}</b><span>Trittfrequenz</span></div>
+          <div><b>{shownW(s.hrBpm)}</b><span>Puls</span></div>
+          <div><b>{shownW(s.cadenceRpm)}</b><span>Trittfrequenz</span></div>
         </div>
         <div className="live-step">
           <p className="live-now"><strong>{s.step.name ?? 'Intervall'}</strong>{s.paused ? ' · Pause' : ` · noch ${clock(s.step.remainingS)}`}</p>
           {s.nextStep && <p className="muted">danach: {s.nextStep.label}</p>}
         </div>
       </div>
-      {ended ? <p role="status" className="live-note">Fahrt beendet</p> : stale ? <p role="status" className="live-note">Verbindung zum Mac weg</p> : null}
+      {ended ? <p role="status" className="live-note">Fahrt beendet</p> : stale ? <p role="status" className="live-note">Keine Verbindung zum Mac. Die Fahrt läuft dort weiter und wird gespeichert.</p> : null}
       {sure && (
-        <Sheet title="Intervall überspringen?" size="small" onClose={() => setSure(false)} actions={
+        <Sheet title="Überspringen?" size="small" onClose={() => setSure(false)} actions={
           <div className="live-buttons">
             <button type="button" className="secondary" onClick={() => setSure(false)}>Abbrechen</button>
             <button type="button" className="primary" onClick={() => { setSure(false); run('skip', 'skip'); }}>Überspringen</button>
           </div>
         }>
-          <p className="muted">Es geht gleich mit dem nächsten Intervall weiter.</p>
+          <p className="muted">{s.nextStep ? `Weiter mit ${s.nextStep.label}.` : 'Weiter mit dem nächsten Teil.'}</p>
         </Sheet>
       )}
     </Sheet>

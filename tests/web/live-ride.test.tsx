@@ -114,9 +114,9 @@ describe('the ride view', () => {
     mount();
     say({ type: 'live-state', profileId: 'pa', state: state() });
     openScreen();
-    fireEvent.click(screen.getByRole('button', { name: '−5 %' }));
-    fireEvent.click(screen.getByRole('button', { name: '+5 %' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Marker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leichter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Schwerer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Markieren' }));
     expect(sock.commands()).toEqual([
       { type: 'live-command', profileId: 'pa', id: 'id-1', rideId: 'ride-1', atMs: NOW0, kind: 'adjust', deltaPct: -5 },
       { type: 'live-command', profileId: 'pa', id: 'id-2', rideId: 'ride-1', atMs: NOW0, kind: 'adjust', deltaPct: 5 },
@@ -128,11 +128,11 @@ describe('the ride view', () => {
     mount();
     say({ type: 'live-state', profileId: 'pa', state: state() });
     openScreen();
-    fireEvent.click(screen.getByRole('button', { name: 'Intervall überspringen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Überspringen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
     expect(sock.commands()).toEqual([]);
-    fireEvent.click(screen.getByRole('button', { name: 'Intervall überspringen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Überspringen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Überspringen' })[1]);
     expect(sock.commands()).toEqual([expect.objectContaining({ kind: 'skip', rideId: 'ride-1' })]);
   });
 
@@ -140,27 +140,27 @@ describe('the ride view', () => {
     mount();
     say({ type: 'live-state', profileId: 'pa', state: state({ step: { index: 3, count: 4, remainingS: 60 }, nextStep: undefined }) });
     openScreen();
-    expect((screen.getByRole('button', { name: 'Intervall überspringen' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Überspringen' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('a tap shows … then ✓ for 1.5 seconds on the ack', async () => {
     mount();
     say({ type: 'live-state', profileId: 'pa', state: state() });
     openScreen();
-    fireEvent.click(screen.getByRole('button', { name: '+5 %' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Schwerer' }));
     expect(screen.getByRole('button', { name: '…' })).toBeTruthy();
     say({ type: 'live-ack', profileId: 'pa', id: 'id-1', ok: true });
     await act(async () => {});
-    expect(screen.getByRole('button', { name: '✓' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Gesendet' })).toBeTruthy();
     await advance(1600);
-    expect(screen.getByRole('button', { name: '+5 %' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Schwerer' })).toBeTruthy();
   });
 
   it('a refusal shows nicht angekommen', async () => {
     mount();
     say({ type: 'live-state', profileId: 'pa', state: state() });
     openScreen();
-    fireEvent.click(screen.getByRole('button', { name: 'Marker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Markieren' }));
     say({ type: 'live-ack', profileId: 'pa', id: 'id-1', ok: false, reason: 'old' });
     await act(async () => {});
     expect(screen.getByRole('button', { name: 'nicht angekommen' })).toBeTruthy();
@@ -170,7 +170,7 @@ describe('the ride view', () => {
     mount();
     say({ type: 'live-state', profileId: 'pa', state: state() });
     openScreen();
-    fireEvent.click(screen.getByRole('button', { name: '−5 %' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leichter' }));
     // The state keeps coming, the ack does not.
     for (let i = 0; i < 5; i++) { await advance(1000); say({ type: 'live-state', profileId: 'pa', state: state() }); }
     await advance(100);
@@ -182,12 +182,35 @@ describe('the ride view', () => {
     say({ type: 'live-state', profileId: 'pa', state: state() });
     openScreen();
     await advance(11_000);
-    expect(screen.getByText('Verbindung zum Mac weg')).toBeTruthy();
+    expect(screen.getByText('Keine Verbindung zum Mac. Die Fahrt läuft dort weiter und wird gespeichert.')).toBeTruthy();
     expect(document.querySelector('.live-gone')).toBeTruthy();
-    expect((screen.getByRole('button', { name: '+5 %' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Schwerer' }) as HTMLButtonElement).disabled).toBe(true);
     // And it comes back when the data does.
     say({ type: 'live-state', profileId: 'pa', state: state() });
-    expect(screen.queryByText('Verbindung zum Mac weg')).toBeNull();
+    expect(screen.queryByText('Keine Verbindung zum Mac. Die Fahrt läuft dort weiter und wird gespeichert.')).toBeNull();
+  });
+
+  it('marks on target, too low and too high, and shows dashes when the connection is gone', async () => {
+    mount();
+    say({ type: 'live-state', profileId: 'pa', state: state({ powerW: 190 }) });
+    openScreen();
+    expect(screen.getByText(/im Ziel/)).toBeTruthy();
+    say({ type: 'live-state', profileId: 'pa', state: state({ powerW: 150 }) });
+    expect(screen.getByText(/zu niedrig/)).toBeTruthy();
+    say({ type: 'live-state', profileId: 'pa', state: state({ powerW: 230 }) });
+    expect(screen.getByText(/zu hoch/)).toBeTruthy();
+    await advance(11_000);
+    expect(screen.getByLabelText('Leistung').textContent).toBe('–');
+    expect(screen.getByText('Ziel – W')).toBeTruthy();
+  });
+
+  it('names the interval, says where to end, and the skip question names what comes next', () => {
+    mount();
+    say({ type: 'live-state', profileId: 'pa', state: state() });
+    openScreen();
+    expect(screen.getByText(/Intervall 2 von 4 · Beenden am Mac/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Überspringen' }));
+    expect(screen.getByText('Weiter mit Locker.')).toBeTruthy();
   });
 
   it('closes itself 30 seconds after the ride ended', async () => {

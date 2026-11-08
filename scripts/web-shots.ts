@@ -495,10 +495,10 @@ async function main() {
     await page.getByRole('button', { name: /Fahrt läuft/ }).click();
     await page.getByLabel('Leistung').waitFor();
     await shot('fahrt-laeuft');
-    await page.getByRole('button', { name: '+5 %' }).click();
+    await page.getByRole('button', { name: 'Schwerer' }).click();
     await page.waitForTimeout(250);
     await shot('fahrt-laeuft-gesendet');
-    await page.getByRole('button', { name: 'Intervall überspringen' }).click();
+    await page.getByRole('button', { name: 'Überspringen' }).click();
     await shot('fahrt-laeuft-ueberspringen');
     await page.getByRole('button', { name: 'Abbrechen' }).click();
     liveOn = false;
