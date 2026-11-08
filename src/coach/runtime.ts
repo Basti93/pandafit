@@ -248,18 +248,18 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     runs: (id) => run.runs(id),
   });
   /**
-   * How hard each date is. Without `runs`, the next bike and gym sessions count on their usual days (the run coach plans with
-   * it). With `runs`, only what was done, those runs included (the statistics).
+   * How hard each date is. Both modes count the runs done (also while the run plan is off). 'plan' adds the next bike and gym
+   * sessions on their usual days (the planners use it); 'done' is only what happened (advice and statistics).
    */
-  const ratingsOf = (id: string, dates: string[], runs?: DayInput['runs']): Record<string, DayRating> => {
+  const ratingsOf = (id: string, dates: string[], mode: 'plan' | 'done'): Record<string, DayRating> => {
     const s = coach.state(id);
     const history = gym.history(id);
     const now = nowMs();
-    const planned = runs === undefined;
+    const planned = mode === 'plan';
     return dayRatings({
       rides: s.summaries, bikeNext: planned ? s.next?.session ?? null : null, gym: history, gymNext: planned ? gym.state(id).next?.workout ?? null : null, muscleOf: (t, title) => gym.templateMuscle(id, t) ?? muscleOf(t, title),
       bikeDays: usualTrainingDays(s.summaries.map((r) => r.startedAtMs), now), gymDays: usualTrainingDays(history.map((w) => w.startMs), now),
-      ...(runs ? { runs } : {}),
+      runs: run.runsFor(id),
     }, dates);
   };
   /** What the hints need to say what fits today: the last days' load, goal, frame and the resting pulse. */
@@ -267,7 +267,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     const now = nowMs();
     const dates = Array.from({ length: 9 }, (_, i) => addDays(dateKey(now), -i));
     let ratings: Record<string, DayRating> = {};
-    try { ratings = ratingsOf(id, dates, run.runsFor(id)); } catch { /* no ratings: the advice goes by the plan */ }
+    try { ratings = ratingsOf(id, dates, 'done'); } catch { /* no ratings: the advice goes by the plan */ }
     let readiness: TodayContext['readiness'];
     try { const data = garminData(id); if (data) readiness = { restingHrRaised: restingHrRaised(data.days) }; } catch { /* no body data */ }
     return { ratings, hour: new Date(now).getHours(), goal: goalOfProfile(records, id, dateKey(now)), frame: frameOfProfile(records, id, dateKey(now)), ...(readiness ? { readiness } : {}) };
@@ -288,7 +288,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     const content = statsContent({
       nowMs: nowMs(), rides: coach.state(id).summaries, history: gym.history(id), runs,
       mobility: records.all(id, 'mobility'), activities: garminData(id)?.activities ?? [],
-      ratings: (dates) => ratingsOf(id, dates, runs), goal: goalOfProfile(records, id, dateKey(nowMs())).strength,
+      ratings: (dates) => ratingsOf(id, dates, 'done'), goal: goalOfProfile(records, id, dateKey(nowMs())).strength,
       templateMuscle: (templateId) => gym.templateMuscle(id, templateId),
       ftp: coach.state(id).ftpHistory, weightKg: profiles().find((p) => p.id === id)?.weightKg ?? null,
     });
@@ -413,7 +413,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       return fs.existsSync(file) ? new GarminDb(file) : null;
     },
     // Only reads the other coaches' plans and history; never changes them.
-    days: (id, dates) => ratingsOf(id, dates),
+    days: (id, dates) => ratingsOf(id, dates, 'plan'),
     weeks: (id) => allTraining({ rides: coach.state(id).summaries, workouts: gym.history(id), activities: garminData(id)?.activities }, nowMs())?.weeks ?? [],
     complaints: (id) => coach.state(id).complaints ?? [],
     garmin: (id) => {

@@ -405,6 +405,7 @@ test('RunSettingsCard switches running on and off', async () => {
   const sw = await screen.findByRole('switch', { name: 'Laufen planen' });
   await waitFor(() => expect((sw as HTMLInputElement).disabled).toBe(false));
   expect((sw as HTMLInputElement).checked).toBe(false);
+  expect(screen.getByText('Deine Läufe zählen trotzdem bei der Belastung mit.')).toBeTruthy();
   fireEvent.click(sw);
   await waitFor(() => expect(bodyOf(map, 'settings')).toMatchObject({ type: 'settings', on: true, weekdays: null, answers: null }));
   await waitFor(() => expect((screen.getByRole('switch', { name: 'Laufen planen' }) as HTMLInputElement).checked).toBe(true));

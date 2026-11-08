@@ -108,7 +108,7 @@ export class RunCoach {
   constructor(private deps: RunDeps) {}
 
   isThinking(id: string): boolean { return this.running.has(id); }
-  /** The runs of the last tick, only while running is on. For mobility after a run. */
+  /** The runs of the last tick, also while running is off. For mobility after a run. */
   runs(id: string): Run[] { return this.lastRuns.get(id) ?? []; }
 
   /**
@@ -198,7 +198,7 @@ export class RunCoach {
     const fromGarmin = db ? garminRuns(db, fromMs, band, cache.paceCache) : [];
     const runs = mergeRuns(fromGarmin, manualRuns(this.deps.store.all(id, 'run'), band)).filter((r) => r.startMs <= now);
     this.saveCache(id);
-    this.lastRuns.set(id, on ? runs : []);
+    this.lastRuns.set(id, runs);
     const complaints = this.deps.complaints(id);
     const mode = runComplaintMode(complaints, now);
 

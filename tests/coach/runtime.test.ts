@@ -17,9 +17,10 @@ import { CHAT_SYSTEM_PROMPT as WEEK_CHAT_PROMPT } from '../../src/coach/chat/cha
 import { MealCoach } from '../../src/coach/meals/meal-coach';
 import { computeTogether } from '../../src/coach/together';
 import { TOGETHER_ID } from '../../src/shared/together';
+import { loadRunCache } from '../../src/coach/run/state';
+import { dateKey } from '../../src/coach/day-load';
 import { weekFp, type RunWeekBody } from '../../src/shared/run';
 import { mondayOf, weekDates } from '../../src/shared/week-plan';
-import { dateKey } from '../../src/coach/day-load';
 
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'rt-'));
 const good = { id: 'ki', name: 'KI', steps: [
@@ -277,6 +278,18 @@ describe('the run coach in the runtime', () => {
     await settle();
     expect(runIds(here.runtime)).toContain('status');
     expect(runIds(here.runtime).some((id) => id.startsWith('week-'))).toBe(true);
+  });
+
+  test('the planning ratings of the run coach count a run done yesterday', async () => {
+    const { root, runtime } = make();
+    runSettings(runtime);
+    const startMs = Date.now() - 24 * 3600_000;
+    runtime.records.put('pa', { kind: 'run', id: 'manual-y', updatedMs: Date.now(), deleted: false, body: { type: 'manual', startMs, durationS: 80 * 60, distanceM: 12000, avgHr: null, runType: 'running' } } as never);
+    runtime.scan();
+    await settle();
+    const yesterday = dateKey(startMs);
+    const planDays = Object.values(loadRunCache(path.join(root, 'coach', 'run'), 'pa').planDays);
+    expect(planDays.some((w) => w[yesterday] === 'moderate')).toBe(true);
   });
 
   test('with no ride open and Garmin missing, scan writes no run records', async () => {
