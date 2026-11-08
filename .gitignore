@@ -7,7 +7,7 @@ out/
 
 __pycache__/
 release/
-src/web/public/exercises/fedb/
+src/web/public/exercises/fedb
 
 # Recipe collection data lives only in the coach volume
 /recipes/
