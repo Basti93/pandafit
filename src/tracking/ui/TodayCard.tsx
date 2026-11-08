@@ -67,7 +67,7 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, a }: Props & { a?: Adv
   if (a?.advice.done) {
     return (
       <section className="card tk-today-card" aria-label="Heute">
-        <h2>Heute erledigt – gut gemacht.</h2>
+        <h2>Du hast heute schon trainiert. Gut gemacht!</h2>
         <Other a={a} date={date} />
       </section>
     );
