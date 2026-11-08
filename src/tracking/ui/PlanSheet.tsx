@@ -32,7 +32,7 @@ export function PlanSheet({ port, workout, dateText, reason, note, notice, outlo
   const [info, setInfo] = useState<string | null>(null);
   const act = (f: (w: TrackedWorkout) => TrackedWorkout) => onChange(f(workout));
   return (
-    <Sheet title="Nächstes Training" onClose={onClose}
+    <Sheet title="Nächstes Training" display onClose={onClose}
       actions={<>
         <button type="button" disabled={workout.exercises.length === 0} onClick={onStart}>Training starten</button>
         <button type="button" className="link" onClick={onClose}>Fertig</button>

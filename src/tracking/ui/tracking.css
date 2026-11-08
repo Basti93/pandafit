@@ -500,3 +500,34 @@
 .tk-plan-ex { padding-top: var(--space-2); border-top: 1px solid var(--line); }
 .tk-plan-steps { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
 .tk-screen .tk-plan-ex button.tk-del-ex { flex: none; align-self: center; width: 44px; min-width: 44px; min-height: 44px; padding: 0; justify-content: center; text-decoration: none; font-size: var(--fs-2xl); line-height: 1; }
+
+/* ==== Redesign task 2 and 3: Woche, coach chat and Kraft (one block; the display face falls back to the UI face on the Mac) ==== */
+.tk-display, .tk-plan-preview h2, .tk-summary h2 { font-family: var(--font-display, inherit); font-weight: 400; letter-spacing: .03em; }
+.tk-screen button:focus-visible, .tk-picker button:focus-visible, .tk-screen summary:focus-visible, .tk-screen a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Woche: the week as a card with fine lines between the days; today is tinted and keeps its bar. */
+.tk-coach .tk-week { gap: 0; margin: 0; }
+.tk-coach .tk-week li { padding: .55rem .6rem; border-top: 1px solid var(--line); border-radius: 0; }
+.tk-coach .tk-week li:first-child { border-top: 0; }
+.tk-coach .tk-week li.tk-today { background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 4px 0 0 var(--accent); }
+.tk-coach .tk-week li b { color: var(--text); }
+.tk-screen .card.tk-waiting-card { box-shadow: inset 0 0 0 1.5px var(--accent); }
+/* The coach chat: Panda in the header, soft bubbles. Coach words sit on the card colour, rider words on a light apricot. */
+.tk-sheet-head:has(.tk-pandahead-mini) { gap: var(--space-3); }
+.tk-sheet-head .tk-pandahead-mini { width: 3.4rem; }
+.tk-sheet .tk-msg { border: 0; border-radius: 1.1rem; padding: var(--space-2) var(--space-3); }
+.tk-sheet .tk-msg-coach { background: var(--card); border-bottom-left-radius: .35rem; }
+.tk-sheet .tk-msg-rider { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); border-bottom-right-radius: .35rem; }
+.tk-pin { border-radius: var(--radius-card); border-width: 1px; padding: var(--space-3) var(--space-4); }
+.tk-chat-form textarea { border-radius: 1.5rem; padding: .7rem var(--space-4); }
+/* Kraft: the next training and the open training lead with an accent edge, like the other lead cards. */
+.tk-screen .card.tk-plan-preview, .tk-screen .card.tk-open { border-top: 4px solid var(--accent); }
+.tk-screen .card.tk-summary { border-top: 4px solid var(--good); }
+.tk-plan-preview > p strong { font-size: var(--fs-xl); }
+/* The active exercise is one soft panel; finished ones step back. */
+.tk-live .tk-ex.tk-ex-current { background: var(--card); border-radius: var(--radius-card); border-left: 0; border-top: 0; padding: var(--space-2) var(--space-3); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tk-live .tk-ex.tk-ex-done:not(.tk-ex-open) { border-left: 0; box-shadow: inset 3px 0 0 var(--good); padding-left: var(--space-3); }
+.tk-live-head .tk-title { font-size: 1.35rem; }
+.tk-rest { box-shadow: 0 4px 14px var(--shadow-lift); }
+.tk-set.tk-done { border-radius: var(--radius-m); }
+.tk-plan-ex .tk-ex-head h2, .tk-plan-ex h2 { overflow-wrap: anywhere; }
+@media (max-width: 360px) { .tk-live .tk-ex.tk-ex-current { padding-inline: var(--space-2); } .tk-sheet-head .tk-pandahead-mini { width: 2.8rem; } }
