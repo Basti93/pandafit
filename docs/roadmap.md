@@ -46,6 +46,8 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **S Echte Rezepte** | Vegetarische Rezeptsammlung auf dem Heimserver (wächst langsam, frei ab 1.000), eigene Rezepte per Link sofort; der Plan wählt echte Rezepte statt zu erfinden. | Wunsch 07.11.2026 |
 | ✅ | **T Rezepte ansehen** | Rezepte in der Web-App suchen und ansehen, mit Bild, Portionen, „In den Plan“ und Favoriten pro Person, die der Plan bevorzugt. | Wunsch 07.11.2026 |
 | ✅ | **U Was ich gemacht habe** | Die Woche zeigt rückwirkend das Gemachte oder „Ruhetag“; ein Verlauf über alle Sportarten; ein Garmin-Lauf ist nach spätestens einer Stunde da. | Wunsch 08.11.2026 |
+| ⬜ | **V Absprachen halten** | Was für einen Tag vereinbart ist, steht beim Start im Training; alle Coaches kennen denselben Stand von geplant und erledigt; Aufträge gelten so lange wie gemeint; Läufe zählen mit, ohne geplant zu werden. | Trainingsaudit 08.11.2026 |
+| ⬜ | **W Belastung nach Menge** | Ein Krafttag ist so hart, wie viel und was trainiert wurde: eine einzelne Beinübung sperrt die Beine nicht mehr 48 Stunden. | Trainingsaudit 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -303,6 +305,31 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 
 **Von Claude entschieden (08.11.2026):** Alle Aktivitäten zählen, auch Garmin-Aktivitäten ohne eigenen Bereich (z. B. Yoga), jede nur einmal (wie `allActivities`). Auch im Modus „Spontan“ zeigt die Woche die vergangenen Tage mit dem Gemachten. Für neue Aktivitäten prüft der Server alle 50 Minuten nur die erste Seite der Aktivitätsliste (unter einer Stunde wegen Daten-Cache und Scan); nur wenn etwas neu ist, planen die Coaches neu (wie heute). Nur Web-App: die Mac-App ist nur fürs Rad (Q).
 
+## Meilenstein V — Brief (Entwurf 08.11.2026)
+
+**Ziel:** Was ich mit dem Coach abspreche, kommt im Training auch so an, und kein Coach rechnet mit einem Training, das ich nicht gemacht habe.
+
+**Anlass (Trainingsaudit 2.–8.11.2026):** Donnerstag und Freitag war „ohne Beine“ vereinbart, beide Einheiten enthielten trotzdem Beinübungen. Ein bestätigter Trizepstausch blieb in einem verworfenen Entwurf stecken. Der Wunsch „15–20 Min. Ausdauer im Gym“ blieb nur eine Notiz. Der Rad-Coach behandelte das offene Sonntags-Krafttraining als erledigt. Der gespeicherte Wochentext zeigte einen älteren Ruhepulsbefund. Einmalige Aufträge blieben pauschal sieben Tage offen.
+
+**Abnahme:**
+1. Was für einen Tag vereinbart ist („ohne Beine“, ein bestätigter Tausch, „15–20 Min. Ausdauer dazu“), steht beim Start genau so im Training. Ein bestätigter Tausch geht nie mit einem verworfenen Entwurf verloren.
+2. Ein geplantes, aber nicht gemachtes Training gilt bei keinem Coach als erledigt. Alle Coaches arbeiten mit demselben Stand von geplant und erledigt (die Zählung aus U).
+3. Hinweise zur Erholung stammen aus den aktuellen Daten und nennen ihr Datum. Ein älterer Befund erscheint nicht als heutiger.
+4. Ein Auftrag mit Tag („am Montag …“) gilt nur bis zu diesem Tag. Ein Auftrag für die nächste Einheit gilt bis zu dieser Einheit und ist danach erledigt. Dauerhafte Wünsche werden persönliche Regeln (E).
+5. Ich kann Läufe selbst wählen: Der Lauf-Coach plant dann nichts, meine Läufe zählen aber bei Belastung und Tagesvorschlag mit.
+
+**Stand vorher (geprüft 08.11.2026):** Einmalige Aufträge laufen fest nach sieben Tagen ab (`ONE_OFF_MS` in `src/shared/tasks.ts`); `doneMs` existiert, wird aber nirgends gesetzt. Woher die Kraft-Einheit ihre Tagesvorgaben beim Start nimmt und wo „ohne Beine“ verloren geht, ist noch zu prüfen.
+
+**Fällt weg:** die pauschalen sieben Tage für einmalige Aufträge.
+
+**Nicht dabei:** Belastung nach Menge (W). Kein Abgleich mit dem Garmin-Kalender: An Garmin gesendete oder gestrichene Termine sind für die App egal, es zählt nur, was in Garmin abgeschlossen wurde.
+
+**Von Claude entschieden (08.11.2026):** Aus dem Audit nicht übernommen: getrennte Zählung direkter und indirekter Sätze und ein Wochenbudget je Muskel (widerspricht „keine Zahlenflut“; Muskelbilanz B und Steigerung C/H gibt es schon).
+
+## Meilenstein W — grob
+
+Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht nach „eine Beinübung = hart“ (`src/coach/day-load.ts`). Die 48-Stunden-Beinsperre (`LEG_WINDOW_MS` in `src/coach/gym/history.ts`) greift nur nach echter Beinbelastung. „Zwei harte Tage“, „sechs Tage ohne Pause“ und die 18-Uhr-Regel werden dagegen geprüft. Die 48-Stunden-Regel nach einer harten Radfahrt bleibt. Hintergrund: Bei gleichem Wochenumfang bringt höhere Frequenz keinen klaren Vorteil; Muskelkater ist kein Wachstumsmaß; Versagen ist optional. Passt zu den Parkplatz-Punkten aus F („nur Beine“) und O (harte Fahrt und müde Beine).
+
 ## Parkplatz
 
 - ~~Export nach Hevy wählt bei zwei verknüpften Hevy-Vorlagen derselben Übung die zuerst gelistete (aus Review Meilenstein 0).~~ Erledigt mit K.
@@ -335,7 +362,7 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
   - ~~Übernehmen einer Änderung fürs nächste Training plant nicht sofort neu; „Berücksichtigt: …“ erscheint erst beim nächsten Neuplanen.~~ Erledigt mit I.
   - ~~Der Wochen-Chat kennt keinen Übungskatalog und kann fürs nächste Training nicht zuverlässig tauschen.~~ Erledigt mit J.
   - Keine Konflikterkennung auf dem Server; ein Wochenvorschlag wird nur gegen die Zeit des Vorschlags geprüft.
-  - Rückgängig eines schon an Garmin gesendeten Wochenplans: prüfen, ob Garmin-Einheiten verwaist bleiben.
+  - ~~Rückgängig eines schon an Garmin gesendeten Wochenplans: prüfen, ob Garmin-Einheiten verwaist bleiben.~~ Entfällt (08.11.2026): Der Garmin-Kalender ist für die App egal, es zählt nur Abgeschlossenes.
 - Aus Meilenstein E:
   - ~~Ausschluss ganzer Bewegungsfamilien ohne Übungsliste (heute: Liste konkreter Varianten).~~ Erledigt mit J.
   - ~~Sportarten in der Zielkarte immer alle drei; später nur die genutzten zeigen.~~ Erledigt mit I.
