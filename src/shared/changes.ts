@@ -80,7 +80,15 @@ export function applyNextChanges(plan: GymWorkout, changes: readonly NextChange[
   const notes: string[] = [];
   const applied: string[] = [];
   for (const c of changes) for (const o of c.ops) {
-    const i = exercises.findIndex((e) => e.templateId === o.exerciseId);
+    let i = exercises.findIndex((e) => e.templateId === o.exerciseId);
+    if (i < 0 && o.op === 'swap') {
+      // The original is not planned: the swap still counts when its target is, or it takes the place of a planned exercise for the same muscle.
+      const to = catalog.find((x) => x.id === o.toId);
+      const muscle = catalog.find((x) => x.id === o.exerciseId)?.primaryMuscle;
+      if (exercises.some((e) => e.templateId === o.toId)) { applied.push(c.id); continue; }
+      if (to && !excluded?.has(to.id) && muscle) i = exercises.findIndex((e) => catalog.find((x) => x.id === e.templateId)?.primaryMuscle === muscle && !excluded?.has(e.templateId));
+      if (i < 0) { notes.push('Ein Tausch passte nicht zu diesem Training und bleibt fürs nächste.'); continue; }
+    }
     if (i < 0) { notes.push('Eine Änderung fürs Training passte nicht mehr zum Plan.'); continue; }
     const e = exercises[i]!;
     if (o.op === 'drop') { exercises = exercises.filter((_, k) => k !== i); applied.push(c.id); }

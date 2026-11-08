@@ -84,6 +84,8 @@ export type PromptInput = {
   budgetMinutes?: number;
   /** No leg exercises today (open leg complaint or today's advice). */
   avoidLegs?: boolean;
+  /** Confirmed swaps for the next workout (catalog titles): plan `nimm` instead of `statt`. */
+  swaps?: readonly { statt: string; nimm: string }[];
 };
 
 const STRENGTH_WORDS = { muscle: 'Muskelaufbau', strength: 'Kraft', fitness: 'Fitness' } as const;
@@ -135,6 +137,7 @@ export function buildGymPrompt(i: PromptInput): string {
     dataBlock('antworten', i.state.answers.slice(-10).map((a) => ({ frage: a.question, text: a.text }))),
     ...(i.mobility ? [dataBlock('beweglichkeit', i.mobility)] : []),
     ...(i.rejection ? [dataBlock('ablehnung', i.rejection)] : []),
+    ...(i.swaps?.length ? [dataBlock('tausch', i.swaps.map((t) => ({ statt: t.statt, nimm: t.nimm })))] : []),
   ];
   const names = [...excluded].flatMap((x) => { const t = byId.get(x)?.title ?? titleOf.get(x); return t ? [t] : []; });
   const tail = [
@@ -147,6 +150,7 @@ export function buildGymPrompt(i: PromptInput): string {
     i.avoidLegs ? 'Keine Beinübungen in dieser Einheit.' : null,
     i.rejection ? 'Dein letzter Vorschlag wurde abgelehnt, der Grund steht im Block ablehnung-nur-daten. Korrigiere ihn.' : null,
     i.mobility ? 'Beweglichkeit (Dehnen) bietet die App selbst an, der Block beweglichkeit-nur-daten zeigt sie. Plane sie nicht und verspreche dazu weder Erholung noch Verletzungsschutz.' : null,
+    i.swaps?.length ? 'Bestätigte Tausche gelten: plane die Übung aus nimm statt der aus statt. Sie stehen im Block tausch-nur-daten.' : null,
     'Plane jetzt das nächste Training.',
     i.wantNote ? 'Es gab neue Trainings: Schreibe in note eine kurze Rückmeldung dazu und stelle höchstens zwei freiwillige Rückfragen.' : 'Lasse note und questions leer.',
   ].filter((x): x is string => x !== null).join(' ');

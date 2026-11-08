@@ -156,6 +156,17 @@ export class GymCoach {
     const note = this.deps.store ? considered(takenChangesOf(this.deps.store, id)) : '';
     return note ? `${base} ${note}`.trim() : base;
   }
+  /** The taken swaps as titles from the catalog, for the planner's prompt. */
+  private swapsTaken(id: string): { statt: string; nimm: string }[] {
+    if (!this.deps.store) return [];
+    const cat = this.catalog(id);
+    const title = (x: string) => cat.find((e) => e.id === x)?.title;
+    return takenChangesOf(this.deps.store, id).flatMap((c) => c.ops.flatMap((o) => {
+      if (o.op !== 'swap') return [];
+      const statt = title(o.exerciseId); const nimm = title(o.toId);
+      return statt && nimm ? [{ statt, nimm }] : [];
+    }));
+  }
   private loadSteps(id: string): LoadStepOverrides {
     if (this.deps.loadSteps) return this.deps.loadSteps(id);
     return this.deps.store ? loadStepsOf(this.deps.store, id, this.studios(id).renames) : new Map();
@@ -458,7 +469,7 @@ export class GymCoach {
         x.emptyReason = hasRule ? null : rule.reason;
       });
       const ask = (rejection?: string) => this.deps.ask({
-        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, excluded, ...(avoidLegs ? { avoidLegs: true } : {}), ...(this.deps.store ? { goal: goalOfProfile(this.deps.store, id, dateKey(now)), wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
+        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), swaps: this.swapsTaken(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, excluded, ...(avoidLegs ? { avoidLegs: true } : {}), ...(this.deps.store ? { goal: goalOfProfile(this.deps.store, id, dateKey(now)), wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
         systemPrompt: GYM_SYSTEM_PROMPT, schema: gymAnswerJsonSchema,
       });
       let raw = await ask();
