@@ -967,11 +967,11 @@ describe('Laufen on the phone', () => {
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Laufen' })).toBeNull());
   });
 
-  it('Verlauf is part of Kraft', async () => {
+  it('Entwicklung is part of Kraft', async () => {
     await boot({ account: 'anna', seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Verlauf' }));
-    expect(await screen.findByRole('heading', { name: 'Verlauf' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Entwicklung' }));
+    expect(await screen.findByRole('heading', { name: 'Entwicklung' })).toBeTruthy();
   });
 
   it('Laufen shows the run look back only when a review exists', async () => {
@@ -1079,15 +1079,6 @@ describe('Rad on the phone', () => {
     expect(within(sheet).getByRole('img', { name: /Leistung und Puls/ }).querySelectorAll('polyline').length).toBe(2);
   });
 
-  it('Fahrten groups the rides by month and a tap opens the ride', async () => {
-    await boot({ account: 'anna', seed: [bikeRec(), rideRec('r1', 3 * DAY), rideRec('r0', 60 * DAY, 'Locker')], startTab: 'rad' });
-    fireEvent.click(await screen.findByRole('button', { name: /^Fahrten/ }));
-    const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getAllByRole('region').length).toBe(2); // two months
-    fireEvent.click(within(sheet).getByRole('button', { name: /Locker/ }));
-    expect(await screen.findByText('Ruhig und gleichmäßig gefahren.')).toBeTruthy();
-  });
-
   it('Entwicklung tells the FTP, the phase and the hours per week', async () => {
     await boot({ account: 'anna', seed: [bikeRec()], startTab: 'rad' });
     fireEvent.click(await screen.findByRole('button', { name: /^Entwicklung/ }));
@@ -1133,14 +1124,5 @@ describe('Rad on the phone', () => {
     await waitFor(() => expect(screen.getByRole('region', { name: /^Heute/ }).textContent).toContain('am Mac'));
     const card = screen.getByRole('region', { name: /^Heute/ });
     expect(within(card).queryByRole('button', { name: 'Ansehen' })).toBeNull();
-  });
-
-  it('Woche marks the days with a ride as gefahren', async () => {
-    const rode = rideRec('r1', 0);
-    await boot({ account: 'anna', seed: [bikeRec(), await bikeWeek(), rode] });
-    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
-    const week = await screen.findByRole('list', { name: 'Wochenplan diese Woche' });
-    const rows = within(week).getAllByRole('listitem').filter((li) => li.textContent?.includes('gefahren'));
-    expect(rows.length).toBe(1);
   });
 });

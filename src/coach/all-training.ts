@@ -1,3 +1,6 @@
+import { overlapsByHalf } from '../shared/overlap';
+
+export { overlapsByHalf, type Span } from '../shared/overlap';
 export type Source = 'rad' | 'kraft' | 'andere';
 export type TrainingInput = {
   /** Rides recorded in this app. */
@@ -14,18 +17,8 @@ export type AllTraining = { weeks: TrainingWeek[]; recent: TrainingSession[]; so
 
 const WEEKS = 12;
 const RECENT = 10;
-/** Two records are the same session if they share at least this part of the shorter one. */
-const SAME_SHARE = 0.5;
 export const CYCLING = /cycling|biking|ride|bike/i;
 export const STRENGTH = /strength/i;
-
-export type Span = { startMs: number; durationS: number };
-/** Two records are the same session if they share at least half of the shorter one. */
-export const overlapsByHalf = (a: Span, b: Span): boolean => {
-  const shorter = Math.min(a.durationS, b.durationS) * 1000;
-  const shared = Math.min(a.startMs + a.durationS * 1000, b.startMs + b.durationS * 1000) - Math.max(a.startMs, b.startMs);
-  return shorter > 0 && shared >= shorter * SAME_SHARE;
-};
 
 /** Every session from the three inputs, each once. A Garmin copy of a ride or workout from this app is left out. */
 export const trainingSessions = (input: TrainingInput): TrainingSession[] => {

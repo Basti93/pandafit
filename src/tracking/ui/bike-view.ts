@@ -1,5 +1,5 @@
 import { BIKE_ID, readBike, readRideBody, type BikeBody, type RideBody } from '../../shared/bike';
-import { monthLabel, shortDate } from '../../shared/dates';
+import { shortDate } from '../../shared/dates';
 import type { TrackedRecord } from '../../shared/records';
 import { HARDNESS_LABEL } from '../../shared/week-plan';
 
@@ -35,17 +35,6 @@ export function rideFacts(r: RideBody): string {
   if (r.tss > 0) parts.push(`Belastung ${r.tss}`);
   parts.push(`geschafft ${Math.round(r.completedFraction * 100)} %`);
   return parts.join(' · ');
-}
-
-/** The rides grouped by month, newest first: "November 2026". */
-export function ridesByMonth(rides: BikeRide[]): { month: string; rides: BikeRide[] }[] {
-  const out: { month: string; rides: BikeRide[] }[] = [];
-  for (const r of rides) {
-    const month = monthLabel(r.body.startedAtMs);
-    const last = out.at(-1);
-    if (last && last.month === month) last.rides.push(r); else out.push({ month, rides: [r] });
-  }
-  return out;
 }
 
 const monthName = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { month: 'long' });

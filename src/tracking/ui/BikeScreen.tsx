@@ -3,7 +3,7 @@ import type { BikeBody, RideBody } from '../../shared/bike';
 import { dayMonthOfKey, shortDate, timeLabel } from '../../shared/dates';
 import { HARDNESS_LABEL } from '../../shared/week-plan';
 import type { TrackingPort } from '../ports';
-import { bikeOf, ftpSentence, minText, phaseText, rideFacts, rideName, rideTitle, rideValue, ridesByMonth, ridesOf, type BikeRide } from './bike-view';
+import { bikeOf, ftpSentence, minText, phaseText, rideFacts, rideName, rideTitle, rideValue, ridesOf, type BikeRide } from './bike-view';
 import { usePortRecords } from './hooks';
 import { PageHead, Row, RowList, Sheet } from './kit';
 
@@ -33,7 +33,7 @@ function RideChart({ ride }: { ride: RideBody }) {
   );
 }
 
-function RideSheet({ ride, onClose }: { ride: BikeRide; onClose: () => void }) {
+export function RideSheet({ ride, onClose }: { ride: BikeRide; onClose: () => void }) {
   const r = ride.body;
   return (
     <Sheet title={rideName(r)} onClose={onClose}>
@@ -77,24 +77,11 @@ function DevelopmentSheet({ bike, onClose }: { bike: BikeBody; onClose: () => vo
   );
 }
 
-function RidesSheet({ rides, onOpen, onClose }: { rides: BikeRide[]; onOpen: (r: BikeRide) => void; onClose: () => void }) {
-  return (
-    <Sheet title="Fahrten" onClose={onClose}>
-      {ridesByMonth(rides).map((g) => (
-        <section key={g.month} aria-label={g.month}>
-          <h3 className="tk-section">{g.month}</h3>
-          <RowList>{g.rides.map((r) => <Row key={r.id} title={rideTitle(r.body)} value={minText(r.body.durationS / 60)} onClick={() => onOpen(r)} />)}</RowList>
-        </section>
-      ))}
-    </Sheet>
-  );
-}
-
-/** The bike on the phone: read only. What is planned next, the last ride, the development and the rides. */
+/** The bike on the phone: read only. What is planned next, the last ride, the development. */
 export function BikeScreen({ port }: { port: TrackingPort }) {
   const bike = bikeOf(usePortRecords(port, 'bike').records);
   const rides = ridesOf(usePortRecords(port, 'ride').records);
-  const [sheet, setSheet] = useState<'plan' | 'development' | 'rides' | null>(null);
+  const [sheet, setSheet] = useState<'plan' | 'development' | null>(null);
   const [ride, setRide] = useState<BikeRide | null>(null);
   const next = bike?.next ?? null;
   const last = rides[0];
@@ -110,7 +97,6 @@ export function BikeScreen({ port }: { port: TrackingPort }) {
       <RowList>
         {next && next.blocks.length > 0 && <Row title="Aufbau" onClick={() => setSheet('plan')} />}
         {bike && <Row title="Entwicklung" onClick={() => setSheet('development')} />}
-        {rides.length > 0 && <Row title="Fahrten" onClick={() => setSheet('rides')} />}
       </RowList>
       {last && (
         <section aria-label="Letzte Fahrt">
@@ -120,7 +106,6 @@ export function BikeScreen({ port }: { port: TrackingPort }) {
       )}
       {sheet === 'plan' && next && <PlanSheet name={next.name} blocks={next.blocks} onClose={() => setSheet(null)} />}
       {sheet === 'development' && bike && <DevelopmentSheet bike={bike} onClose={() => setSheet(null)} />}
-      {sheet === 'rides' && !ride && <RidesSheet rides={rides} onOpen={setRide} onClose={() => setSheet(null)} />}
       {ride && <RideSheet ride={ride} onClose={() => setRide(null)} />}
     </div>
   );

@@ -527,21 +527,11 @@ async function main() {
     await page.getByRole('button', { name: 'Abbrechen' }).first().click();
   });
   await step('kraft-routine-new', async () => { await page.getByRole('button', { name: 'Neue Routine' }).click(); await shot('kraft-routinen-neu'); await page.getByRole('button', { name: 'Abbrechen' }).first().click(); });
-  await seg('Verlauf');
-  await shot('kraft-verlauf');
-  await step('kraft-verlauf-detail', async () => {
+  await seg('Entwicklung');
+  await shot('kraft-entwicklung');
+  await step('kraft-entwicklung-uebung', async () => {
     await page.locator('.tk-rows .tk-rowbtn').first().click();
-    await page.waitForTimeout(500);
-    await shot('kraft-verlauf-detail');
-    await step('kraft-verlauf-detail-exercise-history', async () => { await page.locator('.tk-rows .tk-rowbtn').first().click(); await shot('kraft-verlauf-detail-uebungsverlauf'); await page.locator('.tk-rows .tk-rowbtn').first().click(); await shot('kraft-verlauf-detail-uebungsverlauf-offen'); await page.getByRole('button', { name: 'Zurück' }).click(); });
-    await step('kraft-verlauf-detail-edit', async () => { await page.getByRole('button', { name: 'Bearbeiten' }).click(); await shot('kraft-verlauf-detail-bearbeiten'); await page.getByRole('button', { name: 'Fertig' }).click(); });
-    await page.getByRole('button', { name: 'Zurück' }).click();
-  });
-  await step('kraft-verlauf-uebungen', async () => {
-    await page.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: 'Je Übung', exact: true }).click();
-    await shot('kraft-verlauf-uebungen');
-    await page.locator('.tk-rows .tk-rowbtn').first().click();
-    await shot('kraft-verlauf-uebung-detail');
+    await shot('kraft-entwicklung-uebung');
   });
   await fresh('Kraft'); await seg('Übungen');
   await shot('kraft-uebungen-katalog');
@@ -594,7 +584,6 @@ async function main() {
   await step('rad-aufbau', async () => { await page.getByRole('button', { name: /^Aufbau/ }).click(); await shot('rad-aufbau'); await closeDialog(); });
   await step('rad-fahrt', async () => { await page.getByRole('button', { name: /Grundlage|Locker|Schwellen/ }).first().click(); await shot('rad-fahrt'); await closeDialog(); });
   await step('rad-entwicklung', async () => { await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('rad-entwicklung'); await closeDialog(); });
-  await step('rad-fahrten', async () => { await page.getByRole('button', { name: /^Fahrten/ }).click(); await shot('rad-fahrten'); await closeDialog(); });
   const enduranceSeg = (label: string) => page.getByRole('group', { name: 'Ausdauer' }).getByRole('button', { name: label, exact: true }).click().then(() => page.waitForTimeout(400));
   await enduranceSeg('Laufen');
   await shot('ausdauer-umschalter');

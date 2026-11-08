@@ -45,7 +45,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **R Gesundheit** | Garmin-Gesundheit in der Web-App: Ruhepuls, Fitness, Alltagsbewegung, Schlaf, ruhig in Sätzen, belegte Regeln mit Quellen, wöchentliche Coach-Auswertung ohne Diagnose. | Wunsch 07.11.2026 |
 | ✅ | **S Echte Rezepte** | Vegetarische Rezeptsammlung auf dem Heimserver (wächst langsam, frei ab 1.000), eigene Rezepte per Link sofort; der Plan wählt echte Rezepte statt zu erfinden. | Wunsch 07.11.2026 |
 | ✅ | **T Rezepte ansehen** | Rezepte in der Web-App suchen und ansehen, mit Bild, Portionen, „In den Plan“ und Favoriten pro Person, die der Plan bevorzugt. | Wunsch 07.11.2026 |
-| | **U Was ich gemacht habe** | Die Woche zeigt rückwirkend das Gemachte oder „Ruhetag“; ein Verlauf über alle Sportarten; ein Garmin-Lauf ist nach spätestens einer Stunde da. | Wunsch 08.11.2026 |
+| ✅ | **U Was ich gemacht habe** | Die Woche zeigt rückwirkend das Gemachte oder „Ruhetag“; ein Verlauf über alle Sportarten; ein Garmin-Lauf ist nach spätestens einer Stunde da. | Wunsch 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -282,7 +282,7 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 
 **Nicht dabei:** Garmin-Rohdaten (werden neu geholt), Geräte-Kopplungen.
 
-## Meilenstein U — Brief (freigegeben 08.11.2026)
+## Meilenstein U — Brief (umgesetzt 08.11.2026)
 
 **Ziel:** Auf der Wochenseite sehe ich auf einen Blick, was ich diese Woche erledigt habe, und an einer Stelle meine letzten Aktivitäten aus allen Sportarten.
 
@@ -301,7 +301,7 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 
 **Nicht dabei:** Statistik, Filter oder Suche im Verlauf, Knopf „Jetzt abgleichen“, Umplanen der restlichen Woche, wenn ein Tag ausfiel.
 
-**Von Claude entschieden (08.11.2026):** Alle Aktivitäten zählen, auch Garmin-Aktivitäten ohne eigenen Bereich (z. B. Yoga), jede nur einmal (wie `allActivities`). Auch im Modus „Spontan“ zeigt die Woche die vergangenen Tage mit dem Gemachten. Für neue Aktivitäten prüft der Server stündlich nur die erste Seite der Aktivitätsliste; nur wenn etwas neu ist, planen die Coaches neu (wie heute). Nur Web-App: die Mac-App ist nur fürs Rad (Q).
+**Von Claude entschieden (08.11.2026):** Alle Aktivitäten zählen, auch Garmin-Aktivitäten ohne eigenen Bereich (z. B. Yoga), jede nur einmal (wie `allActivities`). Auch im Modus „Spontan“ zeigt die Woche die vergangenen Tage mit dem Gemachten. Für neue Aktivitäten prüft der Server alle 50 Minuten nur die erste Seite der Aktivitätsliste (unter einer Stunde wegen Daten-Cache und Scan); nur wenn etwas neu ist, planen die Coaches neu (wie heute). Nur Web-App: die Mac-App ist nur fürs Rad (Q).
 
 ## Parkplatz
 

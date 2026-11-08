@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
 import { dedupeSessions } from '../../shared/history';
-import { monthLabel } from '../../shared/dates';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
 import { editSet, formatDecimal, removeSet, type TrackedSet, type TrackedWorkout } from '../session';
@@ -14,7 +13,6 @@ import { SyncNote } from './SyncNote';
 import { nextLine, nextOf as nextFor } from './next-line';
 import { readStats, STATS_ID, type NextStep } from '../../shared/stats';
 
-const WEEK_MS = 7 * 24 * 3600 * 1000;
 const done = (sets: TrackedSet[]): TrackedSet[] => sets.filter((s) => s.doneMs !== null);
 const working = (sets: TrackedSet[]): TrackedSet[] => { const d = done(sets); const w = d.filter((s) => s.type !== 'warmup'); return w.length > 0 ? w : d; };
 const best = (sets: TrackedSet[], timed: boolean): TrackedSet | null =>
@@ -128,69 +126,41 @@ function Detail({ port, store, history, onBack, onDeleted, latest, next }: { por
   );
 }
 
-export function HistoryScreen({ port, now = Date.now }: { port: TrackingPort; now?: () => number; newId?: () => string }) {
-  const q = usePortRecords(port, 'workout');
-  const records = q.records;
-  // One performed session counts once: an overlapping Hevy copy of an own workout is left out.
-  const history = dedupeSessions((records ?? []).map((r) => r.body as LoggedWorkout));
-  const recOf = new Map((records ?? []).map((r) => [r.id, r] as [string, TrackedRecord]));
-  const [store, setStore] = useState<WorkoutStore | null>(null);
+/** One finished workout from the shared history: the detail view with its own store, history and next steps. */
+export function WorkoutDetail({ port, record, now, onBack }: { port: TrackingPort; record: TrackedRecord; now: () => number; onBack: () => void }) {
+  const records = usePortRecords(port, 'workout').records;
+  const history = useMemo(() => dedupeSessions((records ?? []).map((r) => r.body as LoggedWorkout)), [records]);
   const statsRecords = usePortRecords(port, 'stats').records;
   const next = useMemo(() => {
     const r = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);
     return (r && readStats(r.body)?.next) || [];
   }, [statsRecords]);
-  const [tab, setTab] = useState<'workouts' | 'exercises'>('workouts');
-  const [exercise, setExercise] = useState<string | null>(null);
-  const [older, setOlder] = useState(false);
-
+  const [store] = useState(() => acquireStore(port, record, now));
   const newest = history.reduce<LoggedWorkout | null>((a, w) => (!a || (w.endMs ?? w.startMs) > (a.endMs ?? a.startMs) ? w : a), null);
-  if (store) return <Detail port={port} store={store} history={history} latest={newest !== null && store.current().id === newest.id} next={next} onBack={() => setStore(null)} onDeleted={() => setStore(null)} />;
+  return <Detail port={port} store={store} history={history} latest={newest !== null && record.id === newest.id} next={next} onBack={onBack} onDeleted={onBack} />;
+}
+
+/** Entwicklung: every exercise done so far; a tap shows that exercise over time. */
+export function DevelopmentScreen({ port }: { port: TrackingPort }) {
+  const q = usePortRecords(port, 'workout');
+  const records = q.records;
+  // One performed session counts once: an overlapping Hevy copy of an own workout is left out.
+  const history = useMemo(() => dedupeSessions((records ?? []).map((r) => r.body as LoggedWorkout)), [records]);
+  const [exercise, setExercise] = useState<string | null>(null);
   const exercises = new Map<string, string>();
   for (const w of history) for (const e of w.exercises) if (e.sets.some((s) => s.doneMs !== null) && !exercises.has(e.exerciseId)) exercises.set(e.exerciseId, e.title);
   if (exercise !== null) return <Development exerciseId={exercise} title={exercises.get(exercise) ?? ''} history={history} onBack={() => setExercise(null)} />;
-
-  // The last 8 weeks, newest first, by month; the rest behind "Ältere anzeigen".
-  const at = (w: LoggedWorkout) => w.endMs ?? w.startMs;
-  const sorted = [...history].sort((a, b) => at(b) - at(a));
-  const cutoff = now() - 8 * WEEK_MS;
-  const shown = older ? sorted : sorted.filter((w) => at(w) >= cutoff);
-  const months: { label: string; items: LoggedWorkout[] }[] = [];
-  for (const w of shown) {
-    const label = monthLabel(at(w));
-    const last = months[months.length - 1];
-    if (last && last.label === label) last.items.push(w); else months.push({ label, items: [w] });
-  }
-
   return (
     <div className="tk-screen">
-      <h1 className="tk-title">Verlauf</h1>
+      <h1 className="tk-title">Entwicklung</h1>
       <SyncNote port={port} />
-      {q.failed && <p role="status" className="tk-note">Der Verlauf konnte gerade nicht gelesen werden. <button type="button" onClick={q.retry}>Nochmal versuchen</button></p>}
-      <div className="tk-textseg" role="group" aria-label="Ansicht">
-        <button type="button" className="link" aria-pressed={tab === 'workouts'} onClick={() => setTab('workouts')}>Trainings</button>
-        <button type="button" className="link" aria-pressed={tab === 'exercises'} onClick={() => setTab('exercises')}>Je Übung</button>
-      </div>
-      {records !== null && history.length === 0 && <p className="muted">Hier erscheinen deine abgeschlossenen Trainings.</p>}
-      {tab === 'workouts' ? (
-        <>
-          {months.map((m) => (
-            <section key={m.label} aria-label={m.label}>
-              <h2 className="tk-section">{m.label}</h2>
-              <RowList>
-                {m.items.map((w) => <Row key={w.id} title={w.title} value={dateLabel(at(w))} onClick={() => setStore(acquireStore(port, recOf.get(w.id) ?? (w as TrackedWorkout), now))} />)}
-              </RowList>
-            </section>
-          ))}
-          {!older && shown.length < sorted.length && <button type="button" className="link" onClick={() => setOlder(true)}>Ältere anzeigen</button>}
-        </>
-      ) : (
-        <RowList label="Übungen">
-          {[...exercises.entries()].sort((a, b) => a[1].localeCompare(b[1], 'de')).map(([id, title]) => (
-            <Row key={id} title={title} onClick={() => setExercise(id)} />
-          ))}
-        </RowList>
-      )}
+      {q.failed && <p role="status" className="tk-note">Die Übungen konnten gerade nicht gelesen werden. <button type="button" onClick={q.retry}>Nochmal versuchen</button></p>}
+      {records !== null && exercises.size === 0 && <p className="muted">Hier erscheinen deine Übungen, sobald du trainiert hast.</p>}
+      <RowList label="Übungen">
+        {[...exercises.entries()].sort((a, b) => a[1].localeCompare(b[1], 'de')).map(([id, title]) => (
+          <Row key={id} title={title} onClick={() => setExercise(id)} />
+        ))}
+      </RowList>
     </div>
   );
 }

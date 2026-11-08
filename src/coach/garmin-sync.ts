@@ -6,6 +6,8 @@ import { plainTokens, TokensUnopenable, type GarminTokens, type TokenCheckout } 
 
 const HOUR = 3600_000;
 const WHILE_LOADING_MS = 3 * HOUR;
+/** Below an hour: with the 5-minute data cache and the scan delay a new activity still arrives within one hour. */
+const QUICK_MS = 50 * 60_000;
 const WHEN_COMPLETE_MS = 6 * HOUR;
 const AFTER_RATE_LIMIT_MS = 6 * HOUR;
 const AFTER_FAILURE_MS = 30 * 60_000;
@@ -14,10 +16,10 @@ const EXIT_RATE = 11;
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
 
 type Options = { baseDir: string; python: string; script: string; rideOpen: () => boolean; onUpdate: () => void; nowMs: () => number; spawnFn?: typeof spawn; tokens?: GarminTokens };
-type Meta = { lastRunMs: number | null; lastTryMs: number | null; complete: boolean; problem: GarminSyncInfo['problem']; tokensMtimeMs: number | null };
+type Meta = { lastRunMs: number | null; lastTryMs: number | null; lastQuickMs: number | null; complete: boolean; problem: GarminSyncInfo['problem']; tokensMtimeMs: number | null };
 /** stopped: ended on purpose (a ride, a disconnect), which is no failure. */
 type Run = { child: ReturnType<typeof spawn>; handle: TokenCheckout; stopped: boolean };
-const EMPTY: Meta = { lastRunMs: null, lastTryMs: null, complete: false, problem: null, tokensMtimeMs: null };
+const EMPTY: Meta = { lastRunMs: null, lastTryMs: null, lastQuickMs: null, complete: false, problem: null, tokensMtimeMs: null };
 
 /** Starts the standalone sync program on a schedule and never during a ride. Its state lives in its own database. */
 export class GarminSync {
@@ -77,12 +79,16 @@ export class GarminSync {
     const mtime = this.tokens.mtimeMs(id);
     if (mtime === null) return;
     const m = this.meta(id);
-    if (!this.due(id, m, mtime)) return;
+    const full = this.due(id, m, mtime);
+    // The light hourly check: only new activities. It never stands in for a due full sync and never during a block.
+    const quick = !full && m.problem !== 'reauth' && m.problem !== 'rate-limit'
+      && this.opts.nowMs() - Math.max(m.lastQuickMs ?? 0, m.lastTryMs ?? 0) >= QUICK_MS;
+    if (!full && !quick) return;
     if (!fs.existsSync(this.opts.python)) {
       if (m.problem !== 'failed') this.save(id, { problem: 'failed', lastTryMs: this.opts.nowMs() });
       return;
     }
-    this.start(id, mtime);
+    this.start(id, mtime, quick);
   }
 
   /** For a disconnect: ends the run at once and keeps nothing it wrote, not even a refreshed token. */
@@ -96,13 +102,13 @@ export class GarminSync {
     this.opts.onUpdate();
   }
 
-  private start(id: string, mtime: number): void {
+  private start(id: string, mtime: number, quick: boolean): void {
     const startedAt = this.opts.nowMs();
-    const failed = (): void => this.save(id, { problem: 'failed', lastTryMs: startedAt, tokensMtimeMs: mtime });
+    const failed = (): void => this.save(id, quick ? { lastQuickMs: startedAt } : { problem: 'failed', lastTryMs: startedAt, tokensMtimeMs: mtime });
     let handle: TokenCheckout;
     try { handle = this.tokens.checkout(id); } catch (e) {
       // Tokens that do not open need a new login, like expired ones. Asked once, until new tokens exist.
-      if (e instanceof TokensUnopenable) this.save(id, { problem: 'reauth', lastTryMs: startedAt, tokensMtimeMs: mtime });
+      if (e instanceof TokensUnopenable) this.save(id, quick ? { problem: 'reauth', lastQuickMs: startedAt, tokensMtimeMs: mtime } : { problem: 'reauth', lastTryMs: startedAt, tokensMtimeMs: mtime });
       else failed();
       return;
     }
@@ -111,11 +117,12 @@ export class GarminSync {
     let child: ReturnType<typeof spawn>;
     try {
       child = (this.opts.spawnFn ?? spawn)(this.opts.python, [
-        this.opts.script, '--tokens', handle.dir, '--db', path.join(this.dataDir(id), 'garmin.db'),
+        this.opts.script, '--tokens', handle.dir, '--db', path.join(this.dataDir(id), 'garmin.db'), ...(quick ? ['--quick'] : []),
       ], { stdio: ['ignore', 'pipe', 'ignore'] });
     } catch { checkin(); failed(); return; }
     const run: Run = { child, handle, stopped: false };
     this.running.set(id, run);
+    if (quick) this.save(id, { lastQuickMs: startedAt });
     if (this.meta(id).problem === 'reauth') this.save(id, { problem: null });
     let complete = this.meta(id).complete;
     let buffer = '';
@@ -126,7 +133,7 @@ export class GarminSync {
       for (const line of lines) {
         try {
           const m = JSON.parse(line) as { complete?: unknown; status?: unknown };
-          if (m.status && typeof m.complete === 'boolean') complete = m.complete;
+          if (!quick && m.status && typeof m.complete === 'boolean') complete = m.complete;
         } catch { /* not a protocol line */ }
       }
     });
@@ -138,6 +145,13 @@ export class GarminSync {
       if (this.running.get(id) === run) this.running.delete(id);
       if (run.stopped) { this.opts.onUpdate(); return; }
       const problem = code === 0 ? null : code === EXIT_REAUTH ? 'reauth' : code === EXIT_RATE ? 'rate-limit' : 'failed';
+      if (quick) {
+        // A quick run leaves lastTryMs and complete alone, except for a block that both kinds of run must respect.
+        if (code === 0) this.save(id, { lastRunMs: this.opts.nowMs(), ...(this.meta(id).problem === 'failed' ? { problem: null } : {}) });
+        else if (code === EXIT_REAUTH) this.save(id, { problem: 'reauth', tokensMtimeMs: mtime });
+        else if (code === EXIT_RATE) this.save(id, { problem: 'rate-limit', lastTryMs: startedAt });
+        return;
+      }
       this.save(id, { lastTryMs: startedAt, complete, problem, tokensMtimeMs: mtime, ...(code === 0 ? { lastRunMs: this.opts.nowMs() } : {}) });
     };
     child.on('error', () => end(null));

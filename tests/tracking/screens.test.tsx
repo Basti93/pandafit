@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
 import { RoutinesScreen } from '../../src/tracking/ui/RoutinesScreen';
 import { CoachScreen } from '../../src/tracking/ui/CoachScreen';
-import { HistoryScreen } from '../../src/tracking/ui/HistoryScreen';
+import { DevelopmentScreen, WorkoutDetail } from '../../src/tracking/ui/HistoryScreen';
 import { ExercisePicker } from '../../src/tracking/ui/ExercisePicker';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import type { GymWorkout } from '../../src/coach/gym/types';
@@ -170,8 +170,7 @@ test('a search in the picker finds the English Hevy name', async () => {
 
 test('past workouts can be edited and deleted', async () => {
   const { port, map } = fakePort([rec(finished())]);
-  render(<HistoryScreen port={port} {...ids} />);
-  fireEvent.click(await screen.findByRole('button', { name: /Beine/ }));
+  render(<WorkoutDetail port={port} record={rec(finished())} now={ids.now} onBack={() => {}} />);
   expect(await screen.findByText('80 kg × 5 · 85 kg × 5')).toBeTruthy(); // read mode first: one line, no fields
   expect(screen.queryByLabelText('Gewicht Satz 1')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten' }));
@@ -185,8 +184,7 @@ test('past workouts can be edited and deleted', async () => {
 
 test('history shows progress per exercise', async () => {
   const { port } = fakePort([rec(finished('a', 5000)), rec(finished('b', 9000))]);
-  render(<HistoryScreen port={port} {...ids} />);
-  fireEvent.click((await screen.findAllByRole('button', { name: /Beine/ }))[0]);
+  render(<WorkoutDetail port={port} record={rec(finished('b', 9000))} now={ids.now} onBack={() => {}} />);
   fireEvent.click(await screen.findByRole('button', { name: /^Kniebeuge/ }));
   expect(await screen.findByText('Letztes Mal: 85 kg × 5')).toBeTruthy();
   fireEvent.click(screen.getAllByRole('button', { name: /85 kg × 5/ })[0]!);
@@ -253,7 +251,7 @@ test('own exercises show up in the picker, timed ones get a seconds field', asyn
 test('shows calmly that a finished workout is not on the server yet', async () => {
   const { port, state } = fakePort([rec(finished())]);
   state.pending = 1;
-  render(<HistoryScreen port={port} {...ids} />);
+  render(<DevelopmentScreen port={port} {...ids} />);
   const note = await screen.findByRole('status');
   expect(note.textContent).toMatch(/noch nicht auf dem Server/i);
   expect(note.textContent).toMatch(/sicher/);
@@ -451,21 +449,11 @@ test('WorkoutScreen starts a given routine', async () => {
   expect(screen.getByText('Push')).toBeTruthy();
 });
 
-test('history has a per-exercise view with last values and progress', async () => {
+test('Entwicklung lists the exercises with last values and progress', async () => {
   const { port } = fakePort([rec(finished('a', 5000)), rec(finished('b', 9000))]);
-  render(<HistoryScreen port={port} {...ids} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Je Übung' }));
+  render(<DevelopmentScreen port={port} {...ids} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Kniebeuge' }));
   expect(await screen.findByText('Letztes Mal: 85 kg × 5')).toBeTruthy();
-});
-
-test('a Hevy copy of an own session is listed once in the history', async () => {
-  const own = finished('own', 9000);
-  const hv = { ...finished('hv', 9500), source: 'hevy' as const, title: 'Hevy-Beine' };
-  const { port } = fakePort([rec(own), rec(hv)]);
-  render(<HistoryScreen port={port} {...ids} />);
-  await screen.findByRole('button', { name: /Beine/ });
-  expect(screen.queryByRole('button', { name: /Hevy-Beine/ })).toBeNull();
 });
 
 // ---- fix round 2 ----
@@ -792,30 +780,26 @@ describe('next time, in the history of the latest workout', () => {
   const step = (over: object = {}) => ({ exerciseId: 'pf-squat', title: 'Kniebeuge', weightKg: 62.5, reps: 8, why: 'progress', reason: 'weil du alle Wiederholungen geschafft hast', forWorkoutId: 'b', atMs: 8000, ...over });
   it('shows one line per exercise with the reason', async () => {
     const { port } = fakePort([rec(finished('a', 5000)), rec(finished('b', 9000)), stats([step()])]);
-    render(<HistoryScreen port={port} {...ids} />);
-    fireEvent.click((await screen.findAllByRole('button', { name: /Beine/ }))[0]);
+    render(<WorkoutDetail port={port} record={rec(finished('b', 9000))} now={ids.now} onBack={() => {}} />);
     expect(await screen.findByText('Nächstes Mal: 62,5 kg × 8 – weil du alle Wiederholungen geschafft hast.')).toBeTruthy();
     expect(screen.queryByText('Kommt nach der Auswertung')).toBeNull();
   });
   it('shows nothing about the next time until the publish arrives', async () => {
     const { port } = fakePort([rec(finished('a', 5000)), rec(finished('b', 9000))]);
-    render(<HistoryScreen port={port} {...ids} />);
-    fireEvent.click((await screen.findAllByRole('button', { name: /Beine/ }))[0]);
+    render(<WorkoutDetail port={port} record={rec(finished('b', 9000))} now={ids.now} onBack={() => {}} />);
     await screen.findByText('Kniebeuge');
     expect(screen.queryByText(/Nächstes Mal|nach der Auswertung/)).toBeNull();
   });
   it('an older workout shows neither', async () => {
     const { port } = fakePort([rec(finished('a', 5000)), rec(finished('b', 9000)), stats([step()])]);
-    render(<HistoryScreen port={port} {...ids} />);
-    fireEvent.click((await screen.findAllByRole('button', { name: /Beine/ }))[1]);
+    render(<WorkoutDetail port={port} record={rec(finished('a', 5000))} now={ids.now} onBack={() => {}} />);
     await screen.findByText('Kniebeuge');
     expect(screen.queryByText(/Nächstes Mal/)).toBeNull();
     expect(screen.queryByText('Kommt nach der Auswertung')).toBeNull();
   });
   it('a step for another workout is not shown for this one', async () => {
     const { port } = fakePort([rec(finished('b', 9000)), stats([step({ forWorkoutId: 'zzz', atMs: 1 })])]);
-    render(<HistoryScreen port={port} {...ids} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Beine/ }));
+    render(<WorkoutDetail port={port} record={rec(finished('b', 9000))} now={ids.now} onBack={() => {}} />);
     await screen.findByText('Kniebeuge');
     expect(screen.queryByText(/Nächstes Mal|nach der Auswertung/)).toBeNull();
   });
@@ -890,17 +874,4 @@ test('the routine editor has steppers per exercise and removes an exercise', asy
   fireEvent.click(screen.getByRole('button', { name: 'Übung entfernen Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
   await waitFor(() => expect((map.get('routine:r1')!.body as GymWorkout).exercises.map((e) => e.sets.length)).toEqual([3]));
-});
-
-test('the history shows 8 weeks by month and the older ones on request', async () => {
-  const day = 24 * 3600 * 1000;
-  const nowMs = Date.UTC(2026, 10, 7, 12);
-  const { port } = fakePort([rec(finished('new', nowMs - day)), rec({ ...finished('old', nowMs - 100 * day), title: 'Alt' })]);
-  render(<HistoryScreen port={port} now={() => nowMs} newId={() => 'x'} />);
-  await screen.findByRole('button', { name: /Beine/ });
-  expect(screen.getByRole('heading', { name: 'November 2026' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: /^Alt/ })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Ältere anzeigen' }));
-  expect(screen.getByRole('button', { name: /^Alt/ })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Ältere anzeigen' })).toBeNull();
 });

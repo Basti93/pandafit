@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { CoachScreen } from '../../src/tracking/ui/CoachScreen';
 import { TodayCard } from '../../src/tracking/ui/TodayCard';
 import type { TrackedRecord } from '../../src/shared/records';
@@ -34,6 +34,16 @@ test('spontaneous mode shows the advice instead of the week', async () => {
   render(<CoachScreen port={port} {...env} />);
   expect(await screen.findByRole('heading', { name: /^Heute: .* – weil / })).toBeTruthy();
   expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
+});
+
+test('spontaneous mode lists Monday to today without any plan', async () => {
+  const { port } = fakePort([plan(['gym', 'bike', 'run', 'gym', 'bike']), frameRecord({ mode: 'spontaneous', minutes: null }, 1)]);
+  render(<CoachScreen port={port} {...env} />);
+  const week = await screen.findByRole('list', { name: 'Diese Woche' });
+  const items = within(week).getAllByRole('listitem');
+  expect(items.map((li) => li.textContent)).toEqual(['Montag', 'Dienstag', 'Mittwoch']);
+  expect(items).toHaveLength(3);
+  expect(week.textContent).not.toMatch(/Kraft|Rad|Laufen/);
 });
 
 test('"Heute nur" writes frame.today for today only', async () => {

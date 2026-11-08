@@ -2,7 +2,8 @@ import './tracking.css';
 
 export { WorkoutScreen } from './WorkoutScreen';
 export { RoutinesScreen } from './RoutinesScreen';
-export { HistoryScreen } from './HistoryScreen';
+export { DevelopmentScreen, WorkoutDetail } from './HistoryScreen';
+export { ActivityHistory } from './ActivityHistory';
 export { CatalogScreen } from './CatalogScreen';
 export { ExercisePicker } from './ExercisePicker';
 export { RunScreen } from './RunScreen';

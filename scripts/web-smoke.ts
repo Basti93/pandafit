@@ -77,8 +77,7 @@ try {
   const nav = (p: Page) => p.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true });
   const seeWorkout = async (p: Page, timeout = 15_000) => {
     await nav(p).click();
-    await seg(p, 'Verlauf').click();
-    await p.getByRole('group', { name: 'Ansicht' }).getByRole('button', { name: 'Je Übung', exact: true }).click();
+    await seg(p, 'Entwicklung').click();
     await p.getByRole('button', { name: pickedTitle, exact: true }).waitFor({ timeout });
   };
   await seeWorkout(page);

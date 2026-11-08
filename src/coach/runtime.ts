@@ -45,6 +45,7 @@ import { daysOf, weeksOf } from './health/aggregate';
 import { findingsOf } from './health/findings';
 import { CoachTexts, HealthCoachText } from './health/coach-text';
 import { exportHealth } from './health/health-export';
+import { activityItems, exportActivities } from './activities-export';
 import { mirrorExercises } from './tracking/mirror-exercises';
 import { ChatCoach } from './chat/chat-coach';
 import { planHint, type TodayContext } from './chat/plan-hint';
@@ -717,6 +718,8 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
         mealsChanged(exportHealthNow(list.map((p) => p.id)));
         for (const p of list) { try { const body = healthContent(p.id); if (body) void healthText.tick(p.id, body).then((wrote) => { if (wrote) mealsChanged(exportHealthNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
       }
+      // All recent activities from every source for the web, only on change, never with a ride open. Never throws.
+      if (free) mealsChanged(exportActivities({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: (id) => { try { return activityItems(activitiesOf(id), garminData(id)?.activities ?? []); } catch { return null; } } }));
       // The bike plan and the counted rides for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportBike({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, state: (id) => { try { return coach.state(id); } catch { return null; } }, samples: (rideId) => cleanSamples(readRide(dir, rideId).samples).samples }));
       // Separate safeguard: the account sync must never disturb a ride or the coach, and is not awaited here.
