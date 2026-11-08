@@ -232,6 +232,7 @@ const healthBody = (arzt: boolean) => ({
   coachText: { week: monday, text: 'Insgesamt eine ruhige Woche: Deine Fitness zeigt leicht nach oben, bei den Schritten ist noch etwas Luft zum Richtwert, und ein zweiter Krafttag würde zu den WHO-Empfehlungen passen.' },
 });
 records.push(rec('health', 'health', healthBody(false), NOW - 1800_000));
+records.push(rec('daytext', 'today', { type: 'daytext', date: todayKey, text: 'Drei Trainings diese Woche, und der Rücken hält gut mit. Heute ist Zug dran, dann hast du dir den Abend verdient.', atMs: NOW - 3600_000 }, NOW - 3600_000));
 
 // ---------- the meal plan ----------
 // Invented recipes of the collection browser. The shots have no coach: its recipe routes are played by the script further down,
@@ -486,6 +487,8 @@ async function main() {
   await page.waitForTimeout(1500);
 
   await shot('heute');
+  await step('heute-gestern', async () => { await page.getByRole('button', { name: 'Tag zurück' }).click(); await page.getByRole('heading', { level: 1, name: 'Gestern' }).waitFor({ timeout: 3000 }); await shot('heute-gestern'); await page.getByRole('button', { name: 'Tag vor' }).click(); });
+  await step('heute-morgen', async () => { await page.getByRole('button', { name: 'Tag vor' }).click(); await page.getByRole('heading', { level: 1, name: 'Morgen' }).waitFor({ timeout: 3000 }); await shot('heute-morgen'); await page.getByRole('button', { name: 'Tag zurück' }).click(); await page.getByRole('heading', { level: 1, name: 'Heute' }).waitFor({ timeout: 3000 }); });
   await step('heute-essen', async () => { await page.getByRole('region', { name: 'Essen heute' }).waitFor({ timeout: 3000 }); await shot('heute-essen'); });
   await step('fahrt', async () => {
     liveOn = true;

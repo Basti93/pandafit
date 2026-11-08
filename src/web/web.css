@@ -232,7 +232,7 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-dayhead { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 2.75rem; margin-bottom: .5rem; padding-right: 3.4rem; }
 .tk-daytitle { flex: 1; text-align: center; min-width: 0; }
 .tk-daytitle .tk-title { margin: 0; line-height: 1.2; }
-.tk-daytitle p { margin: 0; font-size: .85rem; }
+.tk-daytitle p, .tk-screen .tk-daytitle .tk-title + p.muted { margin: .1rem 0 0; font-size: .85rem; }
 .tk-screen .tk-dayarrow { flex: none; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 1.4rem; line-height: 1; display: grid; place-items: center; box-shadow: none; }
 .tk-screen .tk-dayarrow:disabled { opacity: .35; }
 .tk-coachline { display: flex; align-items: flex-start; gap: .75rem; }

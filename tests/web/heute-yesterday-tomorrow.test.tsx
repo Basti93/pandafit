@@ -111,10 +111,11 @@ describe('Morgen', () => {
     expect(screen.queryByRole('button', { name: 'Etwas anderes heute?' })).toBeNull();
     expect(screen.queryByLabelText('Satz vom Coach')).toBeNull();
   });
-  it('shows no card without a plan', async () => {
+  it('says calmly that nothing is planned yet without a plan', async () => {
     await boot([]);
     go('Tag vor');
-    expect(screen.queryByRole('region', { name: 'Training morgen' })).toBeNull();
+    const card = await screen.findByRole('region', { name: 'Training morgen' });
+    expect(card.textContent).toContain('Für morgen ist noch kein Training geplant.');
   });
   it('says so when there is no meal plan for tomorrow, and shows it when there is', async () => {
     await boot([meals([1])]);
