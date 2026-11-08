@@ -20,7 +20,8 @@ import { LookBack } from './StatsScreen';
 import { WaitingProposal } from './WaitingProposal';
 
 /** Woche is the week: seven days, what changed lately, rows that open the goal, the rules and the chat with the coach, and the Rückblick. */
-export function CoachScreen({ port, now, newId, showPrefs = true }: { port: TrackingPort; now: () => number; newId: () => string; showPrefs?: boolean }) {
+/** `openChat`: the page opens with the chat already open ("Mit dem Coach reden" on Heute leads straight there). */
+export function CoachScreen({ port, now, newId, showPrefs = true, openChat = false }: { port: TrackingPort; now: () => number; newId: () => string; showPrefs?: boolean; openChat?: boolean }) {
   const chat = usePortRecords(port, 'chat').all;
   const plans = usePortRecords(port, 'weekplan').all;
   const changeRecs = usePortRecords(port, 'change').all;
@@ -30,7 +31,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const workoutRecords = usePortRecords(port, 'workout').all;
   const statsRecords = usePortRecords(port, 'stats').all;
   const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | null>(null);
+  const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | null>(openChat ? 'chat' : null);
   const [open, setOpen] = useState(false);
   const goal = useGoal(port, now());
   // Until a goal was picked (or the coach changed it) the shown one is only the default.

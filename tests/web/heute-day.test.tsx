@@ -130,7 +130,8 @@ describe('Heute as a day page', () => {
     const toCoach = screen.getByRole('button', { name: 'Mit dem Coach reden' });
     expect(toCoach.className).toBe('secondary'); // a jump is an outline button, not a text link
     fireEvent.click(toCoach);
-    expect(await screen.findByRole('heading', { level: 1, name: 'Woche' })).toBeTruthy();
+    // Straight into the chat, not only onto the week page.
+    expect(await screen.findByRole('dialog', { name: 'Coach' })).toBeTruthy();
   });
   it('without a health record there is no Dein Körper', async () => {
     await boot([]);
