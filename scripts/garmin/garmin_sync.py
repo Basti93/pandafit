@@ -313,6 +313,11 @@ class Sync:
                 self.download(parts[1])
 
     def run(self):
+        if self.options.get("quick"):
+            # Light hourly check: only new activities and their recent files, whatever the backfill state is.
+            self.catch_up()
+            self.recent_files()
+            return
         self.singletons()
         self.activities()
         self.recent_files()
@@ -347,8 +352,11 @@ def run_sync(client, db_path, today, options, sleep=time.sleep, emit=lambda **_m
             code = stop.code
             status = {EXIT_REAUTH: "reauth", EXIT_RATE: "rate-limit"}.get(code, "failed")
         con.execute("UPDATE sync_runs SET ended_at = ?, status = ?, stats = ? WHERE id = ?", (sync.stamp(), status, json.dumps(sync.stats), run_id))
-        complete = all(sync.get_state(stream)[1] for stream in STREAMS)
-        emit(status=status, complete=complete, **sync.stats)
+        if options.get("quick"):
+            emit(status=status, **sync.stats)  # no "complete": a quick run must not overwrite the stored state
+        else:
+            complete = all(sync.get_state(stream)[1] for stream in STREAMS)
+            emit(status=status, complete=complete, **sync.stats)
         return code
     finally:
         con.close()
@@ -361,6 +369,7 @@ def main():
     parser.add_argument("--max-days", type=int, default=30, help="Ältere Tage je Lauf")
     parser.add_argument("--max-files", type=int, default=20, help="Original-Dateien je Lauf")
     parser.add_argument("--force", action="store_true", help="Pause nach einer Sperre übergehen")
+    parser.add_argument("--quick", action="store_true", help="Nur neue Aktivitäten abgleichen")
     parser.add_argument("--reset", choices=STREAMS, help="Datenstrom zurückspulen, Daten bleiben")
     args = parser.parse_args()
 
@@ -382,7 +391,7 @@ def main():
         kind = classify(error)
         emit(status="login-failed", kind=kind)
         return {"rate": EXIT_RATE, "auth": EXIT_REAUTH}.get(kind, EXIT_FAILED)
-    return run_sync(client, args.db, dt.date.today(), {"max_days": args.max_days, "max_files": args.max_files, "force": args.force}, emit=emit)
+    return run_sync(client, args.db, dt.date.today(), {"max_days": args.max_days, "max_files": args.max_files, "force": args.force, "quick": args.quick}, emit=emit)
 
 
 if __name__ == "__main__":

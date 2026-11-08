@@ -294,6 +294,36 @@ class SyncTest(unittest.TestCase):
         gs.run_sync(Fake(first="2020-01-01"), fresh, TODAY, options, sleep=lambda _s: None, emit=lambda **m: lines.append(m), now=lambda: self.now)
         self.assertFalse(lines[-1]["complete"])
 
+    def quick_sync(self, client, lines=None):
+        options = {"max_days": 30, "max_files": 20, "force": False, "quick": True}
+        emit = (lambda **m: lines.append(m)) if lines is not None else (lambda **_m: None)
+        return gs.run_sync(client, self.db, TODAY, options, sleep=lambda _s: None, emit=emit, now=lambda: self.now)
+
+    def test_quick_stores_only_new_activities(self):
+        fake = Fake(activities=3)
+        self.run_sync(fake)
+        daily = self.count("daily")
+        fake.items[:0] = [{"activityId": 7000 + i, "startTimeGMT": "2026-11-01 08:00:00", "activityType": {"typeKey": "cycling"}} for i in range(2)]
+        fake.calls.clear()
+        lines = []
+        self.assertEqual(self.quick_sync(fake, lines), 0)
+        self.assertEqual(self.count("activities"), 5)
+        self.assertEqual(self.count("daily"), daily)
+        self.assertEqual([c for c in fake.calls if c.split(":")[0] in ("stats", "sleep", "hrv", "profile", "ftp", "devices")], [])
+        self.assertNotIn("complete", lines[-1])
+
+    def test_quick_runs_before_backfill_complete(self):
+        fake = Fake(activities=250)
+        fake.fail["page:100"] = GarminConnectConnectionError("Netz weg")
+        self.run_sync(fake)
+        fake.fail.clear()
+        before = self.state("activities")
+        self.assertEqual(before[1], 0)
+        fake.items.insert(0, {"activityId": 9, "startTimeGMT": "2026-11-01 08:00:00", "activityType": {"typeKey": "cycling"}})
+        self.assertEqual(self.quick_sync(fake), 0)
+        self.assertEqual(self.rows("SELECT COUNT(*) FROM activities WHERE activity_id = '9'")[0][0], 1)
+        self.assertEqual(self.state("activities"), before)
+
     def later_run(self, client, days, **limits):
         options = {"max_days": 30, "max_files": 20, "force": False, **limits}
         return gs.run_sync(client, self.db, TODAY + dt.timedelta(days=days), options, sleep=lambda _s: None, emit=lambda **_m: None, now=lambda: self.now)
