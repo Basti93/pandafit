@@ -1,5 +1,5 @@
 /** The one list of record kinds. Every screen, store and route derives from it. */
-export const RECORD_KINDS = ['workout', 'routine', 'exercise', 'mobility', 'complaint', 'plan', 'mealplan', 'together', 'run', 'stats', 'chat', 'weekplan', 'coachprefs', 'loadstep', 'studio', 'change', 'goal', 'rule', 'frame', 'task', 'contact', 'bike', 'ride', 'health', 'activities'] as const;
+export const RECORD_KINDS = ['workout', 'routine', 'exercise', 'mobility', 'complaint', 'plan', 'mealplan', 'together', 'run', 'stats', 'chat', 'weekplan', 'coachprefs', 'loadstep', 'studio', 'change', 'goal', 'rule', 'frame', 'task', 'contact', 'bike', 'ride', 'health', 'activities', 'daytext'] as const;
 export type RecordKind = (typeof RECORD_KINDS)[number];
 /** Stored with sync cursors: a version that did not know a kind skipped its records, so a changed list fetches everything again. */
 export const RECORD_KINDS_SIGNATURE = [...RECORD_KINDS].sort().join(',');
