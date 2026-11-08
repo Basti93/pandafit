@@ -9,11 +9,11 @@ export function CoachLine({ text, onAsk, gesture, dayClip }: { text: string; onA
     <section className="card tk-coachline" aria-label="Satz vom Coach">
       <PandaPortrait gesture={gesture} dayClip={dayClip} />
       <div className="tk-pandahead">
-        <span className="tk-pandaname">Panda</span>
+        <span className="tk-pandaname">Bo</span>
         <span className="tk-pandarole">Dein Coach</span>
       </div>
       <p className="tk-coachtext">{text}</p>
-      {onAsk && <button type="button" className="tk-coachask" onClick={onAsk}>Panda fragen</button>}
+      {onAsk && <button type="button" className="tk-coachask" onClick={onAsk}>Frag Bo, deinen Coach</button>}
     </section>
   );
 }

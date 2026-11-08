@@ -164,7 +164,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   );
 
   return (
-    <Sheet title="Coach" display onClose={onClose} actions={pins} lead={<PandaPortrait className="tk-pandahead-mini" gesture={gesture} />}>
+    <Sheet title="Bo, dein Coach" display onClose={onClose} actions={pins} lead={<PandaPortrait className="tk-pandahead-mini" gesture={gesture} />}>
       {notes.length > 0 && (
         <div className="tk-notes">
           <button type="button" className="link" aria-expanded={notesOpen} onClick={() => setNotesOpen(!notesOpen)}>Zuletzt geändert {notesOpen ? '⌃' : '⌄'}</button>

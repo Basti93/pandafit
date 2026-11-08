@@ -4,7 +4,7 @@ import { fireEvent, screen } from '@testing-library/react';
 export async function openChat(): Promise<HTMLElement> {
   const row = await screen.findAllByRole('button', { name: /^(Coach|Woche planen)/ });
   fireEvent.click(row.find((b) => b.textContent?.startsWith('Coach')) ?? row[0]!);
-  return screen.findByRole('dialog', { name: 'Coach' });
+  return screen.findByRole('dialog', { name: 'Bo, dein Coach' });
 }
 
 /** Open proposals sit behind one slim strip above the chat input ("1 Vorschlag ›"); it opens them in a small sheet. */

@@ -57,17 +57,17 @@ describe('Heute as a day page', () => {
     const page = coach.closest('.tk-daypage')!;
     expect(page.lastElementChild!.contains(tg)).toBe(true);
   });
-  it('"Panda fragen" on Heute opens the real coach composer', async () => {
+  it('"Frag Bo, deinen Coach" on Heute opens the real coach composer', async () => {
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW })]);
     const card = screen.getByLabelText('Satz vom Coach');
-    expect(card.textContent).toContain('Panda');
+    expect(card.textContent).toContain('Bo');
     expect(card.textContent).toContain('Dein Coach');
     expect(card.querySelector('img')?.getAttribute('alt')).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: 'Panda fragen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Coach' }));
     expect(await screen.findByLabelText('Nachricht an den Coach')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 1, name: 'Heute' })).toBeNull();
     // The same chat sheet as the "Coach" row on Woche: one dialog named Coach that holds the composer.
-    expect(within(screen.getByRole('dialog', { name: 'Coach' })).getByLabelText('Nachricht an den Coach')).toBeTruthy();
+    expect(within(screen.getByRole('dialog', { name: 'Bo, dein Coach' })).getByLabelText('Nachricht an den Coach')).toBeTruthy();
   });
   it('an open synced workout comes first: "Weitermachen" opens it, no "Ansehen und anpassen", Panda stays below', async () => {
     const open = rec('workout', 'w-open', { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] });
@@ -153,7 +153,7 @@ describe('Heute as a day page', () => {
     expect(toCoach.className).toBe('secondary'); // a jump is an outline button, not a text link
     fireEvent.click(toCoach);
     // Straight into the chat, not only onto the week page.
-    expect(await screen.findByRole('dialog', { name: 'Coach' })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: 'Bo, dein Coach' })).toBeTruthy();
   });
   it('without a health record there is no Dein Körper', async () => {
     await boot([]);
