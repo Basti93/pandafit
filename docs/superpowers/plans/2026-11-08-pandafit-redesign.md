@@ -98,7 +98,11 @@ Paths without a directory in the Web rows above refer to `src/tracking/ui/` for 
 
 ## Task 5 — Rive Panda in Web
 
-The [Rive source project](../../../design/panda-rive/README.md) contains the three core gestures and seven optional clips. The CLI built it and rendered each trigger. The optional clips are `breathe`, `flex`, `bike`, `run`, `yoga`, `read` and `knit`. They can use the same artboard when the app later chooses a gesture for a specific day or event. Keep the optional clips out of the initial app wiring. Continue from the [local export](../../../design/panda-rive/panda-coach.riv). It was verified with Canvas Lite 2.49.4 and includes the Free Workspace Rive splash screen.
+The [Rive source project](../../../design/panda-rive/README.md) contains the three core gestures and seven optional clips. The CLI built it and rendered each trigger. The optional clips are `breathe`, `flex`, `bike`, `run`, `yoga`, `read` and `knit`. They can use the same artboard when the app later chooses a gesture for a specific day or event. **Decision 08.11.2026: wire all ten clips, calm motion only.** One clip at a time, never chained, never on a fast loop. Mapping:
+  - `greet` once when Heute (today) opens and on “Hallo, Panda”; `listen` when the real chat opens; `nod` on a newly arrived coach reply.
+  - Day clip once after `greet` on today, chosen from the real day state: `bike` for a ride day, `run` for a run day, `flex` for a strength day, `yoga` for a mobility/finisher or rest day, `read` or `knit` (alternating by date) for a rest day without mobility. No day clip on Gestern/Morgen or while an open workout is shown.
+  - Idle: `breathe` at most every 30–45 s while Heute or the chat is visible and nothing else plays; stop when hidden.
+  - Reduced motion: static still, no clips. Continue from the [local export](../../../design/panda-rive/panda-coach.riv). It was verified with Canvas Lite 2.49.4 and includes the Free Workspace Rive splash screen.
 
 **Files** — New `design/panda-rive/` (RML, required source assets and a short build README), `src/tracking/ui/{PandaPortrait.tsx,panda-rive.ts,panda.riv}`, `src/web/today/CoachLine.tsx`, `src/tracking/ui/CoachChat.tsx`, `package.json`, lockfile, `tests/tracking/panda-portrait.test.tsx`. Inspect `vite.web.config.ts` and `web-server/index.ts` for serving and cache behavior.
 
