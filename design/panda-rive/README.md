@@ -1,0 +1,47 @@
+# Panda coach motion
+
+Open `scene.rml` with the Rive CLI from the repository root.
+
+```sh
+rive design/panda-rive --verify
+rive design/panda-rive
+```
+
+The transparent artboard is named `Panda`. Its default state machine is `PandaCoach`, bound to the default instance of `CoachGestures`. Each View Model trigger plays one clip and returns to rest. The host provides the text and decides when to fire a trigger.
+
+| Trigger | Gesture | Timeline at 60 fps |
+| --- | --- | --- |
+| `greet` | Lift the mug, blink and set the mug back down | 81 frames |
+| `listen` | Tilt the head and blink | 44 frames |
+| `nod` | Nod and settle | 53 frames |
+| `breathe` | Let the shoulders rise and settle on a slow breath | 189 frames |
+| `flex` | Set down the mug, flex both paws and pick it back up | 135 frames |
+| `bike` | Pedal through two revolutions | 143 frames |
+| `run` | Jog with alternating strides and arm swings | 139 frames |
+| `yoga` | Wobble and settle in tree pose | 170 frames |
+| `read` | Read and turn one page | 154 frames |
+| `knit` | Work a short row as the yarn ball unwinds | 166 frames |
+
+The head, eyelids, torso, mug, steam and left and right shoulder pivots are independently keyed. During `greet` the forearms rotate around fixed shoulder pivots. During `nod` the torso, paws and mug follow the head down. The artwork uses vector paths and the original Pandafit palette. The source has no external assets or scripts.
+
+To drive the coach gestures in a headless preview:
+
+```sh
+printf '%s\n' \
+  'advance 3' \
+  'data greet=1' 'advance 31' 'screenshot /tmp/panda-greet.png' 'advance 65' \
+  'data listen=1' 'advance 20' 'screenshot /tmp/panda-listen.png' 'advance 35' \
+  'data nod=1' 'advance 24' 'screenshot /tmp/panda-nod.png' 'advance 40' \
+  'data breathe=1' 'advance 81' 'screenshot /tmp/panda-breathe.png' 'advance 120' \
+  'data flex=1' 'advance 63' 'screenshot /tmp/panda-flex.png' 'advance 84' 'quit' |
+  rive design/panda-rive --commands
+```
+
+For an activity preview, replace the sequence with the desired trigger. This example captures the cycling pose.
+
+```sh
+printf '%s\n' 'advance 3' 'data bike=1' 'advance 76' 'screenshot /tmp/panda-bike.png' 'quit' |
+  rive design/panda-rive --commands
+```
+
+Verified with Rive CLI 1.9.2. Each trigger rendered a distinct pose and returned to the same initial frame. For a signed runtime file, run `rive login` and then `rive design/panda-rive --publish=local`. The CLI returned exit code 3 when run without an account session. See the [CLI documentation](https://rive.app/docs/cli/overview) for account and export options.

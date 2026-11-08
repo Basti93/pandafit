@@ -12,3 +12,4 @@ src/web/public/exercises/fedb
 # Recipe collection data lives only in the coach volume
 /recipes/
 recipes.db*
+design/panda-rive/build/

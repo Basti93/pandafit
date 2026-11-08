@@ -1,0 +1,727 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
+
+@font-face {
+  font-family: 'Bambus Display';
+  src: url(data:font/ttf;base64,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) format('truetype');
+  font-display: swap;
+}
+
+#pf-journal {
+  --paper: light-dark(#fbf8ef, #1c2820);
+  --ink: light-dark(#22372b, #f5ecd8);
+  --muted-ink: light-dark(#536454, #b7c5ae);
+  --rule: light-dark(#d5d4bf, #405044);
+  --selected: light-dark(#e1e8d3, #354734);
+  --green: light-dark(#34513b, #b5cc8d);
+  --apricot: #efab76;
+  --on-apricot: #302417;
+  --display: Fraunces, Georgia, serif;
+  --bambus: 'Bambus Display', Fraunces, Georgia, serif;
+  --body: 'DM Sans', -apple-system, system-ui, sans-serif;
+  font: 400 14px/1.5 var(--body);
+}
+#pf-journal *, #pf-journal *::before, #pf-journal *::after { box-sizing: border-box; }
+#pf-journal [hidden] { display: none !important; }
+#pf-journal button { font: inherit; color: inherit; }
+#pf-journal button:focus-visible, #pf-journal summary:focus-visible {
+  outline: 2px solid currentColor; outline-offset: 3px;
+}
+#pf-journal .pf-switch {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px;
+  padding: 2px 94px 12px 0;
+}
+#pf-journal .pf-switch > span {
+  font-size: 12px; font-weight: 600;
+}
+#pf-journal .pf-modes { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--border); border-radius: 30px; }
+#pf-journal .pf-modes button {
+  border: 0; background: none; min-height: 36px; padding: 4px 12px; border-radius: 30px;
+  white-space: nowrap;
+}
+#pf-journal .pf-modes button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+#pf-journal .pf-web {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  color: var(--ink); background: var(--paper); border-block: 1px solid var(--rule);
+}
+#pf-journal .pf-brand {
+  grid-column: 1; grid-row: 1; display: flex; align-items: center;
+  padding: 15px 20px 15px clamp(17px, 3vw, 33px);
+}
+#pf-journal .pf-brand strong { font: 400 27px/1 var(--bambus); letter-spacing: .06em; }
+#pf-journal .pf-rail {
+  grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; gap: 1px 19px;
+  justify-content: center; padding-inline: 10px;
+}
+#pf-journal .pf-navitem, #pf-journal .pf-profile {
+  background: none; border: 0; min-height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 0; text-align: left;
+}
+#pf-journal .pf-navitem {
+  border-block-end: 2px solid transparent; margin-bottom: -1px; z-index: 1;
+}
+#pf-journal .pf-navitem[aria-current="page"] { border-color: var(--green); font-weight: 700; }
+#pf-journal .pf-navitem:hover, #pf-journal .pf-profile:hover { text-decoration: underline; text-underline-offset: 4px; }
+#pf-journal .pf-navitem svg { display: none; width: 17px; height: 17px; }
+#pf-journal .pf-profile svg { width: 17px; height: 17px; }
+#pf-journal .pf-profile {
+  grid-column: 3; grid-row: 1; align-self: center;
+  margin-right: clamp(17px, 3vw, 33px); font-size: 13px;
+}
+#pf-journal .pf-page {
+  grid-column: 1 / -1; grid-row: 2; border-top: 1px solid var(--rule);
+  padding: 0 clamp(17px, 3vw, 33px) 24px; min-width: 0; min-height: 480px;
+}
+#pf-journal .pf-page [data-view] { min-width: 0; }
+#pf-journal .pf-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--ink); padding: 12px 0; margin-bottom: 23px;
+}
+#pf-journal .pf-head > div:first-child {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 13px;
+}
+#pf-journal .pf-overline {
+  margin: 0; font-size: 13px; font-weight: 650; color: var(--muted-ink);
+}
+#pf-journal .pf-page h2, #pf-journal .pf-page h3, #pf-journal .pf-page p { margin: 0; }
+#pf-journal .pf-head h2 {
+  font: 600 24px/1.15 var(--display); letter-spacing: -.045em;
+  order: -1;
+}
+#pf-journal .pf-days { display: flex; align-items: center; gap: 1px; }
+#pf-journal .pf-iconbtn {
+  display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px;
+  padding: 0; background: transparent; border: 0;
+}
+#pf-journal .pf-iconbtn:hover:not(:disabled) { background: var(--selected); }
+#pf-journal .pf-iconbtn:disabled { opacity: .3; }
+#pf-journal .pf-iconbtn svg { width: 17px; height: 17px; }
+#pf-journal .pf-daygrid {
+  display: grid; grid-template-columns: minmax(0, 1.52fr) minmax(0, 1fr);
+  grid-template-areas: "training panda" "meals body" "meals together";
+  gap: 21px 0; align-items: start;
+}
+#pf-journal .pf-daygrid:has(.pf-cover[hidden]) {
+  grid-template-areas: "training meals";
+}
+#pf-journal .pf-daygrid .pf-training { grid-area: training; }
+#pf-journal .pf-daygrid .pf-food { grid-area: meals; }
+#pf-journal .pf-daygrid .pf-body { grid-area: body; }
+#pf-journal .pf-daygrid .pf-together { grid-area: together; }
+#pf-journal .pf-daygrid .pf-training, #pf-journal .pf-daygrid .pf-food { margin-right: clamp(16px, 3vw, 33px); }
+#pf-journal .pf-daygrid .pf-body, #pf-journal .pf-daygrid .pf-together { margin-left: clamp(16px, 3vw, 33px); }
+#pf-journal .pf-cover {
+  grid-area: panda; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 2px 9px; align-items: start; border-left: 1px solid var(--rule);
+  padding-left: clamp(16px, 3vw, 33px);
+}
+#pf-journal .pf-cover .pf-speaker {
+  font: 400 29px/1.02 var(--bambus); letter-spacing: .035em; color: var(--ink);
+}
+#pf-journal .pf-cover .pf-role { color: var(--muted-ink); font-size: 12px; margin-top: 3px; }
+#pf-journal .pf-cover blockquote {
+  margin: 8px 0 0; grid-column: 1 / -1; max-width: 36ch; font-size: 15px; line-height: 1.55;
+}
+#pf-journal .pf-hello {
+  display: grid; justify-items: center; align-self: start; min-height: 44px;
+  border: 0; background: none; padding: 0;
+  color: var(--green); font-size: 12px; white-space: nowrap;
+}
+#pf-journal .pf-hello:hover span { text-decoration: underline; text-underline-offset: 3px; }
+#pf-journal .pf-art {
+  display: block; width: 112px; height: 97px; margin-top: -11px;
+  filter: drop-shadow(0 0 1px light-dark(transparent, #b8b59c));
+}
+#pf-journal .pf-chat { grid-column: 1 / -1; }
+#pf-journal .pf-chat summary { color: var(--green); }
+#pf-journal .pf-chat p + p { margin-top: 8px; }
+#pf-journal .pf-chat-thread { border-left: 1px solid var(--rule); padding-left: 11px; }
+#pf-journal .pf-chat-thread p { overflow-wrap: anywhere; }
+#pf-journal .pf-group { min-width: 0; border-top: 1px solid var(--rule); padding-top: 10px; }
+#pf-journal .pf-group .pf-overline { margin-bottom: 8px; }
+#pf-journal .pf-group .pf-overline svg { display: none; }
+#pf-journal .pf-daygrid .pf-training { border-top: 0; padding-top: 0; }
+#pf-journal .pf-daygrid .pf-training h3 { font-size: clamp(31px, 4.6vw, 47px); letter-spacing: -.057em; }
+#pf-journal .pf-exercises { margin: 13px 0 0; padding: 0; list-style: none; color: var(--ink); }
+#pf-journal .pf-exercises li { border-top: 1px solid var(--rule); padding-block: 5px; }
+#pf-journal .pf-exercises li:last-child { border-bottom: 1px solid var(--rule); }
+#pf-journal .pf-group h3 {
+  font: 600 clamp(22px, 3.6vw, 31px)/1.05 var(--display); letter-spacing: -.044em;
+  margin-bottom: 6px;
+}
+#pf-journal .pf-muted { color: var(--muted-ink); }
+#pf-journal .pf-action {
+  display: inline-flex; align-items: center; gap: 9px; min-height: 44px;
+  padding: 7px 13px; border: 1px solid var(--apricot); border-radius: 4px;
+  background: var(--apricot); color: var(--on-apricot); font-weight: 700;
+}
+#pf-journal .pf-action:hover { filter: brightness(.95); }
+#pf-journal .pf-action svg { width: 15px; height: 15px; flex-shrink: 0; }
+#pf-journal .pf-day-actions { margin-top: 13px; display: grid; justify-items: start; gap: 4px; }
+#pf-journal .pf-disclosure summary {
+  display: list-item; width: fit-content; min-height: 44px; padding-block: 11px; font-weight: 600;
+}
+#pf-journal .pf-disclosure p { margin-bottom: 8px; }
+#pf-journal .pf-meals { list-style: none; padding: 0; margin: 0; }
+#pf-journal .pf-meals li + li { border-top: 1px solid var(--rule); margin-top: 8px; padding-top: 8px; }
+#pf-journal .pf-meal-label { display: block; font-size: 12px; color: var(--muted-ink); }
+#pf-journal .pf-meal-name { font-weight: 700; overflow-wrap: anywhere; }
+#pf-journal .pf-textlink {
+  min-height: 44px; padding: 0; border: 0; background: transparent;
+  text-align: left; text-decoration: underline; text-underline-offset: 3px;
+}
+#pf-journal .pf-bodyline { margin: 1px 0 0; }
+#pf-journal .pf-list { list-style: none; padding: 0; margin: 16px 0 20px; border-top: 1px solid var(--rule); }
+#pf-journal .pf-list li {
+  display: grid; grid-template-columns: minmax(46px, 78px) minmax(0, 1fr) auto;
+  gap: 8px 12px; align-items: center; min-height: 48px;
+  padding: 6px 10px; border-bottom: 1px solid var(--rule);
+}
+#pf-journal .pf-list li strong { font-weight: 700; }
+#pf-journal .pf-list li[aria-current="date"] { background: var(--selected); }
+#pf-journal .pf-list .pf-muted { font-size: 12px; }
+#pf-journal .pf-section { margin-top: 20px; }
+#pf-journal .pf-section .pf-action { margin-top: 12px; }
+
+#pf-journal .pf-ride {
+  --ride-bg: #17251c; --ride-ink: #fff4dc; --ride-muted: #c1cbb9; --ride-line: #495c4b;
+  background: var(--ride-bg); color: var(--ride-ink); border: 1px solid var(--ride-line); border-radius: 5px;
+  overflow: hidden; min-width: 0;
+}
+#pf-journal .pf-ride-chrome {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px clamp(15px, 3vw, 30px); border-bottom: 1px solid var(--ride-line);
+  font-size: 12px; background: #203127;
+}
+#pf-journal .pf-ride-chrome strong { font: 400 20px var(--bambus); letter-spacing: .06em; }
+#pf-journal .pf-signal { display: flex; align-items: center; gap: 7px; }
+#pf-journal .pf-signal::before { content: ''; width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #bad695; }
+#pf-journal .pf-cockpit { padding: clamp(17px, 3vw, 32px); }
+#pf-journal .pf-cockpit .pf-overline { color: var(--ride-muted); }
+#pf-journal .pf-cockpit h2 { margin: 0; font: 600 clamp(28px, 5vw, 48px)/1.05 var(--display); letter-spacing: -.045em; }
+#pf-journal .pf-ride-head { display: flex; justify-content: space-between; align-items: end; gap: 10px; flex-wrap: wrap; margin-bottom: 21px; }
+#pf-journal .pf-ride-head > p { color: var(--ride-muted); margin: 0; }
+#pf-journal .pf-meters {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; border-block: 1px solid var(--ride-line);
+  margin: 0; padding: 16px 0;
+}
+#pf-journal .pf-meters > div { padding-inline: clamp(8px, 2.5vw, 24px); }
+#pf-journal .pf-meters > div:first-child { padding-left: 0; }
+#pf-journal .pf-meters > div + div { border-left: 1px solid var(--ride-line); }
+#pf-journal .pf-meters dt, #pf-journal .pf-smallmetrics dt { color: var(--ride-muted); }
+#pf-journal .pf-meters dd {
+  margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 5px;
+  font-weight: 600; font-size: clamp(36px, 8.1vw, 85px); letter-spacing: -.085em;
+  line-height: 1.14; font-variant-numeric: tabular-nums;
+}
+#pf-journal .pf-meters .pf-target dd { color: var(--apricot); }
+#pf-journal .pf-meters dd small, #pf-journal .pf-smallmetrics dd small {
+  font-size: 13px; font-weight: 400; color: var(--ride-muted); letter-spacing: 0;
+}
+#pf-journal .pf-smallmetrics { display: flex; flex-wrap: wrap; gap: 9px 25px; margin: 13px 0 22px; }
+#pf-journal .pf-smallmetrics > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 7px; }
+#pf-journal .pf-smallmetrics dd { margin: 0; font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+#pf-journal .pf-strip { margin: 0 0 17px; }
+#pf-journal .pf-strip figcaption { color: var(--ride-muted); display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+#pf-journal .pf-steps { position: relative; display: grid; grid-template-columns: 10fr 30fr 5fr; gap: 4px; align-items: end; height: 37px; }
+#pf-journal .pf-steps > span { background: #66836a; border-radius: 3px 3px 0 0; height: 55%; }
+#pf-journal .pf-steps > span:nth-child(2) { background: #b5cc8d; height: 100%; }
+#pf-journal .pf-steps > span:nth-child(3) { height: 42%; }
+#pf-journal .pf-steps .pf-marker {
+  background: var(--ride-ink); position: absolute; left: 74.8%; top: 0; width: 2px; height: 100%; border-radius: 0;
+}
+#pf-journal .pf-controls { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+#pf-journal .pf-controls button {
+  min-height: 44px; padding: 5px 11px; border: 1px solid var(--ride-line);
+  border-radius: 8px; background: #233629;
+}
+#pf-journal .pf-controls button:hover { background: #354c38; }
+#pf-journal .pf-controls button:disabled { opacity: .5; }
+#pf-journal .pf-simulate { min-height: 36px; }
+#pf-journal .pf-ride-note { margin: 0; min-height: 21px; color: var(--ride-muted); }
+#pf-journal .pf-ride-note[data-paused="true"] { color: var(--ride-ink); }
+@media (max-width: 620px) {
+  #pf-journal .pf-web { grid-template-columns: minmax(0, 1fr) auto; }
+  #pf-journal .pf-brand { padding-block: 12px; }
+  #pf-journal .pf-profile { grid-column: 2; }
+  #pf-journal .pf-page { padding-inline: 15px; min-height: 390px; }
+  #pf-journal .pf-rail {
+    grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0; padding: 0 5px; border-top: 1px solid var(--rule);
+  }
+  #pf-journal .pf-navitem {
+    flex-direction: column; justify-content: center; gap: 3px; padding: 4px 1px;
+    font-size: 11px; min-height: 51px; border-block: 2px solid transparent;
+  }
+  #pf-journal .pf-navitem[aria-current="page"] { border-block-color: var(--green) transparent; }
+  #pf-journal .pf-navitem svg { display: block; }
+}
+@media (max-width: 500px) {
+  #pf-journal .pf-head { margin-bottom: 16px; }
+  #pf-journal .pf-head > div:first-child { flex-direction: column; }
+  #pf-journal .pf-daygrid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "panda" "training" "meals" "body" "together";
+    gap: 15px;
+  }
+  #pf-journal .pf-daygrid:has(.pf-cover[hidden]) { grid-template-areas: "training" "meals"; }
+  #pf-journal .pf-daygrid .pf-group { margin-inline: 0; }
+  #pf-journal .pf-daygrid .pf-training { border-top: 1px solid var(--rule); padding-top: 10px; }
+  #pf-journal .pf-cover {
+    grid-template-columns: minmax(0, 1fr) 86px;
+    border: 0; padding: 0; column-gap: 14px;
+  }
+  #pf-journal .pf-hello { grid-column: 2; grid-row: 1 / 3; }
+  #pf-journal .pf-art { width: 86px; height: 78px; margin: 0; }
+  #pf-journal .pf-cover blockquote { grid-column: 1; grid-row: 2; margin-top: 3px; }
+  #pf-journal .pf-switch { padding-right: 35px; }
+}
+@media (pointer: coarse) {
+  #pf-journal .pf-modes button { min-height: 44px; }
+}
+</style>
+
+<div id="pf-journal">
+  <div class="pf-switch" role="group" aria-label="Ansicht im Designentwurf">
+    <span>Designstudie</span>
+    <div class="pf-modes">
+      <button type="button" class="cursor-interaction" data-mode="web" aria-controls="pf-web-preview" aria-pressed="true">Web-App</button>
+      <button type="button" class="cursor-interaction" data-mode="ride" aria-controls="pf-ride-preview" aria-pressed="false">Live-Fahrt am Mac</button>
+    </div>
+    <button type="button" class="pf-textlink pf-simulate cursor-interaction" data-demo="pause" aria-pressed="false" hidden>Pause simulieren</button>
+  </div>
+
+  <div class="pf-web" id="pf-web-preview">
+    <div class="pf-brand">
+      <strong>pandafit</strong>
+    </div>
+    <main class="pf-page">
+      <section data-view="day" aria-label="Tagesseite">
+        <header class="pf-head">
+          <div>
+            <p class="pf-overline" data-date>So, 8. November</p>
+            <h2 data-day-name aria-live="polite">Heute</h2>
+          </div>
+          <div class="pf-days">
+            <button type="button" class="pf-iconbtn cursor-interaction" data-day-step="-1" aria-label="Vorheriger Tag"><i data-lucide="chevron-left" aria-hidden="true"></i></button>
+            <button type="button" class="pf-iconbtn cursor-interaction" data-day-step="1" aria-label="Nächster Tag"><i data-lucide="chevron-right" aria-hidden="true"></i></button>
+          </div>
+        </header>
+
+        <div class="pf-daygrid">
+          <aside class="pf-cover" data-today aria-label="Panda, dein Coach">
+            <div>
+              <p class="pf-speaker">Panda</p>
+              <p class="pf-role">Dein Coach</p>
+            </div>
+            <button type="button" class="pf-hello cursor-interaction" data-hello aria-label="Hallo, Panda">
+              <canvas class="pf-art" aria-hidden="true" width="224" height="194"></canvas>
+              <span>Hallo, Panda</span>
+            </button>
+            <blockquote>Gestern die Radrunde, heute die Schultern. Fang in Ruhe an. Wenn du wenig Zeit hast, machen wir’s kürzer.</blockquote>
+            <details class="pf-disclosure pf-chat">
+              <summary class="cursor-interaction">Panda fragen</summary>
+              <div class="pf-chat-thread">
+                <button type="button" class="pf-textlink cursor-interaction" data-ask>Ich hab heute nur 25 Minuten.</button>
+                <p data-reply role="status" hidden><strong>Panda</strong><br>Dann machen wir nur Bankdrücken und Rudern. Nimm dir trotzdem Zeit zum Aufwärmen. Schulterdrücken passt auch beim nächsten Mal.</p>
+              </div>
+            </details>
+          </aside>
+
+          <section class="pf-group pf-training">
+            <p class="pf-overline"><i data-lucide="dumbbell" aria-hidden="true"></i> Training</p>
+            <h3 data-workout>Oberkörper</h3>
+            <p class="pf-muted" data-workout-meta>Kraft · ca. 40 Min</p>
+            <ul class="pf-exercises" aria-label="Übungen" data-today>
+              <li>Kurzhantel-Bankdrücken</li>
+              <li>Rudern am Kabel</li>
+              <li>Schulterdrücken</li>
+            </ul>
+            <div class="pf-day-actions" data-today>
+              <button type="button" class="pf-action cursor-interaction" data-go="strength">Zum Krafttraining <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+            </div>
+          </section>
+          <section class="pf-group pf-food">
+            <p class="pf-overline"><i data-lucide="utensils" aria-hidden="true"></i> Essen</p>
+            <ul class="pf-meals">
+              <li><span class="pf-meal-label">Mittagessen</span><span class="pf-meal-name" data-lunch>Ofengemüse mit Feta</span></li>
+              <li><span class="pf-meal-label">Abendessen</span><span class="pf-meal-name" data-dinner>Zitronenpasta mit Erbsen</span></li>
+            </ul>
+          </section>
+          <section class="pf-group pf-body" data-today>
+            <p class="pf-overline"><i data-lucide="heart-pulse" aria-hidden="true"></i> Dein Körper</p>
+            <p class="pf-bodyline">Dein Ruhepuls liegt im gewohnten Bereich.</p>
+          </section>
+          <section class="pf-group pf-together" data-today>
+            <p class="pf-overline"><i data-lucide="users" aria-hidden="true"></i> Gemeinsam</p>
+            <p>Diese Woche wart ihr beide in Bewegung.</p>
+          </section>
+        </div>
+      </section>
+
+      <section data-view="week" aria-labelledby="pf-week-title" hidden>
+        <header class="pf-head">
+          <div><p class="pf-overline">2.–8. November</p><h2 id="pf-week-title">Woche</h2></div>
+        </header>
+        <ul class="pf-list">
+          <li><span class="pf-muted">Mo, 2.</span><strong>Ganzkörper</strong><span class="pf-muted">Kraft</span></li>
+          <li><span class="pf-muted">Di, 3.</span><span>Ruhetag</span></li>
+          <li><span class="pf-muted">Mi, 4.</span><strong>Lockere Runde</strong><span class="pf-muted">Laufen</span></li>
+          <li><span class="pf-muted">Do, 5.</span><span>Ruhetag</span></li>
+          <li><span class="pf-muted">Fr, 6.</span><strong>Beine und Rumpf</strong><span class="pf-muted">Kraft</span></li>
+          <li><span class="pf-muted">Sa, 7.</span><strong>Grundlagenfahrt</strong><span class="pf-muted">Rad</span></li>
+          <li aria-current="date"><span class="pf-muted">So, 8.</span><strong>Oberkörper</strong><span class="pf-muted">Heute</span></li>
+        </ul>
+        <section class="pf-group">
+          <p class="pf-overline">Rückblick</p><h3>Deine Woche in Bewegung</h3>
+          <p class="pf-muted">Kraft, eine lockere Runde zu Fuß und eine auf dem Rad.</p>
+        </section>
+      </section>
+
+      <section data-view="strength" aria-labelledby="pf-strength-title" hidden>
+        <header class="pf-head"><div><p class="pf-overline">Deine nächste Einheit</p><h2 id="pf-strength-title">Kraft</h2></div></header>
+        <section class="pf-group">
+          <p class="pf-overline">Heute · ca. 40 Min</p><h3>Oberkörper</h3>
+          <ul class="pf-list">
+            <li><span class="pf-muted">01</span><strong>Kurzhantel-Bankdrücken</strong><span class="pf-muted">3 Sätze</span></li>
+            <li><span class="pf-muted">02</span><strong>Rudern am Kabel</strong><span class="pf-muted">3 Sätze</span></li>
+            <li><span class="pf-muted">03</span><strong>Schulterdrücken</strong><span class="pf-muted">3 Sätze</span></li>
+          </ul>
+          <button type="button" class="pf-textlink cursor-interaction" data-go="day">Zurück zu Heute</button>
+        </section>
+      </section>
+
+      <section data-view="meals" aria-labelledby="pf-meals-title" hidden>
+        <header class="pf-head"><div><p class="pf-overline">So, 8. November</p><h2 id="pf-meals-title">Essen</h2></div></header>
+        <section class="pf-group">
+          <p class="pf-overline">Auf dem Plan</p>
+          <ul class="pf-list">
+            <li><span class="pf-muted">Mittag</span><strong>Ofengemüse mit Feta</strong></li>
+            <li><span class="pf-muted">Abend</span><strong>Zitronenpasta mit Erbsen</strong></li>
+          </ul>
+        </section>
+      </section>
+
+      <section data-view="endurance" aria-labelledby="pf-endurance-title" hidden>
+        <header class="pf-head"><div><p class="pf-overline">Rad und Laufen</p><h2 id="pf-endurance-title">Ausdauer</h2></div></header>
+        <section class="pf-group pf-section">
+          <p class="pf-overline">Rad · Di, 10. November</p>
+          <h3>Grundlagenfahrt</h3><p class="pf-muted">45 Min · Start am Mac</p>
+        </section>
+        <section class="pf-group pf-section">
+          <p class="pf-overline">Laufen · Mi, 11. November</p>
+          <h3>Lockere Runde</h3><p class="pf-muted">30 Min · entspanntes Tempo</p>
+        </section>
+      </section>
+
+      <section data-view="profile" aria-labelledby="pf-profile-title" hidden>
+        <header class="pf-head"><div><p class="pf-overline">Deine Einstellungen</p><h2 id="pf-profile-title">Profil</h2></div></header>
+        <section class="pf-group">
+          <p class="pf-overline">Was Pandafit für dich plant</p>
+          <ul class="pf-list">
+            <li><span class="pf-muted">Kraft</span><strong>Krafttraining</strong><span class="pf-muted">An</span></li>
+            <li><span class="pf-muted">Essen</span><strong>Essensplan</strong><span class="pf-muted">An</span></li>
+            <li><span class="pf-muted">Laufen</span><strong>Laufen planen</strong><span class="pf-muted">An</span></li>
+          </ul>
+        </section>
+      </section>
+    </main>
+    <nav class="pf-rail" aria-label="Pandafit">
+      <button type="button" class="pf-navitem cursor-interaction" data-go="day" aria-current="page"><i data-lucide="sun" aria-hidden="true"></i>Heute</button>
+      <button type="button" class="pf-navitem cursor-interaction" data-go="week"><i data-lucide="calendar-days" aria-hidden="true"></i>Woche</button>
+      <button type="button" class="pf-navitem cursor-interaction" data-go="strength"><i data-lucide="dumbbell" aria-hidden="true"></i>Kraft</button>
+      <button type="button" class="pf-navitem cursor-interaction" data-go="meals"><i data-lucide="utensils" aria-hidden="true"></i>Essen</button>
+      <button type="button" class="pf-navitem cursor-interaction" data-go="endurance"><i data-lucide="bike" aria-hidden="true"></i>Ausdauer</button>
+    </nav>
+    <button type="button" class="pf-profile cursor-interaction" data-go="profile"><i data-lucide="user-round" aria-hidden="true"></i>Profil</button>
+  </div>
+
+  <section class="pf-ride" id="pf-ride-preview" aria-label="Beispiel für eine Live-Fahrt" hidden>
+    <header class="pf-ride-chrome">
+      <strong>pandafit</strong>
+      <span class="pf-signal">Trainer und Puls verbunden</span>
+    </header>
+    <div class="pf-cockpit">
+      <header class="pf-ride-head">
+        <div><p class="pf-overline">Grundlagenfahrt · Abschnitt 2 von 3</p><h2>Gleichmäßig rollen</h2></div>
+        <p>Danach · Ausrollen</p>
+      </header>
+      <dl class="pf-meters">
+        <div><dt>Leistung</dt><dd>142 <small>W</small></dd></div>
+        <div class="pf-target"><dt>Vorgabe</dt><dd><span data-target>145</span> <small>W</small></dd></div>
+        <div><dt>Noch im Abschnitt</dt><dd>06:20</dd></div>
+      </dl>
+      <dl class="pf-smallmetrics">
+        <div><dt>Puls</dt><dd>128 <small>bpm</small></dd></div>
+        <div><dt>Trittfrequenz</dt><dd>86 <small>U/min</small></dd></div>
+      </dl>
+      <figure class="pf-strip">
+        <figcaption><span>Verlauf der Einheit</span><span>Noch 11:20</span></figcaption>
+        <div class="pf-steps" role="img" aria-label="Aufwärmen, Grundlagenabschnitt, Ausrollen. Aktuell im letzten Drittel des Grundlagenabschnitts.">
+          <span></span><span></span><span></span><span class="pf-marker"></span>
+        </div>
+      </figure>
+      <p class="pf-ride-note" role="status">Panda: Du bist nah an deiner Vorgabe. Lass die Beine locker.</p>
+      <div class="pf-controls">
+        <button type="button" class="cursor-interaction" data-demo="lighter">Leichter −5 %</button>
+        <button type="button" class="cursor-interaction" data-demo="harder">Härter +5 %</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const root = document.getElementById('pf-journal');
+  const query = (selector) => root.querySelector(selector);
+  const all = (selector) => [...root.querySelectorAll(selector)];
+  const dayData = [
+    ['Gestern', 'Sa, 7. November', 'Grundlagenfahrt', 'Rad · 45 Min', 'Pilzrisotto', 'Kürbissuppe mit Brot'],
+    ['Heute', 'So, 8. November', 'Oberkörper', 'Kraft · ca. 40 Min', 'Ofengemüse mit Feta', 'Zitronenpasta mit Erbsen'],
+    ['Morgen', 'Mo, 9. November', 'Ruhetag', 'Zeit zum Erholen.', 'Linsen mit Ofenkartoffeln', 'Bunte Gemüsepfanne'],
+  ];
+  let day = 1;
+  let adjustment = 0;
+  let paused = false;
+
+  function renderDay() {
+    const fields = ['day-name', 'date', 'workout', 'workout-meta', 'lunch', 'dinner'];
+    for (const [index, field] of fields.entries()) {
+      query('[data-' + field + ']').textContent = dayData[day][index];
+    }
+    query('[data-day-step="-1"]').disabled = day === 0;
+    query('[data-day-step="1"]').disabled = day === 2;
+    for (const el of all('[data-today]')) el.hidden = day !== 1;
+  }
+
+  function openView(view) {
+    for (const panel of all('[data-view]')) panel.hidden = panel.dataset.view !== view;
+    for (const button of all('.pf-navitem, .pf-profile')) {
+      if (button.dataset.go === view) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    }
+    if (view === 'day') {
+      day = 1;
+      renderDay();
+    }
+  }
+
+  function openMode(mode) {
+    query('#pf-web-preview').hidden = mode !== 'web';
+    query('#pf-ride-preview').hidden = mode !== 'ride';
+    query('[data-demo="pause"]').hidden = mode !== 'ride';
+    for (const button of all('[data-mode]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
+    }
+  }
+
+  function renderRide() {
+    const target = Math.round(145 * (1 + adjustment / 100));
+    query('[data-target]').textContent = String(target);
+    query('[data-demo="lighter"]').disabled = adjustment === -20;
+    query('[data-demo="harder"]').disabled = adjustment === 20;
+    const pause = query('[data-demo="pause"]');
+    pause.textContent = paused ? 'Weiterfahren simulieren' : 'Pause simulieren';
+    pause.setAttribute('aria-pressed', String(paused));
+    const note = query('.pf-ride-note');
+    note.dataset.paused = String(paused);
+    if (paused) note.textContent = 'Fahrt pausiert. Tritt an, wenn du bereit bist.';
+    else if (adjustment) note.textContent = 'Vorgabe angepasst · ' + target + ' W';
+    else note.textContent = 'Panda: Du bist nah an deiner Vorgabe. Lass die Beine locker.';
+  }
+
+  root.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    const { mode, dayStep, go, demo } = button.dataset;
+    if (mode) openMode(mode);
+    if (button.hasAttribute('data-hello')) playPanda('greet');
+    if (button.hasAttribute('data-ask')) {
+      query('[data-reply]').hidden = false;
+      playPanda('nod');
+    }
+    if (dayStep) {
+      day = Math.max(0, Math.min(2, day + Number(dayStep)));
+      renderDay();
+    }
+    if (go) openView(go);
+    if (demo) {
+      if (demo === 'pause') paused = !paused;
+      else adjustment += demo === 'lighter' ? -5 : 5;
+      renderRide();
+    }
+  });
+
+  const canvas = query('.pf-art');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const paths = new Map();
+  const dark = '#182c23';
+  const fur = '#f5dfb7';
+  const gold = '#efab76';
+  const durations = { greet: 1350, listen: 730, nod: 875 };
+  let activeFrame = null;
+
+  function shape(path, fill, stroke, lineWidth = 1) {
+    if (!paths.has(path)) paths.set(path, new Path2D(path));
+    const geometry = paths.get(path);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill(geometry);
+    }
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke(geometry);
+    }
+  }
+
+  function oval(x, y, rx, ry, color, angle = 0) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, angle, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  const grain = document.createElement('canvas');
+  grain.width = 114;
+  grain.height = 82;
+  const grainContext = grain.getContext('2d');
+  grainContext.translate(-92, -82);
+  grainContext.clip(new Path2D('M 102 111 Q 106 92 135 88 Q 169 82 187 102 Q 204 119 192 138 Q 178 158 140 155 Q 111 153 102 139 Q 94 125 102 111 Z'));
+  const speckle = grainContext.createLinearGradient(100, 92, 195, 158);
+  speckle.addColorStop(0, '#95724755');
+  speckle.addColorStop(1, '#95724700');
+  grainContext.fillStyle = speckle;
+  let seed = 211;
+  function random() {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  }
+  for (let i = 0; i < 900; i++) {
+    grainContext.fillRect(94 + random() * 110, 83 + random() * 77, .45 + random(), .45 + random());
+  }
+
+  function drawPanda({ tilt = 0, dip = 0, lift = 0, blink = 0, steam = 0 } = {}) {
+    const { width, height } = canvas.getBoundingClientRect();
+    if (!width || !height) return;
+    const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+    const pixelWidth = Math.round(width * pixelRatio);
+    const pixelHeight = Math.round(height * pixelRatio);
+    if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+    if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    const scale = Math.min(width / 142, height / 146);
+    ctx.translate(width / 2 - 149 * scale, height / 2 - 139 * scale);
+    ctx.scale(scale, scale);
+
+    // A small spot illustration, with the paper showing around the figure.
+    oval(148, 200, 59, 6, '#79947744');
+    shape('M 114 131 Q 110 136 101 152 Q 93 169 103 188 Q 125 208 169 199 Q 194 195 191 168 Q 187 144 174 130 Z', dark);
+    shape('M 125 144 Q 142 135 165 144 Q 179 154 172 179 Q 160 197 136 190 Q 119 185 118 170 Q 118 154 125 144 Z', fur);
+    shape('M 120 170 Q 131 174 133 183 Q 132 195 114 198 Q 90 203 90 190 Q 90 179 105 176 Z', dark);
+    shape('M 172 174 Q 186 169 196 183 Q 207 193 195 199 Q 176 203 163 194 Q 157 183 172 174 Z', dark);
+    shape('M 99 187 L 103 185 M 106 189 L 110 187 M 187 188 L 190 191 M 180 190 L 183 193', null, '#749274', 1.15);
+    ctx.save();
+    ctx.translate(147, 143 + dip);
+    ctx.rotate(tilt);
+    ctx.translate(-147, -143);
+    oval(112, 94, 15, 15, dark, -.18);
+    oval(176, 89, 16, 16, dark, .18);
+    shape('M 109 90 Q 115 86 118 91 M 176 83 Q 183 82 185 88', null, '#698c66', 1.2);
+    shape('M 102 111 Q 106 92 135 88 Q 169 82 187 102 Q 204 119 192 138 Q 178 158 140 155 Q 111 153 102 139 Q 94 125 102 111 Z', fur);
+    shape('M 103 108 Q 137 92 184 100 L 191 108 Q 147 100 100 117 Z', gold);
+    shape('M 106 111 Q 142 98 184 104', null, '#a75732', 1);
+    shape('M 118 123 Q 129 113 136 122 Q 139 130 128 138 Q 116 143 115 134 Q 113 129 118 123 Z', dark);
+    shape('M 157 120 Q 167 111 175 120 Q 183 126 180 133 Q 174 139 165 134 Q 156 129 157 120 Z', dark);
+    ctx.save();
+    ctx.translate(0, 128);
+    ctx.scale(1, 1 - blink * .82);
+    ctx.translate(0, -128);
+    shape('M 122 129 Q 126 125 130 128 M 165 126 Q 169 122 173 126', null, fur, 2.2);
+    ctx.restore();
+    oval(148, 137, 5, 3, dark, -.08);
+    shape('M 143 143 Q 148 147 154 142', null, dark, 1.5);
+    oval(112, 140, 4, 2, gold, -.15);
+    oval(185, 137, 4, 2, gold, .17);
+    ctx.drawImage(grain, 92, 82);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(0, -lift);
+    shape('M 104 147 Q 112 142 123 153 L 139 165 Q 145 175 134 177 Q 117 173 108 168 Q 99 160 104 147 Z', dark);
+    shape('M 178 151 Q 190 145 191 158 Q 191 170 173 178 Q 163 178 163 168 Q 170 156 178 151 Z', dark);
+    shape('M 160 159 C 179 151 176 175 164 171', null, gold, 3);
+    shape('M 138 155 Q 152 151 165 154 L 162 170 Q 161 177 152 178 Q 141 179 139 171 Z', gold);
+    oval(151, 155, 12, 3, '#985e3c', -.09);
+    shape('M 141 157 Q 153 158 161 155 M 145 171 Q 148 174 155 173', null, fur, 1);
+    ctx.save();
+    ctx.translate(0, -steam * 7);
+    ctx.globalAlpha = 1 - steam * .65;
+    shape('M 153 150 C 160 143 149 140 154 134 M 159 148 Q 166 141 160 138', null, fur, 1.2);
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  function ease(value) {
+    const t = Math.max(0, Math.min(1, value));
+    return t * t * (3 - 2 * t);
+  }
+
+  function beat(time, start, rise, hold, end) {
+    return ease((time - start) / (rise - start)) * (1 - ease((time - hold) / (end - hold)));
+  }
+
+  function poseFor(gesture, time) {
+    if (gesture === 'greet') {
+      const lift = beat(time, .07, .36, .58, .96);
+      return { lift: 23 * lift, tilt: -.12 * lift, dip: -4 * lift, blink: beat(time, .31, .4, .46, .58), steam: lift };
+    }
+    if (gesture === 'listen') {
+      const lean = beat(time, 0, .33, .56, 1);
+      return { tilt: .21 * lean, dip: 3 * lean, blink: beat(time, .4, .47, .51, .6) };
+    }
+    const nod = beat(time, .12, .43, .47, .82);
+    const settle = beat(time, .51, .78, .79, .99);
+    return { tilt: -.19 * nod + .04 * settle, dip: 14 * nod - 3 * settle, blink: beat(time, .29, .39, .49, .64) };
+  }
+
+  function stopPanda() {
+    if (activeFrame !== null) cancelAnimationFrame(activeFrame);
+    activeFrame = null;
+    drawPanda();
+  }
+
+  function playPanda(gesture) {
+    stopPanda();
+    if (reduceMotion.matches || !canvas.getClientRects().length) return;
+    let startTime;
+    function frame(now) {
+      startTime ??= now;
+      const time = Math.min(1, (now - startTime) / durations[gesture]);
+      if (time === 1 || !canvas.getClientRects().length) {
+        stopPanda();
+        return;
+      }
+      drawPanda(poseFor(gesture, time));
+      activeFrame = requestAnimationFrame(frame);
+    }
+    activeFrame = requestAnimationFrame(frame);
+  }
+
+  query('.pf-chat').addEventListener('toggle', (event) => {
+    if (event.target.open) playPanda('listen');
+  });
+  reduceMotion.addEventListener('change', stopPanda);
+  drawPanda();
+  new ResizeObserver(stopPanda).observe(canvas);
+
+})();
+</script>
