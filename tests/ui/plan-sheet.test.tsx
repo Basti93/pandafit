@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { GymWorkout } from '../../src/coach/gym/types';
+import { ruleRecord } from '../../src/shared/personal';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import { planKeyOf, readDraft, writeDraft, type DraftStorage } from '../../src/tracking/plan-draft';
 import type { TrackedWorkout } from '../../src/tracking/session';
@@ -146,6 +147,56 @@ describe('the sheet "Nächstes Training"', () => {
     await screen.findByRole('button', { name: 'Leeres Training starten' });
     rerender(<WorkoutScreen {...props} plan={plan} />);
     await screen.findByRole('dialog', { name: 'Nächstes Training' });
+  });
+
+  test('a draft made for another studio never starts: it is dropped with the note, the plan starts', async () => {
+    const s = memory();
+    show([], s);
+    let sheet = await openSheet();
+    type(exercise(sheet, 'Latzug').getByLabelText('Wiederholungen Satz 1'), '6');
+    await waitFor(() => expect(stored(s)).not.toBeNull());
+    cleanup();
+    const done = (id: string, studio: string): TrackedRecord => ({ kind: 'workout', id, updatedMs: 1, deleted: false,
+      body: { id, title: 'T', startMs: NOW - 86_400_000, endMs: NOW - 86_000_000, source: 'pandafit', exercises: [], studio } as LoggedWorkout });
+    show([done('b', 'Beta')], s); // now the studio is Beta, the draft was made without one
+    await screen.findByText('Der Coach hat neu geplant. Deine Änderungen galten dem alten Plan.');
+    expect(screen.queryByText('Angepasst')).toBeNull();
+    expect(stored(s)).toBeNull();
+    sheet = await openSheet();
+    expect((exercise(sheet, 'Latzug').getByLabelText('Wiederholungen Satz 1') as HTMLInputElement).value).toBe('10');
+  });
+
+  test('a draft without exercises: the card start starts the plan', async () => {
+    const s = memory();
+    show([], s);
+    const sheet = await openSheet();
+    fireEvent.click(exercise(sheet, 'Latzug').getByRole('button', { name: 'Übung entfernen Latzug' }));
+    fireEvent.click(exercise(sheet, 'Face Pull').getByRole('button', { name: 'Übung entfernen Face Pull' }));
+    await waitFor(() => expect(stored(s)?.exercises).toHaveLength(0));
+    expect((within(sheet).getByRole('button', { name: 'Training starten' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Fertig' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Pull starten' }));
+    await screen.findByRole('region', { name: 'Latzug' });
+    expect(screen.getByRole('region', { name: 'Face Pull' })).toBeTruthy();
+  });
+
+  test('a start from a draft does not name exercises the rules dropped from the plan', async () => {
+    const rule = ruleRecord('r1', { kind: 'exclude', text: 'Ohne Face Pull', sport: 'gym', exerciseIds: ['pf-face-pull'] }, 'active', 'person', NOW - 1000);
+    show([rule]);
+    const sheet = await openSheet();
+    expect(within(sheet).getByText(/Ohne Face Pull/)).toBeTruthy(); // the sheet says it
+    type(exercise(sheet, 'Latzug').getByLabelText('Wiederholungen Satz 1'), '6');
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Training starten' }));
+    await screen.findByRole('region', { name: 'Latzug' });
+    expect(screen.queryByText(/Ohne Face Pull/)).toBeNull();
+  });
+
+  test('openPlan tells the page once the sheet has opened', async () => {
+    const onOpened = vi.fn();
+    const f = fakePort([]);
+    render(<WorkoutScreen port={f.port} plan={plan} planMeta={meta} account="mira" storage={memory()} openPlan onOpened={onOpened} {...ids} />);
+    await screen.findByRole('dialog', { name: 'Nächstes Training' });
+    await waitFor(() => expect(onOpened).toHaveBeenCalledTimes(1));
   });
 
   test('with an open workout there is no button', async () => {

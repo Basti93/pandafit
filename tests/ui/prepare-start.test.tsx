@@ -55,3 +55,18 @@ test('prepareStart returns exactly the workout the start begins (history, studio
   expect(strip(body)).toEqual(strip(prepared.workout));
   await screen.findByText(/Ohne Kreuzheben/); // the same notice on the running screen
 });
+
+test('a failed load step or change read keeps the history: the weights still come from it', async () => {
+  const history = [past('p1', NOW - 9 * 86_400_000, [55, 57.5]), past('p2', NOW - 2 * 86_400_000, [57.5, 60, 61])];
+  const ctx = { now: () => NOW, newId: () => 'new-id', catalog: EXERCISES, studio: 'Alpha', studios: studioStateOf([]) };
+  const good = await prepareStart(fakePort(history.map(wrec)).port, plan, ctx);
+  for (const failing of ['loadstep', 'change'] as const) {
+    const f = fakePort(history.map(wrec));
+    const list = f.port.list;
+    f.port.list = async (kind) => { if (kind === failing) throw new Error('read'); return list(kind); };
+    const got = await prepareStart(f.port, plan, ctx);
+    const kg = (w: typeof got.workout) => w.exercises.map((e) => e.sets.map((s) => s.weightKg));
+    expect(kg(got.workout)).toEqual(kg(good.workout));
+    expect(got.workout.exercises[0]!.sets.some((s) => s.weightKg !== null)).toBe(true);
+  }
+});

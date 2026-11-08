@@ -500,3 +500,4 @@
 .tk-plan-top p { margin: 0; }
 .tk-plan-ex { padding-top: var(--space-2); border-top: 1px solid var(--line); }
 .tk-plan-steps { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.tk-screen .tk-plan-ex button.tk-del-ex { flex: none; align-self: center; width: 44px; min-width: 44px; min-height: 44px; padding: 0; justify-content: center; text-decoration: none; font-size: var(--fs-2xl); line-height: 1; }

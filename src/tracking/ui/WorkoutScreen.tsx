@@ -417,11 +417,13 @@ async function markUsedNow(port: TrackingPort, now: () => number): Promise<void>
  * workout is finished (a thrown-away one leaves them taken). A listing workout stops a change from applying twice.
  * The notice (ops that no longer fit, the second session of today) is for the rider's screen only; it is not workout data.
  */
-export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now: () => number; newId: () => string; catalog: Exercise[]; studio?: string; studios: StudioState }): Promise<{ workout: TrackedWorkout; notice: string | null }> {
+export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now: () => number; newId: () => string; catalog: Exercise[]; studio?: string; studios: StudioState }): Promise<{ workout: TrackedWorkout; notice: string | null; /** Only the line about today's second session: what a start from a draft says (the skipped lines are about the plan). */ also: string | null }> {
   const { now, newId, catalog, studio, studios } = ctx;
   let changeRecs: TrackedRecord[] = [], records: TrackedRecord[] = [], overrides = loadStepOverrides([], studios.renames), excludedNow: ReadonlySet<string> = new Set();
   try { excludedNow = excludedIds(await port.list('rule'), catalog); } catch { /* start without them */ }
-  try { overrides = loadStepOverrides(await port.list('loadstep'), studios.renames); changeRecs = await port.list('change'); records = await port.list('workout'); } catch { /* start without them: they stay taken for the next time */ }
+  try { overrides = loadStepOverrides(await port.list('loadstep'), studios.renames); changeRecs = await port.list('change'); } catch { /* start without them: they stay taken for the next time */ }
+  // The workouts on their own: a failed load step or change read never empties the history the weights come from.
+  try { records = await port.list('workout'); } catch { /* start without the history */ }
   const live = records.filter((r) => !r.deleted);
   const all = live.map((r) => r.body as LoggedWorkout);
   const history = finishedWorkouts(live);
@@ -437,7 +439,7 @@ export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now
   } catch { /* start with the plan as it is */ }
   let skipped: string[] = [];
   const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
-  return { workout: studio ? { ...w, studio } : w, notice: [...skipped, ...(alsoNote ? [alsoNote] : [])].join(' ') || null };
+  return { workout: studio ? { ...w, studio } : w, notice: [...skipped, ...(alsoNote ? [alsoNote] : [])].join(' ') || null, also: alsoNote };
 }
 
 function OpenCard({ rec, primary, onResume, onEnd, onDiscard }: { rec: TrackedRecord; primary: boolean; onResume: () => void; onEnd: () => void; onDiscard: () => Promise<void> }) {
@@ -465,7 +467,7 @@ function OpenCard({ rec, primary, onResume, onEnd, onDiscard }: { rec: TrackedRe
   );
 }
 
-export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'local', storage = deviceStorage(), openPlan = false, routine = null, resume = false, onActive, onDone, now = Date.now, newId = () => crypto.randomUUID() }: {
+export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'local', storage = deviceStorage(), openPlan = false, onOpened, routine = null, resume = false, onActive, onDone, now = Date.now, newId = () => crypto.randomUUID() }: {
   port: TrackingPort; plan?: GymWorkout | null; routine?: GymWorkout | null;
   /** The plan record around `plan`: its time (the draft's key) and the coach's words for the sheet "Nächstes Training". */
   planMeta?: { atMs: number; dateText?: string; reason: string | null; note: string | null; outlook: Outlook | null } | null;
@@ -473,6 +475,8 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
   account?: string; storage?: DraftStorage | null;
   /** Open the sheet "Nächstes Training" at once (from Heute), once. */
   openPlan?: boolean;
+  /** Told when the sheet from `openPlan` has opened, so the page around it clears the request and a remount does not open it again. */
+  onOpened?: () => void;
   /** Open the newest open workout at once (from "Weitermachen" on Heute), once. */
   resume?: boolean;
   /** Told whether a workout is running on this screen, so the page around it can drop its own navigation. */
@@ -540,10 +544,11 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
     } finally { starting.current = false; }
   }
   // A start from a plan: prepareStart, then begin; a finished workout whose change mark got lost is made up here.
-  const startPlan = async (g: GymWorkout) => {
+  const startPlan = async (g: GymWorkout): Promise<boolean> => {
     const { workout, notice } = await prepareStart(port, g, { now, newId, catalog, studio, studios });
-    if (!(await begin(workout, notice))) return;
+    if (!(await begin(workout, notice))) return false;
     await markUsedNow(port, now);
+    return true;
   };
 
   // The next workout, changed before it starts: kept per plan (a new coach plan drops it), in memory as well, so a storage that
@@ -551,10 +556,13 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
   const planKey = plan ? planKeyOf({ atMs: planMeta?.atMs ?? 0, workout: plan }) : null;
   const [mem, setMem] = useState<{ key: string; w: TrackedWorkout | null } | null>(null);
   const storedDraft = useMemo(() => (planKey && storage ? readDraft(storage, account, planKey) : null), [planKey, storage, account]);
-  const draft = planKey === null ? null : mem?.key === planKey ? mem.w : storedDraft;
+  const kept = planKey === null ? null : mem?.key === planKey ? mem.w : storedDraft;
+  // A draft holds the weights of the studio it was made for: in another studio it never starts (it is dropped once all is read).
+  const sameStudio = (a?: string, b?: string): boolean => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+  const draft = kept && sameStudio(kept.studio, studio) ? kept : null;
   const [dropped, setDropped] = useState(false);
   useEffect(() => { if (planKey && storage && draftDropped(storage, account, planKey)) setDropped(true); }, [planKey, storage, account]);
-  const [sheet, setSheet] = useState<{ key: string; base: TrackedWorkout; notice: string | null } | null>(null);
+  const [sheet, setSheet] = useState<{ key: string; base: TrackedWorkout; notice: string | null; also: string | null } | null>(null);
   const changeDraft = (w: TrackedWorkout) => {
     if (!planKey) return;
     setMem({ key: planKey, w });
@@ -565,16 +573,22 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
     setMem({ key: planKey, w: null });
     if (storage) clearDraft(storage, account);
   };
+  useEffect(() => {
+    if (!kept || draft || workouts === null || studioRecords === null) return; // still reading: the studio is not known yet
+    dropDraft();
+    setDropped(true);
+  }, [kept, draft, workouts, studioRecords]); // eslint-disable-line react-hooks/exhaustive-deps
   const lookAt = async (g: GymWorkout) => {
     if (!planKey) return;
     const key = planKey;
-    const { workout, notice } = await prepareStart(port, g, { now, newId, catalog, studio, studios });
-    setSheet({ key, base: workout, notice });
+    const { workout, notice, also } = await prepareStart(port, g, { now, newId, catalog, studio, studios });
+    setSheet({ key, base: workout, notice, also });
   };
-  const startNext = async (g: GymWorkout, notice?: string | null) => {
+  // A draft without exercises never starts (the sheet's button is off then): the plan starts instead, and the draft goes.
+  const startNext = async (g: GymWorkout, also?: string | null) => {
     const d = draft;
-    if (!d) { await startPlan(g); return; }
-    const said = notice !== undefined ? notice : (await prepareStart(port, g, { now, newId, catalog, studio, studios })).notice;
+    if (!d || d.exercises.length === 0) { if ((await startPlan(g)) && d) dropDraft(); return; }
+    const said = also !== undefined ? also : (await prepareStart(port, g, { now, newId, catalog, studio, studios })).also;
     if (!(await begin(startFromDraft(d, now(), newId()), said))) return;
     setSheet(null);
     dropDraft();
@@ -584,7 +598,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
   useEffect(() => {
     if (!openPlan || openedPlan.current || !plan || !workouts || openRecs.length > 0 || store) return;
     openedPlan.current = true;
-    void lookAt(plan);
+    void lookAt(plan).then(() => onOpened?.());
   }, [openPlan, workouts, planKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -670,7 +684,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
         <PlanSheet port={port} workout={draft ?? sheet.base} dateText={planMeta?.dateText ?? null} reason={planMeta?.reason ?? null} note={planMeta?.note ?? null} notice={sheet.notice} outlook={planMeta?.outlook ?? null}
           history={history} studios={studios} catalog={catalog} now={now} newId={newId}
           onChange={changeDraft} onClose={() => setSheet(null)}
-          onStart={() => { const d = draft; if (d) void startNext(plan, sheet.notice); else { setSheet(null); void startPlan(plan); } }} />
+          onStart={() => { const d = draft; if (d) void startNext(plan, sheet.also); else { setSheet(null); void startPlan(plan); } }} />
       )}
       {others && (
         <Sheet size="small" title="Routine oder leer" onClose={() => setOthers(false)}>

@@ -17,6 +17,7 @@ import { mergedActivities } from '../tracking/ui/done-days';
 import { MobilityOffer } from '../tracking/ui/MobilityOffer';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { openIdb } from './idbStore';
+import { planKeyOf, readDraft } from '../tracking/plan-draft';
 import { mobilityToShow, planDateText, planIsStale, readPlan, shouldShowInstallHint } from './logic';
 import type { OpenState } from './register';
 import { createWebPort, type WebPort } from './webPort';
@@ -180,6 +181,8 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
 
   // The strength plan: on a strength day inside the week plan's card, without a week plan as its own card.
   // Name and time in one line, the exercises in two; the reason, the sets and the outlook in the sheet "Nächstes Training" in Kraft.
+  // A draft of this plan on this device (see plan-draft): the strength part says so.
+  const adjusted = !!p?.workout && readDraft(env.storage, account, planKeyOf({ atMs: p.atMs, workout: p.workout })) !== null;
   const toTraining = <button type="button" onClick={() => goTraining()}>Zum Krafttraining</button>;
   const gym = p ? (
     <>
@@ -189,7 +192,10 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
       {p.questions.length > 0 && <ul>{p.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>}
       {toTraining}
       {p.workout && p.workout.exercises.length > 0
-        ? <button type="button" className="secondary" onClick={() => goTraining('plan')}>Ansehen und anpassen</button>
+        ? <>
+          {adjusted && <p className="muted">Angepasst</p>}
+          <button type="button" className="secondary" onClick={() => goTraining('plan')}>Ansehen und anpassen</button>
+        </>
         : p.reason && <p className="muted">{p.reason}</p>}
     </>
   ) : (
@@ -252,7 +258,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   );
 }
 
-function Training({ port, env, account, entry, onDone }: { port: WebPort; env: Env; account: string; entry: 'resume' | 'plan' | null; onDone: () => void }) {
+function Training({ port, env, account, entry, onEntryDone, onDone }: { port: WebPort; env: Env; account: string; entry: 'resume' | 'plan' | null; /** The plan sheet asked for by Heute has opened: the request is used up. */ onEntryDone: () => void; onDone: () => void }) {
   const [running, setRunning] = useState(false);
   const plans = usePortRecords(port, 'plan').records;
   const [screen, setScreen] = useState<'workout' | 'routines' | 'exercises'>('workout');
@@ -270,7 +276,7 @@ function Training({ port, env, account, entry, onDone }: { port: WebPort; env: E
         </div>
       </div>}
       {screen === 'workout' && <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={entry === 'resume'} onActive={setRunning} onDone={onDone} plan={routine ? null : plan?.workout ?? null} routine={routine}
-        planMeta={plan ? { atMs: plan.atMs, dateText: planDateText(plan.atMs), reason: plan.reason, note: plan.note, outlook: plan.outlook } : null} account={account} storage={env.storage} openPlan={entry === 'plan'} now={env.now} newId={env.newId} />}
+        planMeta={plan ? { atMs: plan.atMs, dateText: planDateText(plan.atMs), reason: plan.reason, note: plan.note, outlook: plan.outlook } : null} account={account} storage={env.storage} openPlan={entry === 'plan'} onOpened={onEntryDone} now={env.now} newId={env.newId} />}
       {screen === 'exercises' && <ExercisesScreen port={port} now={env.now} newId={env.newId} />}
       {screen === 'routines' && <RoutinesScreen port={port} now={env.now} newId={env.newId} onStart={(r) => { setRoutine(r); setScreen('workout'); }} />}
     </>
@@ -582,7 +588,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
-          {tab === 'training' && <Training port={port} env={env} account={account} entry={entry} onDone={() => setTab('heute')} />}
+          {tab === 'training' && <Training port={port} env={env} account={account} entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} />}
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
