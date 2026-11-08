@@ -142,10 +142,10 @@ networks:
   coach-egress: {}
   homeserver-ai:
     external: true
-    name: homeserver-ai
+    name: homeserver-ai-pandafit # eigenes Netz je App: die Apps sehen nur den Dienst, nicht einander (heimserver ki/README.md)
   homeserver-mail:
     external: true
-    name: homeserver-mail
+    name: homeserver-mail-pandafit # eigenes Netz je App: die Apps sehen nur den Dienst, nicht einander (heimserver ki/README.md)
 
 volumes:
   coach:
