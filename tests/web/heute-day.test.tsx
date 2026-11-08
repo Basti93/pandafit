@@ -76,26 +76,33 @@ describe('Heute as a day page', () => {
   it('a swipe to the left goes on one day, and does nothing from inside a field', async () => {
     await boot([]);
     const root = screen.getByLabelText('Satz vom Coach').parentElement!;
-    fireEvent.pointerDown(root, { clientX: 200, clientY: 100, isPrimary: true });
-    fireEvent.pointerUp(root, { clientX: 100, clientY: 105, isPrimary: true });
+    fireEvent.pointerDown(root, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
+    fireEvent.pointerUp(root, { clientX: 100, clientY: 105, isPrimary: true, pointerType: 'touch' });
     expect(screen.getByRole('heading', { level: 1, name: 'Morgen' })).toBeTruthy();
   });
   it('a swipe from inside a field or a dialog does not change the day', async () => {
     await boot([]);
     const page = screen.getByLabelText('Satz vom Coach').parentElement!;
     const input = document.createElement('input'); page.appendChild(input);
-    fireEvent.pointerDown(input, { clientX: 200, clientY: 100, isPrimary: true });
-    fireEvent.pointerUp(input, { clientX: 100, clientY: 100, isPrimary: true });
+    fireEvent.pointerDown(input, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
+    fireEvent.pointerUp(input, { clientX: 100, clientY: 100, isPrimary: true, pointerType: 'touch' });
     const dlg = document.createElement('div'); dlg.setAttribute('role', 'dialog'); const inner = document.createElement('p'); dlg.appendChild(inner); page.appendChild(dlg);
-    fireEvent.pointerDown(inner, { clientX: 200, clientY: 100, isPrimary: true });
-    fireEvent.pointerUp(inner, { clientX: 100, clientY: 100, isPrimary: true });
+    fireEvent.pointerDown(inner, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
+    fireEvent.pointerUp(inner, { clientX: 100, clientY: 100, isPrimary: true, pointerType: 'touch' });
+    expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
+  });
+  it('a mouse drag does not change the day', async () => {
+    await boot([]);
+    const page = screen.getByLabelText('Satz vom Coach').parentElement!;
+    fireEvent.pointerDown(page, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'mouse' });
+    fireEvent.pointerUp(page, { clientX: 100, clientY: 100, isPrimary: true, pointerType: 'mouse' });
     expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
   });
   it('a short swipe does not change the day', async () => {
     await boot([]);
     const page = screen.getByLabelText('Satz vom Coach').parentElement!;
-    fireEvent.pointerDown(page, { clientX: 200, clientY: 100, isPrimary: true });
-    fireEvent.pointerUp(page, { clientX: 160, clientY: 100, isPrimary: true });
+    fireEvent.pointerDown(page, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
+    fireEvent.pointerUp(page, { clientX: 160, clientY: 100, isPrimary: true, pointerType: 'touch' });
     expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
   });
   it('a doctor finding is the first line of Dein Körper', async () => {

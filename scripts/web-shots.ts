@@ -232,7 +232,7 @@ const healthBody = (arzt: boolean) => ({
   coachText: { week: monday, text: 'Insgesamt eine ruhige Woche: Deine Fitness zeigt leicht nach oben, bei den Schritten ist noch etwas Luft zum Richtwert, und ein zweiter Krafttag würde zu den WHO-Empfehlungen passen.' },
 });
 records.push(rec('health', 'health', healthBody(false), NOW - 1800_000));
-records.push(rec('daytext', 'today', { type: 'daytext', date: todayKey, text: 'Drei Trainings diese Woche, und der Rücken hält gut mit. Heute ist Zug dran, dann hast du dir den Abend verdient.', atMs: NOW - 3600_000 }, NOW - 3600_000));
+records.push(rec('daytext', 'today', { type: 'daytext', date: todayKey, text: 'Drei Trainings diese Woche, und der Rücken hält gut mit. Heute ist Zug dran, und danach darf der Abend ruhig werden.', atMs: NOW - 3600_000 }, NOW - 3600_000));
 
 // ---------- the meal plan ----------
 // Invented recipes of the collection browser. The shots have no coach: its recipe routes are played by the script further down,

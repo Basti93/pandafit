@@ -35,6 +35,11 @@ describe('guardDayText', () => {
     expect(guardDayText('Das sieht nach einer Infektion aus.', 'x')).toBeNull();
     expect(guardDayText('  ', 'x')).toBeNull();
   });
+  it('does not take numbers from dates or big ids', () => {
+    expect(guardDayText('Das ist deine 12. Einheit.', '{"heute":"2026-11-12"}')).toBeNull();
+    expect(guardDayText('Das sind 1762600000 Sekunden.', '{"x":1762600000}')).toBeNull();
+    expect(guardDayText('Stark, 54 Minuten.', '{"heute":"2026-11-12","fertig":[{"text":"Kraft · 54 Min"}]}')).toBe('Stark, 54 Minuten.');
+  });
 });
 
 describe('DayCoachText', () => {
@@ -68,6 +73,33 @@ describe('DayCoachText', () => {
     const b = make(says('Nochmal.'));
     expect(await b.coach.tick('p', input({ done }))).toBe(false);
     expect(b.prompts).toHaveLength(0);
+  });
+
+  it('sends no key or start time to the AI', async () => {
+    const a = make(says('Morgen.'));
+    await a.coach.tick('p', input({ done: [train('kraft-1', 1762600000123)] }));
+    expect(a.prompts[0]).not.toContain('kraft-1');
+    expect(a.prompts[0]).not.toContain('1762600000123');
+  });
+
+  it('writes the first sentence of the day about the newest training already done', async () => {
+    const a = make(says('Stark, das Bein-Training.'));
+    await a.coach.tick('p', input({ done: [train('rad-1', 5), train('kraft-2', 50)] }));
+    expect(a.texts.get('p')).toMatchObject({ about: 'kraft-2', asked: 1 });
+    expect(a.texts.get('p')?.seen).toEqual(expect.arrayContaining(['rad-1', 'kraft-2']));
+    expect(a.prompts[0]).toContain('"ueber":"Kraft Beine');
+  });
+
+  it('counts the call before the AI answers', async () => {
+    let during: unknown;
+    const texts = new DayTexts(file);
+    const coach = new DayCoachText({ texts, nowMs: () => 1000, ask: async () => { during = texts.get('p')?.asked; return { text: 'Morgen.' }; } });
+    await coach.tick('p', input());
+    expect(during).toBe(1);
+    let during2: unknown;
+    const coach2 = new DayCoachText({ texts, nowMs: () => 1000, ask: async () => { during2 = texts.get('p')?.asked; return { text: 'Neu.' }; } });
+    await coach2.tick('p', input({ done: [train('kraft-1', 5)] }));
+    expect(during2).toBe(2);
   });
 
   it('picks the newest of several new trainings', async () => {

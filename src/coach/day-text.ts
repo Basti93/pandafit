@@ -41,12 +41,14 @@ export const PRAISE: readonly string[] = [
 ];
 
 const digitRuns = (s: string): string[] => s.match(/\d+/g) ?? [];
+/** Numbers a sentence may use: digit runs of the prompt, but not from ISO dates and not above 10000 (timestamps, ids). */
+const allowedNumbers = (prompt: string): Set<string> => new Set(digitRuns(prompt.replace(/\d{4}-\d{2}-\d{2}/g, ' ')).filter((d) => Number(d) <= 10000));
 
 /** The text if it holds up; null when empty, too long, with an invented number, a diagnosis word or a pressure word. */
 export function guardDayText(text: string, input: string): string | null {
   const t = text.trim();
   if (!t || t.length > DAY_TEXT_MAX) return null;
-  const known = new Set(digitRuns(input));
+  const known = allowedNumbers(input);
   if (digitRuns(t).some((d) => !known.has(d))) return null;
   const lower = t.toLowerCase();
   if (DIAGNOSIS_WORDS.some((w) => lower.includes(w))) return null;
@@ -97,6 +99,8 @@ export class DayCoachText {
       if (!newest) return false;
       const allSeen = [...new Set([...stored.seen, ...fresh.map((a) => a.key)])];
       if (stored.asked >= DAY_ASKS_MAX) { this.d.texts.set(profileId, { ...stored, seen: allSeen }); return false; }
+      // Counted before the call, so a crash during the call still counts.
+      this.d.texts.set(profileId, { ...stored, asked: stored.asked + 1, seen: allSeen });
       const text = (await this.write(input, newest)) ?? PRAISE[hashOf(newest.key) % PRAISE.length]!;
       this.d.texts.set(profileId, { date: input.date, text, atMs: this.d.nowMs(), about: newest.key, asked: stored.asked + 1, seen: allSeen });
       return text !== stored.text;
@@ -104,15 +108,20 @@ export class DayCoachText {
   }
 
   private async morning(profileId: string, input: DayInput, stored: DayEntry | undefined): Promise<boolean> {
-    const text = await this.write(input, undefined);
-    this.d.texts.set(profileId, { date: input.date, text, atMs: this.d.nowMs(), asked: 1, seen: input.done.map((a) => a.key) });
+    const seen = input.done.map((a) => a.key);
+    const newest = [...input.done].sort((a, b) => b.startMs - a.startMs)[0];
+    // Counted before the call, so a crash during the call still counts.
+    this.d.texts.set(profileId, { date: input.date, text: null, atMs: this.d.nowMs(), ...(newest ? { about: newest.key } : {}), asked: 1, seen });
+    const written = await this.write(input, newest);
+    const text = written ?? (newest ? PRAISE[hashOf(newest.key) % PRAISE.length]! : null);
+    this.d.texts.set(profileId, { date: input.date, text, atMs: this.d.nowMs(), ...(newest ? { about: newest.key } : {}), asked: 1, seen });
     return text !== (stored?.text ?? null);
   }
 
   /** The guarded AI sentence, or null. */
   private async write(input: DayInput, about: DoneToday | undefined): Promise<string | null> {
     // Only data is inside the block; "<" is escaped so no text can close it.
-    const block = JSON.stringify({ heute: input.date, fertig: input.done, ueber: about?.text ?? null, vorsicht: input.caution, daten: input.data }).replace(/</g, '\\u003c');
+    const block = JSON.stringify({ heute: input.date, fertig: input.done.map((a) => ({ text: a.text })), ueber: about?.text ?? null, vorsicht: input.caution, daten: input.data }).replace(/</g, '\\u003c');
     const prompt = `<daten-nur-daten>\n${block}\n</daten-nur-daten>`;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {

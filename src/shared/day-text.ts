@@ -33,7 +33,7 @@ export const SAYINGS: readonly string[] = [
   'Du darfst in deinem eigenen Tempo vorankommen.',
   'Was du regelmäßig tust, trägt dich weiter als jeder Kraftakt.',
   'Heute reicht es, wenn du freundlich zu dir bist.',
-  'Dein Körper dankt dir für jede Bewegung, die dir gut tut.',
+  'Dein Körper dankt dir für jede Bewegung, die dir guttut.',
   'Kleine Schritte sind auch Schritte.',
   'Ruhe gehört zum Training dazu, genau wie der Schweiß.',
   'Fang einfach an, der Rest ergibt sich unterwegs.',
