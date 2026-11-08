@@ -656,7 +656,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
               <button type="button" aria-label={`${plan.name} starten`} onClick={() => void startNext(plan)}>Training starten</button>
               <button type="button" className="secondary" onClick={() => void lookAt(plan)}>Ansehen und anpassen</button>
               {draft && <div className="tk-links"><span className="muted">Angepasst</span><button type="button" className="link" onClick={dropDraft}>Änderungen verwerfen</button></div>}
-              {dropped && !draft && <p className="muted">Der Coach hat neu geplant. Deine Änderungen galten dem alten Plan.</p>}
+              {dropped && !draft && <p className="muted">Deine Anpassungen passen nicht mehr zum aktuellen Plan oder Studio. Darum gilt wieder der Plan des Coaches.</p>}
             </section>
           ) : (
             <>

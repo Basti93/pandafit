@@ -115,12 +115,12 @@ describe('the sheet "Nächstes Training"', () => {
     const old = { ...(plan as unknown as TrackedWorkout), id: 'x', title: 'Pull', startMs: 1, endMs: null, source: 'pandafit' as const, exercises: [] };
     writeDraft(s, 'mira', 'older:Pull', old);
     const { view } = show([], s);
-    await screen.findByText('Der Coach hat neu geplant. Deine Änderungen galten dem alten Plan.');
+    await screen.findByText('Deine Anpassungen passen nicht mehr zum aktuellen Plan oder Studio. Darum gilt wieder der Plan des Coaches.');
     expect(screen.queryByText('Angepasst')).toBeNull();
     view.unmount();
     show([], s);
     await screen.findByRole('button', { name: 'Ansehen und anpassen' });
-    expect(screen.queryByText(/Der Coach hat neu geplant/)).toBeNull();
+    expect(screen.queryByText(/passen nicht mehr zum aktuellen Plan/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Pull starten' }));
     await screen.findByRole('region', { name: 'Latzug' }); // the plan, not the empty old draft
   });
@@ -159,7 +159,7 @@ describe('the sheet "Nächstes Training"', () => {
     const done = (id: string, studio: string): TrackedRecord => ({ kind: 'workout', id, updatedMs: 1, deleted: false,
       body: { id, title: 'T', startMs: NOW - 86_400_000, endMs: NOW - 86_000_000, source: 'pandafit', exercises: [], studio } as LoggedWorkout });
     show([done('b', 'Beta')], s); // now the studio is Beta, the draft was made without one
-    await screen.findByText('Der Coach hat neu geplant. Deine Änderungen galten dem alten Plan.');
+    await screen.findByText('Deine Anpassungen passen nicht mehr zum aktuellen Plan oder Studio. Darum gilt wieder der Plan des Coaches.');
     expect(screen.queryByText('Angepasst')).toBeNull();
     expect(stored(s)).toBeNull();
     sheet = await openSheet();
