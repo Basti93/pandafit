@@ -360,9 +360,9 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     rides: coach.state(id).summaries, workouts: gym.history(id), activities: garminData(id)?.activities,
     manualRuns: manualRuns(records.all(id, 'run'), null),
   });
-  // A coach must never fail over the extra block.
   /** Which sports were really done on each date, from every source. Planned sessions are not in it. */
   const doneOf = (id: string): Record<string, Sport[]> => { try { return doneByDate(activitiesOf(id)); } catch { return {}; } };
+  // A coach must never fail over the extra block.
   const activityHintOf = (id: string): string => { try { return activitiesHint(activitiesOf(id), nowMs()); } catch { return ''; } };
   // New activities, planned or not, make every coach plan again (the run coach sees it in its own key).
   const activitySeen = new ActivitySeen(path.join(coachDir, 'chat', 'activities-seen.json'));

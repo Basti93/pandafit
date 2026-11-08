@@ -79,7 +79,7 @@ describe('past plan days of the week', () => {
   test('a Garmin-only cycling or strength activity counts as done', async () => {
     const { allActivities, doneByDate } = await import('../../../src/coach/activity-feed');
     const g = (id: string, sport: string, startMs: number) => ({ id, sport, name: 'x', startMs, durationS: 3600, fromBikeCoach: false }) as never;
-    const done = doneByDate(allActivities({ rides: [], workouts: [], activities: [g('g1', 'cycling', Date.UTC(2026, 10, 6, 9)), g('g2', 'strength_training', Date.UTC(2026, 10, 6, 17))] }));
+    const done = doneByDate(allActivities({ rides: [], workouts: [], activities: [g('g1', 'cycling', new Date(2026, 10, 6, 9).getTime()), g('g2', 'strength_training', new Date(2026, 10, 6, 17).getTime())] }));
     expect(done['2026-11-06']).toEqual(['bike', 'gym']);
   });
 });
