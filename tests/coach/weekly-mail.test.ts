@@ -28,11 +28,11 @@ describe('weeklyMailOf', () => {
 
   it('has no plan: says so; no link without a URL; singular session; no sessions', () => {
     const m = weeklyMailOf({ ...base, nextWeek: null, lastWeek: { sessions: 1, minutes: 40 } });
-    expect(m.text).toContain('Noch kein Plan – frag den Coach in der App.');
+    expect(m.text).toContain('Es gibt noch keinen Plan. Frag den Coach in der App.');
     expect(m.text).toContain('Letzte Woche: 1 Einheit, 40 Min');
     expect(m.text).not.toContain('Zur App');
     expect(m.html).not.toContain('<a ');
-    expect(weeklyMailOf({ ...base, lastWeek: { sessions: 0, minutes: 0 } }).text).toContain('Letzte Woche: keine Einheit');
+    expect(weeklyMailOf({ ...base, lastWeek: { sessions: 0, minutes: 0 } }).text).toContain('Letzte Woche hattest du keine Einheit.');
   });
 
   it('up to three change notes, and the open proposal line', () => {
@@ -40,15 +40,15 @@ describe('weeklyMailOf', () => {
     const m = weeklyMailOf({ ...base, notes, openProposals: 1 });
     expect(m.text).toContain('Zuletzt geändert:\n- Änderung 1\n- Änderung 2\n- Änderung 3');
     expect(m.text).not.toContain('Änderung 4');
-    expect(m.text).toContain('Offen: 1 Vorschlag wartet in der App');
-    expect(weeklyMailOf({ ...base, openProposals: 2 }).text).toContain('Offen: 2 Vorschläge warten in der App');
+    expect(m.text).toContain('In der App wartet ein Vorschlag auf dich.');
+    expect(weeklyMailOf({ ...base, openProposals: 2 }).text).toContain('In der App warten 2 Vorschläge auf dich.');
   });
 
   it('the HTML carries the same content, escaped, with no images', () => {
     const m = weeklyMailOf({ ...base, profileName: '<b>A</b>', openProposals: 1, appUrl: 'https://app.example.org/?a=1&b=2' });
     expect(m.html).toContain('&lt;b&gt;A&lt;/b&gt;');
     expect(m.html).toContain('Mo., 9. Nov.: Kraft · mittel');
-    expect(m.html).toContain('Offen: 1 Vorschlag wartet in der App');
+    expect(m.html).toContain('In der App wartet ein Vorschlag auf dich.');
     expect(m.html).toContain('href="https://app.example.org/?a=1&amp;b=2"');
     expect(m.html).not.toMatch(/<img|<script|<style/);
   });

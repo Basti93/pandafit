@@ -294,7 +294,7 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
         </section>
       )}
       {status.on && <button type="button" className="tk-entry" onClick={() => setSheet('entry')}>Lauf eintragen</button>}
-      {status.on && status.card && thanked === status.card.runId && <p role="status" className="muted">Danke – das fließt in den nächsten Laufplan ein.</p>}
+      {status.on && status.card && thanked === status.card.runId && <p role="status" className="muted">Danke! Das fließt in den nächsten Laufplan ein.</p>}
       {status.on && status.card && (
         <section className="tk-lastrun" aria-label="Dein letzter Lauf">
           <h2 className="tk-section">Letzter Lauf</h2>

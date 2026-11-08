@@ -102,7 +102,7 @@ The meal plan should use real, vegetarian recipes from a recipe collection on th
   - runs the same pipeline.
 - **Answers:**
   - "Gespeichert: <Titel>";
-  - "Nicht vegetarisch – nicht gespeichert";
+  - "Das Rezept ist nicht vegetarisch. Darum ist es nicht gespeichert.";
   - "Auf der Seite ist kein Rezept zu finden".
 - **Limit:** at most 20 link imports per day and household.
 - **Delete:** link recipes can be deleted from a "Eigene Rezepte ›" list.

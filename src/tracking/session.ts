@@ -175,7 +175,7 @@ export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: nu
     const rest = w.exercises.filter((e) => !leg(e));
     if (rest.length === w.exercises.length) { /* no leg exercise: nothing to say */ }
     else if (rest.length === 0) legNotes.push('Heute war ohne Beine abgesprochen.');
-    else { w = { ...w, exercises: rest }; legNotes.push('Ohne Beine, wie abgesprochen.'); }
+    else { w = { ...w, exercises: rest }; legNotes.push('Heute geht es ohne Beine, wie abgesprochen.'); }
   }
   const listed = listedIds(next.workouts);
   const todo = next.changes.filter((c) => c.state === 'taken' && !listed.has(c.id));

@@ -69,7 +69,7 @@ function MusclesSheet({ v, onClose }: { v: StatsView; onClose: () => void }) {
     <Sheet title="Muskeln" onClose={onClose}>
       <div className="tk-stats" aria-label="Muskeln">
         {rows.length > 0 && <RowList>{rows.map((b) => <MuscleRow key={b.group} b={b} gap={gaps.has(b.group)} open={openGroup === b.group} onToggle={() => setOpenGroup(openGroup === b.group ? null : b.group)} />)}</RowList>}
-        {rows.length === 0 && !all && <p className="muted">Diese Woche noch keine Sätze.</p>}
+        {rows.length === 0 && !all && <p className="muted">Diese Woche hast du noch keine Sätze gemacht.</p>}
         {allRows.length > shown.length && (
           <button type="button" className="link" onClick={() => setAll(!all)}>{all ? 'Weniger Muskelgruppen' : 'Alle Muskelgruppen anzeigen'}</button>
         )}
@@ -157,7 +157,7 @@ export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort;
   const total = weekTotal(w);
   const sentence = total > 0 || sessions > 0
     ? `${sessions} ${sessions === 1 ? 'Einheit' : 'Einheiten'}, ${durationText(total)}`
-    : 'Noch keine Einheit.';
+    : 'Bisher gibt es noch keine Einheit.';
   const gaps = [...gapGroups(v)].length;
   return (
     <section className="tk-lookback" aria-label="Rückblick">

@@ -201,7 +201,7 @@ describe('version notification', () => {
     await two.app.ready();
     await vi.waitFor(() => expect(two.sent).toHaveLength(2));
     expect(two.sent.every((s) => s.type === 'version')).toBe(true);
-    expect(JSON.parse(two.sent[0]!.payload).body).toBe('Neue Version von Pandafit. Beim nächsten Öffnen ist sie da.');
+    expect(JSON.parse(two.sent[0]!.payload).body).toBe('Es gibt eine neue Version von Pandafit. Beim nächsten Öffnen ist sie da.');
     await two.app.close();
 
     const three = await server({ db: one.dbPath, version: 'v2' });

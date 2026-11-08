@@ -31,12 +31,12 @@ const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;'
 /** The weekly overview in plain German: the subject, the text and the same content as minimal HTML (no images, no tracking). Pure. */
 export function weeklyMailOf(i: WeeklyMailInput): WeeklyMail {
   const { sessions, minutes } = i.lastWeek;
-  const last = sessions === 0 && minutes === 0 ? 'Letzte Woche: keine Einheit'
+  const last = sessions === 0 && minutes === 0 ? 'Letzte Woche hattest du keine Einheit.'
     : `Letzte Woche: ${sessions} ${sessions === 1 ? 'Einheit' : 'Einheiten'}, ${durationText(minutes)}`;
   const notes = i.notes.slice(0, NOTES_SHOWN).map((n) => n.text);
   const days = i.nextWeek?.map((d) => `${shortDateOfKey(d.date)}: ${planDayText(d, { legs: true })}`) ?? null;
-  const open = i.openProposals === 1 ? 'Offen: 1 Vorschlag wartet in der App'
-    : i.openProposals > 1 ? `Offen: ${i.openProposals} Vorschläge warten in der App` : null;
+  const open = i.openProposals === 1 ? 'In der App wartet ein Vorschlag auf dich.'
+    : i.openProposals > 1 ? `In der App warten ${i.openProposals} Vorschläge auf dich.` : null;
   const link = i.appUrl ? i.appUrl : null;
 
   const text = [
@@ -44,7 +44,7 @@ export function weeklyMailOf(i: WeeklyMailInput): WeeklyMail {
     last,
     ...(notes.length > 0 ? ['', 'Zuletzt geändert:', ...notes.map((n) => `- ${n}`)] : []),
     '', 'Nächste Woche:',
-    ...(days ?? ['Noch kein Plan – frag den Coach in der App.']),
+    ...(days ?? ['Es gibt noch keinen Plan. Frag den Coach in der App.']),
     ...(open ? ['', open] : []),
     ...(link ? ['', `Zur App: ${link}`] : []),
   ].join('\n');
@@ -56,7 +56,7 @@ export function weeklyMailOf(i: WeeklyMailInput): WeeklyMail {
     p(esc(last)),
     ...(notes.length > 0 ? [p('<strong>Zuletzt geändert</strong>', 'margin:0 0 4px'), `<ul style="margin:0 0 12px;padding-left:1.2em">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`] : []),
     p('<strong>Nächste Woche</strong>', 'margin:0 0 4px'),
-    days ? `<ul style="margin:0 0 12px;padding-left:1.2em">${days.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>` : p('Noch kein Plan – frag den Coach in der App.'),
+    days ? `<ul style="margin:0 0 12px;padding-left:1.2em">${days.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>` : p('Es gibt noch keinen Plan. Frag den Coach in der App.'),
     ...(open ? [p(esc(open))] : []),
     ...(link ? [p(`<a href="${esc(link)}">Zur App</a>`)] : []),
     '</div>',

@@ -193,7 +193,7 @@ describe('push notifications', () => {
   it('shows the version notice with the app icon and a tag per type, so a repeat replaces it', () => {
     const n = notificationFor(JSON.stringify({ type: 'version', title: 'Pandafit', body: 'x' }))!;
     expect(n.title).toBe('Pandafit');
-    expect(n.options).toMatchObject({ body: 'Neue Version von Pandafit. Beim nächsten Öffnen ist sie da.', tag: 'pandafit-version', icon: '/icons/icon-192.png', data: { url: '/' } });
+    expect(n.options).toMatchObject({ body: 'Es gibt eine neue Version von Pandafit. Beim nächsten Öffnen ist sie da.', tag: 'pandafit-version', icon: '/icons/icon-192.png', data: { url: '/' } });
     const m = notificationFor(JSON.stringify({ type: 'meal' }))!;
     expect(m.options).toMatchObject({ body: 'Dein Essensplan für die Woche ist da.', tag: 'pandafit-meal', data: { url: '/?tab=essen' } });
   });
@@ -218,7 +218,7 @@ describe('push notifications', () => {
 
   it('the rest notice renotifies with sound and vibration; other notices do not', () => {
     const r = notificationFor(JSON.stringify({ type: 'rest' }))!;
-    expect(r.options).toMatchObject({ body: 'Pause vorbei. Weiter mit dem nächsten Satz.', tag: 'pandafit-rest', renotify: true, silent: false, vibrate: [200, 100, 200], data: { url: '/' } });
+    expect(r.options).toMatchObject({ body: 'Die Pause ist vorbei. Weiter geht es mit dem nächsten Satz.', tag: 'pandafit-rest', renotify: true, silent: false, vibrate: [200, 100, 200], data: { url: '/' } });
     for (const t of ['version', 'meal', 'run', 'nope']) {
       const o = notificationFor(JSON.stringify({ type: t }))!.options;
       expect(o).not.toHaveProperty('renotify');

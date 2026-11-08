@@ -177,7 +177,7 @@ test('a new person with no sets in the last 4 weeks is not flooded with "Noch ni
   await show([workout('old', new Date(2026, 8, 1, 18).getTime(), 'pf-bench-press', 'Bankdrücken', 3)]);
   const sheet = openMuscles();
   expect(within(sheet).queryByText('Noch nichts')).toBeNull();
-  expect(within(sheet).getByText('Diese Woche noch keine Sätze.')).toBeTruthy();
+  expect(within(sheet).getByText('Diese Woche hast du noch keine Sätze gemacht.')).toBeTruthy();
   expect(within(sheet).queryByRole('button', { name: /Rücken/ })).toBeNull();
   fireEvent.click(within(sheet).getByRole('button', { name: 'Alle Muskelgruppen anzeigen' }));
   expect(within(sheet).getByRole('button', { name: /Rücken/ })).toBeTruthy();

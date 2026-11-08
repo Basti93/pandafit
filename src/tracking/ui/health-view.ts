@@ -53,9 +53,9 @@ export function healthRows(h: HealthBody): HealthRow[] {
     const f = findingOf(h.findings, 'health.vo2-trend');
     out.push({
       key: 'vo2', title: 'Fitness', word: wordOf(f, f ? 'steigt' : 'stabil'),
-      sentence: f?.text ?? 'Noch keine klare Veränderung der geschätzten Ausdauerfitness.',
+      sentence: f?.text ?? 'Deine geschätzte Ausdauerfitness hat sich noch nicht klar verändert.',
       series: [{ label: 'Letzte 52 Wochen', values: vo2 }],
-      facts: ['Die Uhr schätzt diesen Wert nur grob, wichtig ist der Verlauf über Wochen.'],
+      facts: ['Die Uhr schätzt diesen Wert nur grob. Wichtig ist der Verlauf über Wochen.'],
     });
   }
   const steps = column(h.weeks, (w) => w.steps), minutes = column(h.weeks, (w) => w.activeMin);
@@ -64,7 +64,7 @@ export function healthRows(h: HealthBody): HealthRow[] {
     const f = findingOf(h.findings, 'health.steps-band', 'health.activity-minutes');
     out.push({
       key: 'move', title: 'Bewegung im Alltag', word: wordOf(f, f ? 'im Richtwert' : 'offen'),
-      sentence: f?.text ?? 'Zu wenig Daten für einen Vergleich mit den Empfehlungen.',
+      sentence: f?.text ?? 'Für einen Vergleich mit den Empfehlungen gibt es noch zu wenig Daten.',
       series: [...(has(steps) ? [{ label: 'Schritte pro Tag, 52 Wochen', values: steps }] : []), ...(has(minutes) ? [{ label: 'Aktive Minuten pro Woche, 52 Wochen', values: minutes }] : [])],
       facts: [
         ...(week?.steps !== undefined ? [`Schritte pro Tag (letzte volle Woche): ${de(week.steps)}.`] : []),
@@ -78,7 +78,7 @@ export function healthRows(h: HealthBody): HealthRow[] {
     const s = last(sleep);
     out.push({
       key: 'sleep', title: 'Schlaf & HRV', word: 'Verlauf',
-      sentence: s !== null ? 'Schlaf und HRV als Verlauf, ohne Bewertung.' : 'Die HRV als Verlauf, ohne Bewertung.',
+      sentence: s !== null ? 'Hier siehst du Schlaf und HRV als Verlauf, ohne Bewertung.' : 'Hier siehst du die HRV als Verlauf, ohne Bewertung.',
       series: [...(has(sleep) ? [{ label: 'Schlaf in Stunden, 52 Wochen', values: sleep }] : []), ...(has(hrv) ? [{ label: 'HRV, 52 Wochen', values: hrv }] : [])],
       facts: s !== null ? [`Zuletzt im Schnitt ${de(s, 1)} Stunden pro Nacht.`] : [],
     });

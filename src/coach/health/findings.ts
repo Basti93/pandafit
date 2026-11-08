@@ -22,7 +22,7 @@ const rhrByDate = (days: GarminDay[], today: string): { byDate: Map<string, numb
 
 const rhrFindings = (days: GarminDay[], today: string): HealthFinding[] => {
   const out: HealthFinding[] = [];
-  if (restingHrRaised(days)) out.push({ rule: 'health.rhr-raised', tone: 'info', text: 'Dein Ruhepuls liegt seit zwei Tagen über deinem üblichen Wert. Heute lieber locker.' });
+  if (restingHrRaised(days)) out.push({ rule: 'health.rhr-raised', tone: 'info', text: 'Dein Ruhepuls liegt seit zwei Tagen über deinem üblichen Wert. Mach heute lieber etwas Lockeres.' });
   const cur = rhrByDate(days, today);
   if (!cur) return out;
   const week = Array.from({ length: WEEK_DAYS }, (_, i) => cur.byDate.get(addDays(cur.anchor, -i)));
@@ -98,7 +98,7 @@ const activity = (week: HealthWeek | undefined): HealthFinding[] => {
   if ((week.activeMin !== undefined || week.steps !== undefined) && week.strengthDays !== undefined) {
     const need = ruleValues('health.activity-minutes').strengthDays!;
     out.push(week.strengthDays >= need
-      ? { rule: 'health.activity-minutes', tone: 'gut', text: `Muskelkräftigung an ${week.strengthDays} Tagen, die WHO empfiehlt mindestens ${need}.` }
+      ? { rule: 'health.activity-minutes', tone: 'gut', text: `Du hattest an ${week.strengthDays} Tagen Muskelkräftigung. Die WHO empfiehlt mindestens ${need}.` }
       : { rule: 'health.activity-minutes', tone: 'info', text: `Die WHO empfiehlt Muskelkräftigung an mindestens ${need} Tagen pro Woche; letzte Woche ${week.strengthDays === 0 ? 'gab es keinen solchen Tag' : 'war es ein Tag'}.` });
   }
   return out;

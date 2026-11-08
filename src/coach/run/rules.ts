@@ -98,13 +98,13 @@ const isLight = (week: string, since: string): boolean => {
 /** Which number counts today, said before the run. */
 export const countsText = (kind: RunKind, minutes: number, hrCap: number | null, hasTrend: boolean): string => {
   if (kind === 'test') {
-    return `${TEST_WARM_MIN} Minuten einlaufen, ${TEST_MAIN_MIN} Minuten gleichmäßig zügig, ${TEST_COOL_MIN} Minuten auslaufen. `
+    return `Lauf dich ${TEST_WARM_MIN} Minuten ein. Dann läufst du ${TEST_MAIN_MIN} Minuten gleichmäßig zügig und ${TEST_COOL_MIN} Minuten locker aus. `
       + `Heute zählt die Strecke in den ${TEST_MAIN_MIN} Minuten.`;
   }
-  const calm = hrCap !== null ? `Puls unter ${hrCap}` : 'so, dass du dich noch unterhalten kannst';
+  const calm = hrCap !== null ? `mit Puls unter ${hrCap}` : 'so, dass du dich noch unterhalten kannst';
   const trend = hasTrend && hrCap !== null ? ' Über die Wochen zeigt sich dein Fortschritt im Tempo bei gleichem Puls.' : '';
-  if (kind === 'long') return `${minutes} Minuten lang und ruhig, ${calm}. Heute zählt die Zeit, nicht das Tempo.${trend}`;
-  return `${minutes} Minuten ruhig, ${calm}.${trend}`;
+  if (kind === 'long') return `Lauf ${minutes} Minuten lang und ruhig, ${calm}. Heute zählt die Zeit, nicht das Tempo.${trend}`;
+  return `Lauf ${minutes} Minuten ruhig, ${calm}.${trend}`;
 };
 
 export const TEST_NOTE = 'Der Testlauf ist ein Angebot. Wenn du dich heute nicht frisch fühlst, lauf einfach ruhig.';
@@ -260,11 +260,11 @@ export const reasonText = (phase: 1 | 2, w: ReasonFacts): string => {
   if (w.noDay) return `${name}: Für diese Woche ist kein Lauftag mehr frei.`;
   if (w.tooFew) return `${name}: Für den Rest dieser Woche bleibt zu wenig Zeit für einen ganzen Lauf, weiter geht es nächste Woche.`;
   if (w.held) return `${name}: Die Woche bleibt, wie sie ist, weil sich die letzten Läufe schwer angefühlt haben.`;
-  if (w.light) return `${name}: Eine leichtere Woche, damit Erholung Platz hat.`;
-  const test = w.test ? ', dazu ein Testlauf als Messpunkt' : '';
-  if (phase === 1) return `${name}: Ruhige Läufe, die Wochenzeit ${w.rising ? 'steigt' : 'bleibt'} behutsam${test}.`;
-  if (w.long === 'placed') return `${name}: Ein langer ruhiger Lauf, die anderen Läufe bleiben ruhig${test}.`;
-  if (w.long === 'test') return `${name}: Diese Woche ein Testlauf statt des langen Laufs, die anderen Läufe bleiben ruhig.`;
+  if (w.light) return `${name}: Diese Woche ist leichter, damit Erholung Platz hat.`;
+  const test = w.test ? ', dazu kommt ein Testlauf als Messpunkt' : '';
+  if (phase === 1) return `${name}: Diese Woche gibt es ruhige Läufe, und die Wochenzeit ${w.rising ? 'steigt' : 'bleibt'} behutsam${test}.`;
+  if (w.long === 'placed') return `${name}: Diese Woche gibt es einen langen ruhigen Lauf, die anderen Läufe bleiben ruhig${test}.`;
+  if (w.long === 'test') return `${name}: Diese Woche gibt es einen Testlauf statt des langen Laufs, die anderen Läufe bleiben ruhig.`;
   if (w.long === 'noDay') return `${name}: Diese Woche gibt es nur ruhige Läufe, für den langen Lauf passt kein Tag${test}.`;
   return `${name}: Diese Woche gibt es nur ruhige Läufe, für einen langen Lauf reicht die Zeit nicht${test}.`;
 };

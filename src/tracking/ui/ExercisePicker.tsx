@@ -82,7 +82,7 @@ export function ExercisePicker({ port, onPick, onClose, like, title = 'Übung w�
           <ChoiceRow label="Gerät" placeholder="Wählen" value={draft.equipment} options={options(EQUIPMENT)} onChange={(equipment) => setDraft({ ...draft, equipment })} />
           <ChoiceRow label="Zählt nach" placeholder="Wählen" value={draft.type} options={options(TYPES)} onChange={(type) => setDraft({ ...draft, type })} />
           {!valid && <p className="muted">Es fehlt noch: {[draft.name.trim() === '' && 'Name', draft.muscle === '' && 'Muskelgruppe', draft.equipment === '' && 'Gerät'].filter(Boolean).join(', ')}.</p>}
-          {error && <p role="status" className="tk-note">Konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}
+          {error && <p role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}
         </form>
       </Sheet>
     );

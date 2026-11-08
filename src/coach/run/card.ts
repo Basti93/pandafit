@@ -9,17 +9,17 @@ const HEAT_C = 25;
 const SHORT_NIGHT_S = 6 * 3600;
 
 const EASY = [
-  'Ruhig gelaufen ist genau richtig. So wächst die Ausdauer.',
-  'Locker unterwegs, so soll es sein. Die Ausdauer dankt es dir.',
+  'Ruhig zu laufen ist genau richtig. So wächst die Ausdauer.',
+  'Du warst locker unterwegs, so soll es sein. Die Ausdauer dankt es dir.',
   'Ein ruhiger Lauf baut leise die Grundlage auf.',
 ];
 const LONG = [
-  'Ein langer Lauf in ruhigem Tempo, das trägt die Woche.',
-  'Lange und ruhig, so entsteht Ausdauer.',
+  'Ein langer Lauf in ruhigem Tempo trägt die Woche.',
+  'Wenn du lange und ruhig läufst, entsteht Ausdauer.',
 ];
 const TEST = [
   'Der Testlauf zeigt, wo du heute stehst. Er ist nur ein Messpunkt.',
-  'Ein Messpunkt für den Verlauf, mehr nicht.',
+  'Er ist ein Messpunkt für den Verlauf, mehr nicht.',
 ];
 const NO_HR = [
   'Ohne Puls zählen Kilometer und Zeit. Ein Tempo lässt sich so nicht einordnen.',

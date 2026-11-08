@@ -32,11 +32,11 @@ const when = (p: WeekProposal) => `ab ${dayMonthOfKey(p.weekStart)}`;
 function ProposalLine({ m, answer, undoWhy, past, loading, onUndo }: { m: WeekEntry; answer: 'taken' | 'declined' | 'undone' | null; undoWhy: string | null; past: boolean; loading: boolean; onUndo: () => void }) {
   const p = m.proposal;
   if (answer === null) return past ? <p className="muted">Diese Woche ist vorbei.</p> : null;
-  if (answer === 'undone') return <p className="muted">Wochenplan rückgängig gemacht ({when(p)})</p>;
-  if (answer === 'declined') return <p className="muted">{DECLINED} ({when(p)})</p>;
+  if (answer === 'undone') return <p className="muted">Du hast den Wochenplan {when(p)} rückgängig gemacht.</p>;
+  if (answer === 'declined') return <p className="muted">Du hast den Wochenplan {when(p)} abgelehnt.</p>;
   return (
     <div className="tk-histline">
-      <span className="muted">Übernommen: Wochenplan ({when(p)})</span>
+      <span className="muted">Du hast den Wochenplan {when(p)} übernommen.</span>
       {!loading && undoWhy === null && <button type="button" className="link" onClick={onUndo}>{UNDO}</button>}
       {!loading && undoWhy && <span className="muted">{undoWhy}</span>}
     </div>
@@ -50,7 +50,7 @@ function PinnedWeek({ m, warnings, loading, onTake, onDecline }: { m: WeekEntry;
     <div className="tk-pin" role="group" aria-label={`Vorschlag Wochenplan ${when(p)}`}>
       <b>Vorschlag: Woche {when(p)}</b>
       <Week brief rows={planRows(p.days)} label={`Vorschlag für die Woche ab ${shortDateOfKey(p.weekStart)}`} />
-      {warnings && warnings.length > 0 && <p className="tk-note">Mehr als unsere Regeln für Erholung empfehlen: {warnings.join(' ')}</p>}
+      {warnings && warnings.length > 0 && <p className="tk-note">Das ist mehr, als unsere Regeln für Erholung empfehlen: {warnings.join(' ')}</p>}
       <div className="tk-row">
         <button type="button" disabled={loading} onClick={onTake}>{TAKE}</button>
         <button type="button" className="link" onClick={onDecline}>{DECLINE}</button>
@@ -106,7 +106,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
 
   const write = async (m: ChatMessage) => {
     setError(null);
-    try { await port.put({ kind: 'chat', id: newId(), updatedMs: now(), deleted: false, body: m }); return true; } catch { setError('Konnte nicht gespeichert werden. Versuch es gleich nochmal.'); return false; }
+    try { await port.put({ kind: 'chat', id: newId(), updatedMs: now(), deleted: false, body: m }); return true; } catch { setError('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.'); return false; }
   };
   const send = async () => {
     const t = text.trim().slice(0, MAX_CHAT_TEXT);
@@ -154,7 +154,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
           <button type="button" className="link" aria-expanded={notesOpen} onClick={() => setNotesOpen(!notesOpen)}>Zuletzt geändert {notesOpen ? '⌃' : '⌄'}</button>
           {notesOpen && (
             <ul className="tk-changes" aria-label="Zuletzt geändert">
-              {notes.map((n, i) => <li key={`${n.atMs}-${i}`}>{dateLabel(n.atMs)} · {n.text}{n.reason ? ` – ${n.reason}` : ''}</li>)}
+              {notes.map((n, i) => <li key={`${n.atMs}-${i}`}>{dateLabel(n.atMs)} · {n.text}{n.reason ? `, ${n.reason}` : ''}</li>)}
             </ul>
           )}
         </div>

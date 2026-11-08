@@ -93,7 +93,7 @@ test('screen: the undone state is remembered in the chat, a reload shows it; a l
   first.unmount();
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  expect(await screen.findByText(/Wochenplan rückgängig gemacht/)).toBeTruthy();
+  expect(await screen.findByText(/Du hast den Wochenplan ab/)).toBeTruthy();
   expect([...map.values()].some((r) => r.kind === 'chat' && (r.body as { undoes?: string }).undoes === 'c1')).toBe(true);
   cleanup();
   // the plan was written but the chat note was not: still shown as taken
@@ -101,7 +101,7 @@ test('screen: the undone state is remembered in the chat, a reload shows it; a l
   await takeWeekPlan(lost.port, { proposal, changeId: 'c1', shownMs: 5, now: NOW });
   render(<CoachScreen port={lost.port} {...env} />);
   await openChat();
-  expect(await screen.findByText(/Übernommen: Wochenplan/)).toBeTruthy();
+  expect(await screen.findByText(/Du hast den Wochenplan ab .* übernommen\./)).toBeTruthy();
   expect(await screen.findByRole('button', { name: 'Rückgängig' })).toBeTruthy();
 });
 

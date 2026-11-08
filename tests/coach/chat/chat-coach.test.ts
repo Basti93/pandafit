@@ -44,14 +44,14 @@ test('a proposal that breaks a rule is asked again once, and dropped if still br
   const [m] = replies(s);
   expect(m!.proposal).toBeUndefined();
   expect(m!.text).toContain('passte nicht zu unseren Regeln');
-  expect(m!.text).toContain('Mehr als zwei harte Tage in der Woche');
+  expect(m!.text).toContain('Die Woche hat mehr als zwei harte Tage');
 });
 
 test('when the rider asks for more, the proposal stays with its warnings', async () => {
   const s = store([rider('r1', 'Ich will drei harte Tage')]);
   const c = coach(s, async () => ({ text: 'Viel, aber okay.', proposal: { weekStart: '2026-11-02', days: days('2026-11-02', [0, 2, 4]) }, riderAskedForMore: true }));
   await c.tick('p');
-  expect(replies(s)[0]).toMatchObject({ warnings: ['Mehr als zwei harte Tage in der Woche.'] });
+  expect(replies(s)[0]).toMatchObject({ warnings: ['Die Woche hat mehr als zwei harte Tage.'] });
 });
 
 test('never with an open complaint, even when asked for more', async () => {
@@ -120,14 +120,14 @@ describe('in a workout', () => {
     expect(prompt).toContain('Bank ist belegt');
     const [m] = replies(s);
     expect(m).toMatchObject({ inWorkout: 'w1', replyTo: 'r1', workoutChange: { workoutId: 'w1', ops: [{ op: 'swap', ex: 'e1', to: 'pf-chest-press-machine' }] } });
-    expect(m!.text).toContain('Geht nicht, weil die Übung nicht mehr da ist.');
+    expect(m!.text).toContain('Das geht nicht, weil die Übung nicht mehr da ist.');
   });
   it('says in words when no op fits, instead of dropping it silently', async () => {
     const s = store([workout(), rider('r1', 'Bank ist belegt', NOW - 1000, { inWorkout: 'w1' })]);
     await coach(s, async () => ({ text: 'Dann so.', newComplaint: null, complaintsOver: [], change: { ops: [{ op: 'swap', ex: 'e1', to: 'nope' }] } })).tick('p');
     const [m] = replies(s);
     expect(m!.workoutChange).toBeUndefined();
-    expect(m!.text).toBe('Dann so.\nGeht nicht, weil die Übung nicht im Katalog ist.');
+    expect(m!.text).toBe('Dann so.\nDas geht nicht, weil die Übung nicht im Katalog ist.');
   });
   it('a finished workout gets a kind note and no Claude call', async () => {
     const s = store([workout(NOW - 500), rider('r1', 'Noch was?', NOW - 1000, { inWorkout: 'w1' })]);
@@ -285,7 +285,7 @@ describe('a swap for the next workout is resolved against the whole catalog', ()
     const c = coach(s, async () => { calls++; return swap(undefined, 'Goblet Squat'); });
     await c.tick('p');
     expect(calls).toBe(1);
-    expect(replies(s)[0]!.text).toMatch(/Geht nicht, weil du .* ausgeschlossen hast\./);
+    expect(replies(s)[0]!.text).toMatch(/Das geht nicht, weil du .* ausgeschlossen hast\./);
     expect([...s.recs.values()].some((r) => r.kind === 'change')).toBe(false);
   });
 
@@ -296,7 +296,7 @@ describe('a swap for the next workout is resolved against the whole catalog', ()
     await c.tick('p');
     expect(calls).toBe(2);
     const m = replies(s)[0]!;
-    expect(m.text).toContain('Geht nicht, weil die Übung nicht im Katalog steht.');
+    expect(m.text).toContain('Das geht nicht, weil die Übung nicht im Katalog steht.');
     expect(m.nextChange).toBeUndefined();
   });
 });

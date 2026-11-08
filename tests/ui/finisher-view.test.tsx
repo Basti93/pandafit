@@ -13,8 +13,8 @@ test('the summary shows the finisher with the cardio line and keeps one Fertig b
   let done = 0;
   render(<WorkoutSummary {...props} onDone={() => { done++; }} />);
   expect(screen.getByRole('heading', { name: 'Zum Abschluss' })).toBeTruthy();
-  expect(screen.getByText('20 Min locker Cardio: Rad, Crosstrainer oder Laufband. Du kannst dabei noch reden.')).toBeTruthy();
-  expect(screen.getByText('Ein paar Minuten dehnen, was sich fest anfühlt.')).toBeTruthy();
+  expect(screen.getByText('Mach 20 Min lockeres Cardio auf dem Rad, dem Crosstrainer oder dem Laufband. Du kannst dabei noch reden.')).toBeTruthy();
+  expect(screen.getByText('Dehn ein paar Minuten, was sich fest anfühlt.')).toBeTruthy();
   expect(screen.getAllByRole('button')).toHaveLength(1);
   fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
   expect(done).toBe(1);

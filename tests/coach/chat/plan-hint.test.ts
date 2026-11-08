@@ -37,7 +37,7 @@ describe('what fits today in the hint', () => {
   const ctx = (mode: 'week' | 'spontaneous') => ({ ratings: {}, goal: { sports: { run: 'focus' as const } }, frame: { mode } });
   it('spontaneous mode gives the advice as the hint, even with a plan', () => {
     const h = planHint([], NOW, 'run', ctx('spontaneous'));
-    expect(h).toContain('Heute passt: Laufen, mittel – ein ruhiger Einstieg.');
+    expect(h).toContain('Heute passt: Laufen, mittel, als ruhiger Einstieg.');
     expect(planHint([plan('2026-11-02', { 5: 'gym' })], NOW, 'run', ctx('spontaneous'))).not.toContain('wochenplan');
   });
   it('week mode: no extra line when the plan day stands, the advice line when it differs', () => {
@@ -45,7 +45,7 @@ describe('what fits today in the hint', () => {
     expect(planHint([rec], NOW, 'bike', ctx('week'))).not.toContain('Heute passt');
     const hard = plan('2026-11-02', { 5: 'bike' });
     (hard.body as { days: { hardness: string }[] }).days[5]!.hardness = 'hard';
-    expect(planHint([hard], NOW, 'bike', { ...ctx('week'), readiness: { restingHrRaised: true } })).toContain('Heute passt: Ruhetag – weil dein Ruhepuls erhöht ist.');
+    expect(planHint([hard], NOW, 'bike', { ...ctx('week'), readiness: { restingHrRaised: true } })).toContain('Heute passt: Ruhetag, weil dein Ruhepuls erhöht ist.');
   });
   it('week mode: no line at all when today has no plan day', () => {
     const rec = plan('2026-11-02', { 0: 'bike' });

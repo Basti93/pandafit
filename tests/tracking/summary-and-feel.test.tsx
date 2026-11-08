@@ -26,7 +26,7 @@ test('after the finish the summary lists the next step per exercise, and Fertig 
   const next = { exerciseId: 'pf-squat', title: 'Kniebeuge', weightKg: 82.5, reps: 5, why: 'progress', reason: 'weil du alle Wiederholungen geschafft hast', forWorkoutId: 'o1', atMs: 1000 };
   await finish([stats([next])]);
   expect((await screen.findByText(/1 Übung · 2 Min/))).toBeTruthy();
-  expect(screen.getByText(/Kniebeuge · Nächstes Mal: 82,5 kg × 5 – weil du alle/).className).toContain('muted');
+  expect(screen.getByText(/Kniebeuge · Nächstes Mal: 82,5 kg × 5, weil du alle/).className).toContain('muted');
   fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
   expect(screen.queryByRole('region', { name: 'Zusammenfassung' })).toBeNull();
   expect(localStorage.getItem('pandafit-summary-pending')).toBeNull();
@@ -42,7 +42,7 @@ test('before the publish the summary shows no placeholder, and a reload still sh
   fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
   cleanup();
   render(<WorkoutScreen port={port} {...ids} />);
-  await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ });
+  await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ });
   expect(screen.queryByRole('region', { name: 'Zusammenfassung' })).toBeNull();
 });
 
@@ -62,7 +62,7 @@ test('the run question is answered once, thanks, and then gone', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'schwer' }));
   await waitFor(() => expect(state.puts.filter((p) => p.id === 'run-feel-g1')).toHaveLength(1));
   expect(state.puts.find((p) => p.id === 'run-feel-g1')!.body).toMatchObject({ type: 'feel', runId: 'g1', feel: 'hard', atMs: NOW });
-  expect(await screen.findByText(/Danke – das fließt in den nächsten Laufplan ein/)).toBeTruthy();
+  expect(await screen.findByText(/Danke! Das fließt in den nächsten Laufplan ein/)).toBeTruthy();
   expect(screen.queryByText(/Wie fühlte sich der Lauf an/)).toBeNull();
 });
 

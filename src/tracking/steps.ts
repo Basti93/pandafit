@@ -33,7 +33,7 @@ export function plateLine(totalKg: number): string {
   const p = platesPerSide(totalKg);
   const bar = formatDecimal(ruleNumber('load.bar-kg'));
   if (p.status === 'below-bar') return `Leichter als die Stange (${bar} kg)`;
-  if (p.status === 'between') return `Nicht genau auflegbar – ${formatDecimal(p.lower as number)} oder ${formatDecimal(p.upper as number)} kg`;
+  if (p.status === 'between') return `Das geht mit Scheiben nicht genau. Nimm ${formatDecimal(p.lower as number)} oder ${formatDecimal(p.upper as number)} kg.`;
   return p.perSide.length === 0 ? `Nur die Stange (${bar} kg)` : `Scheiben je Seite: ${p.perSide.map(formatDecimal).join(' + ')}`;
 }
 

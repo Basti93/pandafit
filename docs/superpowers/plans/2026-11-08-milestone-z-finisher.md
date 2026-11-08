@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Offered, never owed: no ticks, no „erledigt“-pressure, no counts. Copy calm, du-form.
-- Exact copy: heading „Zum Abschluss“; cardio line „20 Min locker Cardio: Rad, Crosstrainer oder Laufband. Du kannst dabei noch reden.“; stretch line without a mobility session „Ein paar Minuten dehnen, was sich fest anfühlt.“; only-stretch reason (muted) „Heute reicht Dehnen.“
+- Exact copy: heading „Zum Abschluss“; cardio line „Mach 20 Min lockeres Cardio auf dem Rad, dem Crosstrainer oder dem Laufband. Du kannst dabei noch reden.“; stretch line without a mobility session „Dehn ein paar Minuten, was sich fest anfühlt.“; only-stretch reason (muted) „Heute reicht Dehnen.“
 - With a mobility session from the coach the stretch part is the existing `MobilityOffer` row („Beweglichkeit · N Min“, its sheet unchanged).
 - No server change, no new record kind. Light and dark, 360 px. Existing tokens only.
 - `npm test`, `npm run typecheck`, `npm run test:web-smoke` before the commit.

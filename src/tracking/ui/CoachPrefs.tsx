@@ -22,14 +22,14 @@ export function CoachPrefs({ port, now, nested = false }: { port: TrackingPort; 
   return (
     <section aria-label="Wann sich der Coach meldet" className={nested ? 'tk-group tk-indent' : 'tk-group'}>
       {!nested && <h2 className="tk-section">Wann sich der Coach meldet</h2>}
-      <Switch label="Wochengespräch" hint="Mit Vorschlag für die nächste Woche." checked={prefs.week.on} onChange={(on) => save({ ...prefs, week: { ...prefs.week, on } })} />
+      <Switch label="Wochengespräch" hint="Der Coach schlägt dir dabei die nächste Woche vor." checked={prefs.week.on} onChange={(on) => save({ ...prefs, week: { ...prefs.week, on } })} />
       {prefs.week.on && (
         <>
           <ChoiceRow label="Tag des Wochengesprächs" value={prefs.week.day} options={DAYS} onChange={(day) => save({ ...prefs, week: { ...prefs.week, day } })} />
           <ChoiceRow label="Uhrzeit des Wochengesprächs" value={prefs.week.hour} options={HOURS} onChange={(hour) => save({ ...prefs, week: { ...prefs.week, hour } })} />
         </>
       )}
-      <Switch label="Am Vorabend sagen, was morgen ansteht" hint="Nur vor Trainingstagen." checked={prefs.evening.on} onChange={(on) => save({ ...prefs, evening: { ...prefs.evening, on } })} />
+      <Switch label="Am Vorabend sagen, was morgen ansteht" hint="Er meldet sich nur vor Trainingstagen." checked={prefs.evening.on} onChange={(on) => save({ ...prefs, evening: { ...prefs.evening, on } })} />
       {prefs.evening.on && <ChoiceRow label="Uhrzeit am Vorabend" value={prefs.evening.hour} options={HOURS} onChange={(hour) => save({ ...prefs, evening: { ...prefs.evening, hour } })} />}
       {error && <p role="status" className="tk-note">{error}</p>}
     </section>

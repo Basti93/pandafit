@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { reasonSentence } from '../../shared/today';
 import type { TrackedRecord } from '../../shared/records';
 import { dayLabel, HARDNESS_LABEL, hasSport, minutesText, planFor, SPORT_LABEL, type PlanDay } from '../../shared/week-plan';
 import type { TrackingPort } from '../ports';
@@ -77,7 +78,7 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, a }: Props & { a?: Adv
     return (
       <section className="card tk-today-card" aria-label="Heute">
         <h2>{a.advice.label}</h2>
-        <p className="muted">{a.advice.reason}</p>
+        <p className="muted">{reasonSentence(a.advice.reason)}</p>
         {/* One card: the suggestion and the way to it. */}
         {adviceDay && hasSport(adviceDay, 'gym') && gym}
         {adviceDay && hasSport(adviceDay, 'run') && onRun && <button type="button" onClick={onRun}>Zum Laufen</button>}
@@ -94,13 +95,13 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, a }: Props & { a?: Adv
   return (
     <section className="card tk-today-card" aria-label={deviates ? 'Heute' : 'Heute laut Wochenplan'}>
       <h2>{title}</h2>
-      {deviates && a && <p className="muted">{a.advice.reason}</p>}
+      {deviates && a && <p className="muted">{reasonSentence(a.advice.reason)}</p>}
       {deviates && !spontaneous && planned && <p className="muted">Geplant war: {planDayLabel(planned)}</p>}
       {!deviates && today.note && <p className="muted">{today.note}</p>}
       {hasSport(today, 'gym') && gym}
       {hasSport(today, 'run') && (
         <>
-          {!runAlone && <p>{run ? `Lauf: ${run.minutes} Min ${RUN_KIND[run.kind] ?? ''}`.trim() : 'Ein Lauf nach Gefühl.'}</p>}
+          {!runAlone && <p>{run ? `Lauf: ${run.minutes} Min ${RUN_KIND[run.kind] ?? ''}`.trim() : 'Lauf heute nach Gefühl.'}</p>}
           {onRun && <button type="button" onClick={onRun}>Zum Laufen</button>}
         </>
       )}

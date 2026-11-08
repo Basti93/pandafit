@@ -45,7 +45,7 @@ Brief and acceptance: `docs/roadmap.md`, section "Meilenstein H — Brief". Spec
   - the muscle balance and the coach both use it, so the states move and the planner plans more;
   - focus sports change only the prompt line, as today.
 - **UI (`RulesCard`):** the focus line gets "für [unbefristet | 2 | 4 | 6 | 8 Wochen]". With a time limit, the line reads "Schwerpunkt: Rücken – bis Mo., 1. Dez.".
-  - After the end, the card shows one line "Schwerpunkt Rücken ist am … ausgelaufen – jetzt wieder dein Grundziel." with an "OK" button. OK writes `endedSeenMs`, so the line disappears.
+  - After the end, the card shows one line "Schwerpunkt Rücken ist am … ausgelaufen. Jetzt gilt wieder dein Grundziel." with an "OK" button. OK writes `endedSeenMs`, so the line disappears.
 - **Chat goal proposals** can carry `weeks` (1–12). Taking one writes `temporary` instead of the base.
 
 ### B. Feedback that shows its effect (gym)
@@ -62,7 +62,7 @@ Brief and acceptance: `docs/roadmap.md`, section "Meilenstein H — Brief". Spec
 - **App:**
   - **Workout summary or history detail:** after finishing, and in the history detail of the latest workout, one line per exercise: "Nächstes Mal: 62,5 kg × 8 – weil du alle Wiederholungen geschafft hast."
   - **Before the publish arrives:** show "Kommt nach der Auswertung" in muted text.
-  - **After an effort answer:** a small muted note "Danke – das fließt in den nächsten Vorschlag ein." No local computation.
+  - **After an effort answer:** a small muted note "Danke! Das fließt in den nächsten Vorschlag ein." No local computation.
 
 ### C. "Zuletzt geändert"
 

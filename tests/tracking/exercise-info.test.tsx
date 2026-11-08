@@ -67,7 +67,7 @@ describe('workout: Anleitung behind the info icon on the card', () => {
     await running();
     fireEvent.click(screen.getByRole('button', { name: 'Anleitung Meine Übung' }));
     const note = screen.getByRole('note', { name: 'Anleitung Meine Übung' });
-    expect(note.textContent).toContain('Noch keine Beschreibung.');
+    expect(note.textContent).toContain('Für diese Übung gibt es noch keine Beschreibung.');
     const video = within(note).getByRole('link', { name: 'Video ansehen' });
     expect(video.getAttribute('href')).toBe('https://www.youtube.com/results?search_query=Meine%20%C3%9Cbung%20exercise%20form');
   });
@@ -125,7 +125,7 @@ describe('workout: imported exercises resolve by identity', () => {
     await runningWith([good]);
     fireEvent.click(screen.getByRole('button', { name: 'Anleitung Squat (Smith Machine)' }));
     const note = screen.getByRole('note', { name: 'Anleitung Squat (Smith Machine)' });
-    expect(note.textContent).toContain('Noch keine Beschreibung.');
+    expect(note.textContent).toContain('Für diese Übung gibt es noch keine Beschreibung.');
     expect(note.textContent).not.toContain('Beschrieben am Beispiel');
     expect(within(note).queryByRole('img', { name: /Ausführung/ })).toBeNull();
   });
@@ -217,7 +217,7 @@ describe('picker: info toggle per exercise', () => {
     const row = await screen.findByRole('button', { name: /^Seilspringen am Hof/ });
     fireEvent.click(screen.getByRole('button', { name: 'Anleitung Seilspringen am Hof' }));
     const note = screen.getByRole('note', { name: 'Anleitung Seilspringen am Hof' });
-    expect(note.textContent).toContain('Noch keine Beschreibung.');
+    expect(note.textContent).toContain('Für diese Übung gibt es noch keine Beschreibung.');
     expect(within(note).getByRole('link', { name: 'Video ansehen' })).toBeTruthy();
     expect(onPick).not.toHaveBeenCalled();
     fireEvent.click(row);

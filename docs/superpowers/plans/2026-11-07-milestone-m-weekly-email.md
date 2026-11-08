@@ -40,7 +40,7 @@ Today the clients have fixed `recipients` in `clients.json`, and the body fields
 ### Profil UI (web `src/web/App.tsx` Profil)
 
 - Row "E-Mail — <address or 'keine'> ›" opens a small sheet with an email input (`type="email"`, `autocomplete="email"`), "Speichern" and "Entfernen" (link).
-- It validates with `isEmail` and shows "Bitte eine gültige Adresse" on a bad value.
+- It validates with `isEmail` and shows "Bitte gib eine gültige Adresse ein." on a bad value.
 - Switch row "Wochenübersicht per E-Mail" with the hint "Sonntagabend: Rückblick und nächste Woche". It is disabled while there is no address.
 - Writes go through the normal record put, stamped above the stored `updatedMs`.
 
@@ -52,8 +52,8 @@ Today the clients have fixed `recipients` in `clients.json`, and the body fields
   - **Text, short:**
     - a greeting;
     - "Letzte Woche: 4 Einheiten, 3 Std 10 Min" plus up to 3 change notes ("Zuletzt geändert");
-    - "Nächste Woche:" one line per day (the same day texts as the app, `plan-text.ts`), or, without a plan, "Noch kein Plan – frag den Coach in der App.";
-    - "Offen: 1 Vorschlag wartet in der App" when there is one;
+    - "Nächste Woche:" one line per day (the same day texts as the app, `plan-text.ts`), or, without a plan, "Es gibt noch keinen Plan. Frag den Coach in der App.";
+    - "In der App wartet ein Vorschlag auf dich." when there is one;
     - the app link.
   - The HTML is the same content with minimal inline styles (no images, no tracking).
   - Reuse the existing helpers for the stats and the week plan; no new numbers.

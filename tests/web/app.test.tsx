@@ -94,7 +94,7 @@ describe('web app', () => {
     const btn = await screen.findByRole('button', { name: 'Anmelden' }) as HTMLButtonElement;
     expect(btn.disabled).toBe(false);
     fireEvent.click(btn);
-    expect(await screen.findByText('Bitte Name und Passwort eingeben')).toBeTruthy();
+    expect(await screen.findByText('Bitte gib deinen Namen und dein Passwort ein.')).toBeTruthy();
     expect(a.calls.some((c) => c.includes('/login'))).toBe(false);
   });
 
@@ -118,7 +118,7 @@ describe('web app', () => {
     expect(input.getAttribute('autocomplete')).toBe('email');
     fireEvent.change(input, { target: { value: 'kein-mail' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-    expect(await screen.findByText('Bitte eine gültige Adresse')).toBeTruthy();
+    expect(await screen.findByText('Bitte gib eine gültige Adresse ein.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Entfernen' })).toBeNull();
     fireEvent.change(input, { target: { value: 'a@example.org' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
@@ -161,7 +161,7 @@ describe('web app', () => {
     const a = await boot({ offline: true, account: 'anna', seed: [plan(NOW - 1000)] });
     expect(await screen.findByText('Beine A')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Routine oder leer' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Routine oder leeres Training' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leeres Training starten' }));
     await waitFor(async () => {
       const s = await openIdb('anna', a.factory);
@@ -174,13 +174,13 @@ describe('web app', () => {
   it('an open workout from an earlier day says so in its heading', async () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w-old', updatedMs: NOW - 500, deleted: false, body: { id: 'w-old', title: 'Pull', startMs: NOW - 26 * 3_600_000, endMs: null, source: 'pandafit', exercises: [] } };
     await boot({ seed: [plan(NOW - 1000), open] });
-    expect(await screen.findByRole('heading', { name: /^Pull läuft – gestartet gestern \d\d:\d\d$/ })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /^Pull läuft seit gestern \d\d:\d\d$/ })).toBeTruthy();
   });
 
   it('an open workout shows on Heute with "Weitermachen", which leads to the workout', async () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w-open', updatedMs: NOW - 500, deleted: false, body: { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] } };
     await boot({ seed: [plan(NOW - 1000), open] });
-    expect(await screen.findByRole('heading', { name: /^Pull läuft – gestartet \d\d:\d\d$/ })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /^Pull läuft seit \d\d:\d\d$/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Etwas anderes heute?' })).toBeNull(); // no day card beside the open workout
     fireEvent.click(screen.getByRole('button', { name: 'Weitermachen' }));
     // one tap: the workout itself opens, not the start screen with its card
@@ -243,13 +243,13 @@ describe('web app', () => {
     expect(screen.getByRole('button', { name: 'Woche planen' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Im Profil auswählen' }));
     expect(await screen.findByRole('heading', { name: 'Profil' })).toBeTruthy();
-    expect(screen.getByText('Rad · startet mit der ersten Fahrt am Mac')).toBeTruthy();
+    expect(screen.getByText('Rad · Es geht mit der ersten Fahrt am Mac los.')).toBeTruthy();
     // Profil is ordered: Planen first (with the run switch), then Nachrichten; the e-mail waits under its switch.
     const heads = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(heads.indexOf('Planen')).toBeGreaterThanOrEqual(0);
     expect(heads.indexOf('Planen')).toBeLessThan(heads.indexOf('Nachrichten'));
     expect(screen.getByRole('switch', { name: 'Wochenübersicht per E-Mail' }).getAttribute('aria-describedby')).toBeTruthy();
-    expect(screen.getByText('Zuerst E-Mail eintragen')).toBeTruthy();
+    expect(screen.getByText('Trag zuerst deine E-Mail ein.')).toBeTruthy();
     cleanup();
     await boot({ seed: [plan(NOW - 1000)] });
     await screen.findByRole('button', { name: 'Zum Krafttraining' });
@@ -873,7 +873,7 @@ describe('Essen on the phone', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
     fireEvent.click(await screen.findByRole('button', { name: '+ Rezept per Link' }));
-    expect(await screen.findByText('Nicht vegetarisch – nicht gespeichert')).toBeTruthy();
+    expect(await screen.findByText('Das Rezept ist nicht vegetarisch. Darum ist es nicht gespeichert.')).toBeTruthy();
     expect(screen.getByText(/erscheint unter „Von mir“/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
     // An own recipe is listed as "von dir" and deleted in its own view, after a question.
@@ -1284,8 +1284,8 @@ describe('Rad on the phone', () => {
     await boot({ account: 'anna', seed: [bikeRec()], startTab: 'rad' });
     fireEvent.click(await screen.findByRole('button', { name: /^Entwicklung/ }));
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText(/^FTP \(Dauerleistung\) 210 W – seit .* 10 W mehr$/)).toBeTruthy();
-    expect(within(sheet).getByText('Phase Aufbau – noch 3 Wochen bis zur nächsten Phase')).toBeTruthy();
+    expect(within(sheet).getByText(/^FTP \(Dauerleistung\) 210 W, seit .* 10 W mehr$/)).toBeTruthy();
+    expect(within(sheet).getByText('Phase Aufbau, noch 3 Wochen bis zur nächsten Phase')).toBeTruthy();
     expect(within(sheet).getAllByRole('img').length).toBe(2);
   });
 

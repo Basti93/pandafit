@@ -24,7 +24,7 @@ async function running(open: LoggedWorkout, past: LoggedWorkout[] = []) {
 describe('plate line texts', () => {
   test('exact, between and below the bar', () => {
     expect(plateLine(65)).toBe('Scheiben je Seite: 20 + 2,5');
-    expect(plateLine(62)).toBe('Nicht genau auflegbar – 60 oder 62,5 kg');
+    expect(plateLine(62)).toBe('Das geht mit Scheiben nicht genau. Nimm 60 oder 62,5 kg.');
     expect(plateLine(15)).toBe('Leichter als die Stange (20 kg)');
   });
 });
@@ -104,7 +104,7 @@ describe('studio line', () => {
   test('a typed new studio is saved on the started workout, reusing a known name by case', async () => {
     const f = fakePort([]);
     render(<WorkoutScreen port={f.port} {...ids} />);
-    await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ });
+    await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ });
     fireEvent.click(screen.getByRole('button', { name: /^Studio/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Neues Studio …' }));
     const input = await screen.findByLabelText('Name des neuen Studios');

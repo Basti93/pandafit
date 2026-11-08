@@ -121,16 +121,16 @@ describe('statsView verdicts', () => {
   it('warns about more than two hard days in a week, also in the current week', () => {
     const hard = (w: number) => [0, 1, 2].map((o) => dayIn(w, o, { bike: 30 }, 'hard'));
     const v = statsView(stats([...hard(1), ...hard(0), dayIn(2, 0, {}, 'hard'), dayIn(2, 1, {}, 'hard')]), [], NOW);
-    expect(v.verdicts).toContain('3 harte Tage in der Woche vom 26.10. Mehr als zwei sind viel.');
-    expect(v.verdicts).toContain('3 harte Tage in der Woche vom 02.11. Mehr als zwei sind viel.');
+    expect(v.verdicts).toContain('In der Woche vom 26.10. hattest du 3 harte Tage. Mehr als zwei sind viel.');
+    expect(v.verdicts).toContain('In der Woche vom 02.11. hattest du 3 harte Tage. Mehr als zwei sind viel.');
     expect(v.verdicts.filter((s) => s.includes('harte Tage'))).toHaveLength(2);
   });
 
   it('says a set up sport is gone after three complete weeks', () => {
     const days = [...sevenWeeksOfBike().filter((d) => d.date < iso(new Date(2026, 9, 12))), dayIn(8, 0, { run: 40 }), ...[1, 2, 3, 4, 5, 6, 7].map((w) => dayIn(w, 2, { strength: 30 }))].sort((a, b) => a.date.localeCompare(b.date));
     const v = statsView(stats(days), [], NOW);
-    expect(v.verdicts).toContain('Seit drei Wochen kein Rad.');
-    expect(v.verdicts).toContain('Seit drei Wochen kein Lauf.');
+    expect(v.verdicts).toContain('Seit drei Wochen warst du nicht auf dem Rad.');
+    expect(v.verdicts).toContain('Seit drei Wochen warst du nicht laufen.');
     expect(v.verdicts.some((s) => s.includes('Krafttraining'))).toBe(false);
     expect(v.verdicts.some((s) => s.includes('Mobility') || s.includes('other'))).toBe(false);
   });
@@ -157,7 +157,7 @@ describe('statsView final fixes', () => {
 
   it('says no sport is gone while the current week has minutes of it', () => {
     const v = statsView(stats([...gone(), dayIn(0, 0, { bike: 30 })]), [], NOW);
-    expect(v.verdicts.some((s) => s.includes('kein Rad'))).toBe(false);
+    expect(v.verdicts.some((s) => s.includes('nicht auf dem Rad'))).toBe(false);
   });
 
   it('names each sport in the gone verdict', () => {
@@ -165,7 +165,7 @@ describe('statsView final fixes', () => {
     days.push(dayIn(0, 0, {}));
     const v = statsView(stats(days), [], NOW);
     expect(v.verdicts.filter((s) => s.startsWith('Seit drei Wochen'))).toEqual([
-      'Seit drei Wochen kein Rad.', 'Seit drei Wochen kein Krafttraining.', 'Seit drei Wochen kein Lauf.', 'Seit drei Wochen keine Mobility.',
+      'Seit drei Wochen warst du nicht auf dem Rad.', 'Seit drei Wochen hattest du kein Krafttraining.', 'Seit drei Wochen warst du nicht laufen.', 'Seit drei Wochen hattest du keine Mobility.',
     ]);
   });
 
@@ -176,7 +176,7 @@ describe('statsView final fixes', () => {
     expect(v.verdicts).toEqual([]);
     // With the same data a fresh record says Rad is gone (weeks 3, 2, 1 covered) and nothing about strength in the last week.
     const fresh = [...days, dayIn(1, 2, { strength: 30 })].sort((a, b) => a.date.localeCompare(b.date));
-    expect(statsView(stats(fresh), [], NOW).verdicts).toContain('Seit drei Wochen kein Rad.');
+    expect(statsView(stats(fresh), [], NOW).verdicts).toContain('Seit drei Wochen warst du nicht auf dem Rad.');
   });
 
   it('an old record gives no hard-day or jump verdict for a week after its date', () => {
@@ -184,7 +184,7 @@ describe('statsView final fixes', () => {
     const days = [...[8, 7, 6, 5, 4, 3, 2].map((w) => dayIn(w, 0, { bike: 60 })), ...[0, 1, 2].map((o) => dayIn(1, o, { bike: 100 }, 'hard'))];
     // The week of 26.10. started before the date: it counts.
     const v = statsView(stats(days, { atMs }), [], NOW);
-    expect(v.verdicts).toContain('3 harte Tage in der Woche vom 26.10. Mehr als zwei sind viel.');
+    expect(v.verdicts).toContain('In der Woche vom 26.10. hattest du 3 harte Tage. Mehr als zwei sind viel.');
     expect(v.verdicts.some((s) => s.includes('deutlich mehr'))).toBe(true);
     const old = statsView(stats(days, { atMs: new Date(2026, 9, 25, 12).getTime() }), [], NOW);
     expect(old.verdicts.some((s) => s.includes('harte Tage') || s.includes('deutlich mehr'))).toBe(false);

@@ -37,7 +37,7 @@ export type StatsView = {
 
 const WEEKS = 9;
 const GROUPS = Object.keys(MUSCLE_TARGETS) as MuscleGroup[];
-const GONE: Record<Sport, string | null> = { bike: 'kein Rad', strength: 'kein Krafttraining', run: 'kein Lauf', mobility: 'keine Mobility', other: null };
+const GONE: Record<Sport, string | null> = { bike: 'warst du nicht auf dem Rad', strength: 'hattest du kein Krafttraining', run: 'warst du nicht laufen', mobility: 'hattest du keine Mobility', other: null };
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -123,7 +123,7 @@ export function statsView(stats: StatsBody | null, workouts: LoggedWorkout[], no
     verdicts.push(`${shortLabel} ${shortN} Sätze, ${otherLabel} ${otherN}: ${shortLabel} kommt zu kurz.`);
   }
   for (const w of [complete[complete.length - 1], weeks[WEEKS - 1]]) {
-    if (covered(w) && w.hardDays > 2) verdicts.push(`${w.hardDays} harte Tage in der Woche vom ${short(w.weekStart)} Mehr als zwei sind viel.`);
+    if (covered(w) && w.hardDays > 2) verdicts.push(`In der Woche vom ${short(w.weekStart)} hattest du ${w.hardDays} harte Tage. Mehr als zwei sind viel.`);
   }
   for (const s of SPORTS) {
     const name = GONE[s];

@@ -26,7 +26,7 @@ export const WEEKDAY_LABEL = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'F
 const HARDNESSES: readonly Hardness[] = ['easy', 'moderate', 'hard'];
 const MAX_HARD_DAYS = 2;
 const HARD_RANK: Record<Hardness, number> = { easy: 0, moderate: 1, hard: 2 };
-export const TWO_HARD_MESSAGE = 'Zwei Einheiten an einem Tag nur, wenn höchstens eine davon hart ist.';
+export const TWO_HARD_MESSAGE = 'Zwei Einheiten an einem Tag gehen nur, wenn höchstens eine davon hart ist.';
 
 /** The sessions of a day: the first, and the second if there is one. */
 export const dayParts = (d: PlanDay): AlsoPart[] => [{ sport: d.sport, hardness: d.hardness }, ...(d.also ? [d.also] : [])];
@@ -52,7 +52,7 @@ export const weekDates = (monday: string): string[] => Array.from({ length: 7 },
  */
 export function checkWeekPlan(days: PlanDay[]): string[] {
   const out: string[] = [];
-  if (days.filter((d) => dayHardness(d) === 'hard').length > MAX_HARD_DAYS) out.push('Mehr als zwei harte Tage in der Woche.');
+  if (days.filter((d) => dayHardness(d) === 'hard').length > MAX_HARD_DAYS) out.push('Die Woche hat mehr als zwei harte Tage.');
   if (days.some((d) => d.also && d.also.hardness === 'hard' && d.hardness === 'hard')) out.push(TWO_HARD_MESSAGE);
   days.forEach((d, i) => {
     const before = days[i - 1];
@@ -60,8 +60,8 @@ export function checkWeekPlan(days: PlanDay[]): string[] {
     if (!before || !hasSport(before, 'gym') || before.legs === false) return;
     const name = WEEKDAY_LABEL[(toDate(d.date).getDay() + 6) % 7];
     const hardOutdoor = dayParts(d).some((p) => (p.sport === 'bike' || p.sport === 'run') && p.hardness === 'hard');
-    if (dayHardness(before) === 'hard' && hardOutdoor) out.push(`Harter Rad- oder Lauftag am Tag nach einem harten Beintag (${name}).`);
-    if (d.long && (d.sport === 'bike' || d.sport === 'run' || d.also?.sport === 'bike' || d.also?.sport === 'run')) out.push(`Lange Einheit am Tag nach einem Beintag (${name}).`);
+    if (dayHardness(before) === 'hard' && hardOutdoor) out.push(`Am ${name} folgt ein harter Rad- oder Lauftag auf einen harten Beintag.`);
+    if (d.long && (d.sport === 'bike' || d.sport === 'run' || d.also?.sport === 'bike' || d.also?.sport === 'run')) out.push(`Am ${name} folgt eine lange Einheit auf einen Beintag.`);
   });
   return out;
 }

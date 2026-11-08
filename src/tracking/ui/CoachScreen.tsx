@@ -65,7 +65,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
   // While a proposal waits, the card above says so; the row then shows no second "waiting".
   const preview = asking ? 'Der Coach denkt nach …' : last ? <>{last.text} <small>{timeLabel(last.atMs)}</small></> : 'Schreib dem Coach';
   // Fixed order: Nächste Woche, Ziel und Planung, Was der Coach beachtet, Coach. The last change is the Coach row's second line.
-  const changed = notes[0] ? <small className="tk-row-sub muted tk-clip">Zuletzt geändert: {notes[0].text}{notes[0].reason ? ` – ${notes[0].reason}` : ''}</small> : null;
+  const changed = notes[0] ? <small className="tk-row-sub muted tk-clip">Zuletzt geändert: {notes[0].text}{notes[0].reason ? `, ${notes[0].reason}` : ''}</small> : null;
   const coachRow = <Row key="coach" title={<>Coach{changed}</>} value={<span className="tk-ellipsis">{preview}</span>} onClick={() => setSheet('chat')} />;
   const ruleCount = rules.length + tasks.length;
   const rest = [
@@ -100,7 +100,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
           {/* Without a plan seven empty days say nothing: one button instead. */}
           {current || !loaded ? <Week rows={dayRows} label="Wochenplan diese Woche" today={today} runs={runs} /> : (
             <>
-              <p className="muted">Noch kein Wochenplan.</p>
+              <p className="muted">Es gibt noch keinen Wochenplan.</p>
               <button type="button" onClick={() => setSheet('chat')}>Woche planen</button>
             </>
           )}

@@ -141,7 +141,7 @@ test('a rule deleted elsewhere reads Gelöscht', async () => {
   const { port } = fakePort([...recs.values()].map((x) => (x === r ? { ...r, deleted: true, updatedMs: r.updatedMs + 5 } : x)));
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  expect(await screen.findByText('Gelöscht.')).toBeTruthy();
+  expect(await screen.findByText('Die Regel ist gelöscht.')).toBeTruthy();
 });
 
 test('an unreadable goal draft is dropped', async () => {

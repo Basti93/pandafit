@@ -487,7 +487,7 @@ export class GymCoach {
           x.lastError = 'invalid';
           // The rules take over; say so in words instead of the neutral sentence.
           const why = parsed.success ? (checked && !checked.ok ? checked.reason : '') : 'Schema';
-          if (x.next?.source === 'rules') x.next = { ...x.next, reason: this.withTaken(id, `Mein Plan passte nicht zu deinen Grenzen (${reasonPhrase(why)}), deshalb heute ein einfacher Plan. Dauer ${durationNote(x.next.workout, this.catalog(id))}.`) };
+          if (x.next?.source === 'rules') x.next = { ...x.next, reason: this.withTaken(id, `Mein Plan passte nicht zu deinen Grenzen (${reasonPhrase(why)}), deshalb gibt es heute einen einfachen Plan. Dauer ${durationNote(x.next.workout, this.catalog(id))}.`) };
         }
         x.dirty = false; x.planned = true; x.attempts = 0;
         x.seenWorkoutIds = real.map((w) => w.id);

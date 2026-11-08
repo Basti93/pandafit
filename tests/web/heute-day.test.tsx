@@ -147,21 +147,21 @@ describe('Heute as a day page', () => {
     it('after a finished workout the card holds the mobility row', async () => {
       await boot([workout(NOW - 600_000), planWithMobility]);
       const card = await screen.findByRole('region', { name: 'Zum Abschluss' });
-      expect(card.textContent).toContain('20 Min locker Cardio');
+      expect(card.textContent).toContain('20 Min lockeres Cardio');
       expect(card.contains(await screen.findByRole('button', { name: /^Beweglichkeit/ }))).toBe(true);
       expect(card.textContent).not.toContain('Ein paar Minuten dehnen');
     });
     it('without a coach session the plain stretch line shows', async () => {
       await boot([workout(NOW - 600_000)]);
       const card = await screen.findByRole('region', { name: 'Zum Abschluss' });
-      expect(card.textContent).toContain('Ein paar Minuten dehnen, was sich fest anfühlt.');
+      expect(card.textContent).toContain('Dehn ein paar Minuten, was sich fest anfühlt.');
     });
     it('a ride today leaves only stretching', async () => {
       const items = [{ key: 'rad-1', kind: 'rad', title: null, sport: 'cycling', startMs: NOW - 300_000, minutes: 30, distanceM: null, avgHr: null, ref: null }];
       await boot([workout(NOW - 600_000), rec('activities', 'activities', { type: 'activities', atMs: NOW, items })]);
       const card = await screen.findByRole('region', { name: 'Zum Abschluss' });
       expect(card.textContent).toContain('Heute reicht Dehnen.');
-      expect(card.textContent).not.toContain('20 Min locker Cardio');
+      expect(card.textContent).not.toContain('20 Min lockeres Cardio');
     });
     it('shows nothing without a finished workout, while one is open, or after three hours; the mobility row stays', async () => {
       await boot([planWithMobility]);

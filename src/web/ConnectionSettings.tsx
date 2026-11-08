@@ -6,15 +6,15 @@ import type { CoachLink, CoachSettingsView } from './coachLink';
 
 const DIETS: { value: Diet; label: string }[] = [{ value: 'vegetarisch', label: 'Vegetarisch' }, { value: 'vegan', label: 'Vegan' }, { value: 'alles', label: 'Alles' }];
 const HABITS: { value: Habit; label: string }[] = [{ value: 'zuhause', label: 'zu Hause' }, { value: 'mitnehmen', label: 'zum Mitnehmen' }, { value: 'auswaerts', label: 'auswärts' }];
-const HEVY_PROBLEM = { invalid: 'Der Schlüssel funktioniert nicht. Ist er vollständig und Hevy Pro aktiv?', expired: 'Der Schlüssel gilt nicht mehr. Bitte einen neuen eintragen.', failed: 'Hevy ist gerade nicht erreichbar.' } as const;
-const GARMIN_PROBLEM: Record<string, string> = { credentials: 'E-Mail oder Passwort wurde abgelehnt.', 'rate-limit': 'Garmin blockt gerade zu viele Versuche. Bitte später nochmal.', setup: 'Das Garmin-Hilfsprogramm fehlt auf dem Server.', failed: 'Das hat nicht geklappt. Bitte später nochmal.' };
-const SENT_NO = 'Gerade keine Verbindung zum Coach.';
+const HEVY_PROBLEM = { invalid: 'Der Schlüssel funktioniert nicht. Ist er vollständig und Hevy Pro aktiv?', expired: 'Der Schlüssel gilt nicht mehr. Bitte trag einen neuen ein.', failed: 'Hevy ist gerade nicht erreichbar.' } as const;
+const GARMIN_PROBLEM: Record<string, string> = { credentials: 'E-Mail oder Passwort wurde abgelehnt.', 'rate-limit': 'Garmin blockt gerade zu viele Versuche. Versuch es bitte später nochmal.', setup: 'Das Garmin-Hilfsprogramm fehlt auf dem Server.', failed: 'Das hat nicht geklappt. Versuch es bitte später nochmal.' };
+const SENT_NO = 'Gerade gibt es keine Verbindung zum Coach.';
 
 const hevyValue = (s: HevyStatus): string => (s.state === 'connected' ? 'verbunden' : s.state === 'connecting' ? 'verbindet…' : 'optional');
 const syncLine = (s: GarminSyncInfo | null): string | null => {
   if (!s) return null;
   if (s.running) return 'Daten werden geholt';
-  if (s.problem === 'rate-limit' || s.problem === 'failed') return 'Abruf pausiert, es geht später weiter';
+  if (s.problem === 'rate-limit' || s.problem === 'failed') return 'Der Abruf pausiert und geht später weiter.';
   return s.lastRunMs ? `Zuletzt: ${new Date(s.lastRunMs).toLocaleDateString('de-DE')}` : null;
 };
 
@@ -58,7 +58,7 @@ function GarminSheet({ v, send, onClose }: { v: CoachSettingsView; send: (m: { t
       {connected ? (
         <>
           {line && <p role="status" className="muted">{line}</p>}
-          <Switch label="Fahrten zu Garmin hochladen" hint="Nach jeder Fahrt fragen, nie ohne Bestätigung" checked={v.upload?.mode === 'ask'}
+          <Switch label="Fahrten zu Garmin hochladen" hint="Pandafit fragt nach jeder Fahrt und lädt nie ohne deine Bestätigung hoch." checked={v.upload?.mode === 'ask'}
             onChange={(on) => setOffline(!send({ type: 'garmin-upload-settings', mode: on ? 'ask' : 'off' }))} />
         </>
       ) : s.state === 'needs-mfa' ? (
@@ -67,7 +67,7 @@ function GarminSheet({ v, send, onClose }: { v: CoachSettingsView; send: (m: { t
         </form>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); login(); }}>
-          {reauth && <p role="alert" className="muted">Die Anmeldung ist abgelaufen. Bitte neu anmelden.</p>}
+          {reauth && <p role="alert" className="muted">Die Anmeldung ist abgelaufen. Bitte melde dich neu an.</p>}
           <input type="email" autoComplete="username" aria-label="Garmin-E-Mail" placeholder="E-Mail" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input type="password" autoComplete="current-password" aria-label="Garmin-Passwort" placeholder="Passwort" value={password} onChange={(e) => setPassword(e.target.value)} />
           {s.state === 'connecting' && <p role="status" className="muted">Garmin wird verbunden…</p>}
@@ -91,7 +91,7 @@ function MealsSheet({ settings, save, onClose }: { settings: MealSettings; save:
       {SLOTS.map((slot) => <ChoiceRow key={slot} label={`${SLOT_LABEL[slot]} werktags`} value={s.habits[slot]} options={HABITS} onChange={(h) => setS({ ...s, habits: { ...s.habits, [slot]: h } })} />)}
       <label className="tk-field">Abneigungen<input value={dislikes} placeholder="zum Beispiel Pilze, Oliven" onChange={(e) => setDislikes(e.target.value)} /></label>
       <label className="tk-field">Unverträglichkeiten<input value={intolerances} placeholder="zum Beispiel Laktose" onChange={(e) => setIntolerances(e.target.value)} /></label>
-      <p className="muted">Zutaten bei Unverträglichkeiten bitte trotzdem selbst prüfen.</p>
+      <p className="muted">Bitte prüf die Zutaten bei Unverträglichkeiten trotzdem selbst.</p>
     </Sheet>
   );
 }

@@ -82,7 +82,7 @@ describe('an excluded exercise never comes back', () => {
     expect(w.exercises.map((e) => e.exerciseId)).toEqual(['hevy-999']);
   });
 
-  it('refuses a swap into it in the workout chat with "Geht nicht, weil"', () => {
+  it('refuses a swap into it in the workout chat with "Das geht nicht, weil"', () => {
     const swap = { workoutId: 'w1', ops: [{ op: 'swap' as const, ex: 'r1', to: 'pf-goblet-squat' }] };
     const w = { id: 'w1', title: 'T', startMs: NOW, endMs: null, source: 'pandafit', rest: null, exercises: [{ rid: 'r1', exerciseId: 'pf-squat', title: 'Kniebeuge', supersetId: null, notes: '', sets: [{ rid: 's', type: 'normal', weightKg: null, reps: 8, durationS: null, doneMs: null }] }] };
     const r = checkOps(swap, w as never, EXERCISES, new Set(['pf-goblet-squat']));
@@ -96,7 +96,7 @@ describe('an excluded exercise never comes back', () => {
     const c = new ChatCoach({ store: s as never, nowMs: () => NOW, newId: () => 'c1', ask: (async () => ({ text: 'Okay.', nextChange: { ops: [{ op: 'swap', exerciseId: 'pf-squat', toId: 'pf-goblet-squat' }], reason: 'Wunsch' } })) as never });
     await c.tick('p');
     const m = chatThread([...s.all('p').map((r) => r)]).find((x) => x.role === 'coach')!;
-    expect(m.text).toMatch(/Geht nicht, weil du .* ausgeschlossen hast\./);
+    expect(m.text).toMatch(/Das geht nicht, weil du .* ausgeschlossen hast\./);
     expect(m.nextChange).toBeUndefined();
   });
 
