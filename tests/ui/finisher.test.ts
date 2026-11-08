@@ -55,6 +55,11 @@ describe('latestFinishedStrength', () => {
     expect(latestFinishedStrength(list.slice(0, 3), NOON + MIN)).toBeNull();
     expect(latestFinishedStrength(null, NOON)).toBeNull();
   });
+  it('keeps a workout that ended late yesterday inside the window across midnight', () => {
+    const late = new Date(2026, 10, 7, 23, 30).getTime();
+    expect(latestFinishedStrength([rec('l', { endMs: late })], late + 2 * 3_600_000)?.id).toBe('l');
+    expect(latestFinishedStrength([rec('l', { endMs: late })], late + FINISHER_WINDOW_MS + MIN)).toBeNull();
+  });
 });
 
 describe('complaintsOpenIn', () => {

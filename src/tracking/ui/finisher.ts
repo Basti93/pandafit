@@ -39,7 +39,8 @@ export function latestFinishedStrength(workouts: TrackedRecord[] | null, nowMs: 
   for (const r of workouts ?? []) {
     if (r.deleted) continue;
     const w = { ...(r.body as LoggedWorkout), id: r.id };
-    if (w.endMs === null || localDayKey(w.endMs) !== today) continue;
+    // Today, or within the window across midnight (a workout ending 23:30 keeps its card until 02:30).
+    if (w.endMs === null || (localDayKey(w.endMs) !== today && !(nowMs - w.endMs >= 0 && nowMs - w.endMs <= FINISHER_WINDOW_MS))) continue;
     if (!best || w.endMs > (best.endMs as number)) best = w;
   }
   return best;

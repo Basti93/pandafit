@@ -169,7 +169,8 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
 
   const complaints = usePortRecords(port, 'complaint').records;
   const finished = latestFinishedStrength(workouts, now);
-  const finisher = finished ? finisherOf({ workout: finished, nowMs: now, today, activities: mergedActivities(activities, workouts).items, complaintsOpen: complaintsOpenIn(complaints) }) : null;
+  // A workout still open is the one thing to do: no finish card for an earlier one beside it.
+  const finisher = finished && !open ? finisherOf({ workout: finished, nowMs: now, today, activities: mergedActivities(activities, workouts).items, complaintsOpen: complaintsOpenIn(complaints) }) : null;
 
   const markDone = async () => {
     if (!session) return;
