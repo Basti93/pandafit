@@ -494,3 +494,9 @@
 /* ---- One look per kind (task 3) ---- */
 /* Steppers (− count +): one round outline button, in the routine editor and on the recipe. */
 .tk-screen button.tk-step-btn { flex: none; width: 44px; min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--muted); background: transparent; color: var(--text); font-size: var(--fs-2xl); line-height: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+/* The sheet "Nächstes Training" (PlanSheet): the coach's words close together, the sets stepper and "Andere Übung" in one line. */
+.tk-plan-top { display: flex; flex-direction: column; gap: var(--space-1); }
+.tk-plan-top p { margin: 0; }
+.tk-plan-ex { padding-top: var(--space-2); border-top: 1px solid var(--line); }
+.tk-plan-steps { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }

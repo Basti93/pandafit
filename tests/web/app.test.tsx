@@ -198,7 +198,12 @@ describe('web app', () => {
 
   it('the plan shows its date and says calmly when it is older than a week', async () => {
     await boot({ seed: [plan(NOW - 2 * DAY)] });
-    expect(await screen.findByText(/^Plan vom /)).toBeTruthy();
+    // The date, the reason and the note are in the sheet "Nächstes Training" that Heute opens in Kraft.
+    fireEvent.click(await screen.findByRole('button', { name: 'Ansehen und anpassen' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Nächstes Training' });
+    expect(within(sheet).getByText(/^Plan vom /)).toBeTruthy();
+    expect(within(sheet).getByText('Beine sind dran')).toBeTruthy();
+    expect(within(sheet).getByText('Gut gemacht diese Woche')).toBeTruthy();
     expect(screen.queryByText(/Coach macht einen neuen/)).toBeNull();
     cleanup();
     await boot({ seed: [plan(NOW - 9 * DAY)] });
