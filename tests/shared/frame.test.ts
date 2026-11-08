@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { frameOf, frameRecord, readFrame } from '../../src/shared/frame';
 import { RECORD_KINDS, type TrackedRecord } from '../../src/shared/records';
 import { validBody } from '../../src/web/validate';
-import { gymBudgetOf } from '../../src/coach/tracking/frame';
+import { gymBudgetOf, gymLegsKeyOf, gymPlanDateOf, gymPlanDayNoLegs } from '../../src/coach/tracking/frame';
 import { buildGymPrompt } from '../../src/coach/gym/prompt';
 import { initialGymState } from '../../src/coach/gym/state';
 import { gymMinutes } from '../../src/shared/duration';
@@ -77,5 +77,35 @@ describe('gym time budget', () => {
     expect(p).toContain('Zeit: höchstens 30 Min einschließlich Aufwärmen und Pausen.');
     expect(p).not.toContain('Heute keine Beinübungen.');
     expect(buildGymPrompt({ state: initialGymState('p'), workouts: [], templates: [], nowMs: 1, summaries: [], complaints: [], previous: null, wantNote: false, avoidLegs: true })).toContain('Heute keine Beinübungen.');
+  });
+});
+
+describe('the day the gym coach plans for', () => {
+  const store = (records: TrackedRecord[]) => ({ all: (_id: string, kind?: string) => records.filter((r) => !kind || r.kind === kind) });
+  const dates = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15'];
+  // Tuesday 11-10 and Thursday 11-12 are gym days
+  const plan = (legsThu?: boolean): TrackedRecord => ({ kind: 'weekplan', id: '2026-11-09', updatedMs: 1, deleted: false, body: { weekStart: '2026-11-09', fromMessage: 'm', acceptedMs: 1,
+    days: dates.map((date, i) => ({ date, sport: i === 3 ? 'gym' : 'rest', hardness: 'easy', fixed: false, ...(i === 3 && legsThu !== undefined ? { legs: legsThu } : {}) })) } });
+  it('is the next gym day, today in spontaneous mode', () => {
+    expect(gymPlanDateOf(store([plan()]), 'p', '2026-11-10')).toBe('2026-11-12');
+    expect(gymPlanDateOf(store([]), 'p', '2026-11-10')).toBe('2026-11-10');
+    expect(gymPlanDateOf(store([plan(), frameRecord({ mode: 'spontaneous', minutes: 60 }, 5)]), 'p', '2026-11-10')).toBe('2026-11-10');
+  });
+  it('skips a gym day with a finished workout', () => {
+    const rec = plan();
+    (rec.body as { days: { sport: string }[] }).days[1]!.sport = 'gym';
+    const w: TrackedRecord = { kind: 'workout', id: 'w', updatedMs: 1, deleted: false, body: { id: 'w', title: 't', startMs: new Date(2026, 10, 10, 8).getTime(), endMs: new Date(2026, 10, 10, 9).getTime(), source: 'pandafit', exercises: [] } };
+    expect(gymPlanDateOf(store([rec]), 'p', '2026-11-10')).toBe('2026-11-10');
+    expect(gymPlanDateOf(store([rec, w]), 'p', '2026-11-10')).toBe('2026-11-12');
+  });
+  it('no legs on Thursday holds on Tuesday; without the agreement it does not', () => {
+    expect(gymPlanDayNoLegs(store([plan(false)]), 'p', '2026-11-10')).toBe(true);
+    expect(gymPlanDayNoLegs(store([plan()]), 'p', '2026-11-10')).toBe(false);
+    expect(gymPlanDayNoLegs(store([plan(true)]), 'p', '2026-11-10')).toBe(false);
+  });
+  it('the key changes with the legs value of the target day', () => {
+    const a = gymLegsKeyOf(store([plan()]), 'p', '2026-11-10');
+    expect(gymLegsKeyOf(store([plan(false)]), 'p', '2026-11-10')).not.toBe(a);
+    expect(gymLegsKeyOf(store([plan()]), 'p', '2026-11-10')).toBe(a);
   });
 });

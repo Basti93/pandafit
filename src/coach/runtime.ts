@@ -49,7 +49,7 @@ import { activityItems, exportActivities } from './activities-export';
 import { mirrorExercises } from './tracking/mirror-exercises';
 import { ChatCoach } from './chat/chat-coach';
 import { planHint, type TodayContext } from './chat/plan-hint';
-import { frameOfProfile } from './tracking/frame';
+import { frameOfProfile, gymLegsKeyOf, gymPlanDateOf, gymPlanDayNoLegs } from './tracking/frame';
 import { longTermHint } from './chat/long-term';
 import { PlanSeen, adviceKey, weekPlanKey } from './chat/plan-seen';
 import { duePrompts, SentPrompts } from './chat/prompts';
@@ -224,8 +224,12 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     ready: (id) => (gymConnected(id) ? hevy.strengthReady(id) : noOpenRide()),
     bike: (id) => { const s = coach.state(id); return { summaries: s.summaries, complaints: s.complaints ?? [] }; },
     complaint: (id, text) => coach.addComplaintFromText(id, text),
-    // Tired legs today: strength goes on, without leg exercises.
-    avoidLegsToday: (id) => { const a = adviceOf(id); return a !== null && a.legs === false && (a.sport === 'gym' || a.also?.sport === 'gym'); },
+    // Tired legs on the day the gym coach plans for (the agreed plan day, or today's advice): strength goes on, without leg exercises.
+    avoidLegs: (id) => {
+      if (gymPlanDayNoLegs(records, id, dateKey(nowMs()))) return true;
+      const a = adviceOf(id);
+      return gymPlanDateOf(records, id, dateKey(nowMs())) === dateKey(nowMs()) && a !== null && a.legs === false && (a.sport === 'gym' || a.also?.sport === 'gym');
+    },
     writer: gymWriter,
     account: (id) => opts.links.status(id).state === 'linked',
     onWorkoutFinished: (id) => coach.strengthChanged(id),
@@ -681,7 +685,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       for (const p of list) { try { if (personalSeen.changed(p.id, personalKey(p.id))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
       // A task of the rider or a removal of any task (also from another Mac) makes the bike and gym coach plan again, like a rule change.
       for (const p of list) { try { if (taskSeen.changed(p.id, `${tasks.version(p.id, 'bike')}|${tasks.version(p.id, 'gym')}`, true)) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
-      for (const p of list) { try { if ((adviceKey(adviceOf(p.id)) !== '' && adviceSeen.changed(p.id, adviceKey(adviceOf(p.id)), true))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
+      for (const p of list) { try { if ((adviceKey(adviceOf(p.id)) !== '' && adviceSeen.changed(p.id, `${adviceKey(adviceOf(p.id))}|g${gymLegsKeyOf(records, p.id, dateKey(nowMs()))}`, true))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
       // Never with a ride open (a ride becomes an activity only once it is closed), and only while coaches may plan.
       if (runs) for (const p of list) {
         try {

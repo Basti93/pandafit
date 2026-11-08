@@ -23,6 +23,16 @@ test('a combination day shows both parts and counts for both planners', () => {
   expect(h).toContain('"sport":"gym"');
 });
 
+test('legs false is sent as beine false, no legs value sends no key', () => {
+  const rec = plan('2026-11-02', { 5: 'gym', 6: 'gym' });
+  (rec.body as { days: Record<string, unknown>[] }).days[6]!.legs = false;
+  const h = planHint([rec], NOW, 'gym');
+  expect(h).toContain('"beine":false');
+  expect(h.match(/beine/g)?.length).toBe(2); // one day plus the sentence
+  expect(h).toContain('beine false heißt: an diesem Tag keine Beinübungen.');
+  expect(planHint([plan('2026-11-02', { 5: 'gym' })], NOW, 'gym')).not.toContain('"beine"');
+});
+
 describe('what fits today in the hint', () => {
   const ctx = (mode: 'week' | 'spontaneous') => ({ ratings: {}, goal: { sports: { run: 'focus' as const } }, frame: { mode } });
   it('spontaneous mode gives the advice as the hint, even with a plan', () => {
