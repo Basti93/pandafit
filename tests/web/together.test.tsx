@@ -46,7 +46,7 @@ async function boot(seed: TrackedRecord[]) {
     fetchFn, idbFactory: factory, now: () => NOW, newId: () => 'id', persist: async () => true, ua: 'Mozilla/5.0 Android', standalone: false,
     storage: { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => { storage.set(k, v); }, removeItem: (k: string) => { storage.delete(k); } },
   }} />);
-  await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u });
+  await screen.findByRole('heading', { level: 1, name: 'Heute' });
 }
 
 const NO_RANKING = /legt .*vor|Gleichstand|freut sich|Serie|Streak|vorne|mehr als|weniger als|Platz|schon wieder|endlich|noch nicht/i;
@@ -63,8 +63,8 @@ describe('Gemeinsam on the phone', () => {
     expect(c.getByText(/Mont Ventoux/)).toBeTruthy();
     expect(c.getByText(/Stand: Mittwoch, 4\. November/)).toBeTruthy();
     expect(card.textContent).not.toMatch(NO_RANKING);
-    // The card sits before the plan on Heute.
-    expect(card.compareDocumentPosition(screen.getAllByRole('button', { name: 'Zum Krafttraining' })[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Gemeinsam sits last on Heute, after the plan.
+    expect(card.compareDocumentPosition(screen.getAllByRole("button", { name: "Zum Krafttraining" })[0]!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
     expect(screen.getByRole('navigation').querySelectorAll('button')).toHaveLength(3); // Heute, Woche, Kraft: Essen only with a meal plan; never a tab for this
   });
 
@@ -82,7 +82,7 @@ describe('Gemeinsam on the phone', () => {
     expect(page.textContent).not.toMatch(NO_RANKING);
     expect(page.textContent).not.toMatch(/Watt|FTP|Puls/);
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
-    expect(await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
   });
 
   it('an old snapshot says so: last week is not shown as this week', async () => {

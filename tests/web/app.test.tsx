@@ -104,7 +104,7 @@ describe('web app', () => {
     expect(await screen.findByRole('switch', { name: /Wochengespräch/ })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Zurück/ })).toBeNull();
     fireEvent.click(within(screen.getByRole('navigation')).getByRole('button', { name: 'Heute' }));
-    expect(await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
   });
 
   it('Profil: the e-mail address saves and removes, the weekly switch needs an address', async () => {
@@ -290,7 +290,7 @@ describe('web app', () => {
 
   it('Heute has no complaints box any more: complaints go through the coach chat', async () => {
     await boot({ seed: [{ kind: 'complaint', id: 'c1', updatedMs: 5, deleted: false, body: { text: 'Knie links', status: 'active', atMs: 5 } }] });
-    await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u });
+    await screen.findByRole('heading', { level: 1, name: 'Heute' });
     expect(screen.queryByText('Knie links')).toBeNull();
     expect(screen.queryByLabelText('Neue Beschwerde')).toBeNull();
   });
@@ -1131,7 +1131,7 @@ describe('Laufen on the phone', () => {
   it('a notification for Laufen without a run status stays on Heute', async () => {
     await boot({ account: 'anna', seed: [], startTab: 'laufen' });
     await screen.findByRole('navigation');
-    expect(await screen.findByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Ausdauer' })).toBeNull();
   });
 

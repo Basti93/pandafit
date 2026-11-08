@@ -26,6 +26,12 @@ import { ConnectionSettings, ProfileGroup } from './ConnectionSettings';
 import { CoachLink } from './coachLink';
 import { LiveClient, type LiveSocket } from './live';
 import { LiveRide } from './LiveRide';
+import { DayHead } from './today/DayHead';
+import { CoachLine } from './today/CoachLine';
+import { BodyCard } from './today/BodyCard';
+import { shiftDay, swipeIgnored, swipeStep, type DayOffset } from './today/day-nav';
+import { dayLine } from '../shared/day-text';
+import { healthOf } from '../tracking/ui/health-view';
 
 export type Env = {
   fetchFn: typeof fetch;
@@ -116,8 +122,6 @@ export class ErrorBoundary extends Component<{ children: ReactNode; onTraining: 
   }
 }
 
-/** "Samstag, 7. November" */
-const todayTitle = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 /** "14:05", or with the day when it was not today. */
 /** "14:44" today, "gestern 13:34" the day before, "Sa., 13:34" earlier: an old open workout shows as old. */
 export const sinceText = (ms: number, now: number): string => {
@@ -136,9 +140,17 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   // Only when the Mac sent one for this account: without a link Heute stays as it was.
   const together = togetherOf(usePortRecords(port, 'together').records);
   const [showTogether, setShowTogether] = useState(false);
+  const daytexts = usePortRecords(port, 'daytext').records;
+  const health = healthOf(usePortRecords(port, 'health').records);
   const plan = (plans ?? []).find((r) => r.id === 'current');
   const p = readPlan(plan);
   const now = env.now();
+  // The chosen day belongs to the calendar day it was chosen on: a new day starts at Heute.
+  const dayKey = localDayKey(now);
+  const [pick, setPick] = useState<{ key: string; offset: DayOffset }>({ key: dayKey, offset: 0 });
+  const offset: DayOffset = pick.key === dayKey ? pick.offset : 0;
+  const step = (s: -1 | 0 | 1) => { if (s !== 0) setPick({ key: dayKey, offset: shiftDay(offset, s) }); };
+  const swipe = useRef<{ x: number; y: number } | null>(null);
   const session = useMemo(() => mobilityToShow(plan, mobility ?? [], now), [plan, mobility, now]);
   const today = todayPlan(weekplans, now);
   const waiting = useWaitingProposal(port, now);
@@ -185,15 +197,21 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   ) : undefined;
   if (together && showTogether) return <TogetherPage t={together} now={now} onBack={() => setShowTogether(false)} />;
   return (
-    <div className="tk-screen">
-      <PageHead title={todayTitle(now)} />
+    <div
+      className="tk-screen tk-daypage"
+      onPointerDown={(e) => { swipe.current = swipeIgnored(e.target as Element | null) ? null : { x: e.clientX, y: e.clientY }; }}
+      onPointerCancel={() => { swipe.current = null; }}
+      onPointerUp={(e) => { const s = swipe.current; swipe.current = null; if (s) step(swipeStep(e.clientX - s.x, e.clientY - s.y)); }}
+    >
+      <DayHead offset={offset} nowMs={now} onStep={step} />
+      {offset === 0 && <>
       {open && (
         <section className="card" aria-label="Training läuft noch">
           <h2>{(open.body as LoggedWorkout).title} läuft – gestartet {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
           <button type="button" onClick={() => goTraining(true)}>Weitermachen</button>
         </section>
       )}
-      {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
+      <CoachLine text={dayLine(daytexts, account, dayKey).text} />
       {/* A workout that is open is the one thing to do: no day card beside it. */}
       {!open && <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} />}
       {!open && weekplans !== null && plans !== null && !today && !planning && !p && (
@@ -209,6 +227,9 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
       {!open && waiting && <WaitingProposal onOpen={goCoach} />}
       {meals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
       {session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />}
+      <BodyCard health={health} onCoach={goCoach} />
+      {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
+      </>}
     </div>
   );
 }

@@ -226,3 +226,16 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-screen .rc-slotpick button { min-height: 44px; padding: .3rem .4rem; border-radius: 999px; background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 500; text-decoration: none; }
 .tk-screen .rc-slotpick button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
 .tk-screen .rc-view a { color: var(--muted); text-decoration: underline; font-weight: 600; }
+
+/* Heute as a day page: arrows left and right, the day name in the middle, the coach sentence with its mark. */
+.tk-daypage { touch-action: pan-y; }
+.tk-dayhead { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 2.75rem; margin-bottom: .5rem; padding-right: 3.4rem; }
+.tk-daytitle { flex: 1; text-align: center; min-width: 0; }
+.tk-daytitle .tk-title { margin: 0; line-height: 1.2; }
+.tk-daytitle p { margin: 0; font-size: .85rem; }
+.tk-screen .tk-dayarrow { flex: none; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: 1.4rem; line-height: 1; display: grid; place-items: center; box-shadow: none; }
+.tk-screen .tk-dayarrow:disabled { opacity: .35; }
+.tk-coachline { display: flex; align-items: flex-start; gap: .75rem; }
+.tk-coachline p { margin: 0; flex: 1; }
+.tk-coachmark { flex: none; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: var(--ink); font-weight: 700; display: grid; place-items: center; }
+.tk-bodyrows { list-style: none; margin: 0 0 .5rem; padding: 0; }

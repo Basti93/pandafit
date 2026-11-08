@@ -32,7 +32,7 @@ const login = async (page: Page) => {
   await page.getByLabel('Name').fill('smoke');
   await page.getByLabel('Passwort').fill(PASSWORD);
   await page.getByRole('button', { name: 'Anmelden' }).click();
-  await page.getByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u }).waitFor();
+  await page.getByRole('heading', { level: 1, name: 'Heute' }).waitFor();
 };
 
 try {

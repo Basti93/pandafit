@@ -464,7 +464,7 @@ async function main() {
   await page.getByLabel('Name').fill(NAME);
   await page.getByLabel('Passwort').fill(PASSWORD);
   await page.getByRole('button', { name: 'Anmelden' }).click();
-  await page.getByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u }).waitFor();
+  await page.getByRole('heading', { level: 1, name: 'Heute' }).waitFor();
   if (EMPTY) {
     // A new person: what the first look at every tab shows, without any data.
     await page.waitForTimeout(2500);
