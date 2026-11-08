@@ -201,7 +201,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
         </section>
       )}
       {!open && waiting && <WaitingProposal onOpen={goCoach} />}
-      {meals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} />}
+      {meals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
       {session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />}
     </div>
   );
@@ -539,7 +539,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
           {tab === 'training' && <Training port={port} env={env} resume={resume} onDone={() => setTab('heute')} />}
-          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} />}
+          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
           {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} persistRefused={persistRefused} />}

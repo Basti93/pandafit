@@ -699,6 +699,24 @@ describe('Essen on the phone', () => {
     const skyr = (await screen.findByText('Skyr')).closest('li')!;
     fireEvent.click(within(skyr).getByRole('button', { name: 'Haben wir' }));
     expect(await screen.findByRole('heading', { name: 'Schon da' })).toBeTruthy();
+    // Under "Schon da" there is no box, only the way back.
+    expect(screen.queryByRole('checkbox', { name: 'Skyr gekauft' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Doch kaufen' })).toBeTruthy();
+  });
+
+  it('the shopping list says for when and for whom, counts what is open, and keeps own items below the plan\'s', async () => {
+    await boot({ account: 'anna', seed: [mealPlan] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Einkauf · \d+ offen$/ }));
+    expect(screen.getByText(/für Mo–So, 2 Personen/)).toBeTruthy();
+    // The field to add comes first; "Menge (optional)" says it may stay empty.
+    const add = screen.getByLabelText('Etwas dazuschreiben');
+    expect(screen.getByPlaceholderText('Menge (optional)')).toBeTruthy();
+    fireEvent.change(add, { target: { value: 'Kaffee' } });
+    fireEvent.submit(add.closest('form')!);
+    const own = await screen.findByRole('heading', { name: 'Eigenes' });
+    const plan = screen.getByText('Skyr');
+    expect(plan.compareDocumentPosition(own) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('a message to the coach: written as a record, waiting until the Mac answers, then the reply and the change for both', async () => {
@@ -722,6 +740,7 @@ describe('Essen on the phone', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Änderung wünschen' }));
     fireEvent.change(await screen.findByLabelText('Nachricht an den Coach'), { target: { value: 'Heute Abend lieber was mit Nudeln' } });
     fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
+    expect(await screen.findByText('Wunsch gesendet')).toBeTruthy();
     expect(await screen.findByText('Der Coach antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeTruthy();
     expect(screen.getByText(/Heute Abend lieber was mit Nudeln/)).toBeTruthy();
     // Through the account to the Mac, which answers at its next tick.
@@ -745,7 +764,7 @@ describe('Essen on the phone', () => {
     expect(store.all('pa').some((r) => r.id.startsWith('chat-'))).toBe(false);
   });
 
-  it('shows where a dish comes from: a recipe link for a real recipe, "vom Coach" for an invented dish, nothing for the list', async () => {
+  it('shows one source link for a dish taken from the web, no labels, nothing for the list', async () => {
     const real = { ...dish('Linsen-Bolognese'), source: 'rezept', sourceUrl: 'https://rezepte.example/linsen' };
     const plan = { ...mealPlan, body: { ...(mealPlan.body as object), meals: [
       { day: today, slot: 'fruehstueck', dish: { ...dish('Skyr mit Beeren'), source: 'coach' }, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false },
@@ -755,21 +774,24 @@ describe('Essen on the phone', () => {
     await boot({ account: 'anna', seed: [plan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /Skyr mit Beeren/ }));
-    expect(screen.getByText('vom Coach')).toBeTruthy();
+    expect(screen.queryByText('vom Coach')).toBeNull();
+    expect(screen.queryByText(/nach Rezept/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Linsen-Bolognese/ }));
-    const link = screen.getByRole('link', { name: 'Rezept ›' });
+    const link = screen.getByRole('link', { name: 'Originalrezept ↗' });
     expect(link.getAttribute('href')).toBe('https://rezepte.example/linsen');
     expect(link.getAttribute('rel')).toContain('noopener');
     // A link that is not https is never shown; the dish falls back to the list.
     fireEvent.click(screen.getByRole('button', { name: /Tomatensuppe/ }));
-    expect(screen.queryAllByRole('link', { name: 'Rezept ›' })).toHaveLength(0);
+    expect(screen.queryAllByRole('link', { name: 'Originalrezept ↗' })).toHaveLength(0);
   });
 
   it('adds a recipe by link as a record, shows the coach\'s answer, lists own recipes and deletes one', async () => {
     const own = (id: string, title: string): TrackedRecord => ({ kind: 'mealplan', id, updatedMs: NOW - 500, deleted: false, body: { title, sourceUrl: 'https://rezepte.example/x', minutes: 20 } });
-    const a = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry')] });
+    const a = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry')], recipes: (url) => (url.includes('/search') ? json(200, { items: [{ id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [] }], more: false })
+      : json(200, { id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [], ingredients: [], steps: ['Kochen.'], sourceUrl: '' })) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Rezept hinzufügen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '+ Rezept per Link' }));
     const field = await screen.findByLabelText('Link zum Rezept');
     // Only https links can be sent.
     fireEvent.change(field, { target: { value: 'http://rezepte.example/a' } });
@@ -785,16 +807,20 @@ describe('Essen on the phone', () => {
     const answered = { ...sent[0]!, updatedMs: sent[0]!.updatedMs + 5, body: { ...(sent[0]!.body as object), atMs: Date.now() - 1000, result: { state: 'veg' }, answeredMs: Date.now() } };
     phone.close();
     cleanup();
-    const again = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry'), answered] });
+    const again = await boot({ account: 'anna', seed: [mealPlan, own('recipe-l-aaaa1111', 'Erfundenes Curry'), answered], recipes: (url) => (url.includes('/search') ? json(200, { items: [{ id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [] }], more: false })
+      : json(200, { id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [], ingredients: [], steps: ['Kochen.'], sourceUrl: '' })) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Rezept hinzufügen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '+ Rezept per Link' }));
     expect(await screen.findByText('Nicht vegetarisch – nicht gespeichert')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
-    fireEvent.click(screen.getByRole('button', { name: /^Eigene Rezepte/ }));
-    expect(await screen.findByText('Erfundenes Curry')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
+    expect(screen.getByText(/erscheint unter „Von mir“/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+    // An own recipe is listed as "von dir" and deleted in its own view, after a question.
+    expect(await screen.findByText('20 Min · von dir')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^Erfundenes Curry\s?20 Min/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rezept löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
-    expect(await screen.findByText('Noch keine eigenen Rezepte.')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText('Erfundenes Curry')).toBeNull());
     const store = await openIdb('anna', again.factory);
     expect((await store.list('mealplan')).find((r) => r.id === 'recipe-l-aaaa1111')?.deleted).toBe(true);
     store.close();
@@ -864,18 +890,15 @@ describe('Rezepte on the phone', () => {
     await open({ recipes: route(urls) });
     await screen.findByText('Erfundener Topf 1');
     const chips = within(screen.getByRole('group', { name: 'Filter' }));
-    expect(chips.getAllByRole('button').map((b) => b.textContent)).toEqual(['Favoriten', 'Eigene', 'Frühstück', 'Mittag', 'Abend', 'schnell', 'proteinreich', 'Saison']);
+    expect(chips.getAllByRole('button').map((b) => b.textContent)).toEqual(['Favoriten', 'Von mir', 'schnell', 'proteinreich', 'Saison']);
     fireEvent.click(chips.getByRole('button', { name: 'Favoriten' }));
     await waitFor(() => expect(urls.at(-1)).toContain('fav=1'));
-    fireEvent.click(chips.getByRole('button', { name: 'Eigene' }));
+    fireEvent.click(chips.getByRole('button', { name: 'Von mir' }));
     await waitFor(() => expect(urls.at(-1)).toContain('own=1'));
-    fireEvent.click(chips.getByRole('button', { name: 'Frühstück' }));
-    fireEvent.click(chips.getByRole('button', { name: 'Abend' }));
     fireEvent.click(chips.getByRole('button', { name: 'schnell' }));
     fireEvent.click(chips.getByRole('button', { name: 'Saison' }));
-    // One meal chip at a time; the season is the current one (January: winter).
-    await waitFor(() => expect(decodeURIComponent(urls.at(-1)!)).toContain('tags=mahlzeit:abend,schnell,saison:winter'));
-    expect(chips.getByRole('button', { name: 'Frühstück' }).getAttribute('aria-pressed')).toBe('false');
+    // The season is the current one (January: winter).
+    await waitFor(() => expect(decodeURIComponent(urls.at(-1)!)).toContain('tags=schnell,saison:winter'));
     fireEvent.change(screen.getByLabelText('Rezept suchen'), { target: { value: 'linsen' } });
     await waitFor(() => expect(urls.at(-1)).toContain('q=linsen'));
   });
@@ -939,15 +962,16 @@ describe('Rezepte on the phone', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Eine Portion weniger' }));
     expect(screen.getByText('100 g')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Eine Portion weniger' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByRole('link', { name: 'Zum Originalrezept ›' }).getAttribute('href')).toBe('https://rezepte.example/topf');
+    expect(screen.getByRole('link', { name: 'Zum Originalrezept ↗' }).getAttribute('href')).toBe('https://rezepte.example/topf');
   });
 
   it('the heart in the recipe view toggles the favourite too', async () => {
     const a = await open({ recipes: route([]) });
     fireEvent.click(await screen.findByRole('button', { name: /^Erfundener Topf 1\s?21 Min/ }));
-    fireEvent.click(await screen.findByRole('button', { name: '♡ Zu Favoriten' }));
+    const hearts = await screen.findAllByRole('button', { name: 'Erfundener Topf 1 zu den Favoriten' });
+    fireEvent.click(hearts.at(-1)!);
     await waitFor(async () => expect(await records(a, 'fav-')).toHaveLength(1));
-    expect(await screen.findByRole('button', { name: '♥ Favorit' })).toBeTruthy();
+    expect((await screen.findAllByRole('button', { name: 'Erfundener Topf 1 aus den Favoriten nehmen' })).length).toBe(2);
   });
 
   it('In den Plan: pick a day and a meal, it replaces that one and is sent as a request the coach answers', async () => {
@@ -959,7 +983,7 @@ describe('Rezepte on the phone', () => {
     const names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     names.forEach((n, i) => expect((day.getByRole('button', { name: new RegExp(`^${n}`) }) as HTMLButtonElement).disabled).toBe(i < today));
     fireEvent.click(within(screen.getByRole('group', { name: 'Mahlzeit' })).getByRole('button', { name: 'Frühstück' }));
-    expect(screen.getByText(/Ersetzt: Skyr mit Beeren/)).toBeTruthy();
+    expect(screen.getByText(/Tauscht Skyr mit Beeren aus/)).toBeTruthy();
     expect(screen.getByText(/isst mit: Max, Lena/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Eintragen' }));
     expect(await screen.findByText('Der Coach trägt es gleich ein.')).toBeTruthy();
@@ -986,19 +1010,19 @@ describe('Rezepte on the phone', () => {
     fireEvent.error(thumbs[0]!);
     expect(document.querySelectorAll('img.pm-thumb')).toHaveLength(0);
     fireEvent.click(screen.getByRole('button', { name: /Erfundener Linsentopf/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Erfundener Linsentopf ansehen ›' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rezept ansehen ›' }));
     expect(await screen.findByText('Linsen kochen.')).toBeTruthy();
     // A dish without a recipe has neither picture nor link.
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     fireEvent.click(screen.getByRole('button', { name: /Skyr mit Beeren/ }));
-    expect(screen.queryByRole('button', { name: /Skyr mit Beeren ansehen/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Rezept ansehen ›' })).toBeNull();
   });
 
   it('a recipe that cannot be opened says so calmly', async () => {
     await boot({ account: 'anna', seed: [mealPlan], recipes: () => json(404, {}) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /Erfundener Linsentopf/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Erfundener Linsentopf ansehen ›' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rezept ansehen ›' }));
     expect(await screen.findByText('Dieses Rezept ist gerade nicht zu öffnen.')).toBeTruthy();
   });
 });
