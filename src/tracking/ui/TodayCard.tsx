@@ -9,7 +9,7 @@ import { Row, RowList, Sheet } from './kit';
 
 const RUN_KIND: Record<string, string> = { easy: 'locker', long: 'lang', test: 'Test' };
 /** One session: "Kraft, mittel". Two sessions of the same hardness: "Kraft + Rad locker", else each with its own. */
-const label = (d: PlanDay) => {
+export const planDayLabel = (d: PlanDay) => {
   if (!d.also || d.sport === 'rest') return dayLabel(d, (_, first) => (first && d.long ? ', lang' : ''));
   const min = d.also.minutes ? ` ${minutesText(d.also)}` : '';
   if (d.also.hardness === d.hardness) return `${SPORT_LABEL[d.sport]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.hardness]}`;
@@ -90,12 +90,12 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, a }: Props & { a?: Adv
   const run = hasSport(today, 'run') ? runView(runs ?? [], nowMs).week?.runs.find((r) => r.date === today.date) ?? null : null;
   // A run alone says what it is: "Laufen, 50 Min".
   const runAlone = today.sport === 'run' && !today.also && run !== null;
-  const title = runAlone ? `Laufen, ${run.minutes} Min${run.kind === 'easy' ? '' : `, ${RUN_KIND[run.kind] ?? ''}`}` : deviates && a ? a.advice.label : label(today);
+  const title = runAlone ? `Laufen, ${run.minutes} Min${run.kind === 'easy' ? '' : `, ${RUN_KIND[run.kind] ?? ''}`}` : deviates && a ? a.advice.label : planDayLabel(today);
   return (
     <section className="card tk-today-card" aria-label={deviates ? 'Heute' : 'Heute laut Wochenplan'}>
       <h2>{title}</h2>
       {deviates && a && <p className="muted">{a.advice.reason}</p>}
-      {deviates && !spontaneous && planned && <p className="muted">Geplant war: {label(planned)}</p>}
+      {deviates && !spontaneous && planned && <p className="muted">Geplant war: {planDayLabel(planned)}</p>}
       {!deviates && today.note && <p className="muted">{today.note}</p>}
       {hasSport(today, 'gym') && gym}
       {hasSport(today, 'run') && (

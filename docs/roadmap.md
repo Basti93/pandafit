@@ -49,6 +49,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **V Absprachen halten** | Was für einen Tag vereinbart ist, steht beim Start im Training; alle Coaches kennen denselben Stand von geplant und erledigt; Aufträge gelten so lange wie gemeint; Läufe zählen mit, ohne geplant zu werden. | Trainingsaudit 08.11.2026 |
 | ⬜ | **W Belastung nach Menge** | Ein Krafttag ist so hart, wie viel und was trainiert wurde: eine einzelne Beinübung sperrt die Beine nicht mehr 48 Stunden. | Trainingsaudit 08.11.2026 |
 | ✅ | **X Erster Eindruck** | Eine neue Person versteht ohne Anleitung, was Pandafit kann und wo sie tippt: Tabs folgen den Profil-Schaltern, Rückblick statt Statistik-Tab, klare Wörter, ruhigere Kraft-, Essen-, Ausdauer- und Fahrt-Screens. | UX-Review 08.11.2026 |
+| ✅ | **Y Heute als Tagesseite** | Heute zeigt Gestern, Heute und Morgen (Pfeile, Wischen): oben ein persönlicher Satz vom Coach, neu nach jedem Training; dann Training, Essen, Dein Körper, Gemeinsam. Gestern zeigt, was gemacht wurde, Morgen, was ansteht. | Wunsch 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -340,6 +341,14 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
 **Umgesetzt:** Tabs folgen den Profil-Schaltern in fester Reihenfolge; Statistik ist der Block „Rückblick“ in Woche; Kraft hat drei Unter-Tabs (Entwicklung und Übungen zusammen); ein Muster für Seitenkopf und Schließen; Heute mit einer Karte und ehrlicher Begründung; wartender Vorschlag als Karte; Coach-Änderungen mit Grund im Chat; Sätze werden aus dem vorigen Satz derselben Art vorbelegt; Anleitung per „i“ auf der Übungskarte; Fahrt-Begleiter in Worten („Leichter/Schwerer“, beruhigend bei Verbindungsverlust); Profil in Gruppen Planen, Verbindungen, Nachrichten; „Etwas anderes heute?“. Ein Training, das lange vor dem ersten Satz gestartet wurde, nimmt beim Beenden den ersten Satz als Start (Fall vom 08.11.2026).
 
 **Nicht dabei:** alles unter „Verworfen“ in der Synthese; 24-Stunden-Zeit im Lauf-Formular (Parkplatz L); Dauer je Beweglichkeitsübung (braucht Coach-Daten).
+
+## Meilenstein Y — Brief (umgesetzt 08.11.2026)
+
+**Ziel:** Die Startseite zeigt auf einen Blick, was heute dran ist, und motiviert, statt zu kontrollieren. Spec: `docs/superpowers/specs/2026-11-08-heute-day-pages-design.md`, Plan: `docs/superpowers/plans/2026-11-08-milestone-y-heute-day-pages.md`.
+
+**Was kam:** neue Record-Art `daytext`; der Coach schreibt einmal am Tag und nach jedem fertigen Training einen Satz (höchstens 4 KI-Aufrufe pro Tag, nie bei offener Fahrt, Prüfung auf Druckwörter und fremde Zahlen, 60 s Zeitgrenze). Ohne Satz zeigt die Seite einen täglich wechselnden Spruch aus einer festen Liste. Kopf mit Pfeilen und Wischen; „Dein Körper“ in Worten ohne Zahlen; Gemeinsam unten; Gestern mit Training und Essen des Tages, Morgen mit Plan. Erledigt damit die Wünsche „Coach prominenter“ und „Spruch auf Heute“.
+
+**Geparkt:** Der Satz-Input wird bei jedem Scan neu gebaut (günstig, aber unnötig oft).
 
 ## Parkplatz
 

@@ -105,6 +105,18 @@ test('scan with scheduled() false asks no Claude and starts no Hevy or Garmin ru
   }
 });
 
+test('with a ride open no day sentence is asked, even with a training today', async () => {
+  const { root, runtime, ask } = make({ noOpenRide: () => false });
+  const store = new RecordStore({ dir: path.join(root, 'coach', 'tracking') });
+  store.putMany('pa', [{ kind: 'run', id: 'manual-abc', updatedMs: Date.now(), deleted: false, body: { type: 'manual', startMs: Date.now() - 3600_000, durationS: 1800, distanceM: 5000, avgHr: null, runType: 'running' } }]);
+  runtime.scan();
+  await settle();
+  runtime.scan();
+  await settle();
+  expect(ask).not.toHaveBeenCalled();
+  expect(fs.existsSync(path.join(root, 'coach', 'day', 'texts.json'))).toBe(false);
+});
+
 test('heavyBusy() true skips the Hevy and Garmin ticks but not planning', async () => {
   const busy = make({ heavyBusy: () => true });
   connectHevyAndGarmin(busy.root);
@@ -423,8 +435,8 @@ test('a new activity of any source, here a run entered by hand, makes the bike c
   runtime.scan();
   await settle();
   expect(ask).toHaveBeenCalled();
-  const prompt = (ask.mock.calls[0] as unknown as [{ prompt: string }])[0].prompt;
-  expect(prompt).toContain('<aktivitaeten-nur-daten>');
+  // The coach sentence about the new training asks as well; the bike coach's plan is the call with the activity block.
+  const prompt = (ask.mock.calls as unknown as [{ prompt: string }][]).map((c) => c[0].prompt).find((p) => p.includes('<aktivitaeten-nur-daten>'))!;
   expect(prompt).toContain('"art":"running"');
 
   // Seen once: the next scans do not plan again for it.

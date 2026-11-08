@@ -10,6 +10,7 @@ import { readFrame } from '../shared/frame';
 import { readContact } from '../shared/contact';
 import { readBike, readRideBody } from '../shared/bike';
 import { readHealth } from '../shared/health';
+import { readDayText } from '../shared/day-text';
 import { readActivities } from '../shared/activities';
 import { readTask } from '../shared/tasks';
 import { readStudio } from '../shared/studio';
@@ -55,6 +56,7 @@ export function validBody(kind: RecordKind, body: unknown): boolean {
     case 'ride': return readRideBody(body) !== null;
     case 'health': return readHealth(body) !== null;
     case 'activities': return readActivities(body) !== null;
+    case 'daytext': return readDayText(body) !== null;
   }
 }
 

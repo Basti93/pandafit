@@ -18,7 +18,9 @@ import { openIdb } from './idbStore';
 import { mobilityToShow, planDateText, planIsStale, readPlan, shouldShowInstallHint } from './logic';
 import type { OpenState } from './register';
 import { createWebPort, type WebPort } from './webPort';
-import { MealsScreen, mealWeeks, TodayMeals } from './MealsScreen';
+import { DayMeals, MealsScreen, mealWeeks } from './MealsScreen';
+import { YesterdayTraining } from './today/YesterdayTraining';
+import { TomorrowTraining } from './today/TomorrowTraining';
 import { TogetherCard, TogetherPage, togetherOf } from './TogetherScreen';
 import type { PushEnv, SubJson } from './push';
 import { ContactSettings, UpdatesSwitch } from './ContactSettings';
@@ -26,6 +28,12 @@ import { ConnectionSettings, ProfileGroup } from './ConnectionSettings';
 import { CoachLink } from './coachLink';
 import { LiveClient, type LiveSocket } from './live';
 import { LiveRide } from './LiveRide';
+import { DayHead } from './today/DayHead';
+import { CoachLine } from './today/CoachLine';
+import { BodyCard } from './today/BodyCard';
+import { shiftDay, swipeIgnored, swipeStep, type DayOffset } from './today/day-nav';
+import { dayLine } from '../shared/day-text';
+import { healthOf } from '../tracking/ui/health-view';
 
 export type Env = {
   fetchFn: typeof fetch;
@@ -116,8 +124,6 @@ export class ErrorBoundary extends Component<{ children: ReactNode; onTraining: 
   }
 }
 
-/** "Samstag, 7. November" */
-const todayTitle = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 /** "14:05", or with the day when it was not today. */
 /** "14:44" today, "gestern 13:34" the day before, "Sa., 13:34" earlier: an old open workout shows as old. */
 export const sinceText = (ms: number, now: number): string => {
@@ -126,6 +132,9 @@ export const sinceText = (ms: number, now: number): string => {
   if (localDayKey(ms) === localDayKey(day.getTime())) return `gestern ${timeLabel(ms)}`;
   return `${new Date(ms).toLocaleDateString('de-DE', { weekday: 'short' })}, ${timeLabel(ms)}`;
 };
+
+/** The time one calendar day before or after, at the same clock time. */
+const shiftMs = (ms: number, days: number): number => { const d = new Date(ms); d.setDate(d.getDate() + days); return d.getTime(); };
 
 function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
   const plans = usePortRecords(port, 'plan').records;
@@ -136,14 +145,23 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   // Only when the Mac sent one for this account: without a link Heute stays as it was.
   const together = togetherOf(usePortRecords(port, 'together').records);
   const [showTogether, setShowTogether] = useState(false);
+  const daytexts = usePortRecords(port, 'daytext').records;
+  const health = healthOf(usePortRecords(port, 'health').records);
   const plan = (plans ?? []).find((r) => r.id === 'current');
   const p = readPlan(plan);
   const now = env.now();
+  // The chosen day belongs to the calendar day it was chosen on: a new day starts at Heute.
+  const dayKey = localDayKey(now);
+  const [pick, setPick] = useState<{ key: string; offset: DayOffset }>({ key: dayKey, offset: 0 });
+  const offset: DayOffset = pick.key === dayKey ? pick.offset : 0;
+  const step = (s: -1 | 0 | 1) => { if (s !== 0) setPick({ key: dayKey, offset: shiftDay(offset, s) }); };
+  const swipe = useRef<{ x: number; y: number } | null>(null);
   const session = useMemo(() => mobilityToShow(plan, mobility ?? [], now), [plan, mobility, now]);
   const today = todayPlan(weekplans, now);
   const waiting = useWaitingProposal(port, now);
   // A workout still open (here or on another device) is the next thing to do: the newest one.
   const workouts = usePortRecords(port, 'workout').records;
+  const activities = usePortRecords(port, 'activities').records;
   const open = (workouts ?? []).filter((r) => (r.body as LoggedWorkout).endMs === null).sort((x, y) => (y.body as LoggedWorkout).startMs - (x.body as LoggedWorkout).startMs)[0];
 
   const markDone = async () => {
@@ -185,15 +203,21 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   ) : undefined;
   if (together && showTogether) return <TogetherPage t={together} now={now} onBack={() => setShowTogether(false)} />;
   return (
-    <div className="tk-screen">
-      <PageHead title={todayTitle(now)} />
+    <div
+      className="tk-screen tk-daypage"
+      onPointerDown={(e) => { if (!e.isPrimary || e.pointerType === 'mouse') return; swipe.current = swipeIgnored(e.target as Element | null) ? null : { x: e.clientX, y: e.clientY }; }}
+      onPointerCancel={() => { swipe.current = null; }}
+      onPointerUp={(e) => { if (!e.isPrimary || e.pointerType === 'mouse') return; const s = swipe.current; swipe.current = null; if (s) step(swipeStep(e.clientX - s.x, e.clientY - s.y)); }}
+    >
+      <DayHead offset={offset} nowMs={now} onStep={step} />
+      {offset === 0 && <>
       {open && (
         <section className="card" aria-label="Training läuft noch">
           <h2>{(open.body as LoggedWorkout).title} läuft – gestartet {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
           <button type="button" onClick={() => goTraining(true)}>Weitermachen</button>
         </section>
       )}
-      {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
+      <CoachLine text={dayLine(daytexts, account, dayKey).text} />
       {/* A workout that is open is the one thing to do: no day card beside it. */}
       {!open && <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} />}
       {!open && weekplans !== null && plans !== null && !today && !planning && !p && (
@@ -207,8 +231,19 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
         </section>
       )}
       {!open && waiting && <WaitingProposal onOpen={goCoach} />}
-      {meals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
+      {meals && <DayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} offset={0} />}
       {session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />}
+      <BodyCard health={health} onCoach={goCoach} />
+      {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
+      </>}
+      {offset === -1 && <>
+        <YesterdayTraining activities={activities} workouts={workouts} mobility={mobility} date={localDayKey(shiftMs(now, -1))} />
+        {meals && <DayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} offset={-1} />}
+      </>}
+      {offset === 1 && <>
+        <TomorrowTraining weekplans={weekplans} date={localDayKey(shiftMs(now, 1))} gymNote={p?.workout ? <><p className="muted"><span>{p.workout.name}</span></p>{p.workout.exercises.length > 0 && <p className="muted tk-clamp">{p.workout.exercises.map((e) => e.title).join(', ')}</p>}</> : undefined} />
+        {meals && <DayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} offset={1} />}
+      </>}
     </div>
   );
 }

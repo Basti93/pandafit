@@ -45,6 +45,8 @@ import { daysOf, weeksOf } from './health/aggregate';
 import { findingsOf } from './health/findings';
 import { CoachTexts, HealthCoachText } from './health/coach-text';
 import { exportHealth } from './health/health-export';
+import { DayCoachText, DayTexts, type DayInput as DayTextInput } from './day-text';
+import { doneToday, exportDayText } from './day-text-export';
 import { activityItems, exportActivities, kindOf } from './activities-export';
 import { mirrorExercises } from './tracking/mirror-exercises';
 import { ChatCoach } from './chat/chat-coach';
@@ -394,6 +396,32 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
   const healthText = new HealthCoachText({ texts: healthTexts, nowMs, ask });
   const exportHealthNow = (profileIds: string[]): string[] =>
     exportHealth({ store: records, profileIds, coachHere, noOpenRide, nowMs: nowMs(), content: healthContent, coachText: (id) => healthTexts.get(id) });
+  const dayTexts = new DayTexts(path.join(coachDir, 'day', 'texts.json'));
+  const dayText = new DayCoachText({ texts: dayTexts, nowMs, ask });
+  const exportDayTextNow = (profileIds: string[]): string[] =>
+    exportDayText({ store: records, profileIds, coachHere, noOpenRide, nowMs: nowMs(), entry: (id) => dayTexts.get(id) });
+  /** What the day sentence is made from: today's finished trainings, the last four weeks, the week plan, motives, the health note and open complaints. */
+  const dayInputOf = (id: string, now: number): DayTextInput => {
+    const date = dateKey(now);
+    const sessions = activitiesOf(id);
+    const complaints = (coach.state(id).complaints ?? []).filter((c) => c.status !== 'over');
+    const findings = healthContent(id)?.findings ?? [];
+    const plan = records.all(id, 'weekplan');
+    const week = planOfWeek(plan, mondayOf(date))?.days.map((d) => ({ datum: d.date, sport: d.sport, haerte: d.hardness })) ?? null;
+    const heute = planFor(plan, date);
+    const since = now - 28 * 86_400_000;
+    const data = {
+      aktivitaeten: sessions.filter((a) => a.startMs >= since && a.startMs <= now).sort((a, b) => a.startMs - b.startMs)
+        .map((a) => ({ tag: dateKey(a.startMs), art: kindOf(a), titel: a.title, minuten: Math.round(a.minutes) })),
+      woche: week, planHeute: heute ? { sport: heute.sport, haerte: heute.hardness } : null,
+      beweggruende: (coach.state(id).motives ?? []).map((m) => m.text),
+      gesundheit: healthTexts.get(id)?.text ?? null,
+      beschwerden: complaints.map((c) => c.text),
+    };
+    return { date, done: doneToday(sessions, now), data, caution: complaints.length > 0 || findings.some((f) => f.tone === 'arzt') };
+  };
+  /** Without any data the web shows the saying; no AI call is spent on it. */
+  const dayHasData = (i: DayTextInput): boolean => i.done.length > 0 || Object.values(i.data).some((v) => (Array.isArray(v) ? v.length > 0 : v !== null));
   const statsDue = (id: string): Omit<StatsBody, 'atMs'> | null => {
     const now = nowMs();
     const last = statsMade.get(id);
@@ -725,6 +753,11 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       if (free) {
         mealsChanged(exportHealthNow(list.map((p) => p.id)));
         for (const p of list) { try { const body = healthContent(p.id); if (body) void healthText.tick(p.id, body).then((wrote) => { if (wrote) mealsChanged(exportHealthNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
+      }
+      // The coach sentence of the day, renewed after each finished training: only on change, at most four AI calls a day, never with a ride open or in quiet hours (`scheduled()`). Never throws.
+      if (free) {
+        mealsChanged(exportDayTextNow(list.map((p) => p.id)));
+        if (scheduled()) for (const p of list) { try { if (!coachHere(p.id)) continue; const input = dayInputOf(p.id, now); if (dayHasData(input)) void dayText.tick(p.id, input).then((wrote) => { if (wrote) mealsChanged(exportDayTextNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
       }
       // All recent activities from every source for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportActivities({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: (id) => { try { return activityItems(activitiesOf(id), garminData(id)?.activities ?? []); } catch { return null; } } }));
