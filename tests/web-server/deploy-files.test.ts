@@ -234,7 +234,7 @@ test('mail: the coach joins the external mail network; the token comes from .env
   const { services, networks } = compose();
   const coach = services.coach!;
   expect(coach.networks).toContain('homeserver-mail');
-  expect(networks['homeserver-mail']).toEqual({ external: true, name: 'homeserver-mail' });
+  expect(networks['homeserver-mail']).toEqual({ external: true, name: 'homeserver-mail-pandafit' });
   expect(coach.environment!.MAIL_URL).toBe('http://homeserver-mail:8080');
   expect(coach.environment!.MAIL_TOKEN).toBe('${PANDAFIT_MAIL_TOKEN:-}');
   expect(coach.environment!.PANDAFIT_APP_URL).toBe('${PANDAFIT_APP_URL:-}');
