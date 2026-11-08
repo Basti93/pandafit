@@ -235,7 +235,7 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 
 /* Panda card on Heute: the still, the name, the coach sentence and one button to open the real chat. */
 .tk-screen .tk-coachline { display: grid; grid-template-columns: 6rem minmax(0, 1fr); column-gap: var(--space-3); row-gap: var(--space-2); align-items: start; }
-/* The portrait: the still picture fills the box; the Rive canvas lies over it and fades in once it has drawn, then the still is hidden. */
+/* The portrait: the still picture fills the box; the canvas lies over it and fades in once it has drawn, then the still is hidden. */
 .tk-panda { position: relative; display: block; width: 100%; aspect-ratio: 198 / 164; }
 .tk-coachline > .tk-panda { grid-row: 1 / span 2; }
 .tk-pandastill { display: block; width: 100%; height: 100%; object-fit: contain; }

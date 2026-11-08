@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import type { PandaGesture, PandaHandle } from './panda-rive';
+import type { PandaGesture, PandaHandle } from './panda-canvas';
 
-export type { PandaGesture } from './panda-rive';
+export type { PandaGesture } from './panda-canvas';
 /** One event for Panda. The id is unique per event: an id that was seen is never played again by the same portrait. */
 export type PandaEvent = { kind: PandaGesture; id: string };
 
-/** How long each clip runs (frames at 60 fps from the Rive file, plus a little margin). */
+/** How long each clip runs (frames at 60 fps from the motion source, plus a little margin). */
 const CLIP_MS: Record<PandaGesture, number> = {
   greet: 1650, listen: 1050, nod: 1200, breathe: 3450, flex: 2550, bike: 2700, run: 2650, yoga: 3150, read: 2900, knit: 3100,
 };
@@ -19,7 +19,7 @@ const reducedMotion = (): boolean => {
 };
 
 /**
- * Panda's portrait: the still picture, and above it a Rive canvas once the runtime has loaded and drawn.
+ * Panda's portrait: the still picture, and above it a Canvas portrait once the runtime has loaded and drawn.
  * Decorative only (the caller keeps all text and buttons). Calm rules: one clip at a time, a new request while a clip plays is
  * dropped unless it is `nod` or `listen`, and `breathe` comes at most every 30-45 s while the page is visible. After a `greet`
  * the current `dayClip` plays once. No runtime is loaded under reduced motion, and any load failure keeps the still.
@@ -71,7 +71,7 @@ export function PandaPortrait({ gesture, dayClip, className = '' }: { gesture?: 
     document.addEventListener('visibilitychange', onVisible);
     void (async () => {
       try {
-        const { mountPanda } = await import('./panda-rive');
+        const { mountPanda } = await import('./panda-canvas');
         const h = await mountPanda(canvas.current!);
         if (!alive) { h.dispose(); return; }
         handle.current = h;

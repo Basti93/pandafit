@@ -44,9 +44,19 @@ printf '%s\n' 'advance 3' 'data bike=1' 'advance 76' 'screenshot /tmp/panda-bike
   rive design/panda-rive --commands
 ```
 
-## Runtime file
+## Pandafit Canvas player
 
-[`panda-coach.riv`](panda-coach.riv) is the local export. It contains all ten View Model triggers. It loads in Canvas Lite 2.49.4 with the named artboard and state machine above. The running, mug and knitting clips were played through the browser runtime using same-origin assets.
+The app uses the drawing and motion tracks directly with Canvas 2D. From the repository root, regenerate the bundled data after changing the artboard:
+
+```sh
+python3 design/panda-rive/export-canvas.py
+```
+
+The conversion uses Python’s standard library. It does not run Rive or access an account. Commit the changed `scene.rml` and `src/tracking/ui/panda-motion.ts` together. The player is in `src/tracking/ui/panda-canvas.ts`; the existing portrait chooses which clip to play.
+
+## Earlier Rive export
+
+[`panda-coach.riv`](panda-coach.riv) is the earlier local export, kept alongside the editable source. It contains all ten View Model triggers. It loads in Canvas Lite 2.49.4 with the named artboard and state machine above. The running, mug and knitting clips were played through the browser runtime using same-origin assets.
 
 The Free Workspace export includes Rive's splash screen. The project has no scripts, so the CLI reports that there is no script bytecode to sign. To reproduce the local export with Rive CLI 1.9.2:
 

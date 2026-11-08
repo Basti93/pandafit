@@ -111,8 +111,15 @@ try {
   await ctx1.setOffline(true);
   await page.reload();
   await page.getByRole('navigation').waitFor();
+  const panda = page.locator('.tk-coachline .tk-panda[data-drawn] canvas');
+  await panda.waitFor();
+  const firstFrame = await panda.evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+  await page.waitForFunction((frame) => {
+    const canvas = document.querySelector<HTMLCanvasElement>('.tk-coachline .tk-panda[data-drawn] canvas');
+    return canvas && canvas.toDataURL() !== frame;
+  }, firstFrame);
   await seeWorkout(page);
-  step('offline reload: app shell and data come from the device');
+  step('offline reload: Panda animates and the workout is available');
   await ctx1.setOffline(false);
 
   const ctx2 = await browser.newContext();

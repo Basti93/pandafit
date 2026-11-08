@@ -50,7 +50,7 @@ async function boot(seed: TrackedRecord[]) {
 describe('Panda on Heute', () => {
   it('greets once when Heute opens and offers the clip of the day; Gestern and back does not greet again', async () => {
     await boot([week('bike')]);
-    expect(log.mounts).toEqual([{ greet: 'greet' }]);
+    await waitFor(() => expect(log.mounts).toEqual([{ greet: 'greet' }]));
     await waitFor(() => expect(log.last.dayClip).toBe('bike'));
     fireEvent.click(screen.getByRole('button', { name: 'Tag zurück' }));
     expect(screen.queryByLabelText('Satz vom Coach')).toBeNull();

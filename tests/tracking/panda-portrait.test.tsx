@@ -6,7 +6,7 @@ const m = vi.hoisted(() => ({
   factory: 0,
   mount: vi.fn(),
 }));
-vi.mock('../../src/tracking/ui/panda-rive', () => {
+vi.mock('../../src/tracking/ui/panda-canvas', () => {
   m.factory++;
   return { mountPanda: (c: HTMLCanvasElement) => m.mount(c) };
 });
@@ -120,7 +120,7 @@ test('breathe comes only after 30 to 45 s of calm, not while hidden, and stops o
 });
 
 test('a failed load keeps the still and nothing throws', async () => {
-  m.mount.mockRejectedValue(new Error('no wasm'));
+  m.mount.mockRejectedValue(new Error('no 2D context'));
   const { container } = render(<PandaPortrait gesture={ev('greet', 'a')} />);
   await settle();
   expect(container.querySelector('.tk-panda')!.hasAttribute('data-drawn')).toBe(false);

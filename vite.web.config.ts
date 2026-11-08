@@ -37,8 +37,6 @@ function precache(): Plugin {
 export default defineConfig(({ command }) => ({
   root: 'src/web',
   publicDir: 'public',
-  // Panda's Rive file is imported as a hashed URL asset, next to the runtime's WASM file.
-  assetsInclude: ['**/*.riv'],
   plugins: [react(), ...(command === 'build' ? [precache()] : [])],
   build: {
     outDir,

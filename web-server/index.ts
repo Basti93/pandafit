@@ -22,13 +22,12 @@ const REQUEST_LIMIT_MS = 30_000;
 const MAX_CONNECTIONS = 256;
 const SESSION_MS = 90 * 24 * 3600 * 1000;
 const COOKIE = 'pf_session';
-// 'wasm-unsafe-eval' (not 'unsafe-eval') lets the pinned Rive runtime compile its own WebAssembly file from the same origin.
-const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
+const CSP = "default-src 'self'; script-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8',
-  '.wasm': 'application/wasm', '.riv': 'application/octet-stream', '.ttf': 'font/ttf', '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf', '.woff2': 'font/woff2',
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);

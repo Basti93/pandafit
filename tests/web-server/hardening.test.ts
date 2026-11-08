@@ -159,21 +159,19 @@ describe('files', () => {
     for (const url of ['/me', '/records']) expect((await app.inject({ method: 'HEAD', url })).statusCode, url).toBe(401);
   });
 
-  it('serves the Panda runtime files with their types and a CSP that allows WebAssembly but never eval', async () => {
+  it('serves the local wordmark font with its type and a same-origin script policy without eval', async () => {
     const root = mkdtempSync(join(tmpdir(), 'pf-w-'));
     mkdirSync(join(root, 'public', 'assets'), { recursive: true });
-    for (const f of ['rive.wasm', 'panda.riv', 'shojumaru.ttf']) writeFileSync(join(root, 'public', 'assets', f), Buffer.from([0, 97, 115, 109]));
+    writeFileSync(join(root, 'public', 'assets', 'shojumaru.woff2'), 'font');
     const { buildServer } = await import('../../web-server');
     const app = buildServer({ dbPath: join(root, 'p.db'), staticDir: join(root, 'public') });
-    const get = (f: string) => app.inject({ method: 'GET', url: `/assets/${f}` });
-    const wasm = await get('rive.wasm');
-    expect(wasm.statusCode).toBe(200);
-    expect(wasm.headers['content-type']).toBe('application/wasm');
-    expect((await get('panda.riv')).headers['content-type']).toBe('application/octet-stream');
-    expect((await get('shojumaru.ttf')).headers['content-type']).toBe('font/ttf');
-    const csp = String(wasm.headers['content-security-policy']);
-    expect(csp).toMatch(/script-src 'self' 'wasm-unsafe-eval'(;|$)/);
+    const font = await app.inject({ method: 'GET', url: '/assets/shojumaru.woff2' });
+    expect(font.statusCode).toBe(200);
+    expect(font.headers['content-type']).toBe('font/woff2');
+    const csp = String(font.headers['content-security-policy']);
+    expect(csp).toMatch(/script-src 'self'(;|$)/);
     expect(csp).not.toContain("'unsafe-eval'");
+    expect(csp).not.toContain("'wasm-unsafe-eval'");
     expect(csp).toContain("default-src 'self'");
   });
 

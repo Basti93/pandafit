@@ -1,8 +1,7 @@
-import { PandaPortrait, type PandaEvent } from '../../tracking/ui/PandaPortrait';
-import type { PandaGesture } from '../../tracking/ui/panda-rive';
+import { PandaPortrait, type PandaEvent, type PandaGesture } from '../../tracking/ui/PandaPortrait';
 
 /**
- * Panda on Heute: the portrait (still, animated once the Rive runtime has drawn), the name, the coach sentence of the day and, on today, one button that opens the real coach chat.
+ * Panda on Heute: the portrait (still, animated once the canvas has drawn), the name, the coach sentence of the day and, on today, one button that opens the real coach chat.
  * `gesture` is the greeting when Heute opens; `dayClip` is the one calm clip that follows it.
  */
 export function CoachLine({ text, onAsk, gesture, dayClip }: { text: string; onAsk?: () => void; gesture?: PandaEvent; dayClip?: PandaGesture | null }) {

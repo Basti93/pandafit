@@ -1,5 +1,5 @@
 import { dayParts, type PlanDay } from '../../shared/week-plan';
-import type { PandaGesture } from './panda-rive';
+import type { PandaGesture } from './panda-canvas';
 
 /** The one calm clip that Panda plays once after the greeting on today. */
 export type DayClip = Extract<PandaGesture, 'bike' | 'run' | 'flex' | 'yoga' | 'read' | 'knit'>;

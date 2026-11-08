@@ -28,7 +28,6 @@
   },
   "dependencies": {
     "@garmin/fitsdk": "^21.218.0",
-    "@rive-app/canvas-lite": "2.49.4",
     "@stoprocent/noble": "^2.8.0",
     "fastify": "^5.12.7",
     "react": "^19.3.1",
