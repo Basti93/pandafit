@@ -423,8 +423,8 @@ test('a new activity of any source, here a run entered by hand, makes the bike c
   runtime.scan();
   await settle();
   expect(ask).toHaveBeenCalled();
-  const prompt = (ask.mock.calls[0] as unknown as [{ prompt: string }])[0].prompt;
-  expect(prompt).toContain('<aktivitaeten-nur-daten>');
+  // The coach sentence about the new training asks as well; the bike coach's plan is the call with the activity block.
+  const prompt = (ask.mock.calls as unknown as [{ prompt: string }][]).map((c) => c[0].prompt).find((p) => p.includes('<aktivitaeten-nur-daten>'))!;
   expect(prompt).toContain('"art":"running"');
 
   // Seen once: the next scans do not plan again for it.
