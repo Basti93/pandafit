@@ -57,6 +57,26 @@ describe('Heute as a day page', () => {
     const page = coach.closest('.tk-daypage')!;
     expect(page.lastElementChild!.contains(tg)).toBe(true);
   });
+  it('"Panda fragen" on Heute opens the real coach composer', async () => {
+    await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW })]);
+    const card = screen.getByLabelText('Satz vom Coach');
+    expect(card.textContent).toContain('Panda');
+    expect(card.textContent).toContain('Dein Coach');
+    expect(card.querySelector('img')?.getAttribute('alt')).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: 'Panda fragen' }));
+    expect(await screen.findByLabelText('Nachricht an den Coach')).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Heute' })).toBeNull();
+  });
+  it('an open synced workout comes first: "Weitermachen" opens it, no "Ansehen und anpassen", Panda stays below', async () => {
+    const open = rec('workout', 'w-open', { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] });
+    await boot([open]);
+    const go = await screen.findByRole('button', { name: 'Weitermachen' });
+    expect(screen.queryByRole('button', { name: 'Ansehen und anpassen' })).toBeNull();
+    expect(before(go, screen.getByLabelText('Satz vom Coach'))).toBe(true);
+    expect(go.closest('.tk-daypage')!.querySelector('section')!.contains(go)).toBe(true);
+    fireEvent.click(go);
+    expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();
+  });
   it("a daytext of yesterday shows a saying", async () => {
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-03', text: 'Gestriger Satz.', atMs: NOW - DAY })]);
     expect(screen.queryByText('Gestriger Satz.')).toBeNull();

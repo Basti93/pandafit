@@ -5,7 +5,7 @@
   .tk-chip-warm { color: var(--chip-warm); } .tk-chip-fail { color: var(--chip-fail); } .tk-chip-drop { color: var(--chip-drop); }
 }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
-body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, sans-serif; padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+body { font-family: var(--font-ui); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 /* The tab bar sits at the bottom, inside the safe area. The page keeps room for it, so it never covers the finish button. */
 .web-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); gap: .1rem; padding: .3rem max(calc(.5rem + env(safe-area-inset-right)), calc((100% - 640px) / 2)) calc(.3rem + env(safe-area-inset-bottom)) max(calc(.5rem + env(safe-area-inset-left)), calc((100% - 640px) / 2)); background: var(--bg); }
 /* On a wide screen the tabs and their line stay in the content column (640 px), like the page. */
@@ -59,7 +59,7 @@ body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemF
 .pm-avatar { display: inline-flex; align-items: center; justify-content: center; width: 1.7rem; height: 1.7rem; border-radius: var(--radius-round); font-size: var(--fs-2xs); font-weight: 800; color: var(--ink); }
 .pm-avatar.pc0 { background: var(--pc0); } .pm-avatar.pc1 { background: var(--pc1); } .pm-avatar.pc2 { background: var(--pc2); } .pm-avatar.pc3 { background: var(--pc3); }
 button.pm-person:not(.on) .pm-avatar { opacity: .45; }
-.pm-recipe summary { font-weight: 600; color: var(--accent); padding: .3rem 0; }
+.pm-recipe summary { font-weight: 600; color: var(--accent-text); padding: .3rem 0; }
 .pm-ingredients { list-style: none; margin: .4rem 0; padding: 0; }
 .pm-ingredients li { padding: .35rem 0; border-top: 1px solid var(--line); }
 .pm-ingredients b { display: inline-block; min-width: 5rem; }
@@ -85,7 +85,7 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .pm-rowtitle { display: block; }
 .pm-sidehint { display: block; color: var(--muted); font-size: var(--fs-xs); }
 .pm-side { margin: var(--space-2) 0 0; }
-.pm-dev { display: block; color: var(--accent); font-size: var(--fs-xs); }
+.pm-dev { display: block; color: var(--accent-text); font-size: var(--fs-xs); }
 .pm-people[role="group"] { margin: var(--space-1) 0; }
 .tk-screen button.pm-check { width: 44px; height: 44px; min-width: 44px; padding: 0; border-radius: .7rem; background: transparent; border: 2px solid var(--muted); color: var(--ink); font-size: var(--fs-xl); }
 .pm-item.gekauft button.pm-check { background: var(--good); border-color: var(--good); }
@@ -110,7 +110,7 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 /* Gemeinsam: the compact card on Heute and the full page. Time and regularity only, the same look for everyone. */
 .tk-screen button.gm-card { display: flex; flex-direction: column; align-items: stretch; gap: .45rem; width: 100%; text-align: left; border-radius: var(--radius-card); padding: .9rem var(--space-4); background: var(--card); color: var(--text); font-weight: 400; border-top: 4px solid var(--accent); }
 .gm-head { display: flex; justify-content: space-between; align-items: baseline; font-size: var(--fs-l); }
-.gm-head span { color: var(--accent); font-size: var(--fs-3xl); line-height: 1; }
+.gm-head span { color: var(--accent-text); font-size: var(--fs-3xl); line-height: 1; }
 .tk-screen .gm-label { margin: 0; }
 .gm-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .4rem; }
 .gm-person { display: flex; flex-direction: column; padding: .4rem .6rem; border-radius: var(--radius-m); background: var(--bg); }
@@ -194,7 +194,7 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .rc-title { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .rc-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tk-screen button.rc-heart { flex: none; min-width: 44px; min-height: 44px; padding: 0; font-size: 1.7rem; line-height: 1; color: var(--muted); text-decoration: none; }
-.tk-screen button.rc-heart[aria-pressed='true'] { color: var(--accent); }
+.tk-screen button.rc-heart[aria-pressed='true'] { color: var(--accent-text); }
 .rc-view { display: flex; flex-direction: column; gap: var(--space-3); }
 .rc-hero { width: 100%; height: 80px; object-fit: cover; border-radius: 1rem; display: block; background: var(--card); }
 .rc-hero.rc-blank { font-size: 1.6rem; }
@@ -223,7 +223,35 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-daytitle p, .tk-screen .tk-daytitle .tk-title + p.muted { margin: .1rem 0 0; font-size: var(--fs-xs); }
 .tk-screen .tk-dayarrow { flex: none; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: var(--fs-3xl); line-height: 1; display: grid; place-items: center; box-shadow: none; }
 .tk-screen .tk-dayarrow:disabled { opacity: .35; }
-.tk-coachline { display: flex; align-items: flex-start; gap: var(--space-3); }
-.tk-coachline p { margin: 0; flex: 1; }
-.tk-coachmark { flex: none; width: 2rem; height: 2rem; border-radius: var(--radius-round); background: var(--accent); color: var(--ink); font-weight: 700; display: grid; place-items: center; }
 .tk-bodyrows { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
+
+/* Top bar: the wordmark on the left, the round profile button on the right (it is positioned on the same row). */
+.web-top { box-sizing: border-box; max-width: 640px; margin: 0 auto; min-height: calc(44px + .55rem); padding: calc(.55rem + 6px) 4.6rem 0 var(--space-4); }
+.web-wordmark { font-family: var(--font-display); font-size: var(--fs-xl); letter-spacing: .04em; color: var(--text); line-height: 1.2; }
+@media (max-width: 400px) { .web-top { padding-left: .6rem; } }
+/* Display face: the wordmark, Panda's name and short page titles only. Workout titles and anything with measures stay in the UI face. */
+.tk-pagehead .tk-title, .tk-daytitle .tk-title, .web-login .tk-title, .tk-pandaname { font-family: var(--font-display); font-weight: 400; letter-spacing: .03em; }
+.tk-daytitle .tk-title { font-size: 1.35rem; }
+
+/* Panda card on Heute: the still, the name, the coach sentence and one button to open the real chat. */
+.tk-screen .tk-coachline { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); column-gap: var(--space-3); row-gap: var(--space-2); align-items: start; }
+.tk-pandastill { grid-row: 1 / span 2; width: 4.5rem; height: auto; }
+.tk-pandahead { display: flex; flex-direction: column; min-width: 0; }
+.tk-pandaname { font-size: var(--fs-xl); line-height: 1.2; }
+.tk-pandarole {  font-size: var(--fs-xs); color: var(--muted); }
+.tk-coachline p.tk-coachtext { grid-column: 2; margin: 0; }
+.tk-coachline .tk-coachask { grid-column: 1 / -1; justify-self: start; }
+
+/* Wide screens: Heute in two columns. The DOM and phone order stay: open workout, coach, training, meals, mobility, body, together. */
+@media (min-width: 1024px) {
+  .tk-screen.tk-daypage { max-width: 1040px; display: grid; grid-template-columns: minmax(0, 1fr) 20rem; column-gap: var(--space-4); row-gap: var(--space-2); align-items: start; grid-auto-flow: row dense; }
+  .tk-daypage > * { grid-column: 1; min-width: 0; }
+  .tk-daypage > .tk-dayhead { grid-column: 1 / -1; }
+  .tk-daypage > .tk-coachline { grid-column: 2; grid-row: span 6; position: sticky; top: var(--space-4); }
+  .tk-daypage > [aria-label='Training läuft noch'] { grid-column: 1 / -1; }
+}
+/* On wide screens the top bar spans the wide Heute columns: the wordmark and the profile button sit at its outer edges. */
+@media (min-width: 1024px) {
+  .web-top { max-width: 1040px; }
+  .web-profile { right: calc((100% - 1040px) / 2 + 1rem); }
+}

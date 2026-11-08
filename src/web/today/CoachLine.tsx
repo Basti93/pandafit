@@ -1,9 +1,14 @@
-/** The sentence of the coach for the day: a card with the coach mark, no heading, no buttons. */
-export function CoachLine({ text }: { text: string }) {
+/** Panda on Heute: the still picture, the name, the coach sentence of the day and, on today, one button that opens the real coach chat. */
+export function CoachLine({ text, onAsk }: { text: string; onAsk?: () => void }) {
   return (
     <section className="card tk-coachline" aria-label="Satz vom Coach">
-      <span className="tk-coachmark" aria-hidden="true">C</span>
-      <p>{text}</p>
+      <img className="tk-pandastill" src="/brand/panda-still.svg" alt="" aria-hidden="true" width="72" height="75" />
+      <div className="tk-pandahead">
+        <span className="tk-pandaname">Panda</span>
+        <span className="tk-pandarole">Dein Coach</span>
+      </div>
+      <p className="tk-coachtext">{text}</p>
+      {onAsk && <button type="button" className="tk-coachask" onClick={onAsk}>Panda fragen</button>}
     </section>
   );
 }
