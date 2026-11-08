@@ -26,7 +26,7 @@ export function TodayOnly({ frame, date, onChange }: { frame: Frame; date: strin
       <span>Heute nur</span>
       <div className="tk-chips">
         {minuteChoices().filter((m) => m <= 60).map((m) => (
-          <button key={m} type="button" className="secondary" aria-pressed={value === m} onClick={() => onChange(value === m ? null : m)}>{m} Min</button>
+          <button key={m} type="button" aria-pressed={value === m} onClick={() => onChange(value === m ? null : m)}>{m} Min</button>
         ))}
       </div>
     </div>

@@ -122,7 +122,7 @@ export function RecipesSheet({ ctx, onClose, onAddLink }: { ctx: RecipeCtx; onCl
       <label className="tk-field" htmlFor={searchId}><span className="rc-sr">Rezept suchen</span>
         <input id={searchId} type="search" aria-label="Rezept suchen" placeholder="Rezept oder Zutat suchen" maxLength={80} value={text} onChange={(e) => setText(e.target.value)} />
       </label>
-      <div className="rc-chips" role="group" aria-label="Filter">
+      <div className="tk-chips" role="group" aria-label="Filter">
         {[['fav', 'Favoriten'], ['own', 'Von mir'], ...OTHER_CHIPS].map(([id, label]) => (
           <button key={id} type="button" aria-pressed={chips.has(id!)} onClick={() => toggle(id!)}>{label}</button>
         ))}
@@ -224,7 +224,7 @@ function PlaceSheet({ ctx, recipe, onClose }: { ctx: RecipeCtx; recipe: RecipeSu
               </button>
             ))}
           </div>
-          <div className="rc-slotpick" role="group" aria-label="Mahlzeit">
+          <div className="tk-chips rc-slotpick" role="group" aria-label="Mahlzeit">
             {SLOTS.map((s) => <button key={s} type="button" aria-pressed={s === slot} onClick={() => { setSlot(s); setSentAt(null); }}>{SLOT_LABEL[s]}</button>)}
           </div>
           <p className="muted pm-meta">{meal ? (meal.dish.recipeId === recipe.id ? 'Schon eingetragen' : `Tauscht ${meal.dish.title} aus`) : 'Noch frei'}{names.length > 0 ? ` · isst mit: ${names.join(', ')}, für ${names.length} ${names.length === 1 ? 'Portion' : 'Portionen'}` : ''}</p>

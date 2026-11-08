@@ -150,7 +150,7 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
       </button>
       {focusOpen && (
         <>
-          <div className="tk-row tk-focus" role="group" aria-label={`Muskeln im Fokus, bis zu ${MAX_FOCUS}`}>
+          <div className="tk-chips" role="group" aria-label={`Muskeln im Fokus, bis zu ${MAX_FOCUS}`}>
             {FOCUS_GROUPS.map((g) => {
               const on = goal.focus.includes(g);
               return <button key={g} type="button" aria-pressed={on} disabled={!on && goal.focus.length >= MAX_FOCUS} onClick={() => toggleFocus(g)}>{MUSCLE_TARGETS[g].label}</button>;

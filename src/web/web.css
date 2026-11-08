@@ -186,9 +186,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .pm-thumb { display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; width: 40px; height: 40px; border-radius: var(--radius-xs); object-fit: cover; flex: none; background: var(--card); }
 .tk-screen button.pm-viewlink { align-self: flex-start; }
 .rc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.rc-chips { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.tk-screen .rc-chips button { flex: none; min-height: 40px; padding: .3rem .85rem; border-radius: var(--radius-pill); background: transparent; border: 1px solid var(--line); color: var(--text); font-weight: 500; text-decoration: none; white-space: nowrap; }
-.tk-screen .rc-chips button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
 .rc-list { list-style: none; margin: 0; padding: 0; }
 .rc-row { display: flex; align-items: center; gap: var(--space-1); border-top: 1px solid var(--line); }
 .rc-row:first-child { border-top: 0; }
@@ -207,10 +204,9 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 @media (min-width: 720px) { .rc-hero { height: 200px; } }
 .rc-headline { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .rc-facts { margin: 0; }
-.rc-tags { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; padding: 0; }
-.rc-tags li { border: 1px solid var(--line); border-radius: var(--radius-pill); padding: .15rem .65rem; color: var(--muted); font-size: var(--fs-xs); }
+.rc-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 0 .35rem; margin: 0; padding: 0; color: var(--muted); font-size: var(--fs-s); }
+.rc-tags li + li::before { content: '· '; }
 .rc-portions { display: flex; align-items: center; gap: var(--space-3); }
-.tk-screen .rc-portions button { min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); font-size: var(--fs-xl); }
 .rc-place { display: flex; flex-direction: column; gap: var(--space-3); }
 .rc-daypick { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
 .tk-screen .rc-daypick button { display: flex; flex-direction: column; align-items: center; min-width: 0; min-height: 52px; padding: .3rem 0; border-radius: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; text-decoration: none; }
@@ -218,9 +214,8 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-screen .rc-daypick button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--ink); }
 .tk-screen .rc-daypick button[aria-pressed='true'] b { color: var(--ink); }
 .tk-screen .rc-daypick button:disabled { opacity: .4; }
-.rc-slotpick { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
-.tk-screen .rc-slotpick button { min-height: 44px; padding: .3rem .4rem; border-radius: var(--radius-pill); background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 500; text-decoration: none; }
-.tk-screen .rc-slotpick button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.tk-chips.rc-slotpick { display: grid; grid-template-columns: repeat(3, 1fr); }
+.tk-screen .rc-slotpick button { padding-left: .4rem; padding-right: .4rem; }
 .tk-screen .rc-view a { color: var(--muted); text-decoration: underline; font-weight: 600; }
 
 /* Heute as a day page: arrows left and right, the day name in the middle, the coach sentence with its mark. */
