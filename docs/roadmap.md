@@ -48,6 +48,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **U Was ich gemacht habe** | Die Woche zeigt rückwirkend das Gemachte oder „Ruhetag“; ein Verlauf über alle Sportarten; ein Garmin-Lauf ist nach spätestens einer Stunde da. | Wunsch 08.11.2026 |
 | ✅ | **V Absprachen halten** | Was für einen Tag vereinbart ist, steht beim Start im Training; alle Coaches kennen denselben Stand von geplant und erledigt; Aufträge gelten so lange wie gemeint; Läufe zählen mit, ohne geplant zu werden. | Trainingsaudit 08.11.2026 |
 | ⬜ | **W Belastung nach Menge** | Ein Krafttag ist so hart, wie viel und was trainiert wurde: eine einzelne Beinübung sperrt die Beine nicht mehr 48 Stunden. | Trainingsaudit 08.11.2026 |
+| ✅ | **X Erster Eindruck** | Eine neue Person versteht ohne Anleitung, was Pandafit kann und wo sie tippt: Tabs folgen den Profil-Schaltern, Rückblick statt Statistik-Tab, klare Wörter, ruhigere Kraft-, Essen-, Ausdauer- und Fahrt-Screens. | UX-Review 08.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -330,6 +331,16 @@ Lokale Kopien in `~/Projects/pandafit-references/` (nicht im Repo). Übernommen 
 
 Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht nach „eine Beinübung = hart“ (`src/coach/day-load.ts`). Die 48-Stunden-Beinsperre (`LEG_WINDOW_MS` in `src/coach/gym/history.ts`) greift nur nach echter Beinbelastung. „Zwei harte Tage“, „sechs Tage ohne Pause“ und die 18-Uhr-Regel werden dagegen geprüft. Die 48-Stunden-Regel nach einer harten Radfahrt bleibt. Hintergrund: Bei gleichem Wochenumfang bringt höhere Frequenz keinen klaren Vorteil; Muskelkater ist kein Wachstumsmaß; Versagen ist optional. Passt zu den Parkplatz-Punkten aus F („nur Beine“) und O (harte Fahrt und müde Beine).
 
+## Meilenstein X — Brief (umgesetzt 08.11.2026)
+
+**Ziel:** Wer die Web-App zum ersten Mal öffnet, versteht, was Pandafit kann und wo er tippen soll. Die App wird einfacher, keine wichtige Funktion fällt weg.
+
+**Vorgehen:** Screenshots aller Screens in sechs Varianten (390, 360, Tablet, Desktop, dunkel, leeres Konto), acht Prüfschritte der Reihe nach, Zusammenführung zu 84 Punkten (`docs/ux-review/2026-11-08-synthese.md`, Methode in `docs/superpowers/plans/2026-11-08-ux-review-method.md`).
+
+**Umgesetzt:** Tabs folgen den Profil-Schaltern in fester Reihenfolge; Statistik ist der Block „Rückblick“ in Woche; Kraft hat drei Unter-Tabs (Entwicklung und Übungen zusammen); ein Muster für Seitenkopf und Schließen; Heute mit einer Karte und ehrlicher Begründung; wartender Vorschlag als Karte; Coach-Änderungen mit Grund im Chat; Sätze werden aus dem vorigen Satz derselben Art vorbelegt; Anleitung per „i“ auf der Übungskarte; Fahrt-Begleiter in Worten („Leichter/Schwerer“, beruhigend bei Verbindungsverlust); Profil in Gruppen Planen, Verbindungen, Nachrichten; „Etwas anderes heute?“. Ein Training, das lange vor dem ersten Satz gestartet wurde, nimmt beim Beenden den ersten Satz als Start (Fall vom 08.11.2026).
+
+**Nicht dabei:** alles unter „Verworfen“ in der Synthese; 24-Stunden-Zeit im Lauf-Formular (Parkplatz L); Dauer je Beweglichkeitsübung (braucht Coach-Daten).
+
 ## Parkplatz
 
 - ~~Export nach Hevy wählt bei zwei verknüpften Hevy-Vorlagen derselben Übung die zuerst gelistete (aus Review Meilenstein 0).~~ Erledigt mit K.
@@ -415,3 +426,8 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
   - Rad + Kraft als zweite Einheit mit Minuten: das Kraft-Zeitbudget nimmt die Minuten nicht, nur der Prompt kennt sie.
   - Manuelle Läufe ohne Lauf-Einstellungen und ohne Garmin fehlen der Mobilität (selten).
   - Die Start-Hinweise („Ohne Beine“, „Dazu heute“) haben keinen Oberflächentest.
+- Aus Meilenstein X:
+  - Ein neues Gerät kennt den Essensplan-Schalter erst nach der ersten Coach-Antwort (bis 30 s); ein synchronisierter Datensatz wäre sauberer (braucht Server).
+  - Browser-Zurück in verschachtelten Sheets schließt das ganze Sheet.
+  - „Woche planen“ auf Heute führt zur Woche, dort braucht es einen zweiten Tipp bis zum Chat.
+  - Der Rad-Verlauf zeigt Wattbereiche nur bei „bei N %“-Bezeichnungen.
