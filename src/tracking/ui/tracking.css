@@ -219,7 +219,8 @@
 .tk-cat-actions { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); align-items: center; }
 
 /* ---- Calm UI kit: rows, switch, sheet (components in kit/). ---- */
-.tk-section { font-size: var(--fs-2xs); font-weight: 600; color: var(--tk-muted); text-transform: uppercase; letter-spacing: .05em; margin: var(--space-4) 0 0; }
+/* One section heading, whatever the element (h2 or h3): .tk-screen h2 must not make it bigger. */
+.tk-section, .tk-screen .tk-section { font-size: var(--fs-2xs); font-weight: 600; color: var(--tk-muted); text-transform: uppercase; letter-spacing: .05em; margin: var(--space-4) 0 0; }
 .tk-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .tk-rowitem { border-top: 1px solid var(--line); }
 .tk-rowitem:first-child, .tk-rows > .tk-choice:first-child { border-top: 0; }
@@ -389,7 +390,7 @@
 .tk-pin .tk-week li { grid-template-columns: 5.4rem minmax(0, 1fr); }
 /* Profile groups: a thin line only between groups, none between the rows of one group. */
 .tk-pgroup { border-top: 1px solid var(--line); margin-top: .75rem; display: flex; flex-direction: column; }
-.tk-pgroup .tk-switchrow, .tk-pgroup .tk-rowitem { border-top: 0; }
+.tk-pgroup .tk-switchrow, .tk-pgroup .tk-rowitem, .tk-screen .tk-pgroup button.tk-choice { border-top: 0; }
 .tk-pgroup > .tk-section { margin: var(--space-3) 0 var(--space-1); }
 .tk-pgroup > p.muted { margin: var(--space-1) 0 var(--space-2); }
 .tk-pagehead { gap: .2rem; }

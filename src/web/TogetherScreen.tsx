@@ -29,7 +29,7 @@ export function TogetherCard({ t, now, onOpen }: { t: TogetherBody; now: number;
   return (
     <button type="button" className="card gm-card" aria-label={`Gemeinsam: ${weekTitle(t, now)}, ${t.peak.name}. Öffnen`} onClick={onOpen}>
       <span className="gm-head"><b>Gemeinsam</b><span aria-hidden="true">›</span></span>
-      <span className="gm-label">{weekTitle(t, now)}</span>
+      <span className="tk-section gm-label">{weekTitle(t, now)}</span>
       <span className="gm-people">
         {ordered(t).map((p) => (
           <span key={p.profileId} className="gm-person"><b>{p.name}</b><span>{p.ridesThisWeek === 0 ? 'noch frei' : `${rides(p.ridesThisWeek)}, ${p.minutesThisWeek} Min`}</span></span>
@@ -60,7 +60,7 @@ export function TogetherPage({ t, now, onBack }: { t: TogetherBody; now: number;
         <p>Auf dem Weg zum <b>{t.peak.name}</b></p>
         <PeakBar t={t} />
         <p className="muted">{t.peak.done} von {t.peak.total} Höhenmetern. Jede Minute zählt 10 Höhenmeter, für alle gleich. Danach: {t.peak.next}.</p>
-        <h3 className="gm-label">{weekTitle(t, now)}</h3>
+        <h3 className="tk-section gm-label">{weekTitle(t, now)}</h3>
         <ul className="gm-list">
           {people.map((p) => (
             <li key={p.profileId}><b>{p.name}</b><span>{rides(p.ridesThisWeek)}, {p.minutesThisWeek} Min{p.wordsLearned > 0 ? `, ${p.wordsLearned} Wörter` : ''}</span></li>
