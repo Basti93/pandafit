@@ -19,8 +19,8 @@ test('the planning and time rows in the goal sheet write the frame, stamped abov
   const stored = { ...frameRecord({ mode: 'week', minutes: null }, NOW + 5000), updatedMs: NOW + 9000 };
   const { port, map } = fakePort([stored]);
   render(<CoachScreen port={port} {...env} />);
-  fireEvent.click(await screen.findByRole('button', { name: /^Mein Ziel/ }));
-  fireEvent.click(await screen.findByRole('button', { name: /^Planung/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Ziel und Planung/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Wochenplan/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'Spontan' }));
   await waitFor(() => expect(frameBody(map)).toMatchObject({ mode: 'spontaneous', minutes: null }));
   expect(frames(map)[0]!.updatedMs).toBeGreaterThan(NOW + 9000);
@@ -41,7 +41,7 @@ test('spontaneous mode lists Monday to today without any plan', async () => {
   render(<CoachScreen port={port} {...env} />);
   const week = await screen.findByRole('list', { name: 'Diese Woche' });
   const items = within(week).getAllByRole('listitem');
-  expect(items.map((li) => li.textContent)).toEqual(['Montag', 'Dienstag', 'Mittwoch']);
+  expect(items.map((li) => li.textContent)).toEqual(['Montag–', 'Dienstag–', 'MittwochHeute']);
   expect(items).toHaveLength(3);
   expect(week.textContent).not.toMatch(/Kraft|Rad|Laufen/);
 });

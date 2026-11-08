@@ -833,24 +833,18 @@ describe('Zuletzt geändert on the week page', () => {
   const at = (day: number) => new Date(2026, 10, day, 12).getTime();
   const note = (i: number, over: object = {}) => ({ atMs: at(i), coach: 'gym', text: `Bankdrücken ${i}`, reason: 'weil du alle Wiederholungen geschafft hast', ...over });
   const stats = (changes: object[]): TrackedRecord => ({ kind: 'stats', id: 'stats', updatedMs: 1, deleted: false, body: { type: 'stats', atMs: 1, goal: null, days: [], muscles: {}, changes } });
-  it('shows up to 5 lines with date, text and reason', async () => {
-    const { port } = fakePort([stats([1, 2, 3, 4, 5, 6, 7].map((i) => note(i)))]);
+  it('the newest change is the second line of the Coach row, without date and reason', async () => {
+    const { port } = fakePort([stats([1, 2, 3].map((i) => note(i)))]);
     render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
-    fireEvent.click(await screen.findByRole('button', { name: /^Zuletzt geändert/ }));
-    const lines = within(screen.getByRole('list', { name: 'Zuletzt geändert' })).getAllByRole('listitem');
-    expect(lines).toHaveLength(5);
-    expect(lines[0]!.textContent).toBe('Sa., 7. Nov. · Bankdrücken 7 – weil du alle Wiederholungen geschafft hast');
+    const line = await screen.findByText(/Zuletzt geändert: Bankdrücken 3/);
+    expect(line.closest('button')!.textContent).toMatch(/^Coach/);
+    expect(line.textContent).not.toContain('weil du');
   });
-  it('without notes there is no card, and a note without a reason has no dash', async () => {
-    const { port } = fakePort([]);
+  it('without notes the Coach row has no such line', async () => {
+    const { port } = fakePort([stats([])]);
     render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
     await screen.findByText('Woche');
-    expect(screen.queryByRole('button', { name: /^Zuletzt geändert/ })).toBeNull();
-    const second = fakePort([stats([note(3, { reason: '' })])]);
-    render(<CoachScreen port={second.port} now={() => at(8)} newId={() => 'x'} />);
-    fireEvent.click(await screen.findByRole('button', { name: /^Zuletzt geändert/ }));
-    expect(screen.getByRole('list', { name: 'Zuletzt geändert' }).textContent).toContain('Di., 3. Nov. · Bankdrücken 3');
-    expect(screen.getByRole('list', { name: 'Zuletzt geändert' }).textContent).not.toContain('–');
+    expect(screen.queryByText(/Zuletzt geändert/)).toBeNull();
   });
 });
 

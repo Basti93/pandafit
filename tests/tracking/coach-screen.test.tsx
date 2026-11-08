@@ -19,9 +19,9 @@ test('Woche shows the week and the rows Mein Ziel, Regeln and Coach; the old for
   const { port } = fakePort([riderMsg, coachMsg, { kind: 'weekplan', id: '2026-11-02', updatedMs: 1, deleted: false, body: { ...proposal, fromMessage: 'c1', acceptedMs: 1 } }]);
   render(<CoachScreen port={port} {...env} />);
   expect(await screen.findByRole('list', { name: 'Wochenplan diese Woche' })).toBeTruthy();
-  for (const name of [/^Mein Ziel/, /^Regeln/, /^Coach/]) expect(screen.getByRole('button', { name })).toBeTruthy();
-  expect(screen.getByRole('button', { name: /^Mein Ziel/ }).textContent).toContain('Muskeln aufbauen');
-  expect(screen.getByRole('button', { name: /^Regeln/ }).textContent).toContain('keine');
+  for (const name of [/^Ziel und Planung/, /^Was der Coach beachtet/, /^Coach/]) expect(screen.getByRole('button', { name })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /^Ziel und Planung/ }).textContent).toContain('Muskeln aufbauen');
+  expect(screen.getByRole('button', { name: /^Was der Coach beachtet/ }).textContent).toContain('nichts');
   expect(screen.queryByLabelText('Nachricht an den Coach')).toBeNull();
   expect(screen.queryByLabelText('Neue Regel')).toBeNull();
   expect(screen.queryByLabelText('Planung')).toBeNull();
@@ -84,7 +84,7 @@ test('sends a message and shows that the coach is thinking', async () => {
   fireEvent.change(screen.getByLabelText('Nachricht an den Coach'), { target: { value: '  3× Rad bitte ' } });
   fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
   await waitFor(() => expect(records(map, 'chat').map((r) => r.body)).toEqual([{ role: 'rider', text: '3× Rad bitte', atMs: NOW }]));
-  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Der Coach denkt nach …');
+  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Gesendet. Der Coach antwortet, sobald er kann.');
 });
 
 test('taking a proposal writes the week plan and shows it; then it cannot be taken twice', async () => {
@@ -145,6 +145,14 @@ test('without a week plan: one "Woche planen" button, no empty day list, no seco
   expect(await screen.findByRole('button', { name: 'Woche planen' })).toBeTruthy();
   expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
   expect(screen.queryByRole('button', { name: /^Coach/ })).toBeNull();
-  expect(screen.getByRole('button', { name: /^Mein Ziel/ }).textContent).toContain('Vorschlag: Muskeln aufbauen');
+  expect(screen.getByRole('button', { name: /^Ziel und Planung/ }).textContent).toContain('Vorschlag: Muskeln aufbauen');
   await openChat();
+});
+
+test('a waiting proposal gets a card under the week with Ansehen, which opens the chat', async () => {
+  const { port } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  const card = await screen.findByRole('region', { name: 'Vorschlag wartet' });
+  fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
+  expect(await screen.findByRole('dialog', { name: 'Coach' })).toBeTruthy();
 });

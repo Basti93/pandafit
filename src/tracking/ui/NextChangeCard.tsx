@@ -22,7 +22,8 @@ export function NextChangeCard({ port, changeId, records, now, history }: { port
   };
   if (history) {
     if (c.state === 'proposed') return null;
-    const line = c.state === 'taken' ? `Übernommen: ${c.reason}` : c.state === 'used' ? `Im Training berücksichtigt: ${c.reason}` : c.state === 'declined' ? DECLINED : 'Rückgängig gemacht.';
+    if (c.state === 'used') return <div className="tk-histline"><span className="muted">✓ Im Training berücksichtigt</span><span className="muted tk-block">{c.reason}</span></div>;
+    const line = c.state === 'taken' ? `Übernommen: ${c.reason}` : c.state === 'declined' ? DECLINED : 'Rückgängig gemacht.';
     return (
       <div className="tk-histline">
         <span className="muted">{line}</span>

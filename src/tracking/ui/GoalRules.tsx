@@ -19,7 +19,7 @@ import { ruleNumber } from '../../shared/training-policy';
 import type { RunWeekBody } from '../../shared/run';
 
 export const STRENGTH_LABEL: Record<Strength, string> = { muscle: 'Muskeln aufbauen', strength: 'Kraft steigern', fitness: 'Fit bleiben' };
-const PRIO_LABEL: Record<Prio, string> = { focus: 'Schwerpunkt', equal: 'gleichrangig', keep: 'erhalten' };
+const PRIO_LABEL: Record<Prio, string> = { focus: 'Hauptsache', equal: 'normal', keep: 'nebenbei' };
 // With no activity at all the card shows all three sports; otherwise the used ones, the others behind a toggle.
 const SPORTS: SportKey[] = ['gym', 'bike', 'run'];
 
@@ -54,7 +54,8 @@ export function useComplaints(port: TrackingPort): string[] {
   });
 }
 
-const FOR_LABEL: Record<keyof typeof COACH_LABEL, string> = { bike: 'für Rad', gym: 'für Kraft', run: 'für Laufen' };
+const FOR_LABEL: Record<keyof typeof COACH_LABEL, string> = { bike: 'Rad', gym: 'Kraft', run: 'Laufen' };
+const sportOf = (s: string): string => (s === 'all' ? 'Alle Sportarten' : FOR_LABEL[s as keyof typeof FOR_LABEL] ?? 'Alle Sportarten');
 
 const attemptWith = (setError: (e: string | null) => void) => async (f: () => Promise<unknown>) => {
   try { await f(); setError(null); } catch { setError('Konnte nicht gespeichert werden. Versuch es gleich nochmal.'); }
@@ -129,12 +130,12 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
   const focusText = goal.focus.length ? focusLabel(goal.focus) : 'keiner';
 
   return (
-    <Sheet title="Mein Ziel" onClose={onClose}>
+    <Sheet title="Ziel und Planung" onClose={onClose}>
       <ChoiceRow label="Ziel" value={goal.strength} options={(Object.keys(STRENGTH_LABEL) as Strength[]).map((s) => ({ value: s, label: STRENGTH_LABEL[s] }))}
         onChange={(strength) => void saveGoal({ ...stored, strength })} />
       {goal.ended && (
         <div className="tk-row">
-          <span className="muted">{goal.ended.focus.length ? `Schwerpunkt ${focusLabel(goal.ended.focus)}` : 'Dein befristeter Schwerpunkt'} ist am {dayLabel(goal.ended.until)} ausgelaufen – jetzt wieder dein Grundziel.</span>
+          <span className="muted">{goal.ended.focus.length ? `Dein Fokus auf ${focusLabel(goal.ended.focus)}` : 'Dein befristeter Fokus'} ist am {dayLabel(goal.ended.until)} ausgelaufen – jetzt wieder dein Grundziel.</span>
           <button type="button" className="link tk-small" onClick={() => void attempt(async () => {
             const have = (await port.list('goal')).find((r) => r.id === 'goal');
             const cur = storedGoalOf(have ? [have] : []);
@@ -143,12 +144,13 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
         </div>
       )}
       <button type="button" className="tk-rowbtn tk-choice" aria-expanded={focusOpen} onClick={() => setFocusOpen(!focusOpen)}>
-        <span className="tk-row-title">{`Schwerpunkt: ${focusText}${goal.temporary?.focus && goal.focus.length ? ` – bis ${dayLabel(goal.temporary.until)}` : ''}`}</span>
+        <span className="tk-row-title">Muskeln im Fokus</span>
+        <span className="tk-row-value muted">{`${focusText}${goal.temporary?.focus && goal.focus.length ? ` – bis ${dayLabel(goal.temporary.until)}` : ''}`}</span>
         <ExpandMark open={focusOpen} />
       </button>
       {focusOpen && (
         <>
-          <div className="tk-row tk-focus" role="group" aria-label={`Schwerpunkt, bis zu ${MAX_FOCUS} Muskeln`}>
+          <div className="tk-row tk-focus" role="group" aria-label={`Muskeln im Fokus, bis zu ${MAX_FOCUS}`}>
             {FOCUS_GROUPS.map((g) => {
               const on = goal.focus.includes(g);
               return <button key={g} type="button" aria-pressed={on} disabled={!on && goal.focus.length >= MAX_FOCUS} onClick={() => toggleFocus(g)}>{MUSCLE_TARGETS[g].label}</button>;
@@ -159,11 +161,13 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
         </>
       )}
       <h3 className="tk-section">Sportarten</h3>
+      <p className="muted tk-sheet-note">Wie wichtig ist dir jede Sportart?</p>
       {SPORTS.filter(shown).map(sportChoice)}
       {SPORTS.some((s) => !shown(s)) && !moreSports && <button type="button" className="link tk-small" aria-expanded={moreSports} onClick={() => setMoreSports(true)}>Weitere Sportarten</button>}
       {moreSports && SPORTS.filter((s) => !shown(s)).map(sportChoice)}
       <h3 className="tk-section">Planung</h3>
-      <ChoiceRow label="Planung" value={frame.mode} options={[{ value: 'week', label: 'Feste Woche' }, { value: 'spontaneous', label: 'Spontan' }]} onChange={onMode} />
+      <p className="muted tk-sheet-note">Feste Woche: der Coach plant die ganze Woche im Voraus. Spontan: er schlägt jeden Tag neu vor.</p>
+      <ChoiceRow label="Wochenplan" value={frame.mode} options={[{ value: 'week', label: 'Feste Woche' }, { value: 'spontaneous', label: 'Spontan' }]} onChange={onMode} />
       <ChoiceRow label="Zeit pro Einheit" value={frame.minutes ?? 0} options={[{ value: 0, label: '–' }, ...minuteChoices().map((m) => ({ value: m, label: `${m} Min` }))]} onChange={(m) => onMinutes(m === 0 ? null : m)} />
       {error && <p role="alert" className="tk-note">{error}</p>}
       <div className="tk-scroll-pad" aria-hidden="true" />
@@ -211,31 +215,40 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
     void attempt(() => port.put(excludeRuleRecord(e, wholeFamily, newId(), now())));
   };
 
+  const active = rules.filter((r) => r.state !== 'paused');
+  const paused = rules.filter((r) => r.state === 'paused');
+  const ruleRow = (r: (typeof rules)[number]) => {
+    const what = r.kind === 'exclude' ? excludedTitles(r, catalog) : '';
+    return (
+      <Row key={r.id} title={<><span className={r.state === 'paused' ? 'muted' : undefined}>{r.text}</span><small className="tk-row-sub muted">{sportOf(r.sport)} · {r.state === 'paused' ? 'pausiert' : 'aktiv'}</small></>} expanded={open === r.id} onClick={() => toggle(r.id)}>
+        {what && <p className="muted">{what}</p>}
+        <div className="tk-row">
+          <button type="button" className="secondary" aria-label={`${r.state === 'paused' ? 'Fortsetzen' : 'Pausieren'} ${r.text}`} onClick={() => void move(r.id, r.state === 'paused' ? 'active' : 'paused')}>{r.state === 'paused' ? 'Fortsetzen' : 'Pausieren'}</button>
+          <ConfirmLink label="Löschen" onConfirm={() => void remove(r.id)} />
+        </div>
+      </Row>
+    );
+  };
+
   return (
-    <Sheet title="Regeln" onClose={onClose}>
-      {complaints.length > 0 && <p className="muted tk-sheet-note">Rücksicht: {complaints.join(', ')}</p>}
-      {rules.length === 0 && tasks.length === 0 ? <p className="muted">Noch keine Regeln. Schreib dem Coach „künftig …“ oder füge eine hinzu.</p> : (
+    <Sheet title="Was der Coach beachtet" onClose={onClose}>
+      {rules.length === 0 && tasks.length === 0 && complaints.length === 0 ? <p className="muted">Noch keine Regeln. Schreib dem Coach „künftig …“ oder füge eine hinzu.</p> : (
         <RowList label="Regeln">
-          {rules.map((r) => {
-            const kind = [r.kind === 'wish' ? 'Wunsch' : '', r.state === 'paused' ? 'pausiert' : ''].filter(Boolean).join(' · ');
-            const what = r.kind === 'exclude' ? excludedTitles(r, catalog) : '';
-            return (
-              <Row key={r.id} title={<><span className={r.state === 'paused' ? 'muted' : undefined}>{r.text}</span>{kind && <small className="tk-row-sub muted">{kind}</small>}</>} expanded={open === r.id} onClick={() => toggle(r.id)}>
-                {what && <p className="muted">{what}</p>}
-                <div className="tk-row">
-                  <button type="button" className="secondary" aria-label={`${r.state === 'paused' ? 'Fortsetzen' : 'Pausieren'} ${r.text}`} onClick={() => void move(r.id, r.state === 'paused' ? 'active' : 'paused')}>{r.state === 'paused' ? 'Fortsetzen' : 'Pausieren'}</button>
-                  <ConfirmLink label="Löschen" onConfirm={() => void remove(r.id)} />
-                </div>
-              </Row>
-            );
-          })}
+          {complaints.length > 0 && <Row title="Rücksicht" value={<span className="tk-ellipsis">{complaints.join(', ')}</span>} />}
+          {active.map(ruleRow)}
           {tasks.map((t) => (
-            <Row key={t.id} title={<>{t.text}<small className="tk-row-sub muted">{FOR_LABEL[t.to]}</small></>} expanded={open === t.id} onClick={() => toggle(t.id)}>
-              <p className="muted">{t.lasting ? 'dauerhaft' : t.forDate ? `bis ${WEEKDAY_LABEL[(new Date(`${t.forDate}T12:00:00`).getDay() + 6) % 7]}` : 'bis zur nächsten Einheit'}</p>
+            <Row key={t.id} title={<>{t.text}<small className="tk-row-sub muted">{sportOf(t.to)} · aktiv</small></>} expanded={open === t.id} onClick={() => toggle(t.id)}>
+              <p className="muted">{t.lasting ? 'dauerhaft' : t.forDate ? `bis ${dayLabel(t.forDate)}` : 'bis zur nächsten Einheit'}</p>
               <div className="tk-row"><ConfirmLink label="Entfernen" question="Wirklich entfernen?" onConfirm={() => void removeTask(t.id)} /></div>
             </Row>
           ))}
         </RowList>
+      )}
+      {paused.length > 0 && (
+        <>
+          <h3 className="tk-section">Pausiert</h3>
+          <RowList label="Pausiert">{paused.map(ruleRow)}</RowList>
+        </>
       )}
       {adding ? (
         <form className="tk-row" onSubmit={(e) => { e.preventDefault(); addWish(); }}>
@@ -243,10 +256,13 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
           <button type="submit" className="secondary" disabled={!text.trim()}>Speichern</button>
         </form>
       ) : (
-        <button type="button" className="secondary" onClick={() => setAddMenu(true)}>+ Hinzufügen</button>
+        <>
+          <button type="button" className="secondary" onClick={() => setAddMenu(true)}>+ Regel hinzufügen</button>
+          <p className="muted tk-sheet-note">oder schreib sie dem Coach</p>
+        </>
       )}
       {addMenu && (
-        <Sheet size="small" title="Hinzufügen" onClose={() => setAddMenu(false)}>
+        <Sheet size="small" title="Regel hinzufügen" onClose={() => setAddMenu(false)}>
           <RowList>
             <Row title="Regel schreiben" onClick={() => { setAddMenu(false); setAdding(true); }} />
             <Row title="Übung ausschließen" onClick={() => { setAddMenu(false); setPicking(true); }} />

@@ -169,7 +169,7 @@
 .tk-pairs { margin: 0; padding-left: 1.2rem; }
 .tk-week { list-style: none; margin: .4rem 0; padding: 0; display: flex; flex-direction: column; gap: .25rem; }
 .tk-week li { padding: .3rem .5rem; border-radius: .5rem; }
-.tk-week li.tk-today { background: var(--card, #1c2f26); color: var(--text, #f6eedd); box-shadow: inset 3px 0 0 var(--accent, #e8964a); }
+.tk-week li.tk-today { color: var(--text, #f6eedd); border-radius: 0; box-shadow: inset 3px 0 0 var(--accent, #e8964a); }
 .tk-chat { display: flex; flex-direction: column; gap: .6rem; }
 .tk-msg { padding: .5rem .8rem; border-radius: .8rem; max-width: 92%; color: var(--text, #f6eedd); border: 1px solid var(--line, #33493c); }
 .tk-msg p { margin: .1rem 0; white-space: pre-wrap; }
@@ -286,8 +286,6 @@
 .tk-screen .tk-focus button { background: transparent; border: 1px solid var(--line, #33493c); border-radius: 999px; color: var(--text, #f6eedd); text-decoration: none; font-weight: 500; min-height: 40px; padding: .3rem .8rem; font-size: .9rem; }
 .tk-screen .tk-focus button[aria-pressed="true"] { background: var(--card, #1c2f26); border-color: var(--accent, #e8964a); font-weight: 700; }
 .tk-screen .tk-focus button:disabled { opacity: .45; }
-/* Pinned proposals: several can wait, so none of them is the one orange button; the send button is. */
-.tk-screen .tk-pin button:not(.link) { background: transparent; border: 1px solid var(--muted, #aebba9); color: var(--text, #f6eedd); }
 /* Heute: chips for "Heute nur", the quiet "Anders heute?" toggle. */
 .tk-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
 .tk-screen .tk-chips button { min-height: 44px; padding: .4rem .9rem; border-radius: 999px; font-weight: 500; }
@@ -385,7 +383,7 @@
 .tk-screen .tk-title { overflow-wrap: anywhere; }
 .tk-strip { display: flex; align-items: center; justify-content: space-between; gap: .5rem; width: 100%; min-height: 44px; padding: .4rem .9rem; border-radius: .8rem; border: 1px solid var(--accent, #e8964a); background: var(--card, #1c2f26); }
 .tk-screen button.tk-strip { background: var(--card, #1c2f26); color: var(--text, #f6eedd); font-weight: 600; text-align: left; border: 1px solid var(--accent, #e8964a); border-radius: .8rem; padding: .4rem .9rem; }
-.tk-week li.tk-today { box-shadow: none; background: var(--card-hi, color-mix(in srgb, var(--accent, #e8964a) 22%, var(--card, #1c2f26))); }
+.tk-week li.tk-today { background: none; border-radius: 0; box-shadow: inset 3px 0 0 var(--accent, #e8964a); }
 .tk-coach .tk-week li { padding: .4rem .6rem; }
 .tk-sheet-body .tk-scroll-pad { flex: none; height: 4.5rem; }
 .tk-sheet-note { margin: 0; }
@@ -450,3 +448,9 @@
 .tk-source-title { white-space: normal; font-size: .9rem; }
 .tk-hourbars { display: flex; align-items: flex-end; gap: 4px; height: 5rem; margin-top: .5rem; }
 .tk-hourbar { flex: 1; min-height: 3px; border-radius: 3px 3px 0 0; background: var(--accent, #e8964a); opacity: .85; }
+.tk-screen .card.tk-waiting-card { display: flex; flex-direction: row; align-items: center; justify-content: space-between; text-align: left; gap: .75rem; }
+.tk-waiting-card p { margin: 0; }
+.tk-week li b small { display: block; margin: 0; font-weight: 600; font-size: .75em; color: var(--tk-accent, #e8964a); }
+.tk-clip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; max-width: 12rem; }
+.tk-block { flex-basis: 100%; }
+.tk-sheet-body:has(.tk-chat) { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1rem); mask-image: linear-gradient(to bottom, transparent 0, #000 1rem); }

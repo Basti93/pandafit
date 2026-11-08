@@ -38,7 +38,7 @@ function setsLine(sets: TrackedSet[], timed: boolean): string {
 const warmups = (sets: TrackedSet[]): number => done(sets).filter((s) => s.type === 'warmup').length > 0 && working(sets).some((s) => s.type !== 'warmup') ? done(sets).filter((s) => s.type === 'warmup').length : 0;
 
 /** "Entwicklung": the last time on top, then date and best working set per workout; a tap shows all sets. */
-export function Development({ exerciseId, title, history, onBack }: { exerciseId: string; title: string; history: LoggedWorkout[]; onBack: () => void }) {
+export function Development({ exerciseId, title, history, onBack, inSheet = false }: { exerciseId: string; title: string; history: LoggedWorkout[]; onBack: () => void; /** The sheet's head has the one "‹ Zurück". */ inSheet?: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
   const rows = useMemo(() => history.filter((w) => w.exercises.some((e) => e.exerciseId === exerciseId)).sort((a, b) => (b.endMs ?? b.startMs) - (a.endMs ?? a.startMs)).map((w) => {
     const ex = w.exercises.filter((e) => e.exerciseId === exerciseId);
@@ -49,7 +49,7 @@ export function Development({ exerciseId, title, history, onBack }: { exerciseId
   }).filter((r): r is NonNullable<typeof r> => r !== null), [exerciseId, history]);
   return (
     <div className="tk-screen">
-      <button type="button" className="link tk-back" onClick={onBack}>‹ Zurück</button>
+      {!inSheet && <button type="button" className="link tk-back" onClick={onBack}>‹ Zurück</button>}
       <h1 className="tk-title">{title}</h1>
       {rows.length === 0 ? <p className="muted">Noch keine erledigten Sätze.</p> : (
         <>
@@ -68,17 +68,18 @@ export function Development({ exerciseId, title, history, onBack }: { exerciseId
   );
 }
 
-function Detail({ port, store, history, onBack, onDeleted, latest, next, inSheet }: { port: TrackingPort; store: WorkoutStore; history: LoggedWorkout[]; onBack: () => void; onDeleted: () => void; latest: boolean; next: NextStep[]; inSheet: boolean }) {
+function Detail({ port, store, history, onBack, onDeleted, latest, next, inSheet, level }: { port: TrackingPort; store: WorkoutStore; history: LoggedWorkout[]; onBack: () => void; onDeleted: () => void; latest: boolean; next: NextStep[]; inSheet: boolean; level?: [string | null, (id: string | null) => void] }) {
   const { workout: w, save } = useStoreView(store);
   useEffect(() => () => releaseStore(port, store), [port, store]);
   const [editing, setEditing] = useState(false);
-  const [exercise, setExercise] = useState<string | null>(null);
+  const own = useState<string | null>(null);
+  const [exercise, setExercise] = level ?? own;
   const act = (fn: (x: TrackedWorkout) => TrackedWorkout) => void store.apply(fn);
   // Only the latest workout has a next step. The coach's steps count for it when they name it (by id or start).
   const mine = latest ? next.filter((n) => n.forWorkoutId === w.id || n.atMs === w.startMs) : [];
   const nextOf = (e: { exerciseId: string; title: string }) => nextFor(mine, e);
   const open = exercise !== null ? w.exercises.find((e) => e.exerciseId === exercise) : undefined;
-  if (open) return <Development exerciseId={open.exerciseId} title={open.title} history={history} onBack={() => setExercise(null)} />;
+  if (open) return <Development exerciseId={open.exerciseId} title={open.title} history={history} onBack={() => setExercise(null)} inSheet={inSheet} />;
   return (
     <div className="tk-screen">
       {!inSheet && <button type="button" className="link tk-back" onClick={onBack}>‹ Zurück</button>}
@@ -127,7 +128,7 @@ function Detail({ port, store, history, onBack, onDeleted, latest, next, inSheet
 
 /** One finished workout from the shared history: the detail view with its own store, history and next steps. */
 /** `inSheet`: the sheet's head has "‹ Zurück", so the page has none of its own. */
-export function WorkoutDetail({ port, record, now, onBack, inSheet = false }: { port: TrackingPort; record: TrackedRecord; now: () => number; onBack: () => void; inSheet?: boolean }) {
+export function WorkoutDetail({ port, record, now, onBack, inSheet = false, level }: { port: TrackingPort; record: TrackedRecord; now: () => number; onBack: () => void; inSheet?: boolean; /** In a sheet: the open exercise lives with the sheet, so its "‹ Zurück" steps back one level. */ level?: [string | null, (id: string | null) => void] }) {
   const records = usePortRecords(port, 'workout').records;
   const history = useMemo(() => dedupeSessions((records ?? []).map((r) => r.body as LoggedWorkout)), [records]);
   const statsRecords = usePortRecords(port, 'stats').records;
@@ -137,7 +138,7 @@ export function WorkoutDetail({ port, record, now, onBack, inSheet = false }: { 
   }, [statsRecords]);
   const [store] = useState(() => acquireStore(port, record, now));
   const newest = history.reduce<LoggedWorkout | null>((a, w) => (!a || (w.endMs ?? w.startMs) > (a.endMs ?? a.startMs) ? w : a), null);
-  return <Detail port={port} store={store} history={history} latest={newest !== null && record.id === newest.id} next={next} onBack={onBack} onDeleted={onBack} inSheet={inSheet} />;
+  return <Detail port={port} store={store} history={history} latest={newest !== null && record.id === newest.id} next={next} onBack={onBack} onDeleted={onBack} inSheet={inSheet} level={level} />;
 }
 
 /** Every exercise done so far, by id, with its newest title. One performed session counts once (an overlapping Hevy copy is left out). */

@@ -33,6 +33,8 @@ export function ActivityHistory({ port, now, onClose }: { port: TrackingPort; no
   const rideRecords = usePortRecords(port, 'ride').records;
   const { items } = mergedActivities(activities, workouts);
   const [picked, setPicked] = useState<ActivityItem | null>(null);
+  const level = useState<string | null>(null);
+  const pick = (a: ActivityItem | null) => { setPicked(a); level[1](null); };
 
   const workoutOf = (a: ActivityItem): TrackedRecord | null =>
     a.kind === 'kraft' && a.ref !== null ? (workouts ?? []).find((r) => r.id === a.ref && !r.deleted) ?? null : null;
@@ -47,14 +49,14 @@ export function ActivityHistory({ port, now, onClose }: { port: TrackingPort; no
 
   const record = picked ? workoutOf(picked) : null;
   const ride = picked ? rideOf(picked) : null;
-  if (picked && record) return <Sheet title="Verlauf" onClose={onClose} onBack={() => setPicked(null)}><WorkoutDetail port={port} record={record} now={now} onBack={() => setPicked(null)} inSheet /></Sheet>;
+  if (picked && record) return <Sheet title="Verlauf" onClose={onClose} onBack={() => (level[0] !== null ? level[1](null) : pick(null))}><WorkoutDetail port={port} record={record} now={now} onBack={() => pick(null)} inSheet level={level} /></Sheet>;
   return (
     <Sheet title="Verlauf" onClose={onClose}>
       {items.length === 0 && <p className="muted">Hier erscheinen deine Aktivitäten.</p>}
       {months.map((m) => (
         <section key={m.label} aria-label={m.label}>
           <h3 className="tk-section">{m.label}</h3>
-          <RowList>{m.items.map((a) => <Row key={a.key} title={activityText(a)} value={dateLabel(a.startMs)} onClick={() => setPicked(a)} />)}</RowList>
+          <RowList>{m.items.map((a) => <Row key={a.key} title={activityText(a)} value={dateLabel(a.startMs)} onClick={() => pick(a)} />)}</RowList>
         </section>
       ))}
       {picked && ride && <RideSheet ride={ride} onClose={() => setPicked(null)} />}

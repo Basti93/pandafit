@@ -9,20 +9,21 @@ export const dayName = (date: string) => WEEKDAY_LABEL[(new Date(`${date}T12:00:
 const dayText = (d: PlanDay) => planDayText(d, { legs: true });
 
 /** One row per day: past days what was done or Ruhetag, today what was done and the rest of the plan, later days the plan. The run coach's runs sit on planned days. */
-export function Week({ rows, label, today, runs = [] }: { rows: DayRow[]; label: string; today?: string; runs?: PlannedRun[] }) {
+export function Week({ rows, label, today, runs = [], brief = false }: { rows: DayRow[]; label: string; today?: string; runs?: PlannedRun[]; /** Only the sport and one level per day (a proposal to decide on). */ brief?: boolean }) {
   return (
     <ul className="tk-week" aria-label={label}>
       {rows.map(({ date, done, plan: d, rest }) => (
         <li key={date} className={date === today ? 'tk-today' : undefined} aria-current={date === today ? 'date' : undefined}>
-          <b>{dayName(date)}</b>
+          <b>{dayName(date)}{date === today && <small>Heute</small>}</b>
           <span>
             {done.length > 0 && <span>✓ {done.join(' · ')}</span>}
             {rest && <span className="muted">Ruhetag</span>}
+            {done.length === 0 && !rest && !d && today !== undefined && date < today && <span className="muted" aria-label="unbekannt">–</span>}
             {d && (
               <>
                 {done.length > 0 && <span className="muted"> · </span>}
-                {d.sport === 'run' && runs.some((r) => r.date === date) ? runs.filter((r) => r.date === date).map(runText).join(' · ') : dayText(d)}
-                {d.fixed && <span className="muted"> · fest</span>}{d.note && <span className="muted"> · {d.note}</span>}
+                {d.sport === 'run' && runs.some((r) => r.date === date) ? runs.filter((r) => r.date === date).map(runText).join(' · ') : (brief ? planDayText(d) : dayText(d))}
+                {!brief && d.fixed && <span className="muted"> · fest</span>}{!brief && d.note && <span className="muted"> · {d.note}</span>}
                 {d.sport !== 'run' && runs.filter((r) => r.date === date).map((r) => <span key={r.kind}> · {runText(r)}</span>)}
               </>
             )}

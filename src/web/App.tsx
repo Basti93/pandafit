@@ -9,6 +9,7 @@ import { localDayKey, shortDate, timeLabel } from '../shared/dates';
 import { BikeScreen, bikeOf, hasBike as bikeVisible, ridesOf, ExercisesScreen, RoutinesScreen, RunScreen, RunSettingsCard, WorkoutScreen } from '../tracking/ui';
 import { CoachScreen } from '../tracking/ui/CoachScreen';
 import { TodayCard, todayPlan } from '../tracking/ui/TodayCard';
+import { useWaitingProposal, WaitingProposal } from '../tracking/ui/WaitingProposal';
 import { runView } from '../tracking/ui/run-view';
 import { MobilityOffer } from '../tracking/ui/MobilityOffer';
 import { GymOutlook } from '../tracking/ui/GymOutlook';
@@ -134,6 +135,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   const now = env.now();
   const session = useMemo(() => mobilityToShow(plan, mobility ?? [], now), [plan, mobility, now]);
   const today = todayPlan(weekplans, now);
+  const waiting = useWaitingProposal(port, now);
   // A workout still open (here or on another device) is the next thing to do: the newest one.
   const workouts = usePortRecords(port, 'workout').records;
   const open = (workouts ?? []).filter((r) => (r.body as LoggedWorkout).endMs === null).sort((x, y) => (y.body as LoggedWorkout).startMs - (x.body as LoggedWorkout).startMs)[0];
@@ -198,6 +200,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
           </div>
         </section>
       )}
+      {!open && waiting && <WaitingProposal onOpen={goCoach} />}
       {meals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} />}
       {session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />}
     </div>
