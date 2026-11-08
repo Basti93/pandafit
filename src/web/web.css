@@ -30,14 +30,10 @@ body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemF
 
 /* Meal plan: one day at a time, the three meals as cards with a color per meal. */
 @media (prefers-color-scheme: light) {
-  .tk-screen.pm button.pm-person.on, .tk-screen.pm .pm-seg button[aria-pressed='true'] { background: var(--seg-on-screen); color: var(--text); }
-  .tk-screen.pm .pm-seg { background: var(--card); }
+  .tk-screen.pm button.pm-person.on { background: var(--seg-on-screen); color: var(--text); }
 }
 .pm .slot-fruehstueck { --slot: var(--slot-fruehstueck); } .pm .slot-mittag { --slot: var(--slot-mittag); } .pm .slot-abend { --slot: var(--slot-abend); }
 .pm-head { display: flex; flex-direction: column; gap: .15rem; }
-.pm-seg { display: flex; background: var(--card); border-radius: var(--radius-pill); padding: 3px; }
-.tk-screen .pm-seg button { flex: 1; background: transparent; color: var(--muted); min-height: 40px; padding: .3rem .6rem; }
-.tk-screen .pm-seg button[aria-pressed='true'] { background: var(--seg-on); color: var(--text); }
 .pm-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
 .tk-screen .pm-days button { display: flex; flex-direction: column; align-items: center; gap: .05rem; min-width: 0; min-height: 56px; padding: .35rem 0; border-radius: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--field-line); font-weight: 500; }
 .pm-days button b { color: var(--text); font-size: var(--fs-m); }
@@ -139,12 +135,12 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .gm-stack li span { text-align: left; }
 /* The profile sits at the top right instead of taking a tab. */
 .web-main { position: relative; }
-.web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .45rem); right: max(calc(env(safe-area-inset-right) + .8rem), calc((100% - 640px) / 2 + .8rem)); width: 40px; height: 40px; min-height: 0; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--line); background: var(--card); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .55rem); right: max(calc(env(safe-area-inset-right) + 1rem), calc((100% - 640px) / 2 + 1rem)); width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--line); background: var(--card); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .web-profile[aria-current='page'] { color: var(--text); border-color: var(--accent); }
-/* Sub pages of a tab (Kraft: Training, Routinen, Verlauf): one pill with segments, not loose buttons. */
+/* Sub pages of a tab (Kraft, Ausdauer, Essen Tage/Einkauf): one pill with segments, not loose buttons. One look everywhere. */
 .tk-seg { display: flex; background: var(--card); border-radius: var(--radius-pill); padding: 3px; margin-right: 3.4rem; }
 /* One page head (Kraft, Ausdauer): the title on top, the switch below it at full width; the screen under it follows closely. */
-.tk-pagehead + .tk-seg { margin-right: 0; }
+.tk-pagehead ~ .tk-seg { margin-right: 0; }
 .tk-screen.tk-headblock { padding-bottom: 0; }
 .tk-headblock .tk-pagehead { margin-bottom: 0; }
 .tk-screen .tk-seg button { flex: 1; background: transparent; color: var(--muted); border: 0; min-height: 40px; padding: .3rem var(--space-2); box-shadow: none; }

@@ -19,7 +19,7 @@
   --danger: #d9806f;
   --low: #f2bd55; /* shared */
 
-  /* Selected pill and segment, picked row. --seg-on stays dark in sheets; --seg-on-screen is the meal screen's own light value. */
+  /* Chosen person pill (meal plan), picked row. --seg-on stays dark in sheets; --seg-on-screen is the meal screen's own light value. */
   --seg-on: #2d4638; /* shared */
   --seg-on-screen: #2d4638;
   --pick: #243a30;
