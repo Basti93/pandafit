@@ -1,8 +1,13 @@
 import { useMemo, useState } from 'react';
+import { descriptionOf } from '../../shared/exercise-descriptions';
 import type { Exercise } from '../../shared/exercises';
+import { muscleGroupOf } from '../../shared/muscle-targets';
+import { exerciseImages, videoSearchUrl } from '../media';
 import type { TrackingPort } from '../ports';
-import { ChoiceRow, RowList, Sheet } from './kit';
+import { ChoiceRow, ExpandMark, RowList, Sheet } from './kit';
 import { ExerciseGroups } from './ExerciseGroups';
+import { ExerciseInfo } from './ExerciseInfo';
+import { MuscleIcon } from './MuscleIcon';
 import { matchesSearch, similarExercises } from '../similar';
 import { finishedWorkouts, useCatalog, useExcluded, usePortRecords } from './hooks';
 import { EQUIPMENT, MUSCLES, TYPES } from './labels';
@@ -16,6 +21,7 @@ export function ExercisePicker({ port, onPick, onClose, like, title = '√úbung w√
   const workouts = usePortRecords(port, 'workout').records;
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
   const [draft, setDraft] = useState({ name: '', muscle: '', equipment: '', type: 'weight_reps' });
   const [error, setError] = useState(false);
   const excluded = useExcluded(port);
@@ -43,14 +49,24 @@ export function ExercisePicker({ port, onPick, onClose, like, title = '√úbung w√
     } catch { setError(true); }
   }
 
-  // One tap on the row chooses it. The how-to of every exercise is under Kraft > √úbungen.
-  const item = (e: Exercise) => (
-    <li key={e.id} className="tk-rowitem">
-      <button type="button" className="tk-rowbtn" onClick={() => choose(e)}>
-        <span className="tk-row-title">{e.title}</span>
-      </button>
-    </li>
-  );
+  // One tap on the row chooses it; the mark at its end opens the how-to in place.
+  const item = (e: Exercise) => {
+    const icon = <MuscleIcon group={muscleGroupOf(e)} />;
+    return (
+      <li key={e.id} className="tk-rowitem">
+        <div className="tk-pick-row">
+          <button type="button" className="tk-rowbtn" onClick={() => choose(e)}>
+            <span className="tk-row-title">{e.title}</span>
+          </button>
+          <button type="button" className="link tk-info-toggle" aria-label={`Anleitung ${e.title}`} aria-expanded={info === e.id}
+            onClick={() => setInfo(info === e.id ? null : e.id)}><ExpandMark open={info === e.id} /></button>
+        </div>
+        {info === e.id && (
+          <div className="tk-row-more"><ExerciseInfo title={e.title} description={descriptionOf(e)} images={exerciseImages(e.id)} video={videoSearchUrl(e)} icon={icon} /></div>
+        )}
+      </li>
+    );
+  };
   const options = (m: Record<string, string>) => Object.entries(m).map(([value, label]) => ({ value, label }));
 
   if (creating) {

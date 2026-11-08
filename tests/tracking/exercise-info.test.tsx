@@ -197,19 +197,51 @@ describe('MuscleIcon', () => {
   });
 });
 
-describe('picker: one tap chooses', () => {
+describe('picker: info toggle per exercise', () => {
   const mine: TrackedRecord = { kind: 'exercise', id: 'mine-1', updatedMs: 1, deleted: false, body: { id: 'mine-1', title: 'Seilspringen am Hof', type: 'reps_only', primaryMuscle: 'cardio', equipment: 'none' } };
 
-  test('a row is the name only: no info toggle, a tap picks it', async () => {
+  test('the mark shows and hides the text inline without picking, credit included', async () => {
+    const { port } = fakePort();
+    const onPick = vi.fn();
+    render(<ExercisePicker port={port} onPick={onPick} onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Suchen'), { target: { value: 'Bankdrücken' } });
+    const info = await screen.findByRole('button', { name: 'Anleitung Bankdrücken' });
+    expect(info.textContent).not.toContain('ⓘ');
+    expect(info.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('note', { name: 'Anleitung Bankdrücken' })).toBeNull();
+    fireEvent.click(info);
+    expect(onPick).not.toHaveBeenCalled();
+    expect(info.getAttribute('aria-expanded')).toBe('true');
+    const note = screen.getByRole('note', { name: 'Anleitung Bankdrücken' });
+    expect(note.textContent).toMatch(/Lege dich auf die Bank/);
+    expect(note.textContent).toContain('Quelle: wger.de, sistab2, CC-BY-SA 3.0');
+    fireEvent.click(info);
+    expect(screen.queryByRole('note', { name: 'Anleitung Bankdrücken' })).toBeNull();
+  });
+
+  test('picking still works with the row; own exercises get the toggle too, with the video link only', async () => {
     const { port } = fakePort([mine]);
     const onPick = vi.fn();
     render(<ExercisePicker port={port} onPick={onPick} onClose={() => {}} />);
     fireEvent.change(screen.getByLabelText('Suchen'), { target: { value: 'Seilspringen' } });
     const row = await screen.findByRole('button', { name: /^Seilspringen am Hof/ });
-    expect(screen.queryByRole('button', { name: /Anleitung|Ausführung/ })).toBeNull();
-    expect(screen.queryByText('ⓘ')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Seilspringen am Hof' }));
+    const note = screen.getByRole('note', { name: 'Anleitung Seilspringen am Hof' });
+    expect(note.textContent).toContain('Noch keine Beschreibung.');
+    expect(within(note).getByRole('link', { name: 'Video ansehen' })).toBeTruthy();
+    expect(onPick).not.toHaveBeenCalled();
     fireEvent.click(row);
     expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: 'mine-1' }));
+  });
+
+  test('a row is the name only; the muscle icon and the picture show in the opened info', async () => {
+    const { port } = fakePort();
+    render(<ExercisePicker port={port} onPick={() => {}} onClose={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Suchen'), { target: { value: 'Bankdrücken' } });
+    const row = (await screen.findByRole('button', { name: 'Bankdrücken' })).closest('.tk-pick-row') as HTMLElement;
+    expect(within(row).queryByRole('img', { name: /Ausführung/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Bankdrücken' }));
+    expect(screen.getAllByRole('img', { name: 'Bankdrücken, Ausführung' }).length).toBeGreaterThan(0);
   });
 });
 

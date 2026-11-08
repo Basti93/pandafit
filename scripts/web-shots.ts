@@ -555,7 +555,7 @@ async function main() {
     await shot('kraft-uebungen-entwicklung');
   });
   await fresh('Kraft'); await seg('Übungen');
-  await step('kraft-uebungen-group', async () => { await page.getByRole('button', { name: 'Brust', exact: true }).click(); await shot('kraft-uebungen-gruppe-offen'); await page.getByLabel('Übung suchen').fill('Kniebeuge mit Kurzhanteln'); await page.locator('.tk-row-more .tk-rowbtn').first().click(); await shot('kraft-uebungen-info-offen'); await page.getByRole('button', { name: /^Nicht mehr vorschlagen/ }).click(); await shot('kraft-uebungen-nicht-mehr-vorschlagen'); await page.keyboard.press('Escape'); });
+  await step('kraft-uebungen-group', async () => { await page.getByRole('button', { name: 'Brust', exact: true }).click(); await shot('kraft-uebungen-gruppe-offen'); await page.getByLabel('Übung suchen').fill('Kniebeuge mit Kurzhanteln'); await page.locator('.tk-rowbtn', { hasText: 'Kniebeuge mit Kurzhanteln' }).first().click(); await shot('kraft-uebungen-info-offen'); await page.getByRole('button', { name: /^Nicht mehr vorschlagen/ }).click(); await shot('kraft-uebungen-nicht-mehr-vorschlagen'); await page.keyboard.press('Escape'); });
 
   // Essen, Ausdauer, Rückblick (in Woche), Profil.
   await fresh('Essen');

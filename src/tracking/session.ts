@@ -243,19 +243,18 @@ function mapSet(w: TrackedWorkout, ex: string, set: string, f: (s: TrackedSet) =
   return mapEx(w, ex, (x) => ({ ...x, sets: x.sets.map((s) => (s.rid === set ? f(s) : s)) }));
 }
 
-/** The values a set shows as a preset while it is empty: those of the nearest set before it of the same kind (warm-up or working). */
+const kindOf = (t: TrackedSet['type']): string => (t === 'warmup' ? 'w' : t === 'dropset' ? 'd' : 'n');
+/** The preset of an empty set: all values of the nearest set before it of the same kind (warm-up, drop set or working) that has any value. Never mixed from several sets. */
 export function presetOf(sets: readonly TrackedSet[], index: number): Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS'> {
   const me = sets[index];
-  const out = { weightKg: null as number | null, reps: null as number | null, durationS: null as number | null };
-  if (!me) return out;
+  const none = { weightKg: null, reps: null, durationS: null };
+  if (!me) return none;
   for (let i = index - 1; i >= 0; i--) {
     const o = sets[i]!;
-    if ((o.type === 'warmup') !== (me.type === 'warmup')) continue;
-    if (out.weightKg === null) out.weightKg = o.weightKg;
-    if (out.reps === null) out.reps = o.reps;
-    if (out.durationS === null) out.durationS = o.durationS;
+    if (kindOf(o.type) !== kindOf(me.type)) continue;
+    if (o.weightKg !== null || o.reps !== null || o.durationS !== null) return { weightKg: o.weightKg, reps: o.reps, durationS: o.durationS };
   }
-  return out;
+  return none;
 }
 type Values = Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS'>;
 /** What an empty set takes from its preset: all three when it is entirely empty, else only the missing reps or seconds of a set that has a weight. A cleared weight next to reps is meant (bodyweight) and stays. */
@@ -351,7 +350,12 @@ export function finish(w: TrackedWorkout, nowMs: number, choice?: FinishChoice):
   const last = confirmed ? Math.max(...doneTimes) : null;
   const endMs = last !== null && nowMs - last > STALE_OPEN_MS ? last : nowMs;
   const exercises = choice === 'complete'
-    ? w.exercises.map((e) => ({ ...e, sets: e.sets.map((s) => (isDone(s) ? s : { ...s, doneMs: endMs })) }))
+    ? w.exercises.map((e) => {
+      // Open sets are entered as shown: an empty one takes its preset, like a tap on the check.
+      const sets: TrackedSet[] = [];
+      e.sets.forEach((s, i) => { sets.push(isDone(s) ? s : { ...s, ...filled(s, presetOf([...sets, ...e.sets.slice(i)], i)), doneMs: endMs }); });
+      return { ...e, sets };
+    })
     : w.exercises;
   // The undo data of a coach change is of no use once the workout is over; the ids stay (a second start must not apply them again).
   const changes = w.changes?.map((c) => ({ id: c.id, atMs: c.atMs, prior: [], pos: [], after: [] })); // anchor left out too

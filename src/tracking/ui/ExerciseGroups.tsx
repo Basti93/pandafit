@@ -26,9 +26,9 @@ export function ExerciseGroups({ exercises, used, searching, label = 'Muskelgrup
   return (
     <RowList label={label}>
       {groups.map(([group, list]) => {
-        const open = searching || openGroup === group;
+        const open = openGroup === group;
         const first = list.filter((e) => e.source !== 'fedb' || used.has(e.id));
-        const showAll = searching || first.length === 0 || first.length === list.length || all.has(group);
+        const showAll = first.length === 0 || first.length === list.length || all.has(group);
         const shown = showAll ? list : first;
         return (
           <Row key={group} title={group} expanded={open} onClick={() => setOpenGroup(openGroup === group ? null : group)}>
