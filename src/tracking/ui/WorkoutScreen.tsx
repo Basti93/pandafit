@@ -39,7 +39,7 @@ import { SyncNote } from './SyncNote';
 import { StudioRow, StudioSheet } from './StudioSheet';
 import { ChoiceRow, ConfirmLink, ExpandMark, Sheet } from './kit';
 import { WorkoutSummary, pendingSummary, setPendingSummary } from './WorkoutSummary';
-import { defaultStudio, knownStudios, resolveStudio, studioName, studioStateOf } from '../../shared/studio';
+import { defaultStudio, knownStudios, resolveStudio, studioName, studioStateOf, type StudioState } from '../../shared/studio';
 import { hideStudio, rememberStudio, removeStudio, renameStudio } from '../studios';
 import { repRangeOf } from '../../shared/muscle-targets';
 import { loadStepOverrides } from '../../shared/loads';
@@ -400,6 +400,43 @@ export function planLine(e: GymWorkout['exercises'][number]): string {
   return parts.join(' · ');
 }
 
+/** Marks the taken changes the finished workouts list as used (see markUsed), reading the workouts afresh. */
+async function markUsedNow(port: TrackingPort, now: () => number): Promise<void> {
+  let all: LoggedWorkout[] = [];
+  try { all = (await port.list('workout')).filter((r) => !r.deleted).map((r) => r.body as LoggedWorkout); } catch { return; /* the next start marks them */ }
+  await markUsed(port, all.filter((x) => x.endMs !== null), now());
+}
+
+/**
+ * Everything a start from a plan computes before the workout begins: rules, load steps, taken changes, history, frame and week plan.
+ * The preview ("Ansehen und anpassen") shows exactly this workout. Every read that fails starts without it.
+ * The changes taken for the next workout go in when it starts and are listed in the workout; each is marked used only when the
+ * workout is finished (a thrown-away one leaves them taken). A listing workout stops a change from applying twice.
+ * The notice (ops that no longer fit, the second session of today) is for the rider's screen only; it is not workout data.
+ */
+export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now: () => number; newId: () => string; catalog: Exercise[]; studio?: string; studios: StudioState }): Promise<{ workout: TrackedWorkout; notice: string | null }> {
+  const { now, newId, catalog, studio, studios } = ctx;
+  let changeRecs: TrackedRecord[] = [], records: TrackedRecord[] = [], overrides = loadStepOverrides([], studios.renames), excludedNow: ReadonlySet<string> = new Set();
+  try { excludedNow = excludedIds(await port.list('rule'), catalog); } catch { /* start without them */ }
+  try { overrides = loadStepOverrides(await port.list('loadstep'), studios.renames); changeRecs = await port.list('change'); records = await port.list('workout'); } catch { /* start without them: they stay taken for the next time */ }
+  const live = records.filter((r) => !r.deleted);
+  const all = live.map((r) => r.body as LoggedWorkout);
+  const history = finishedWorkouts(live);
+  let noLegs = false, alsoNote: string | null = null;
+  try {
+    // Spontaneous mode has no week plan: the plan day checks do not apply. A failed frame read keeps them.
+    let spontaneous = false;
+    try { spontaneous = frameOf(await port.list('frame'), dateKey(now())).mode === 'spontaneous'; } catch { /* keep the checks */ }
+    const day = spontaneous ? null : planFor(await port.list('weekplan'), dateKey(now()));
+    noLegs = !!day && day.legs === false && hasSport(day, 'gym');
+    // The second session of today with minutes is part of the agreement: say it at the start.
+    if (day && day.sport === 'gym' && day.also && day.also.sport !== 'gym' && day.also.minutes) alsoNote = `Dazu heute: ${day.also.minutes} Min. ${SPORT_LABEL[day.also.sport]} ${HARDNESS_LABEL[day.also.hardness]}.`;
+  } catch { /* start with the plan as it is */ }
+  let skipped: string[] = [];
+  const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
+  return { workout: studio ? { ...w, studio } : w, notice: [...skipped, ...(alsoNote ? [alsoNote] : [])].join(' ') || null };
+}
+
 function OpenCard({ rec, primary, onResume, onEnd, onDiscard }: { rec: TrackedRecord; primary: boolean; onResume: () => void; onEnd: () => void; onDiscard: () => Promise<void> }) {
   const w = rec.body as LoggedWorkout;
   const [asking, setAsking] = useState(false);
@@ -493,28 +530,11 @@ export function WorkoutScreen({ port, plan = null, routine = null, resume = fals
       return true;
     } finally { starting.current = false; }
   }
-  // The changes taken for the next workout go in when it starts and are listed in the workout; each is marked used only when the
-  // workout is finished (a thrown-away one leaves them taken). A listing workout stops a change from applying twice, and a
-  // finished one whose mark got lost is made up here.
-  // The start notice (ops that no longer fit) is for the rider's screen only; it is not workout data.
+  // A start from a plan: prepareStart, then begin; a finished workout whose change mark got lost is made up here.
   const startPlan = async (g: GymWorkout) => {
-    let changeRecs: TrackedRecord[] = [], all: LoggedWorkout[] = [], overrides = loadStepOverrides([], studios.renames), excludedNow: ReadonlySet<string> = new Set();
-    try { excludedNow = excludedIds(await port.list('rule'), catalog); } catch { /* start without them */ }
-    try { overrides = loadStepOverrides(await port.list('loadstep'), studios.renames); changeRecs = await port.list('change'); all = (await port.list('workout')).filter((r) => !r.deleted).map((r) => r.body as LoggedWorkout); } catch { /* start without them: they stay taken for the next time */ }
-    let noLegs = false, alsoNote: string | null = null;
-    try {
-      // Spontaneous mode has no week plan: the plan day checks do not apply. A failed frame read keeps them.
-      let spontaneous = false;
-      try { spontaneous = frameOf(await port.list('frame'), dateKey(now())).mode === 'spontaneous'; } catch { /* keep the checks */ }
-      const day = spontaneous ? null : planFor(await port.list('weekplan'), dateKey(now()));
-      noLegs = !!day && day.legs === false && hasSport(day, 'gym');
-      // The second session of today with minutes is part of the agreement: say it at the start.
-      if (day && day.sport === 'gym' && day.also && day.also.sport !== 'gym' && day.also.minutes) alsoNote = `Dazu heute: ${day.also.minutes} Min. ${SPORT_LABEL[day.also.sport]} ${HARDNESS_LABEL[day.also.hardness]}.`;
-    } catch { /* start with the plan as it is */ }
-    let skipped: string[] = [];
-    const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
-    if (!(await begin(w, [...skipped, ...(alsoNote ? [alsoNote] : [])].join(' ') || null))) return;
-    await markUsed(port, all.filter((x) => x.endMs !== null), now());
+    const { workout, notice } = await prepareStart(port, g, { now, newId, catalog, studio, studios });
+    if (!(await begin(workout, notice))) return;
+    await markUsedNow(port, now);
   };
 
   useEffect(() => {
