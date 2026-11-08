@@ -40,7 +40,7 @@ test('a profile whose coach runs on the Mac keeps Hevy and Garmin here, and a no
   enter();
   fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
   expect(screen.getByText('Garmin verbinden (optional)')).toBeTruthy();
-  expect(screen.getByText(/Kraft, Laufen, Essen und den Rückblick gibt es in der Web-App – dafür das Konto verbinden/)).toBeTruthy();
+  expect(screen.getByText(/Kraft, Laufen, Essen und den Rückblick gibt es in der Web-App. Verbinde dafür dein Konto/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Fahren' }));
   expect(screen.queryByRole('button', { name: 'Web-App öffnen' })).toBeNull();
 });

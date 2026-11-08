@@ -77,14 +77,14 @@ const Page = ({ ride }: { ride: ReturnType<typeof useRide> }) => {
       && !(maxHr && (state.latest.hrBpm ?? 0) >= maxHr);
     return <>{notice}{dialog}<RideView state={state} send={send} hrMaxBpm={rideHrMax} tools={<>{passToggle}{languageToggle}</>} mountain={passOn && c && state.ride ? <PassGuard><PassView pass={passById(c.pass?.selectedId)} profileId={state.ride.profileId} startM={c.pass?.distanceM?.[passById(c.pass?.selectedId).id] ?? 0} powerW={state.latest.powerW} paused={state.engine.paused} send={coach.send} /></PassGuard> : undefined} extra={c && language.enabled ? <WordCard calm={calm} state={c} send={coach.send} click={click} /> : null} /></>;
   }
-  if (!profile) return <>{notice}<ProfileView profiles={state?.profiles ?? []} onPick={setProfile} onAdd={(p) => send({ type: 'save-profile', profile: p })} /></>;
+  if (!profile) return <>{notice}{dialog}<ProfileView profiles={state?.profiles ?? []} onPick={setProfile} onAdd={(p) => send({ type: 'save-profile', profile: p })} /></>;
 
   const garminConnected = coach.garmin?.state === 'connected';
   const go = (item: MenuItem): void => setV(open(item));
   const menu = showMenu({ profile: true, riding: false, film: false, waiting: false }) && (
     <MenuBar items={menuItems()} active={activeItem(v)} name={profile.name} avatar={profile.avatar} onGo={go} onSwitch={() => setProfile(null)} />
   );
-  const page = (body: ReactNode) => <>{notice}{menu}{body}</>;
+  const page = (body: ReactNode) => <>{notice}{dialog}{menu}{body}</>;
 
   if (v.profile) {
     return page(<ProfileSettingsView profile={profile} ftpW={coach.state?.ftpW ?? profile.ftpW} coachConnected={coach.connected && coach.state !== null} coachHome={coach.coachHome} sendRide={send} sendCoach={coach.send} onBack={() => setV(HOME)} onDeleted={() => setProfile(null)}

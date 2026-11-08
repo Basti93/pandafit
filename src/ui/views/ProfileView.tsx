@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ACTIVITY_LEVELS, estimateFtp, type Sex } from '../../shared/ftp-estimate';
 import type { Profile } from '../../shared/profiles';
+import { PandaMark } from './PandaMark';
 
 const GARMIN_START_FTP_W = 100;
 
@@ -74,6 +75,7 @@ export const ProfileView = ({ profiles, onPick, onAdd }: { profiles: Profile[]; 
   const showForm = adding || profiles.length === 0;
   return (
     <main className="center">
+      <PandaMark />
       <h1>{profiles.length ? 'Wer fährt heute?' : 'Schön, dass du da bist'}<span className="leaf" aria-hidden="true">🍂</span></h1>
       {profiles.length > 0 && (
         <div className="choices">

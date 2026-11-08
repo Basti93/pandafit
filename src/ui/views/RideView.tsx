@@ -57,6 +57,8 @@ export const RideView = ({ state, send, compact = false, extra, tools, hrMaxBpm,
   const target = value(engine.targetW);
   const warn = engine.nextLabel && engine.secondsToNext <= WARN_BEFORE_S;
   const totalLeft = session ? Math.max(0, session.steps.reduce((a, s) => a + s.durationS, 0) - engine.rideElapsedS) : null;
+  const totalS = session ? session.steps.reduce((a, s) => a + s.durationS, 0) : null;
+  const progressPct = totalS ? Math.min(100, Math.max(0, (engine.rideElapsedS / totalS) * 100)) : 0;
   const nextStep = session?.steps[engine.stepIndex + 1];
   const sudden = nextStep?.kind === 'grade' && nextStep.sudden;
   const step = session?.steps[engine.stepIndex];
@@ -103,6 +105,7 @@ export const RideView = ({ state, send, compact = false, extra, tools, hrMaxBpm,
           <span className={devices.clicker === 'connected' ? 'dot on' : 'dot'}>Clicker</span>
         </div>
       </header>
+      {totalS !== null && totalS > 0 && <div className="session-progress" role="progressbar" aria-label="Fortschritt der Einheit" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPct)}><i style={{ width: `${progressPct}%` }} /></div>}
       {banners}
       {devices.trainer !== 'connected' && <div className="banner warn" role="status">Trainer wird gesucht. Die Fahrt läuft weiter und ist gespeichert.</div>}
       {hrMaxBpm !== undefined && devices.hr !== 'connected' && <div className="banner info" role="status">Kein Puls, die Fahrt läuft nach Watt weiter.</div>}
@@ -111,17 +114,20 @@ export const RideView = ({ state, send, compact = false, extra, tools, hrMaxBpm,
       {extra}
       {mountain}
       <section className="hero">
-        <div className="hero-tile">
-          <span className="label">Vorgabe</span>
-          <b data-testid="target">{target}<small>W</small></b>
-        </div>
-        <div className="hero-tile">
+        <div className="hero-tile power">
           <span className="label">Leistung</span>
           <b data-testid="power" className={powerClass(latest.powerW, engine.targetW)}>{value(latest.powerW)}<small>W</small></b>
         </div>
+        <div className="hero-tile target">
+          <span className="label">Vorgabe</span>
+          <b data-testid="target">{target}<small>W</small></b>
+        </div>
+        <div className="hero-tile countdown">
+          <span className="label">Restzeit Abschnitt</span>
+          <b data-testid="remaining">{mmss(engine.stepRemainingS)}</b>
+        </div>
       </section>
       <section className="stats">
-        <div className="tile"><span className="label">Restzeit Abschnitt</span><b data-testid="remaining">{mmss(engine.stepRemainingS)}</b></div>
         <div className="tile"><span className="label">Puls</span><b data-testid="hr" style={{ color: hrZoneColor(zone) }}>{value(latest.hrBpm)}</b>{zone !== null && zoneTarget !== null && <span data-testid="hr-zone" className={zone > zoneTarget ? 'hr-zone high' : 'hr-zone'}>{zone === 0 ? 'Unter Zone 1' : <ZoneChip zone={zone}>Zone {zone}</ZoneChip>} · <ZoneChip zone={zoneTarget}>Ziel {zoneTarget}</ZoneChip></span>}</div>
         <div className="tile"><span className="label">Trittfrequenz</span><b>{value(latest.cadenceRpm)}</b></div>
         <div className="tile"><span className="label">Noch insgesamt</span><b>{totalLeft === null ? '–' : mmss(totalLeft)}</b></div>

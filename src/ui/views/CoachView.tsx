@@ -10,6 +10,7 @@ import { STARTER_SESSIONS } from '../../shared/starter-sessions';
 import { rampTest } from '../../coach/rules';
 import { GarminProfileBanner } from './GarminProfileReview';
 import type { GarminSuggestion } from '../../shared/garmin-profile';
+import { PandaMark } from './PandaMark';
 import { ReadinessNote } from './ReadinessNote';
 import type { GarminReadiness } from '../../shared/garmin';
 import { SessionFacts, StepList, TrainingCard } from './TrainingCard';
@@ -67,6 +68,7 @@ export const CoachView = ({ coachHome, webOrigin, profile, state, thinking, coac
   return (
     <main className="home">
       <div className="top">
+        <PandaMark small />
         <h1>{profile.avatar && <span aria-hidden="true">{profile.avatar} </span>}{greeting()}, {profile.name}<span className="leaf" aria-hidden="true">🍁</span></h1>
       </div>
       {coachHome && <CoachHomeNote coachHome={coachHome} />}

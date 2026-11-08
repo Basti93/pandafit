@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { RideDebrief } from '../../coach/debrief';
 import type { CoachState } from '../../coach/state';
 import type { CoachClientMessage } from '../../shared/coach-protocol';
+import { PandaMark } from './PandaMark';
 
 export const coachScreen = (s: CoachState | null): 'feedback' | 'debrief' | 'coach' => {
   if (s?.awaitingFeedback) return 'feedback';
@@ -45,6 +46,7 @@ export const debriefHandlers = (profileId: string, rideId: string, send: Send) =
 /** For a ride that was already rated before its debrief existed. */
 export const DebriefView = ({ profileId, debrief, next, thinking, title, send }: { profileId: string; debrief: RideDebrief; next?: CoachState['next']; thinking: boolean; title?: string; send: Send }) => (
   <main>
+    <PandaMark small />
     <h1>{title ?? 'Deine Fahrt'}</h1>
     <DebriefCard debrief={debrief} next={next} thinking={thinking} {...debriefHandlers(profileId, debrief.rideId, send)} />
     <button onClick={() => send({ type: 'debrief-seen', profileId })}>Weiter</button>
