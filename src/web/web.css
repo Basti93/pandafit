@@ -242,7 +242,7 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-pandacanvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
 .tk-panda[data-drawn='true'] .tk-pandacanvas { opacity: 1; transition: opacity .15s ease-out; }
 .tk-panda[data-drawn='true'] .tk-pandastill { visibility: hidden; }
-.tk-pandahead-mini { flex: none; width: 3.4rem; }
+.tk-pandahead-mini { flex: none; width: 4.2rem; }
 .tk-pandahead { display: flex; flex-direction: column; min-width: 0; }
 .tk-pandaname { font-size: var(--fs-xl); line-height: 1.2; }
 .tk-pandarole {  font-size: var(--fs-xs); color: var(--muted); }
