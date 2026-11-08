@@ -24,7 +24,7 @@ import { addNote, type ChangeNote } from '../../shared/change-notes';
 import { feelHold, HOLD_REASON, phaseOf, ruleWeek, weekDates, type RuleWeek } from './rules';
 import { manualRuns, mergeRuns } from './runs';
 import { loadRunCache, saveRunCache, type RunCache } from './state';
-import { readTasks, type CoachId } from '../coach-tasks';
+import { readTasks, type GivenTask, type CoachId } from '../coach-tasks';
 
 const DAY = 86_400_000;
 const RETRY_MS = 10 * 60_000;
@@ -56,7 +56,7 @@ export type RunDeps = {
   /** Changes when the rider takes a new week plan; part of what makes a week plan again. */
   planKey?: (id: string, week: string) => string;
   /** Hands a task from this coach to another one. */
-  giveTask?: (id: string, task: { to: CoachId; text: string; lasting: boolean }) => void;
+  giveTask?: (id: string, task: GivenTask) => void;
   profile: (id: string) => Profile | null;
   garminDb: (id: string) => Pick<GarminDb, 'runs' | 'activityFile' | 'body'> | null;
   days: (id: string, dates: string[]) => Record<string, DayRating>;

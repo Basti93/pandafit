@@ -217,6 +217,21 @@ describe('the chat and the other coaches', () => {
     expect(replies(s)[0]!.text).toBe('Gebe ich an den Kraft-Coach weiter.');
   });
 
+  test('a lasting wish of the rider becomes one proposed wish rule, not a task', async () => {
+    const s = store([rider('r1', 'Künftig am Rad nur kurze Intervalle')]);
+    const given: unknown[] = [];
+    const c = new ChatCoach({
+      store: s as never, nowMs: () => NOW, newId: () => `c${++n}`, giveTask: (_id, t) => given.push(t),
+      ask: (async () => ({ text: 'Gemerkt.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], tasks: [{ coach: 'bike', text: 'Nur kurze Intervalle', lasting: true, forDate: null }] })) as never,
+    });
+    expect(await c.tick('p')).toBe(true);
+    expect(given).toEqual([]);
+    const rules = s.all('p', 'rule' as never).filter((r: TrackedRecord) => r.kind === 'rule');
+    expect(rules).toHaveLength(1);
+    expect(rules[0]!.body).toMatchObject({ kind: 'wish', state: 'proposed', sport: 'bike', text: 'Nur kurze Intervalle' });
+    expect(s.all('p', 'task' as never).filter((r: TrackedRecord) => r.kind === 'task')).toEqual([]);
+  });
+
   test('a message the coach opened by itself hands out no task', async () => {
     const s = store();
     const given: unknown[] = [];

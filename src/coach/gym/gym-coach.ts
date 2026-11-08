@@ -21,7 +21,7 @@ import { historyFromLogged, mergeHistory } from '../tracking/merge';
 import type { RecordStore } from '../tracking/store';
 import { legacyGymRules, loadGymState, removeGymState, saveGymState, type GymState } from './state';
 import type { ExerciseTemplate, GymExercise, GymWorkout } from './types';
-import { readTasks, type CoachId } from '../coach-tasks';
+import { readTasks, type GivenTask, type CoachId } from '../coach-tasks';
 import { readOutlook, type GymOutlook } from '../../shared/gym-outlook';
 import type { LoadStepOverrides } from '../../shared/loads';
 import { MUSCLE_TARGETS } from '../../shared/muscle-targets';
@@ -66,7 +66,7 @@ type Deps = {
   /** The accepted week plan as prompt text, or ''. */
   planHint?: (id: string) => string;
   /** Hands a task from this coach to another one. */
-  giveTask?: (id: string, task: { to: CoachId; text: string; lasting: boolean }) => void;
+  giveTask?: (id: string, task: GivenTask) => void;
   /** Own records of this Mac. Without one only Hevy counts, as before. */
   store?: RecordStore;
   /** The profile's one exercise catalog. Defaults to the merged catalog of the store (built-ins without a store). */

@@ -37,7 +37,7 @@ import { dateKey, dayRatings, type DayInput, type DayRating } from './day-load';
 import { allTraining } from './all-training';
 import { activitiesHint, activityData, allActivities, ActivitySeen, doneByDate } from './activity-feed';
 import { manualRuns } from './run/runs';
-import { CoachTasks, type CoachId, type TaskFrom } from './coach-tasks';
+import { CoachTasks, type CoachId, type GivenTask, type TaskFrom } from './coach-tasks';
 import { statsContent } from './stats/stats-content';
 import { exportStats } from './tracking/stats-export';
 import { exportBike, radForChat } from './tracking/bike-export';
@@ -45,7 +45,7 @@ import { daysOf, weeksOf } from './health/aggregate';
 import { findingsOf } from './health/findings';
 import { CoachTexts, HealthCoachText } from './health/coach-text';
 import { exportHealth } from './health/health-export';
-import { activityItems, exportActivities } from './activities-export';
+import { activityItems, exportActivities, kindOf } from './activities-export';
 import { mirrorExercises } from './tracking/mirror-exercises';
 import { ChatCoach } from './chat/chat-coach';
 import { planHint, type TodayContext } from './chat/plan-hint';
@@ -349,7 +349,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
   };
   /** The shared task board: the week chat and the coaches give each other tasks; the coach in charge plans again at once. */
   const tasks = new CoachTasks(path.join(coachDir, 'chat', 'tasks.json'), records, nowMs);
-  const giveTask = (id: string, from: TaskFrom, t: { to: CoachId; text: string; lasting: boolean }): void => {
+  const giveTask = (id: string, from: TaskFrom, t: GivenTask): void => {
     if (!tasks.add(id, { from, ...t }, nowMs()) || from !== 'chat') return;
     // Only the rider's task plans again at once; a coach's task waits for that coach's next plan. The run coach sees it in its plan key.
     if (t.to === 'bike') coach.taskAdded(id);
@@ -726,6 +726,13 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       }
       // All recent activities from every source for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportActivities({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: (id) => { try { return activityItems(activitiesOf(id), garminData(id)?.activities ?? []); } catch { return null; } } }));
+      // A one-off task is done once its sport has a session after it. Never throws.
+      if (free) for (const p of list) {
+        try {
+          const sessions = activitiesOf(p.id).flatMap((a) => { const k = kindOf(a); const sport: CoachId | null = k === 'kraft' ? 'gym' : k === 'rad' ? 'bike' : k === 'lauf' ? 'run' : null; return sport ? [{ sport, startMs: a.startMs }] : []; });
+          tasks.settle(p.id, sessions, now);
+        } catch { /* next scan */ }
+      }
       // The bike plan and the counted rides for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportBike({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, state: (id) => { try { return coach.state(id); } catch { return null; } }, samples: (rideId) => cleanSamples(readRide(dir, rideId).samples).samples }));
       // Separate safeguard: the account sync must never disturb a ride or the coach, and is not awaited here.

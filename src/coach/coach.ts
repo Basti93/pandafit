@@ -9,7 +9,7 @@ import { PASSES } from '../shared/passes';
 import type { Session } from '../shared/session';
 import { thinSamples } from '../shared/bike';
 import { ClaudeError } from './claude-client';
-import { readTasks, TASKS_GUIDE, zTasks, type CoachId } from './coach-tasks';
+import { readTasks, type GivenTask, TASKS_GUIDE, zTasks, type CoachId } from './coach-tasks';
 import { checkSession, RAMP_ID, type CoachContext } from './guardrails';
 import { cleanDebrief, debriefAnswerSchema, debriefJsonSchema, DEBRIEF_SYSTEM_PROMPT, ruleDebrief } from './debrief';
 import { uploadSettings, withUploadMode, type RideUpload, type UploadMode } from './garmin-upload';
@@ -104,7 +104,7 @@ type Deps = {
   /** The accepted week plan as prompt text, or ''. */
   planHint?: (profileId: string) => string;
   /** Hands a task from this coach to another one. */
-  giveTask?: (profileId: string, task: { to: CoachId; text: string; lasting: boolean }) => void;
+  giveTask?: (profileId: string, task: GivenTask) => void;
   /** The profile's records. Only the one-time move of the old rules into `rule` records writes here. */
   store?: Pick<RecordStore, 'all' | 'put'>;
 };

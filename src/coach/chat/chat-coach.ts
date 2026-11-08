@@ -15,7 +15,8 @@ import { excludedOf, goalOfProfile, wishesOf } from '../tracking/personal';
 import { FAMILY_IDS, isExcludableFamily, MAX_FAMILIES } from '../../shared/families';
 import { FOCUS_GROUPS, MAX_EXCLUDED, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
 import { LONG_TERM_GUIDE, weekHistory } from './long-term';
-import { readTasks, tasksJsonSchema, type CoachId } from '../coach-tasks';
+import { titleHash } from '../../shared/exercise-links';
+import { readTasks, type GivenTask, tasksJsonSchema, type CoachId } from '../coach-tasks';
 
 const EXCLUDABLE = FAMILY_IDS.filter((f) => f !== 'other');
 
@@ -40,7 +41,7 @@ type Deps = {
   /** What the bike, gym and run coach have planned next, for answers about a single session. */
   sessions?: (profileId: string) => object | null;
   /** Hands a change the rider asked for to the coach in charge, who plans again at once. */
-  giveTask?: (profileId: string, task: { to: CoachId; text: string; lasting: boolean }) => void;
+  giveTask?: (profileId: string, task: GivenTask) => void;
 };
 
 /** A rider message older than this gets no late answer. */
@@ -50,7 +51,7 @@ const DAYS_SHOWN = 28;
 export const CHAT_SYSTEM_PROMPT = `Du bist der Coach in Pandafit für Rad, Kraft, Laufen und Beweglichkeit, alles zusammen. Du sprichst Deutsch, kurz und warm, duzt, ohne Schuld und ohne Druck: keine Serien, kein Nachholen verpasster Einheiten, eine leichte Woche ist in Ordnung.
 Du planst mit der Person ihre Woche: welche Sportart an welchem Tag und wie hart. Ruhetage gehören zum Plan, nicht jeder Tag ist Training.
 Die einzelnen Einheiten (Übungen, Sätze, Watt, Laufminuten) planen der Rad-Coach (bike), der Kraft-Coach (gym) und der Lauf-Coach (run); was sie als Nächstes geplant haben, steht in einheiten (beim Rad auch FTP und Phase, und radFahrten sind die letzten Fahrten). Fragen dazu beantwortest du selbst, fachlich und sportwissenschaftlich begründet. Verweise die Person nie an einen anderen Coach oder ins Training.
-Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib dem zuständigen Coach in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false. Der Coach plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
+Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib dem zuständigen Coach in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false, forDate (JJJJ-MM-TT), wenn die Person einen Tag nennt ("am Montag"), sonst null ("das nächste Training"). Der Coach plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
 Will die Person etwas fürs nächste Training ändern (etwa "nächstes Mal ohne Kniebeugen"), setze nextChange: ops mit exerciseId aus einheiten, und reason als ein Satz, warum. Für Tausch fürs nächste Training: nenne toId aus katalog oder toTitle; kennst du die id nicht, nenne toTitle. Ohne so einen Wunsch ist nextChange null. Es gilt erst, wenn die Person es übernimmt.
 Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt.
 Die Person kann Mengen nennen ("2× Kraft, 3× Rad"), feste Tage ("Freitag Studio") oder dich vorschlagen lassen; oft eine Mischung. Feste Wünsche der Person markierst du mit fixed true.
@@ -195,7 +196,8 @@ export class ChatCoach {
     // Only the rider's own words start or end a complaint, never a message the coach opened by itself.
     if (fromRider) this.applyComplaints(id, a.complaint, a.over);
     // Only the rider's own words change a session; a message the coach opened by itself never does.
-    if (fromRider) for (const t of a.tasks) { try { this.deps.giveTask?.(id, t); } catch { /* the rider can ask again */ } }
+    // A lasting wish of the rider is a rule she confirms, not a task; a one-off request is a task.
+    if (fromRider) for (const t of a.tasks) { try { if (t.lasting) this.proposeWish(id, t, now); else this.deps.giveTask?.(id, t); } catch { /* the rider can ask again */ } }
     const careful = this.complaintList(id).length > 0;
     let broken = a.proposal ? checkWeekPlan(a.proposal.days) : [];
     if (broken.length && (!a.more || careful)) {
@@ -215,6 +217,15 @@ export class ChatCoach {
     else if (a.proposal && a.more && !careful) { msg.proposal = a.proposal; msg.warnings = broken; }
     else if (a.proposal) msg.text += `\n\nMein Vorschlag passte nicht zu unseren Regeln für Erholung (${broken.map((b) => b.replace(/\.$/, '')).join('; ')}), deshalb lasse ich ihn weg. Sag mir, was dir wichtig ist, dann versuche ich es anders.`;
     return msg;
+  }
+
+  /** The rider's lasting wish for a coach, as a proposed wish rule (the rider confirms it in the rules). */
+  private proposeWish(id: string, t: GivenTask, now: number): void {
+    const text = t.text.replace(/\s+/g, ' ').trim().slice(0, RULE_TEXT_MAX);
+    if (!text) return;
+    const rid = ruleId(`w-${titleHash(`${t.to}\n${text}`)}`);
+    if (this.deps.store.all(id, 'rule').some((r) => r.id === rid)) return; // asked before: accepted or declined stays
+    this.deps.store.put(id, ruleRecord(rid, { kind: 'wish', text, sport: t.to }, 'proposed', 'chat', now));
   }
 
   /** Complaints apply at once, from the first answer: they only ever make the coaches more careful. */
