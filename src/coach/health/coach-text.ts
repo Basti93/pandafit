@@ -67,10 +67,19 @@ export class CoachTexts {
     return this.data;
   }
   get(profileId: string): CoachText | undefined { return this.load()[profileId]; }
+  delete(profileId: string): void {
+    const d = this.load();
+    if (!(profileId in d)) return;
+    delete d[profileId];
+    this.save(d);
+  }
+  private save(d: Record<string, CoachText>): void {
+    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(d)); fs.renameSync(tmp, this.file); } catch { /* written again at worst once more */ }
+  }
   set(profileId: string, t: CoachText): void {
     const d = this.load();
     d[profileId] = t;
-    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(d)); fs.renameSync(tmp, this.file); } catch { /* written again at worst once more */ }
+    this.save(d);
   }
 }
 
@@ -92,7 +101,12 @@ export class HealthCoachText {
   /** The text of this week if there is one. Without any finding there is nothing to say and nothing is stored. */
   async tick(profileId: string, body: Pick<HealthBody, 'findings' | 'weeks' | 'today'>): Promise<boolean> {
     const week = mondayOf(dateKey(this.d.nowMs()));
-    if (body.findings.length === 0 || this.busy.has(profileId)) return false;
+    if (this.busy.has(profileId)) return false;
+    if (body.findings.length === 0) {
+      // Nothing to say any more: an older text must not stand for today.
+      if (this.d.texts.get(profileId)) { this.d.texts.delete(profileId); return true; }
+      return false;
+    }
     const key = findingsKey(body.findings);
     const stored = this.d.texts.get(profileId);
     if (stored?.week === week && stored.key === key) return false;
@@ -102,11 +116,13 @@ export class HealthCoachText {
     try {
       const input = healthTextInput(body);
       let text: string | null = null;
-      if (!askedToday) try {
-        const raw = await this.d.ask({ prompt: input, systemPrompt: HEALTH_SYSTEM_PROMPT, schema: healthTextJsonSchema });
-        const parsed = answerSchema.safeParse(raw);
-        if (parsed.success) text = guardCoachText(parsed.data.text, input, body.findings);
-      } catch { /* the findings speak for themselves */ }
+      if (!askedToday) {
+        try {
+          const raw = await this.d.ask({ prompt: input, systemPrompt: HEALTH_SYSTEM_PROMPT, schema: healthTextJsonSchema });
+          const parsed = answerSchema.safeParse(raw);
+          if (parsed.success) text = guardCoachText(parsed.data.text, input, body.findings);
+        } catch { /* the findings speak for themselves */ }
+      }
       const final = text ?? fallbackCoachText(body.findings);
       if (!final) return false;
       this.d.texts.set(profileId, { week, text: final, atMs: this.d.nowMs(), key });

@@ -75,6 +75,17 @@ describe('HealthCoachText', () => {
     expect(calls).toBe(2);
   });
 
+  it('drops the stored text once the findings are gone, without an AI call', async () => {
+    let calls = 0;
+    const ask = async () => { calls++; return { text: 'Kurz, 7.200.' }; };
+    await make(ask).tick('pa', DOC);
+    expect(texts.get('pa')).toBeDefined();
+    expect(await make(ask, MON + 86_400_000).tick('pa', body([]))).toBe(true);
+    expect(texts.get('pa')).toBeUndefined();
+    expect(new CoachTexts(path.join(dir, 'texts.json')).get('pa')).toBeUndefined();
+    expect(calls).toBe(1);
+  });
+
   it('asks the AI once per local day; a second change that day uses the fallback', async () => {
     let calls = 0;
     const ask = async () => { calls++; return { text: 'Kurz, 7.200.' }; };
