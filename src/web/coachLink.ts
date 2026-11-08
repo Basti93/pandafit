@@ -23,7 +23,8 @@ const MIN_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30_000;
 
 /**
- * The web side of the settings the Mac used to hold: one socket to the account's coach, opened only while Profil is shown.
+ * The web side of the settings the Mac used to hold: one socket to the account's coach, opened while Profil is shown
+ * and once at the app start until the first answer (so the tabs know the switches on every device).
  * It asks `/coach/status` which profile the account's coach keeps, subscribes, and keeps the last view. Never throws.
  */
 export class CoachLink {
@@ -31,6 +32,8 @@ export class CoachLink {
   private retry: ReturnType<typeof setTimeout> | null = null;
   private backoff = MIN_BACKOFF_MS;
   private stopped = true;
+  /** Who holds the link open: Profil while shown, and the app start until the first answer. It closes when the last lets go. */
+  private users = 0;
   private profileId: string | null = null;
   private snap: CoachLinkSnapshot = { view: null, unavailable: false };
   private subs = new Set<() => void>();
@@ -42,12 +45,15 @@ export class CoachLink {
   private set(s: CoachLinkSnapshot): void { this.snap = s; for (const f of [...this.subs]) { try { f(); } catch { /* a listener never stops the link */ } } }
 
   start(): void {
+    this.users++;
     if (!this.stopped) return;
     this.stopped = false;
     void this.connect();
   }
 
   stop(): void {
+    this.users = Math.max(0, this.users - 1);
+    if (this.users > 0) return;
     this.stopped = true;
     if (this.retry) clearTimeout(this.retry);
     this.retry = null;

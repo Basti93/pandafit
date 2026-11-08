@@ -336,6 +336,8 @@ const mealsOnKey = (account: string) => `pandafit.essensplan.${account}`;
 const readMealsOn = (env: Env, account: string): boolean => { try { return env.storage.getItem(mealsOnKey(account)) === 'on'; } catch { return false; } };
 const saveMealsOn = (env: Env, account: string, on: boolean): void => { try { env.storage.setItem(mealsOnKey(account), on ? 'on' : 'off'); } catch { /* shown again once the plan is there */ } };
 const NO_LINK = { view: null, unavailable: false };
+/** How long the app start waits for the coach's switches before it lets the link go. */
+const COACH_ASK_MS = 30_000;
 const noSub = () => () => {};
 
 /**
@@ -435,7 +437,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   // The ride companion: optional, a socket of its own, and nothing else in the app depends on it.
   const live = useMemo(() => (env.openLive ? new LiveClient({ open: env.openLive, now: env.now, newId: env.newId }) : null), [env]);
   useEffect(() => { live?.start(); return () => live?.stop(); }, [live]);
-  // Hevy, Garmin, Krafttraining and the meal plan are set on the coach's socket; it opens only while Profil is shown.
+  // Hevy, Garmin, Krafttraining and the meal plan are set on the coach's socket; it opens while Profil is shown, and once at the start.
   const link = useMemo(() => (env.openLive ? new CoachLink({ open: env.openLive, status: async () => {
     const res = await get(env, '/coach/status');
     if (!res.ok) return null;
@@ -454,6 +456,16 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   const linkMeals = linkSnap.view ? linkSnap.view.meals?.on === true : null;
   const [storedMeals, setStoredMeals] = useState(() => readMealsOn(env, account));
   useEffect(() => { if (linkMeals !== null) { saveMealsOn(env, account, linkMeals); setStoredMeals(linkMeals); } }, [env, account, linkMeals]);
+  // Once per session: ask the account's coach for its switches, then let go. The stored value is only the fast first guess.
+  useEffect(() => {
+    if (!link) return;
+    let held = true;
+    const release = () => { if (held) { held = false; link.stop(); } };
+    const unsub = link.subscribe(() => { const s = link.snapshot(); if (s.view || s.unavailable) release(); });
+    link.start();
+    const give = setTimeout(release, COACH_ASK_MS); // not reached: keep what is stored
+    return () => { clearTimeout(give); unsub(); release(); };
+  }, [link]);
   const hasMeals = (linkMeals ?? storedMeals) || mealWeeks(mealRecords, env.now()).length > 0;
   // Set by "Essensplan" on Heute; any other way into Essen keeps the usual default week.
   const [mealsToday, setMealsToday] = useState(false);

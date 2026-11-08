@@ -518,22 +518,44 @@ describe('Essen on the phone', () => {
     expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
   });
 
-  it('Essen follows the "Essensplan" switch: it shows at once, says when the first plan comes, and is remembered', async () => {
-    const sockets: { s: LiveSocket; sent: string[] }[] = [];
+  type FakeSocket = { s: LiveSocket; sent: string[]; closed: boolean };
+  const fakeSockets = () => {
+    const sockets: FakeSocket[] = [];
     const openLive = (): LiveSocket => {
-      const entry = { sent: [] as string[], s: null as unknown as LiveSocket };
-      entry.s = { send: (d: string) => { entry.sent.push(d); }, close: () => {}, onopen: null, onmessage: null, onclose: null, onerror: null };
+      const entry: FakeSocket = { sent: [], closed: false, s: null as unknown as LiveSocket };
+      entry.s = { send: (d: string) => { entry.sent.push(d); }, close: () => { entry.closed = true; }, onopen: null, onmessage: null, onclose: null, onerror: null };
       sockets.push(entry);
       return entry.s;
     };
-    const coachState = (on: boolean) => JSON.stringify({ type: 'coach-state', state: {}, hevy: { state: 'idle' }, garmin: { state: 'idle' }, gym: null,
-      meals: { settings: { on, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'zuhause', abend: 'zuhause' } } } });
+    return { sockets, openLive };
+  };
+  const coachState = (on: boolean) => JSON.stringify({ type: 'coach-state', state: {}, hevy: { state: 'idle' }, garmin: { state: 'idle' }, gym: null,
+    meals: { settings: { on, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'zuhause', abend: 'zuhause' } } } });
+  /** The coach link's socket: the one that subscribed once opened. */
+  const subscribed = async (sockets: FakeSocket[]): Promise<FakeSocket> => {
+    let link!: FakeSocket;
+    await waitFor(() => { act(() => { for (const x of sockets) if (!x.sent.length) x.s.onopen?.(); }); link = sockets.find((x) => !x.closed && x.sent.some((d) => d.includes('subscribe')))!; expect(link).toBeTruthy(); });
+    return link;
+  };
+
+  it('a new device with empty storage: the switch on and no plan shows Essen after the coach answers, without a Profil visit; then the link closes', async () => {
+    const { sockets, openLive } = fakeSockets();
+    const a = await boot({ account: 'anna', seed: [], openLive });
+    await screen.findByRole('navigation');
+    expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
+    const link = await subscribed(sockets);
+    act(() => link.s.onmessage?.({ data: coachState(true) }));
+    expect(await screen.findByRole('button', { name: 'Essen' })).toBeTruthy();
+    expect(a.storage.get('pandafit.essensplan.anna')).toBe('on');
+    expect(link.closed).toBe(true); // asked once, nothing keeps running
+  });
+
+  it('Essen follows the "Essensplan" switch: it shows at once, says when the first plan comes, and is remembered', async () => {
+    const { sockets, openLive } = fakeSockets();
     const a = await boot({ account: 'anna', seed: [], openLive });
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
     // The coach's socket subscribes; its state says the meal plan is on.
-    await waitFor(() => expect(sockets.length).toBeGreaterThan(0));
-    let link!: { s: LiveSocket; sent: string[] };
-    await waitFor(() => { act(() => { for (const x of sockets) x.s.onopen?.(); }); link = sockets.find((x) => x.sent.some((d) => d.includes('subscribe')))!; expect(link).toBeTruthy(); });
+    const link = await subscribed(sockets);
     expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
     act(() => link.s.onmessage?.({ data: coachState(true) }));
     expect(await screen.findByRole('button', { name: 'Essen' })).toBeTruthy();
