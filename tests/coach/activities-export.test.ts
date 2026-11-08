@@ -66,6 +66,14 @@ describe('exportActivities', () => {
     c = [one('garmin-2'), one('garmin-1')];
     expect(run({ now: NOW + 120_000 })).toEqual(['pa']);
   });
+  it('keeps items with an empty or very long name readable', () => {
+    c = activityItems([s({ key: 'garmin-1', title: '', sport: '', startMs: 2 }), s({ key: 'garmin-2', title: 'x'.repeat(300), startMs: 1 })], []);
+    expect(run()).toEqual(['pa']);
+    const items = readActivities(store.all('pa', 'activities')[0]!.body)!.items;
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ title: null, sport: null });
+    expect(items[1]!.title).toHaveLength(200);
+  });
   it('never throws', () => {
     expect(exportActivities({ store, profileIds: ['pa'], coachHere: () => true, noOpenRide: () => true, nowMs: NOW, content: () => { throw new Error('x'); } })).toEqual([]);
   });

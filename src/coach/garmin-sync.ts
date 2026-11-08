@@ -6,7 +6,8 @@ import { plainTokens, TokensUnopenable, type GarminTokens, type TokenCheckout } 
 
 const HOUR = 3600_000;
 const WHILE_LOADING_MS = 3 * HOUR;
-const QUICK_MS = HOUR;
+/** Below an hour: with the 5-minute data cache and the scan delay a new activity still arrives within one hour. */
+const QUICK_MS = 50 * 60_000;
 const WHEN_COMPLETE_MS = 6 * HOUR;
 const AFTER_RATE_LIMIT_MS = 6 * HOUR;
 const AFTER_FAILURE_MS = 30 * 60_000;
@@ -146,7 +147,7 @@ export class GarminSync {
       const problem = code === 0 ? null : code === EXIT_REAUTH ? 'reauth' : code === EXIT_RATE ? 'rate-limit' : 'failed';
       if (quick) {
         // A quick run leaves lastTryMs and complete alone, except for a block that both kinds of run must respect.
-        if (code === 0) this.save(id, { lastRunMs: this.opts.nowMs() });
+        if (code === 0) this.save(id, { lastRunMs: this.opts.nowMs(), ...(this.meta(id).problem === 'failed' ? { problem: null } : {}) });
         else if (code === EXIT_REAUTH) this.save(id, { problem: 'reauth', tokensMtimeMs: mtime });
         else if (code === EXIT_RATE) this.save(id, { problem: 'rate-limit', lastTryMs: startedAt });
         return;

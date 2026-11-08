@@ -55,11 +55,21 @@ test('a local workout and its server copy count once', () => {
   expect(same.items).toHaveLength(1);
 });
 
-test('an activity at 23:30 local time belongs to that day', () => {
+test('an activity at 00:30 local time belongs to the local day, not the UTC day before', () => {
   process.env.TZ = 'Europe/Berlin';
-  const rows = doneDays(['2026-11-02', '2026-11-03'], '2026-11-04', null, merge([item({ key: 'lauf-1', startMs: new Date(2026, 10, 2, 23, 30).getTime() })]));
-  expect(rows[0]!.done).toEqual(['Lauf 6 km']);
-  expect(rows[1]!.rest).toBe(true);
+  const startMs = new Date(2026, 10, 3, 0, 30).getTime();
+  expect(new Date(startMs).toISOString()).toBe('2026-11-02T23:30:00.000Z');
+  const rows = doneDays(['2026-11-02', '2026-11-03'], '2026-11-04', null, merge([item({ key: 'lauf-1', startMs })]));
+  expect(rows[0]!.rest).toBe(true);
+  expect(rows[1]!.done).toEqual(['Lauf 6 km']);
+});
+
+test('the week counts a workout and its kept copy once, the history keeps both', () => {
+  const copy: TrackedRecord = { kind: 'workout', id: 'w2', updatedMs: 1, deleted: false, body: { id: 'w2', title: 'Oberkörper', startMs: at(3, 18), endMs: at(3, 18) + 55 * 60000, source: 'pandafit', exercises: [], keptCopyOf: 'w1' } };
+  const ws = [wo('w1', at(3, 18), 55), copy];
+  const rows = doneDays(['2026-11-03'], '2026-11-04', null, mergedActivities(null, ws, true));
+  expect(rows[0]!.done).toEqual(['Kraft Oberkörper']);
+  expect(mergedActivities(null, ws).items).toHaveLength(2);
 });
 
 test('a deleted local workout disappears although the server still lists it', () => {

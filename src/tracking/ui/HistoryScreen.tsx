@@ -141,7 +141,7 @@ export function WorkoutDetail({ port, record, now, onBack }: { port: TrackingPor
 }
 
 /** Entwicklung: every exercise done so far; a tap shows that exercise over time. */
-export function DevelopmentScreen({ port }: { port: TrackingPort; now?: () => number }) {
+export function DevelopmentScreen({ port }: { port: TrackingPort }) {
   const q = usePortRecords(port, 'workout');
   const records = q.records;
   // One performed session counts once: an overlapping Hevy copy of an own workout is left out.

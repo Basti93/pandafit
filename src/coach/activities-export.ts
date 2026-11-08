@@ -35,7 +35,7 @@ export function activityItems(sessions: TrainingSession[], garmin: GarminExtra[]
     const g = s.key.startsWith('garmin-') ? extra.get(s.key.slice('garmin-'.length)) : undefined;
     const ref = s.key.startsWith('kraft-') ? s.key.slice('kraft-'.length) : s.key.startsWith('rad-') ? s.key.slice('rad-'.length) : null;
     return {
-      key: s.key, kind: kindOf(s), title: s.title, sport: s.sport ?? null, startMs: s.startMs, minutes: Math.round(s.minutes),
+      key: s.key, kind: kindOf(s), title: s.title?.trim().slice(0, 200) || null, sport: s.sport?.trim().slice(0, 200) || null, startMs: s.startMs, minutes: Math.round(s.minutes),
       distanceM: g?.distanceM ?? null, avgHr: g?.avgHr ?? null, ref,
     };
   });
