@@ -20,7 +20,7 @@ export type HealthWeek = { week: string; rhr?: number; vo2?: number; steps?: num
 export type HealthDay = { date: string; rhr?: number; steps?: number; sleepH?: number };
 export type HealthBody = {
   type: 'health'; atMs: number; today: GarminReadiness; findings: HealthFinding[]; weeks: HealthWeek[]; days: HealthDay[];
-  coachText?: { week: string; text: string };
+  coachText?: { week: string; text: string; atMs?: number; key?: string };
 };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -46,6 +46,6 @@ export function readHealth(body: unknown): HealthBody | null {
     ? [{ date: d.date, ...opt('rhr', d.rhr, 20, 250), ...opt('steps', d.steps, 0, 100_000), ...opt('sleepH', d.sleepH, 0, 24) }] : []));
   const c = body.coachText;
   const coachText = isObj(c) && typeof c.week === 'string' && DATE.test(c.week) && typeof c.text === 'string' && c.text.length > 0 && c.text.length <= COACH_TEXT_MAX
-    ? { week: c.week, text: c.text } : null;
+    ? { week: c.week, text: c.text, ...(fin(c.atMs, 0, Infinity) ? { atMs: c.atMs } : {}), ...(typeof c.key === 'string' && c.key.length <= 4000 ? { key: c.key } : {}) } : null;
   return { type: 'health', atMs: body.atMs, today: { level, reasons }, findings, weeks, days, ...(coachText ? { coachText } : {}) };
 }

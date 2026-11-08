@@ -9,6 +9,10 @@ const body = (over: Record<string, unknown> = {}) => ({
 });
 
 describe('readHealth', () => {
+  it('keeps atMs and key of the coach text, and accepts the old body without them', () => {
+    expect(readHealth(body({ coachText: { week: '2026-11-02', text: 'Ruhig.', atMs: 5, key: 'a:b' } }))!.coachText).toEqual({ week: '2026-11-02', text: 'Ruhig.', atMs: 5, key: 'a:b' });
+    expect(readHealth(body({ coachText: { week: '2026-11-02', text: 'Ruhig.' } }))!.coachText).toEqual({ week: '2026-11-02', text: 'Ruhig.' });
+  });
   it('reads a whole body and keeps the coach text', () => {
     const b = readHealth(body({ coachText: { week: '2026-11-02', text: 'Ruhig.' } }))!;
     expect(b.findings).toHaveLength(1);

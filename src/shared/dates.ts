@@ -13,6 +13,9 @@ export const shortDate = (ms: number): string => new Date(ms).toLocaleDateString
 /** "Mo., 3. Nov." from a YYYY-MM-DD key. */
 export const shortDateOfKey = (key: string): string => { const [y, m, d] = key.split('-').map(Number); return shortDate(new Date(y!, m! - 1, d!, 12).getTime()); };
 
+/** "Mo., 3.11." */
+export const shortNumericDate = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
+
 /** "3. Nov." from a YYYY-MM-DD key, without the weekday. */
 export const dayMonthOfKey = (key: string): string => { const [y, m, d] = key.split('-').map(Number); return new Date(y!, m! - 1, d!, 12).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' }); };
 
