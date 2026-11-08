@@ -113,7 +113,8 @@ export function MealDetail({ week, meal, onEater, onView, me }: { week: Week; me
   const cook = cookPortions(week.plan, week.state, k);
   const extras = [meal.takeAlong ? 'zum Mitnehmen' : meal.slot === 'abend' ? 'kleine Portion' : '', meal.reuseOf ? `Rest von ${short(meal.reuseOf)}: nur einpacken` : '', reuses.length > 0 ? `reicht für ${reuses.map((r) => short(mealKey(r.day, r.slot))).join(', ')}` : ''].filter(Boolean);
   // The reader comes first among those who eat.
-  const people = [...week.plan.people].sort((x, y) => Number(y.name.toLowerCase() === me) - Number(x.name.toLowerCase() === me));
+  const isMe = (p: { name: string }) => !!me && p.name.trim().toLowerCase() === me.trim().toLowerCase();
+  const people = [...week.plan.people].sort((x, y) => Number(isMe(y)) - Number(isMe(x)));
   const askedBy = meal.askedBy ? week.plan.people.find((p) => p.id === meal.askedBy) : undefined;
   return (
     <>

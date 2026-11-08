@@ -7,7 +7,8 @@ import type { TrackedRecord } from '../../src/shared/records';
 import { App, ErrorBoundary, visibleTabs } from '../../src/web/App';
 import { openIdb } from '../../src/web/idbStore';
 import { mobilityToShow, shouldShowInstallHint } from '../../src/web/logic';
-import { dayIndex, itemKey, weekOf } from '../../src/shared/meals';
+import { addWeeks, dayIndex, itemKey, weekOf } from '../../src/shared/meals';
+import { MealDetail, type Week } from '../../src/web/MealsScreen';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,7 +29,7 @@ const plan = (atMs: number, mobility: unknown = null): TrackedRecord => ({
 });
 const session = (triggerMs: number) => ({ id: `mobility-bike-${triggerMs}`, forSession: 'bike', minutes: 8, exercises: [{ id: 'm1', title: 'Hüftbeuger dehnen', howTo: 'Ausfallschritt, ruhig atmen.', area: 'hueftbeuger' }], reason: 'Nach der Radfahrt tut das gut.' });
 
-type Opts = { openLive?: () => LiveSocket; startTab?: string; onOpenTab?: (f: (tab: string) => void) => () => void; logoutStatus?: number; hold?: { me: Promise<void> | null }; flaky?: { fail: boolean }; me?: number; hangMe?: boolean; noIdb?: 'null' | 'throws'; flags?: Record<string, string>; logoutFails?: boolean; loginStatus?: number; offline?: boolean; syncStatus?: number; seed?: TrackedRecord[]; account?: string; ua?: string; standalone?: boolean; persist?: boolean; recipes?: (url: string) => Response | Promise<Response> };
+type Opts = { now?: number; openLive?: () => LiveSocket; startTab?: string; onOpenTab?: (f: (tab: string) => void) => () => void; logoutStatus?: number; hold?: { me: Promise<void> | null }; flaky?: { fail: boolean }; me?: number; hangMe?: boolean; noIdb?: 'null' | 'throws'; flags?: Record<string, string>; logoutFails?: boolean; loginStatus?: number; offline?: boolean; syncStatus?: number; seed?: TrackedRecord[]; account?: string; ua?: string; standalone?: boolean; persist?: boolean; recipes?: (url: string) => Response | Promise<Response> };
 async function boot(o: Opts = {}) {
   const factory = new IDBFactory();
   if (o.seed) { const s = await openIdb('anna', factory); for (const r of o.seed) await s.put(r); s.close(); }
@@ -53,7 +54,7 @@ async function boot(o: Opts = {}) {
   const persist = vi.fn(async () => o.persist ?? true);
   const onWorkoutOpen = vi.fn();
   const ui = render(<App env={{
-    fetchFn, idbFactory: o.flaky ? ({ open: (n: string, v?: number) => { if (o.flaky!.fail) throw new Error('denied'); return factory.open(n, v); } } as unknown as IDBFactory) : o.noIdb === 'null' ? null : o.noIdb === 'throws' ? ({ open: () => { throw new Error('denied'); } } as unknown as IDBFactory) : factory, now: () => NOW, newId: () => `id-${Math.random().toString(36).slice(2)}`,
+    fetchFn, idbFactory: o.flaky ? ({ open: (n: string, v?: number) => { if (o.flaky!.fail) throw new Error('denied'); return factory.open(n, v); } } as unknown as IDBFactory) : o.noIdb === 'null' ? null : o.noIdb === 'throws' ? ({ open: () => { throw new Error('denied'); } } as unknown as IDBFactory) : factory, now: () => o.now ?? NOW, newId: () => `id-${Math.random().toString(36).slice(2)}`,
     storage: { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => { storage.set(k, v); }, removeItem: (k: string) => { storage.delete(k); } },
     persist, ua: o.ua ?? 'Mozilla/5.0 Android', standalone: o.standalone ?? false, onWorkoutOpen, startTab: o.startTab, onOpenTab: o.onOpenTab, openLive: o.openLive,
   }} />);
@@ -702,6 +703,29 @@ describe('Essen on the phone', () => {
     // Under "Schon da" there is no box, only the way back.
     expect(screen.queryByRole('checkbox', { name: 'Skyr gekauft' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Doch kaufen' })).toBeTruthy();
+  });
+
+  it('from Saturday the shopping list opens on next week when its plan is there, and the switch back works', async () => {
+    const next = addWeeks(week, 1);
+    const nextPlan: TrackedRecord = { ...mealPlan, id: `week-${next}`, body: { ...(mealPlan.body as object), week: next, meals: [{ day: 0, slot: 'abend', dish: { ...dish('Nudeln'), ingredients: [{ name: 'Nudeln', amount: 100, unit: 'g', section: 'Vorrat' }] }, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false }] } };
+    await boot({ account: 'anna', seed: [mealPlan, nextPlan], now: NOW + ((5 - today + 7) % 7) * DAY });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Einkauf/ }));
+    expect(screen.getByRole('button', { name: 'Nächste Woche' }).getAttribute('aria-pressed')).toBe('true');
+    expect(await screen.findByText('Nudeln')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Diese Woche' }));
+    expect(await screen.findByText('Skyr')).toBeTruthy();
+    expect(screen.queryByText('Nudeln')).toBeNull();
+  });
+
+  it('the reader\'s own chip comes first, whatever the case; no match leaves the order', () => {
+    const w = { plan: { ...(mealPlan.body as object), people: [{ id: 'pa', name: 'Max' }, { id: 'pb', name: 'Lena' }], meals: [{ day: 0, slot: 'mittag', dish: dish('X'), reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false }], trainingDays: [] }, state: { items: {}, eaters: {} } } as unknown as Week;
+    const meal = (w.plan as { meals: Week['plan']['meals'] }).meals[0]!;
+    const order = (me?: string) => { const r = render(<MealDetail week={w} meal={meal} onEater={() => {}} onView={() => {}} me={me} />); const names = [...r.container.querySelectorAll('.pm-person')].map((b) => b.textContent!.replace(/[^A-Za-z]/g, '').replace(/^[ML]/, '')); r.unmount(); return names; };
+    expect(order('lena')).toEqual(['Lena', 'Max']);
+    expect(order(' Lena ')).toEqual(['Lena', 'Max']);
+    expect(order('nobody')).toEqual(['Max', 'Lena']);
+    expect(order(undefined)).toEqual(['Max', 'Lena']);
   });
 
   it('the shopping list says for when and for whom, counts what is open, and keeps own items below the plan\'s', async () => {

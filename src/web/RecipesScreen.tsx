@@ -227,7 +227,7 @@ function PlaceSheet({ ctx, recipe, onClose }: { ctx: RecipeCtx; recipe: RecipeSu
           <div className="rc-slotpick" role="group" aria-label="Mahlzeit">
             {SLOTS.map((s) => <button key={s} type="button" aria-pressed={s === slot} onClick={() => { setSlot(s); setSentAt(null); }}>{SLOT_LABEL[s]}</button>)}
           </div>
-          <p className="muted pm-meta">{meal ? (meal.dish.recipeId === recipe.id ? 'Schon eingetragen' : `Tauscht ${meal.dish.title} aus`) : 'Noch frei'}{names.length > 0 ? ` · isst mit: ${names.join(', ')}` : ''}{names.length > 0 ? ` · für ${names.length} ${names.length === 1 ? 'Portion' : 'Portionen'}` : ''}</p>
+          <p className="muted pm-meta">{meal ? (meal.dish.recipeId === recipe.id ? 'Schon eingetragen' : `Tauscht ${meal.dish.title} aus`) : 'Noch frei'}{names.length > 0 ? ` · isst mit: ${names.join(', ')}, für ${names.length} ${names.length === 1 ? 'Portion' : 'Portionen'}` : ''}</p>
           {sentAt !== null && <p className={answer?.result ? 'pm-reply' : 'pm-reply pending'} role="status">{placeAnswer(answer?.result ?? null)}</p>}
         </div>
       )}
