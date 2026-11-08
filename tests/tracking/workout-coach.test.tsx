@@ -22,7 +22,7 @@ const all = (m: Map<string, TrackedRecord>) => [...m.values()].map((r) => r.body
 test('closed until asked; a message is sent for this workout and the coach is shown as thinking', async () => {
   const { port, map } = fakePort();
   render(<WorkoutCoach port={port} workout={w} {...props} onTake={() => {}} onUndo={() => {}} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Coach fragen' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Bo fragen' }));
   fireEvent.change(screen.getByLabelText('Nachricht an den Coach im Training'), { target: { value: 'Bank belegt' } });
   fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
   await waitFor(() => expect(all(map)).toEqual([{ role: 'rider', text: 'Bank belegt', atMs: NOW, inWorkout: 'w1' }]));

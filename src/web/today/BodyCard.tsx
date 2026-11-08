@@ -12,7 +12,7 @@ export function BodyCard({ health, onCoach }: { health: HealthBody | null; onCoa
       <ul className="tk-bodyrows">
         {healthRows(health).map((r) => <li key={r.key}>{r.title} · {r.word}</li>)}
       </ul>
-      <button type="button" className="secondary" onClick={onCoach}>Mit dem Coach reden</button>
+      <button type="button" className="secondary" onClick={onCoach}>Bo fragen</button>
     </section>
   );
 }

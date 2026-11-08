@@ -27,7 +27,7 @@ export function opText(o: WorkoutOp, w: TrackedWorkout, catalog: Exercise[]): st
  * same chat (it needs a connection); a proposed change applies only on "Übernehmen" and never touches done sets.
  */
 export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUndo, openSignal }: {
-  /** Raised each time the rider picks "Coach fragen" elsewhere (the workout menu). Without it, the panel brings its own button. */
+  /** Raised each time the rider picks "Bo fragen" elsewhere (the workout menu). Without it, the panel brings its own button. */
   openSignal?: number;
   port: TrackingPort; workout: TrackedWorkout; catalog: Exercise[]; now: () => number; newId: () => string; /** One workout write that applies the ops and lists `id`; `onUndo` restores the rows in one write. */
   onTake: (id: string, c: WorkoutChange) => void; onUndo: (id: string) => void;
@@ -78,7 +78,7 @@ export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUnd
     if (!why) onUndo(key(m));
   };
 
-  if (!shown) return openSignal !== undefined ? null : <button type="button" className="secondary tk-coach-open" onClick={() => { setOpen(true); setClosed(false); }}>Coach fragen</button>;
+  if (!shown) return openSignal !== undefined ? null : <button type="button" className="secondary tk-coach-open" onClick={() => { setOpen(true); setClosed(false); }}>Bo fragen</button>;
   return (
     <section className="card tk-coach-panel" aria-label="Coach im Training">
       {mine.length === 0 && <p className="muted">Zum Beispiel: „Gerät belegt“, „Schulter zwickt“ oder „nur noch 30 Minuten“.</p>}

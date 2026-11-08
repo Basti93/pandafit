@@ -20,7 +20,7 @@ import { LookBack } from './StatsScreen';
 import { WaitingProposal } from './WaitingProposal';
 
 /** Woche is the week: seven days, what changed lately, rows that open the goal, the rules and the chat with the coach, and the Rückblick. */
-/** `openChat`: the page opens with the chat already open ("Mit dem Coach reden" on Heute leads straight there). */
+/** `openChat`: the page opens with the chat already open ("Bo fragen" on Heute leads straight there). */
 export function CoachScreen({ port, now, newId, showPrefs = true, openChat = false }: { port: TrackingPort; now: () => number; newId: () => string; showPrefs?: boolean; openChat?: boolean }) {
   const chat = usePortRecords(port, 'chat').all;
   const plans = usePortRecords(port, 'weekplan').all;

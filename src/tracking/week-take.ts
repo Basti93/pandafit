@@ -2,7 +2,7 @@ import type { TrackedRecord } from '../shared/records';
 import type { WeekProposal } from '../shared/week-plan';
 import type { TrackingPort } from './ports';
 
-export const TAKE_REFUSED = 'Das geht nicht, weil der Wochenplan inzwischen geändert wurde. Frag den Coach nochmal.';
+export const TAKE_REFUSED = 'Das geht nicht, weil der Wochenplan inzwischen geändert wurde. Frag Bo nochmal.';
 export const UNDO_REFUSED = 'Das geht nicht, weil der Wochenplan danach geändert wurde.';
 
 export type WeekResult = { ok: true } | { ok: false; reason: string };

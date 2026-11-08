@@ -107,7 +107,7 @@ test('the header menu: discard asks first and then removes the workout; Studio a
   const f = await running();
   fireEvent.click(screen.getByRole('button', { name: 'Mehr zum Training' }));
   const menu = screen.getByRole('dialog', { name: 'Training' });
-  for (const name of [/^Studio wechseln/, /^Coach fragen/, /^Training beenden/]) expect(within(menu).getByRole('button', { name })).toBeTruthy();
+  for (const name of [/^Studio wechseln/, /^Bo fragen/, /^Training beenden/]) expect(within(menu).getByRole('button', { name })).toBeTruthy();
   fireEvent.click(within(menu).getByRole('button', { name: 'Training verwerfen' }));
   expect(f.map.get('workout:w1')!.deleted).toBe(false);
   fireEvent.click(within(menu).getByRole('button', { name: 'Ja' }));
@@ -115,11 +115,11 @@ test('the header menu: discard asks first and then removes the workout; Studio a
   expect(await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ })).toBeTruthy();
 });
 
-test('Coach fragen from the header menu opens the coach panel', async () => {
+test('Bo fragen from the header menu opens the coach panel', async () => {
   await running();
   expect(screen.queryByRole('region', { name: 'Coach im Training' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Mehr zum Training' }));
-  fireEvent.click(screen.getByRole('button', { name: /^Coach fragen/ }));
+  fireEvent.click(screen.getByRole('button', { name: /^Bo fragen/ }));
   expect(await screen.findByRole('region', { name: 'Coach im Training' })).toBeTruthy();
 });
 

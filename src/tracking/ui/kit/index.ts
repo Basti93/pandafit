@@ -5,7 +5,7 @@
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
  * Buttons (plain <button> classes), one look per role:
  *   (none) or "primary"  filled accent: the one main action of a card or sheet (start, resume, save, take a proposal).
- *   "secondary"          outline: every other real action and every jump to another place ("Mit dem Coach reden", "Ansehen", "Woche planen").
+ *   "secondary"          outline: every other real action and every jump to another place ("Bo fragen", "Ansehen", "Woche planen").
  *   "link"               text: only quiet, optional or dismissing actions ("Heute nicht", "Abbrechen", "Details", "Später"). No side padding: it lines up with the text.
  *   ".tk-textseg"        a text switch between two views ("Diese Woche" / "Nächste Woche"): link look with aria-pressed; the pressed one is bold.
  *   "danger-link"        muted red text: only delete and remove. Use ConfirmLink; never next to the primary button.

@@ -348,7 +348,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
           <p role="timer" aria-label="Trainingsdauer" className="muted tk-elapsed">Läuft seit {sinceLabel(now() - w.startMs)}</p>
           <ul className="tk-rows">
             <li className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { setTopMenu(false); setStudioOpen(true); }}><span className="tk-row-title">Studio wechseln</span><span className="tk-row-value muted">{w.studio ?? '–'}</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>
-            <li className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { setTopMenu(false); setCoachAsk((n) => n + 1); }}><span className="tk-row-title">Coach fragen</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>
+            <li className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { setTopMenu(false); setCoachAsk((n) => n + 1); }}><span className="tk-row-title">Bo fragen</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>
             <li className="tk-rowitem"><button type="button" className="tk-rowbtn tk-rowbtn-main" onClick={() => { setTopMenu(false); void end(); }}><span className="tk-row-title">Training beenden</span></button></li>
           </ul>
           <div className="tk-links"><ConfirmLink label="Training verwerfen" question="Training samt erledigter Sätze wirklich verwerfen?" onConfirm={() => { setTopMenu(false); void discard(); }} /></div>

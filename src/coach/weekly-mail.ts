@@ -44,7 +44,7 @@ export function weeklyMailOf(i: WeeklyMailInput): WeeklyMail {
     last,
     ...(notes.length > 0 ? ['', 'Zuletzt geändert:', ...notes.map((n) => `- ${n}`)] : []),
     '', 'Nächste Woche:',
-    ...(days ?? ['Es gibt noch keinen Plan. Frag den Coach in der App.']),
+    ...(days ?? ['Es gibt noch keinen Plan. Frag Bo in der App.']),
     ...(open ? ['', open] : []),
     ...(link ? ['', `Zur App: ${link}`] : []),
   ].join('\n');
@@ -56,7 +56,7 @@ export function weeklyMailOf(i: WeeklyMailInput): WeeklyMail {
     p(esc(last)),
     ...(notes.length > 0 ? [p('<strong>Zuletzt geändert</strong>', 'margin:0 0 4px'), `<ul style="margin:0 0 12px;padding-left:1.2em">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`] : []),
     p('<strong>Nächste Woche</strong>', 'margin:0 0 4px'),
-    days ? `<ul style="margin:0 0 12px;padding-left:1.2em">${days.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>` : p('Es gibt noch keinen Plan. Frag den Coach in der App.'),
+    days ? `<ul style="margin:0 0 12px;padding-left:1.2em">${days.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>` : p('Es gibt noch keinen Plan. Frag Bo in der App.'),
     ...(open ? [p(esc(open))] : []),
     ...(link ? [p(`<a href="${esc(link)}">Zur App</a>`)] : []),
     '</div>',

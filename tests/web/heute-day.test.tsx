@@ -149,7 +149,7 @@ describe('Heute as a day page', () => {
     const card = await screen.findByRole('region', { name: 'Dein Körper' });
     expect(card.textContent).toContain('Ruhepuls · beachten');
     expect(card.textContent).not.toMatch(/\d/);
-    const toCoach = screen.getByRole('button', { name: 'Mit dem Coach reden' });
+    const toCoach = screen.getByRole('button', { name: 'Bo fragen' });
     expect(toCoach.className).toBe('secondary'); // a jump is an outline button, not a text link
     fireEvent.click(toCoach);
     // Straight into the chat, not only onto the week page.

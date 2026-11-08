@@ -28,7 +28,7 @@ describe('weeklyMailOf', () => {
 
   it('has no plan: says so; no link without a URL; singular session; no sessions', () => {
     const m = weeklyMailOf({ ...base, nextWeek: null, lastWeek: { sessions: 1, minutes: 40 } });
-    expect(m.text).toContain('Es gibt noch keinen Plan. Frag den Coach in der App.');
+    expect(m.text).toContain('Es gibt noch keinen Plan. Frag Bo in der App.');
     expect(m.text).toContain('Letzte Woche: 1 Einheit, 40 Min');
     expect(m.text).not.toContain('Zur App');
     expect(m.html).not.toContain('<a ');
