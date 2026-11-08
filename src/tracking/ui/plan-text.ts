@@ -1,4 +1,4 @@
-import { HARDNESS_LABEL, SPORT_LABEL, dayParts, type PlanDay } from '../../shared/week-plan';
+import { HARDNESS_LABEL, SPORT_LABEL, dayParts, minutesText, type PlanDay } from '../../shared/week-plan';
 import type { PlannedRun } from '../../shared/run';
 
 const RUN_KIND: Record<string, string> = { easy: 'locker', long: 'lang', test: 'Test' };
@@ -11,7 +11,7 @@ export const runText = (r: PlannedRun & { done?: unknown }): string =>
 export function planDayText(d: PlanDay, opts: { legs?: boolean } = {}): string {
   return dayParts(d).map((p, i) => {
     if (p.sport === 'rest') return 'Ruhetag';
-    const extra = [i === 0 && d.long ? 'lang' : '', opts.legs && p.sport === 'gym' && d.legs ? 'mit Beinen' : ''].filter(Boolean);
+    const extra = [i === 0 && d.long ? 'lang' : '', opts.legs && p.sport === 'gym' && d.legs ? 'mit Beinen' : '', minutesText(p)].filter(Boolean);
     return [SPORT_LABEL[p.sport], HARDNESS_LABEL[p.hardness], ...extra].join(' · ');
   }).join(' + ');
 }

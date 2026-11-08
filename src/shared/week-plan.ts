@@ -7,7 +7,13 @@ import type { TrackedRecord } from './records';
 export type Sport = 'bike' | 'gym' | 'run' | 'mobility' | 'rest';
 export type Hardness = 'easy' | 'moderate' | 'hard';
 /** A second session on the same day, only on the person's wish. */
-export type AlsoPart = { sport: Sport; hardness: Hardness };
+export type AlsoPart = { sport: Sport; hardness: Hardness; minutes?: number };
+export const MIN_ALSO_MINUTES = 5;
+export const MAX_ALSO_MINUTES = 90;
+/** Minutes of a second session: an integer from 5 to 90, else undefined. */
+export const validAlsoMinutes = (x: unknown): number | undefined => (typeof x === 'number' && Number.isInteger(x) && x >= MIN_ALSO_MINUTES && x <= MAX_ALSO_MINUTES ? x : undefined);
+/** The minutes of a second session as words: "15 Min.". */
+export const minutesText = (p: AlsoPart): string => (p.minutes ? `${p.minutes} Min.` : '');
 export type PlanDay = { date: string; sport: Sport; hardness: Hardness; fixed: boolean; legs?: boolean; long?: boolean; note?: string; also?: AlsoPart };
 export type WeekProposal = { weekStart: string; days: PlanDay[] };
 /** The `weekplan` record, id = weekStart. Written only by the rider's device when they take a proposal. */
@@ -30,7 +36,7 @@ export const hasSport = (d: PlanDay, sport: Sport): boolean => dayParts(d).some(
 export const dayHardness = (d: PlanDay): Hardness => dayParts(d).reduce<Hardness>((a, p) => (HARD_RANK[p.hardness] > HARD_RANK[a] ? p.hardness : a), 'easy');
 /** The day's parts as words: "Kraft, mittel + Rad, locker". `extra` adds to the first part. */
 export const dayLabel = (d: PlanDay, extra: (p: AlsoPart, first: boolean) => string = () => ''): string =>
-  dayParts(d).map((p, i) => (p.sport === 'rest' ? 'Ruhetag' : `${SPORT_LABEL[p.sport]}, ${HARDNESS_LABEL[p.hardness]}${extra(p, i === 0)}`)).join(' + ');
+  dayParts(d).map((p, i) => (p.sport === 'rest' ? 'Ruhetag' : `${SPORT_LABEL[p.sport]}, ${HARDNESS_LABEL[p.hardness]}${extra(p, i === 0)}${p.minutes ? `, ${minutesText(p)}` : ''}`)).join(' + ');
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const toDate = (key: string) => { const [y, m, d] = key.split('-').map(Number); return new Date(y!, m! - 1, d!); };
@@ -76,7 +82,10 @@ export function parseProposal(x: unknown): WeekProposal | null {
     if (d.long === true) day.long = true;
     // Never rest plus something, never the same sport twice, never two hard parts; such a second part is left out.
     if (isObj(d.also) && SPORTS.includes(d.also.sport as Sport) && HARDNESSES.includes(d.also.hardness as Hardness)
-      && d.also.sport !== 'rest' && day.sport !== 'rest' && d.also.sport !== day.sport && !(day.hardness === 'hard' && d.also.hardness === 'hard')) day.also = { sport: d.also.sport as Sport, hardness: d.also.hardness as Hardness };
+      && d.also.sport !== 'rest' && day.sport !== 'rest' && d.also.sport !== day.sport && !(day.hardness === 'hard' && d.also.hardness === 'hard')) {
+      const minutes = validAlsoMinutes(d.also.minutes);
+      day.also = { sport: d.also.sport as Sport, hardness: d.also.hardness as Hardness, ...(minutes !== undefined ? { minutes } : {}) };
+    }
     if (typeof d.note === 'string' && d.note.trim()) day.note = d.note.trim().slice(0, 120);
     days.push(day);
   }

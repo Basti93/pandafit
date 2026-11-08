@@ -93,4 +93,5 @@ test('today with several parts keeps only the open parts', () => {
   expect(planDayText(row.plan!)).toBe('Rad · mittel');
   const both = doneDays(['2026-11-04'], '2026-11-04', [d], merge([]))[0]!;
   expect(planDayText(both.plan!)).toBe('Rad · mittel + Kraft · mittel');
+  expect(planDayText({ date: '2026-11-02', sport: 'gym', hardness: 'moderate', fixed: false, also: { sport: 'bike', hardness: 'easy', minutes: 15 } })).toBe('Kraft · mittel + Rad · locker · 15 Min.');
 });

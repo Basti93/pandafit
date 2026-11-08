@@ -72,6 +72,14 @@ describe('gym time budget', () => {
     // still open: the day stays
     expect(gymBudgetOf(store([plan, f, w(null)]), 'p', '2026-11-09')).toBe(20);
   });
+  it('a second session with minutes on the gym day takes its time from the budget', () => {
+    const withAlso = (minutes: number): TrackedRecord => ({ ...plan, body: { ...plan.body, days: plan.body.days.map((d) => d.sport === 'gym' ? { ...d, also: { sport: 'bike', hardness: 'easy', minutes } } : d) } });
+    const f = frameRecord({ mode: 'week', minutes: 60 }, 5);
+    expect(gymBudgetOf(store([withAlso(15), f]), 'p', '2026-11-09')).toBe(45);
+    // nothing would be left: the frame time stays
+    expect(gymBudgetOf(store([withAlso(90), f]), 'p', '2026-11-09')).toBe(60);
+    expect(gymBudgetOf(store([withAlso(15)]), 'p', '2026-11-09')).toBeNull();
+  });
   it('is one line in the prompt', () => {
     const p = buildGymPrompt({ state: initialGymState('p'), workouts: [], templates: [], nowMs: 1, summaries: [], complaints: [], previous: null, wantNote: false, budgetMinutes: 30 });
     expect(p).toContain('Zeit: höchstens 30 Min einschließlich Aufwärmen und Pausen.');

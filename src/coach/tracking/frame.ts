@@ -46,6 +46,11 @@ export function gymLegsKeyOf(store: Reader, profileId: string, todayDate: string
  */
 export function gymBudgetOf(store: Reader, profileId: string, todayDate: string): number | null {
   try {
-    return frameOf(store.all(profileId, 'frame'), gymPlanDateOf(store, profileId, todayDate)).effectiveMinutes;
+    const date = gymPlanDateOf(store, profileId, todayDate);
+    const minutes = frameOf(store.all(profileId, 'frame'), date).effectiveMinutes;
+    // A second session with minutes (strength + 15 Min. bike) takes its time from the strength session. Nothing left: unchanged.
+    const day = planFor(store.all(profileId, 'weekplan'), date);
+    const taken = day && day.sport === 'gym' && day.also && day.also.sport !== 'gym' ? day.also.minutes : undefined;
+    return minutes !== null && taken !== undefined && minutes - taken > 0 ? minutes - taken : minutes;
   } catch { return null; }
 }
