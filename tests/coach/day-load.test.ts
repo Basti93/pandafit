@@ -15,7 +15,7 @@ const lift = (startMs: number, titles: string[]): StrengthWorkout => ({
   exercises: titles.map((title, i) => ({ title, templateId: `t${i}`, sets: 3, reps: 8, volumeKg: 0, workSets: [] })),
 });
 const muscleOf = (_id: string, title: string): string | null => (/squat/i.test(title) ? 'quadriceps' : /bench/i.test(title) ? 'chest' : null);
-const input = (o: Partial<DayInput> = {}): DayInput => ({ rides: [], bikeNext: null, gym: [], gymNext: null, muscleOf, bikeDays: [], gymDays: [], ...o });
+const input = (o: Partial<DayInput> = {}): DayInput => ({ rides: [], bikeNext: null, gym: [], gymNext: null, muscleOf, bikeDays: [], gymDays: [], today: DATES[0]!, ...o });
 const session = (fractions: number[], id = 'x'): Session => ({ id, name: 'S', steps: fractions.map((f) => ({ kind: 'erg' as const, ftpFraction: f, durationS: 300, label: 'a' })) });
 
 test('a ride with intensity 0.85 makes its day hard, 0.72 moderate, 0.6 easy', () => {
@@ -37,6 +37,13 @@ test('the planned interval session lands on the next usual bike day as hard', ()
   const r = dayRatings(input({ bikeNext: session([0.5, 0.95, 0.5]), bikeDays: [2] }), DATES);
   expect(DATES.filter((d) => r[d].hardness === 'hard')).toEqual(['2027-06-16']);
   expect(DATES.filter((d) => r[d].hardness === null)).toHaveLength(6);
+});
+
+test('a planned session never lands on a past date: a missed usual gym day is not planned', () => {
+  const gymNext = { id: 'g', name: 'G', exercises: [{ templateId: 't0', title: 'Back Squat', sets: [{ reps: 8, weightKg: 60 }] }] } as unknown as DayInput['gymNext'];
+  const r = dayRatings(input({ gymNext, gymDays: [0, 3], today: '2027-06-16' }), DATES);
+  expect(r['2027-06-14']!.hardness).toBeNull();
+  expect(r['2027-06-17']!.hardness).toBe('hard');
 });
 
 test('a gym day with squats is hard with legs; an upper-body day is moderate without legs', () => {

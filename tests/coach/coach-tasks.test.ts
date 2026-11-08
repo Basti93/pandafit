@@ -96,7 +96,8 @@ test('settle: the next session of its sport finishes an undated one-off task, no
 test('the hint shows the day of a dated task', () => {
   const t = board();
   t.add('p', { from: 'chat', to: 'gym', text: 'x', lasting: false, forDate: '2026-11-09' }, NOW);
-  expect(t.hint('p', 'gym', NOW)).toContain('"bis":"2026-11-09"');
+  expect(t.hint('p', 'gym', NOW)).toContain('"fuerTag":"2026-11-09"');
+  expect(t.hint('p', 'gym', NOW)).toContain('Aufträge mit fuerTag gelten nur für die Einheit an diesem Tag; Einheiten davor planst du ohne sie.');
 });
 
 test('the answer schemas of bike, gym and run require forDate in a task', () => {

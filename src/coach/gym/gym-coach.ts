@@ -447,7 +447,7 @@ export class GymCoach {
       const studio = this.studio(id);
       const overrides = this.loadSteps(id);
       const excluded = this.excluded(id);
-      const budget = this.deps.store ? gymBudgetOf(this.deps.store, id, dateKey(now)) : null;
+      const budget = this.deps.store ? gymBudgetOf(this.deps.store, id, dateKey(now), real.map((w) => dateKey(w.startMs))) : null;
       const avoidLegs = open.some((c) => LEG_COMPLAINT.test(c.text)) || this.deps.avoidLegs?.(id) === true;
       const ctx: GymContext = { workouts: real, templates, nowMs: now, excluded, catalog: this.catalog(id), links: this.state(id).links, ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, ...(avoidLegs ? { avoidLegs: true } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) };
       const rule = ruleWorkout(ctx);

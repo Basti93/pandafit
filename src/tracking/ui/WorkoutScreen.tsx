@@ -8,6 +8,7 @@ import { excludedIds } from '../../shared/personal';
 import { exerciseImages, videoSearchUrl } from '../media';
 import { resolveExercise } from '../exercise-identity';
 import { dateKey } from '../../shared/day-rating';
+import { frameOf } from '../../shared/frame';
 import { HARDNESS_LABEL, hasSport, planFor, SPORT_LABEL } from '../../shared/week-plan';
 import { describeExercise } from '../similar';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
@@ -496,7 +497,10 @@ export function WorkoutScreen({ port, plan = null, routine = null, resume = fals
     try { overrides = loadStepOverrides(await port.list('loadstep'), studios.renames); changeRecs = await port.list('change'); all = (await port.list('workout')).filter((r) => !r.deleted).map((r) => r.body as LoggedWorkout); } catch { /* start without them: they stay taken for the next time */ }
     let noLegs = false, alsoNote: string | null = null;
     try {
-      const day = planFor(await port.list('weekplan'), dateKey(now()));
+      // Spontaneous mode has no week plan: the plan day checks do not apply. A failed frame read keeps them.
+      let spontaneous = false;
+      try { spontaneous = frameOf(await port.list('frame'), dateKey(now())).mode === 'spontaneous'; } catch { /* keep the checks */ }
+      const day = spontaneous ? null : planFor(await port.list('weekplan'), dateKey(now()));
       noLegs = !!day && day.legs === false && hasSport(day, 'gym');
       // The second session of today with minutes is part of the agreement: say it at the start.
       if (day && day.sport === 'gym' && day.also && day.also.sport !== 'gym' && day.also.minutes) alsoNote = `Dazu heute: ${day.also.minutes} Min. ${SPORT_LABEL[day.also.sport]} ${HARDNESS_LABEL[day.also.hardness]}.`;

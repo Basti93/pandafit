@@ -97,6 +97,8 @@ describe('the day the gym coach plans for', () => {
   it('is the next gym day, today in spontaneous mode', () => {
     expect(gymPlanDateOf(store([plan()]), 'p', '2026-11-10')).toBe('2026-11-12');
     expect(gymPlanDateOf(store([]), 'p', '2026-11-10')).toBe('2026-11-10');
+    // a gym day done only in Hevy or Garmin moves the target day
+    expect(gymPlanDateOf(store([plan()]), 'p', '2026-11-10', ['2026-11-12'])).toBe('2026-11-10');
     expect(gymPlanDateOf(store([plan(), frameRecord({ mode: 'spontaneous', minutes: 60 }, 5)]), 'p', '2026-11-10')).toBe('2026-11-10');
   });
   it('skips a gym day with a finished workout', () => {

@@ -126,7 +126,7 @@ export class CoachTasks {
   hint(profileId: string, to: CoachId, nowMs: number): string {
     const open = this.open(profileId, to, nowMs);
     if (open.length === 0) return '';
-    const data = open.map((t) => ({ von: TASK_FROM_LABEL[t.from], tag: dateKey(t.atMs), text: t.text, dauerhaft: t.lasting, ...(t.forDate ? { bis: t.forDate } : {}) }));
-    return `\n\n${dataBlock('auftraege', data)}\nDas sind Aufträge an dich, von der Person über den Wochenchat oder von den anderen Coaches. Setz sie in deiner Planung um, soweit deine festen Grenzen es erlauben; ein neuerer Auftrag geht einem älteren vor. Einmalige Aufträge (dauerhaft false) mit bis gelten bis zu diesem Tag, einmalige ohne bis bis zu deiner nächsten Einheit, dauerhafte bis auf Weiteres. Sag in deiner Begründung kurz, was du umgesetzt hast.`;
+    const data = open.map((t) => ({ von: TASK_FROM_LABEL[t.from], tag: dateKey(t.atMs), text: t.text, dauerhaft: t.lasting, ...(t.forDate ? { fuerTag: t.forDate } : {}) }));
+    return `\n\n${dataBlock('auftraege', data)}\nDas sind Aufträge an dich, von der Person über den Wochenchat oder von den anderen Coaches. Setz sie in deiner Planung um, soweit deine festen Grenzen es erlauben; ein neuerer Auftrag geht einem älteren vor. Aufträge mit fuerTag gelten nur für die Einheit an diesem Tag; Einheiten davor planst du ohne sie. Einmalige Aufträge ohne fuerTag gelten bis zu deiner nächsten Einheit, dauerhafte bis auf Weiteres. Sag in deiner Begründung kurz, was du umgesetzt hast.`;
   }
 }
