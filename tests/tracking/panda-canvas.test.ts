@@ -85,3 +85,13 @@ test('an unavailable 2D context leaves the caller free to show its still', async
   const canvas = { getContext: () => null } as unknown as HTMLCanvasElement;
   await expect(mountPanda(canvas)).rejects.toThrow();
 });
+
+test('every clip has a held pose inside the clip, away from the rest pose at its start', async () => {
+  const { holdFrame } = await import('../../src/tracking/ui/panda-canvas');
+  const { pandaMotion } = await import('../../src/tracking/ui/panda-motion');
+  for (const [name, clip] of Object.entries(pandaMotion.clips)) {
+    const f = holdFrame(clip as never, pandaMotion.nodes);
+    expect(f, name).toBeGreaterThan(0);
+    expect(f, name).toBeLessThan(clip.frames);
+  }
+});

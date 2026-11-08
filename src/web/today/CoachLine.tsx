@@ -1,13 +1,13 @@
-import { PandaPortrait, type PandaEvent, type PandaGesture } from '../../tracking/ui/PandaPortrait';
+import { PandaPortrait, type PandaGesture } from '../../tracking/ui/PandaPortrait';
 
 /**
  * Panda on Heute: the portrait (still, animated once the canvas has drawn), the name, the coach sentence of the day and, on today, one button that opens the real coach chat.
- * `gesture` is the greeting when Heute opens; `dayClip` is the one calm clip that follows it.
+ * `pose` is the one pose Bo glides into when Heute opens and keeps until it opens again.
  */
-export function CoachLine({ text, onAsk, gesture, dayClip }: { text: string; onAsk?: () => void; gesture?: PandaEvent; dayClip?: PandaGesture | null }) {
+export function CoachLine({ text, onAsk, pose }: { text: string; onAsk?: () => void; pose?: PandaGesture | null }) {
   return (
     <section className="card tk-coachline" aria-label="Satz vom Coach">
-      <PandaPortrait gesture={gesture} dayClip={dayClip} />
+      <PandaPortrait pose={pose} />
       <div className="tk-pandahead">
         <span className="tk-pandaname">Bo</span>
         <span className="tk-pandarole">Dein Coach</span>

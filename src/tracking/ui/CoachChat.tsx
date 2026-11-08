@@ -13,7 +13,7 @@ import { planRows } from './done-days';
 import { openProposals, storedWeek, weekAnswer } from './chat-open';
 import { useCatalog, usePortRecords } from './hooks';
 import { Sheet } from './kit';
-import { PandaPortrait, type PandaEvent } from './PandaPortrait';
+import { PandaPortrait } from './PandaPortrait';
 import { dateLabel } from './labels';
 import { newestNotes } from '../../shared/change-notes';
 import { readStats, STATS_ID } from '../../shared/stats';
@@ -22,8 +22,6 @@ import { readStats, STATS_ID } from '../../shared/stats';
 const CHAT_PAGE = 30;
 /** Waiting longer than this for an answer: say so calmly. */
 const SLOW_MS = 3 * 60_000;
-/** A coach reply that arrives after the chat opened only makes Panda nod when it is this fresh (not old history that syncs in late). */
-const NOD_FRESH_MS = 10 * 60_000;
 /** The coach no longer answers messages this old. */
 const STALE_MS = 2 * 86_400_000;
 
@@ -87,19 +85,6 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   const grew = useRef<{ top: number; height: number } | null>(null);
   const thread = chatThread(chat ?? []);
   const waiting = waitingMessage(thread);
-  // Panda listens once when the chat opens and nods once for each coach reply that arrives later. The records that were there on
-  // opening, older pages, a retry and every rerender never nod: a reply counts once, by its record id.
-  const [gesture, setGesture] = useState<PandaEvent>({ kind: 'listen', id: 'listen-open' });
-  const repliesSeen = useRef<Set<string> | null>(null);
-  useEffect(() => {
-    if (chat === null) return;
-    const replies = chatThread(chat).filter((m) => m.role === 'coach');
-    if (repliesSeen.current === null) { repliesSeen.current = new Set(replies.map((m) => m.id)); return; }
-    const fresh = replies.filter((m) => !repliesSeen.current!.has(m.id));
-    for (const m of fresh) repliesSeen.current.add(m.id);
-    const newest = fresh.filter((m) => now() - m.atMs < NOD_FRESH_MS).pop();
-    if (newest) setGesture({ kind: 'nod', id: `nod-${newest.id}` });
-  }, [chat, now]);
   const visible = thread.filter((m) => !(m.takes || m.declines || m.undoes));
   const monday = mondayOf(localDayKey(now()));
   // The week plan is the biggest decision: it comes first.
@@ -164,7 +149,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   );
 
   return (
-    <Sheet title="Bo, dein Coach" display onClose={onClose} actions={pins} lead={<PandaPortrait className="tk-pandahead-mini" gesture={gesture} />}>
+    <Sheet title="Bo, dein Coach" display onClose={onClose} actions={pins} lead={<PandaPortrait className="tk-pandahead-mini" pose="listen" />}>
       {notes.length > 0 && (
         <div className="tk-notes">
           <button type="button" className="link" aria-expanded={notesOpen} onClick={() => setNotesOpen(!notesOpen)}>Zuletzt geändert {notesOpen ? '⌃' : '⌄'}</button>

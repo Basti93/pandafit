@@ -9,17 +9,17 @@ import { weekDates } from '../../src/shared/week-plan';
 import { App } from '../../src/web/App';
 import { openIdb } from '../../src/web/idbStore';
 
-// What each mounted portrait was given when it appeared (one entry per mount) and what it was given last.
-const log = vi.hoisted(() => ({ mounts: [] as { greet: string | null }[], last: { dayClip: null as string | null } }));
+// How often a portrait appeared, and the pose it was given last.
+const log = vi.hoisted(() => ({ mounts: 0, last: { pose: null as string | null } }));
 vi.mock('../../src/tracking/ui/PandaPortrait', () => ({
-  PandaPortrait: ({ gesture, dayClip }: { gesture?: { kind: string }; dayClip?: string | null }) => {
-    log.last.dayClip = dayClip ?? null;
-    useEffect(() => { log.mounts.push({ greet: gesture?.kind ?? null }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  PandaPortrait: ({ pose }: { pose?: string | null }) => {
+    log.last.pose = pose ?? null;
+    useEffect(() => { log.mounts++; }, []);
     return null;
   },
 }));
 
-beforeEach(() => { log.mounts.length = 0; log.last.dayClip = null; });
+beforeEach(() => { log.mounts = 0; log.last.pose = null; });
 afterEach(cleanup);
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -47,24 +47,23 @@ async function boot(seed: TrackedRecord[]) {
   await screen.findByRole('heading', { level: 1, name: 'Heute' });
 }
 
-describe('Panda on Heute', () => {
-  it('greets once when Heute opens and offers the clip of the day; Gestern and back does not greet again', async () => {
+describe('Bo on Heute', () => {
+  it('takes the pose of the day; Gestern and back opens the card anew', async () => {
     await boot([week('bike')]);
-    await waitFor(() => expect(log.mounts).toEqual([{ greet: 'greet' }]));
-    await waitFor(() => expect(log.last.dayClip).toBe('bike'));
+    await waitFor(() => expect(log.last.pose).toBe('bike'));
+    expect(log.mounts).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: 'Tag zurück' }));
     expect(screen.queryByLabelText('Satz vom Coach')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Tag vor' }));
     expect(await screen.findByLabelText('Satz vom Coach')).toBeTruthy();
-    expect(log.mounts).toEqual([{ greet: 'greet' }, { greet: null }]);
+    expect(log.mounts).toBe(2);
   });
-  it('a strength day offers flex, and a day without a plan offers no clip', async () => {
+  it('a strength day gives flex, and a day without a plan gives the greeting pose', async () => {
     await boot([week('gym')]);
-    await waitFor(() => expect(log.last.dayClip).toBe('flex'));
+    await waitFor(() => expect(log.last.pose).toBe('flex'));
     cleanup();
-    log.last.dayClip = 'x';
+    log.last.pose = 'x';
     await boot([]);
-    await waitFor(() => expect(log.mounts.length).toBeGreaterThan(0));
-    expect(log.last.dayClip).toBeNull();
+    await waitFor(() => expect(log.last.pose).toBe('greet'));
   });
 });

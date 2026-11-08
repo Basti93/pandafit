@@ -1,7 +1,12 @@
 import { pandaMotion } from './panda-motion';
 
 export type PandaGesture = 'greet' | 'listen' | 'nod' | 'breathe' | 'flex' | 'bike' | 'run' | 'yoga' | 'read' | 'knit';
-export type PandaHandle = { play(gesture: PandaGesture): void; dispose(): void };
+export type PandaHandle = {
+  play(gesture: PandaGesture): void;
+  /** Glide from the rest pose into the clip's strongest pose over `ms`, then keep it until dispose. */
+  hold(gesture: PandaGesture, ms: number): void;
+  dispose(): void;
+};
 
 type Pose = [x: number, y: number, rotation: number, scaleX: number, scaleY: number, opacity: number];
 type Key = [frame: number, value: number, easing: 0 | 1 | 2];
@@ -42,6 +47,21 @@ function valueAt(keys: Key[], frame: number): number {
   return value + (target - value) * (easing === 1 ? progress : ease(progress));
 }
 
+// How far a pose is from rest: positions in px, rotation, scale and opacity weighted so that each counts.
+const WEIGHT = [1, 40, 60, 60, 30];
+
+/** The frame where the clip is furthest from the rest pose: the pose Panda keeps. */
+export function holdFrame(clip: Clip, nodes: PandaMotion['nodes']): number {
+  let best = 0;
+  let bestScore = -1;
+  for (let frame = 0; frame <= clip.frames; frame++) {
+    let score = 0;
+    for (const [index, prop, keys] of clip.tracks) score += Math.abs(valueAt(keys, frame) - nodes[index]!.pose[prop]) * (prop === 0 ? 1 : WEIGHT[prop - 1]!);
+    if (score > bestScore) { bestScore = score; best = frame; }
+  }
+  return best;
+}
+
 /** Draw the rest pose immediately, then ask the browser for frames only while a gesture plays. */
 export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle> {
   if (typeof Path2D === 'undefined') throw new Error('Panda needs vector paths');
@@ -53,13 +73,21 @@ export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle
   let pending: number | null = null;
   let disposed = false;
 
-  function draw(clip?: Clip, frame = 0): void {
+  function posesAt(clip: Clip | undefined, frame: number): Map<number, Pose> {
     const poses = new Map<number, Pose>();
     for (const [index, prop, keys] of clip?.tracks ?? []) {
       const pose: Pose = poses.get(index) ?? [...nodes[index]!.pose];
       pose[prop] = valueAt(keys, frame);
       poses.set(index, pose);
     }
+    return poses;
+  }
+
+  function draw(clip?: Clip, frame = 0): void {
+    paint(posesAt(clip, frame));
+  }
+
+  function paint(poses: Map<number, Pose>): void {
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -116,6 +144,24 @@ export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle
         }
         draw(clip, frame);
         pending = requestAnimationFrame(advance);
+      }
+      pending = requestAnimationFrame(advance);
+    },
+    hold(gesture, ms) {
+      if (disposed) return;
+      cancel();
+      const target = posesAt(clips[gesture], holdFrame(clips[gesture], nodes));
+      let start: number | undefined;
+      function advance(now: number): void {
+        start ??= now;
+        const k = ease(Math.min(1, (now - start) / ms));
+        const poses = new Map<number, Pose>();
+        for (const [index, to] of target) {
+          const from = nodes[index]!.pose;
+          poses.set(index, from.map((v, i) => v + (to[i]! - v) * k) as Pose);
+        }
+        paint(poses);
+        pending = k < 1 ? requestAnimationFrame(advance) : null;
       }
       pending = requestAnimationFrame(advance);
     },
