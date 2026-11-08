@@ -175,9 +175,9 @@ export function RecipeView({ ctx, id, onClose, onDeleted }: { ctx: RecipeCtx; id
           <div className="rc-headline"><p className="muted rc-facts">{factsLine(d)}</p><Heart on={fav} title={d.title} onToggle={() => ctx.toggleFav(id, !fav)} /></div>
           {d.tags.length > 0 && <ul className="rc-tags" aria-label="Schlagwörter">{d.tags.map((t) => <li key={t}>{t.replace(' und ', ' & ')}</li>)}</ul>}
           <div className="rc-portions" role="group" aria-label="Portionen">
-            <button type="button" className="secondary" aria-label="Eine Portion weniger" disabled={portions <= 1} onClick={() => setPortions(portions - 1)}>−</button>
+            <button type="button" className="tk-step-btn" aria-label="Eine Portion weniger" disabled={portions <= 1} onClick={() => setPortions(portions - 1)}>−</button>
             <span aria-live="polite">{portions} {portions === 1 ? 'Portion' : 'Portionen'}</span>
-            <button type="button" className="secondary" aria-label="Eine Portion mehr" disabled={portions >= 4} onClick={() => setPortions(portions + 1)}>+</button>
+            <button type="button" className="tk-step-btn" aria-label="Eine Portion mehr" disabled={portions >= 4} onClick={() => setPortions(portions + 1)}>+</button>
           </div>
           <ul className="pm-ingredients">{d.ingredients.map((i, n) => <li key={n}><b>{recipeAmount(i, portions)}</b> {i.name}</li>)}</ul>
           <ol className="pm-steps">{d.steps.map((s, n) => <li key={n}>{s}</li>)}</ol>

@@ -55,9 +55,9 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
             {draft.exercises.map((e, i) => (
               <li key={i} className="tk-rowitem tk-stepper">
                 <span className="tk-row-title">{e.title}</span>
-                <button type="button" className="link tk-step-btn" aria-label={`Satz entfernen ${e.title}`} disabled={e.sets.length <= 1} onClick={() => setEx(i, (x) => ({ ...x, sets: x.sets.slice(0, -1) }))}>−</button>
+                <button type="button" className="tk-step-btn" aria-label={`Satz entfernen ${e.title}`} disabled={e.sets.length <= 1} onClick={() => setEx(i, (x) => ({ ...x, sets: x.sets.slice(0, -1) }))}>−</button>
                 <span className="tk-stepcount" aria-label={`${e.sets.length} Sätze`}>{e.sets.length} {e.sets.length === 1 ? 'Satz' : 'Sätze'}</span>
-                <button type="button" className="link tk-step-btn" aria-label={`Satz hinzufügen ${e.title}`} onClick={() => setEx(i, (x) => ({ ...x, sets: [...x.sets, emptySet()] }))}>+</button>
+                <button type="button" className="tk-step-btn" aria-label={`Satz hinzufügen ${e.title}`} onClick={() => setEx(i, (x) => ({ ...x, sets: [...x.sets, emptySet()] }))}>+</button>
                 <button type="button" className="danger-link tk-del-ex" aria-label={`Übung entfernen ${e.title}`} onClick={() => setEx(i, () => null)}>×</button>
               </li>
             ))}

@@ -9,6 +9,12 @@
  *   "link"               text: only quiet, optional or dismissing actions ("Heute nicht", "Abbrechen", "Details", "Später"). No side padding: it lines up with the text.
  *   "danger-link"        muted red text: only delete and remove. Use ConfirmLink; never next to the primary button.
  *   Exception: the ride display (LiveRide) keeps 64 px outline buttons for use on the bike.
+ * Other controls, one look each (CSS in ../tracking.css unless said):
+ *   Chips (.tk-chips > button, aria-pressed)  every toggle choice: thin pill, chosen = accent ring and bold. Only tappable things are pills; a tag is muted text.
+ *   Switch between sub pages (.tk-seg, web.css)  Kraft, Ausdauer, Essen Tage/Einkauf: one pill with segments.
+ *   Stepper (button.tk-step-btn)  − count +: a 44 px round outline button.
+ *   Round icon buttons (day arrows, profile)  44 px, card fill, thin line.
+ *   Callout (.tk-note)  card fill with a 4 px bar on the left, for a note or a warning; never a card inside a card.
  * Sheet: forms, pickers, chat and edit dialogs. Full screen, title, × top right, sticky action area, body behind stays put, Back or Escape closes.
  *   One close pattern: × closes; a sub-sheet (a full sheet over another, or `onBack`) has "‹ Zurück" top left instead. "Fertig" only where it really saves.
  *   It sits above all app chrome (header, profile button, rest bar, nav) with an opaque background.

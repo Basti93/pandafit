@@ -146,12 +146,14 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .tk-screen .tk-seg button[aria-pressed='true'] { background: var(--bg); color: var(--text); font-weight: 700; }
 /* The live workout hides the round profile button, so its ⋯ sits at the edge. */
 /* A sheet covers everything: the round profile button steps aside while one is open. */
+/* The round profile button has the size and the edge of the day arrows: 44 px, on the page padding. */
+@media (max-width: 400px) { .web-profile { right: calc(env(safe-area-inset-right) + .6rem); } }
 body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: none; }
 /* The title block leaves room for the round profile button at the top right. */
 .web-main .tk-pagehead, .web-main > .tk-screen > .tk-title { padding-right: 3.4rem; }
 
 /* Ride companion: a slim strip at the top while a ride runs, and the big ride display. */
-.web-live-strip { display: flex; align-items: center; gap: var(--space-2); width: calc(100% - 4.6rem); box-sizing: border-box; margin: calc(.55rem + env(safe-area-inset-top)) 3.6rem 0 1rem; min-height: 44px; padding: .4rem .9rem; border-radius: var(--radius-m); border: 1px solid var(--accent); background: var(--card); color: var(--text); font: inherit; font-size: var(--fs-m); font-weight: 600; cursor: pointer; }
+.web-live-strip { display: flex; align-items: center; gap: var(--space-2); width: calc(100% - 5rem); box-sizing: border-box; margin: calc(.55rem + env(safe-area-inset-top)) 4rem 0 1rem; min-height: 44px; padding: .4rem .9rem; border-radius: var(--radius-m); border: 1px solid var(--accent); background: var(--card); color: var(--text); font: inherit; font-size: var(--fs-m); font-weight: 600; cursor: pointer; }
 .web-live-text { flex: 1; text-align: left; }
 .web-live-go { flex: none; color: var(--muted); font-weight: 500; white-space: nowrap; }
 .web-main > .web-live-strip { position: relative; z-index: 3; }
