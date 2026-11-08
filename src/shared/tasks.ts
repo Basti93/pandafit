@@ -15,10 +15,10 @@ export type CoachTask = { from: TaskFrom; to: CoachId; text: string; lasting: bo
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const FROMS: readonly string[] = ['chat', ...COACH_IDS];
 
-/** The same request (from, to, text, time) is the same record on every Mac, so a migration or a second answer adds nothing. */
 /** A local calendar day as `YYYY-MM-DD`. */
 export const isDateKey = (x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && !Number.isNaN(new Date(`${x}T12:00:00`).getTime()) && new Date(`${x}T12:00:00`).getDate() === Number(x.slice(8));
 
+/** The same request (from, to, text, time) is the same record on every Mac, so a migration or a second answer adds nothing. */
 export const taskId = (t: Pick<CoachTask, 'from' | 'to' | 'text' | 'atMs'>): string => `task-${titleHash(`${t.from}\n${t.to}\n${t.text}\n${t.atMs}`)}`;
 
 /** The body of a `task` record, or null for anything else. */

@@ -3,6 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { CoachTasks, readTasks } from '../../src/coach/coach-tasks';
 import { taskAlive } from '../../src/shared/tasks';
+import { answerSchema } from '../../src/coach/coach';
+import { gymAnswerSchema } from '../../src/coach/gym/prompt';
+import { runAnswerSchema } from '../../src/coach/run/prompt';
+import { z } from 'zod';
 import { RecordStore } from '../../src/coach/tracking/store';
 
 const DAY = 86_400_000;
@@ -93,4 +97,18 @@ test('the hint shows the day of a dated task', () => {
   const t = board();
   t.add('p', { from: 'chat', to: 'gym', text: 'x', lasting: false, forDate: '2026-11-09' }, NOW);
   expect(t.hint('p', 'gym', NOW)).toContain('"bis":"2026-11-09"');
+});
+
+test('the answer schemas of bike, gym and run require forDate in a task', () => {
+  for (const schema of [answerSchema, gymAnswerSchema, runAnswerSchema]) {
+    const tasks = (z.toJSONSchema(schema) as unknown as { properties: { tasks: { items: { required: string[] } } } }).properties.tasks;
+    expect(tasks.items.required).toContain('forDate');
+  }
+});
+
+test('a task for a day that is already over is not taken', () => {
+  const t = board();
+  expect(t.add('p', { from: 'chat', to: 'gym', text: 'gestern', lasting: false, forDate: '2026-11-04' }, NOW)).toBe(false);
+  expect(t.add('p', { from: 'chat', to: 'gym', text: 'heute', lasting: false, forDate: '2026-11-05' }, NOW)).toBe(true);
+  expect(t.open('p', 'gym', NOW).map((x) => x.text)).toEqual(['heute']);
 });
