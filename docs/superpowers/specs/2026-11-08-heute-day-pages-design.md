@@ -98,7 +98,13 @@ Gestern verwendet dieselben Karten. Es gibt kein neues Design, nur andere Inhalt
   - Gibt es Beschwerden, schont der Satz und treibt nicht an.
 - **Prüfung ohne KI:** Die bestehenden Regeln aus `guardCoachText` gelten sinngemäß: keine fremden Zahlen und keine Diagnosewörter. Dazu kommt eine Liste von Druckwörtern (zum Beispiel „musst“, „endlich“, „keine Ausrede“). Höchstlänge 220 Zeichen. Fällt der Text durch, gilt die Ausweichlösung.
 - **Ausweichlösung ohne KI oder ohne Daten:** ein Spruch aus einer festen Liste von etwa 30 kurzen, ruhigen Motivationssprüchen im Code. Er wechselt täglich, bestimmt durch Datum und Profil. So gibt es immer einen Satz.
-- **Wann:** Der Satz entsteht beim ersten Coach-Durchlauf eines neuen Tages. Er wird nicht während einer offenen Fahrt geschrieben, wie alle KI-Aufrufe. Ändert sich der Tag später (ein Training ist fertig), bleibt der Satz für diesen Tag stehen.
+- **Wann:**
+  - Der erste Satz entsteht beim ersten Coach-Durchlauf eines neuen Tages.
+  - **Nach jedem fertigen Training des Tages** (Kraft, Rad, Lauf oder eine Garmin-Aktivität) schreibt der Coach einen neuen Satz. Er bezieht sich auf genau dieses Training, zum Beispiel was gut lief oder was es für die Woche bringt. Das ist Wunsch des Nutzers.
+  - Auslöser ist eine neue fertige Aktivität mit heutigem Datum. Der Coach merkt sich die Schlüssel der Aktivitäten, für die er schon geschrieben hat. So entsteht pro Training nur ein Satz, auch nach einem Neustart.
+  - Höchstens 4 KI-Aufrufe pro Profil und Tag. Danach bleibt der letzte Satz stehen.
+  - Kein KI-Aufruf während einer offenen Fahrt. Nach der Fahrt kommt der Satz zu dieser Fahrt.
+  - Fällt die KI aus, kommt ein fester Lob-Satz zum Training, zum Beispiel „Training geschafft. Schön, dass du drangeblieben bist.“. Erst wenn auch der fehlt, kommt der Tagesspruch.
 
 ## Rahmen und Vorgaben
 
@@ -112,6 +118,7 @@ Gestern verwendet dieselben Karten. Es gibt kein neues Design, nur andere Inhalt
 
 - Mockup A: Pfeile im Kopf, Wischen, nur gestern, heute und morgen.
 - Der Spruch kommt vom Coach und ist persönlich. Er nimmt Bezug auf den Fortschritt (Nutzer: „ja das passt“).
+- Nach einem Training hat der Coach einen neuen Satz zu diesem Training.
 - „Der Coach hat alles im Blick“ und „Absprachen gehalten“ fallen weg, weil sie eher kontrollieren als motivieren.
 - Gestern verwendet die Karten wieder und zeigt rein faktisch, was gemacht wurde.
 - Morgen zeigt Training und Essen, ohne Spruch und ohne Coach.
@@ -129,9 +136,9 @@ Gestern verwendet dieselben Karten. Es gibt kein neues Design, nur andere Inhalt
 1. **Essen gestern an einem Montag:** `mealWeeks` lädt zusätzlich die Vorwoche, wenn es sie gibt. Gibt es keinen Plan für gestern, fällt die Essenskarte auf Gestern weg.
 2. **Training gestern:** Die Titel kommen im selben Format wie in der Aktivitätenliste (`activityText` oder Gleichwertiges). Die Übungen stehen nur da, wenn ein lokaler `workout`-Record sie hat, sonst fehlt die Zeile.
 3. **Coach-Satz, technisch:**
-   - Es gibt einen eigenen Record je Profil mit `{ date, text, atMs }`.
+   - Es gibt einen eigenen Record je Profil mit `{ date, text, atMs, about? }`. `about` ist der Schlüssel der Aktivität, auf die sich der Satz bezieht.
    - Die Web-App zeigt `text` nur, wenn `date` der heutige Kalendertag ist. Sonst zeigt sie die Ausweichlösung.
-   - Erzeugt wird der Satz im Coach-Durchlauf von `runtime.ts`, nur wenn `coachHere` gilt und keine Fahrt offen ist (`noOpenRide`). Er entsteht höchstens einmal je Profil und Kalendertag und wird in einer eigenen Datei unter `coachDir` gemerkt, so wie `CoachTexts`.
+   - Erzeugt wird der Satz im Coach-Durchlauf von `runtime.ts`, nur wenn `coachHere` gilt und keine Fahrt offen ist (`noOpenRide`). Die geschriebenen Sätze und die schon besprochenen Aktivitäten merkt er sich in einer eigenen Datei unter `coachDir`, so wie `CoachTexts`.
 4. **`TodayMeals`:**
    - Die Komponente bekommt einen Tag als Parameter. Die Überschrift lautet „Essen gestern“, „Essen heute“ oder „Essen morgen“.
    - „Rest von …“ gilt relativ zum gezeigten Tag. „Heute vorkochen“ erscheint nur auf Heute.
