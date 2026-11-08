@@ -6,7 +6,7 @@ import { openStoreCount } from '../tracking/registry';
 import { PageHead, Row, RowList, Switch } from '../tracking/ui/kit';
 import { CoachPrefs } from '../tracking/ui/CoachPrefs';
 import { localDayKey, shortDate, timeLabel } from '../shared/dates';
-import { BikeScreen, bikeOf, hasBike as bikeVisible, ridesOf, CatalogScreen, HistoryScreen, RoutinesScreen, RunScreen, RunSettingsCard, StatsScreen, WorkoutScreen } from '../tracking/ui';
+import { BikeScreen, bikeOf, hasBike as bikeVisible, ridesOf, CatalogScreen, DevelopmentScreen, RoutinesScreen, RunScreen, RunSettingsCard, StatsScreen, WorkoutScreen } from '../tracking/ui';
 import { statsVisible } from '../tracking/ui/StatsScreen';
 import { CoachScreen } from '../tracking/ui/CoachScreen';
 import { TodayCard, todayPlan } from '../tracking/ui/TodayCard';
@@ -215,11 +215,11 @@ function Training({ port, env, resume }: { port: WebPort; env: Env; resume: bool
       {!(running && screen === 'workout') && <div className="tk-screen"><div className="tk-seg" role="group" aria-label="Kraft">
         <button type="button" aria-pressed={screen === 'workout'} onClick={() => { setRoutine(null); setScreen('workout'); }}>Training</button>
         <button type="button" aria-pressed={screen === 'routines'} onClick={() => setScreen('routines')}>Routinen</button>
-        <button type="button" aria-pressed={screen === 'history'} onClick={() => setScreen('history')}>Verlauf</button>
+        <button type="button" aria-pressed={screen === 'history'} onClick={() => setScreen('history')}>Entwicklung</button>
         <button type="button" aria-pressed={screen === 'catalog'} onClick={() => setScreen('catalog')}>Übungen</button>
       </div></div>}
       {screen === 'workout' && <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={resume} onActive={setRunning} plan={routine ? null : plan?.workout ?? null} routine={routine} now={env.now} newId={env.newId} />}
-      {screen === 'history' && <HistoryScreen port={port} now={env.now} />}
+      {screen === 'history' && <DevelopmentScreen port={port} />}
       {screen === 'catalog' && <CatalogScreen port={port} now={env.now} newId={env.newId} />}
       {screen === 'routines' && <RoutinesScreen port={port} now={env.now} newId={env.newId} onStart={(r) => { setRoutine(r); setScreen('workout'); }} />}
     </>
@@ -328,7 +328,7 @@ function PushSettings({ push, port, now }: { push: PushState; port: WebPort; now
 }
 
 type Tab = 'heute' | 'coach' | 'training' | 'essen' | 'ausdauer' | 'statistik' | 'profil';
-// At most six tabs: Verlauf lives in Kraft, the profile is the round button at the top right.
+// At most six tabs: the history is on Woche, Entwicklung lives in Kraft, the profile is the round button at the top right.
 const TABS: [Tab, string][] = [['heute', 'Heute'], ['coach', 'Woche'], ['training', 'Kraft'], ['essen', 'Essen'], ['ausdauer', 'Ausdauer'], ['statistik', 'Statistik']];
 
 type Endurance = 'rad' | 'laufen';

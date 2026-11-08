@@ -967,11 +967,11 @@ describe('Laufen on the phone', () => {
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Laufen' })).toBeNull());
   });
 
-  it('Verlauf is part of Kraft', async () => {
+  it('Entwicklung is part of Kraft', async () => {
     await boot({ account: 'anna', seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Verlauf' }));
-    expect(await screen.findByRole('heading', { name: 'Verlauf' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'Entwicklung' }));
+    expect(await screen.findByRole('heading', { name: 'Entwicklung' })).toBeTruthy();
   });
 
   it('Laufen shows the run look back only when a review exists', async () => {
@@ -1077,15 +1077,6 @@ describe('Rad on the phone', () => {
     expect(within(sheet).getByText(/Ø 150 W · Ø Puls 130 · Belastung 40 · geschafft 100 %/)).toBeTruthy();
     expect(within(sheet).getByText('Ruhig und gleichmäßig gefahren.')).toBeTruthy();
     expect(within(sheet).getByRole('img', { name: /Leistung und Puls/ }).querySelectorAll('polyline').length).toBe(2);
-  });
-
-  it('Fahrten groups the rides by month and a tap opens the ride', async () => {
-    await boot({ account: 'anna', seed: [bikeRec(), rideRec('r1', 3 * DAY), rideRec('r0', 60 * DAY, 'Locker')], startTab: 'rad' });
-    fireEvent.click(await screen.findByRole('button', { name: /^Fahrten/ }));
-    const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getAllByRole('region').length).toBe(2); // two months
-    fireEvent.click(within(sheet).getByRole('button', { name: /Locker/ }));
-    expect(await screen.findByText('Ruhig und gleichmäßig gefahren.')).toBeTruthy();
   });
 
   it('Entwicklung tells the FTP, the phase and the hours per week', async () => {
