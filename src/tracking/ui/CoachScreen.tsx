@@ -10,7 +10,8 @@ import { useTodayAdvice } from './frame-hooks';
 import { CoachPrefs } from './CoachPrefs';
 import { CoachChat } from './CoachChat';
 import { GoalSheet, goalSummary, RulesSheet, useRuleList } from './GoalRules';
-import { doneDays, mergedActivities, planRows } from './done-days';
+import { ActivityHistory } from './ActivityHistory';
+import { activityText, doneDays, mergedActivities, planRows } from './done-days';
 import { Week, dayName, runText } from './WeekList';
 import { openProposals } from './chat-open';
 import { useGoal, usePortRecords } from './hooks';
@@ -28,7 +29,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const workoutRecords = usePortRecords(port, 'workout').all;
   const statsRecords = usePortRecords(port, 'stats').all;
   const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | null>(null);
+  const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | null>(null);
   const [open, setOpen] = useState<'changed' | 'next' | null>(null);
   const goal = useGoal(port, now());
   const { rules, tasks } = useRuleList(port, now());
@@ -45,7 +46,9 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   // Without a week plan (or in Spontan) the week still shows Monday to today, from what was done.
   const spontaneous = fr.frame.mode === 'spontaneous';
   const rowDates = current && !spontaneous ? weekDates : weekDates.filter((d) => d <= today);
-  const dayRows = doneDays(rowDates, today, spontaneous ? null : current?.days ?? null, mergedActivities(activityRecords, workoutRecords));
+  const merged = mergedActivities(activityRecords, workoutRecords);
+  const dayRows = doneDays(rowDates, today, spontaneous ? null : current?.days ?? null, merged);
+  const newestActivity = merged.items[0];
   const recent = Object.values(fr.ratings).filter((r) => r.sports?.length).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 4)
     .map((r) => `${dayName(r.date).slice(0, 2)} ${r.sports!.map((k) => SPORT_LABEL[k]).join(' + ')}`).join(' · ');
 
@@ -100,12 +103,16 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
           )}
         </section>
       )}
-      <RowList>{rows}</RowList>
+      <RowList>
+        <Row key="history" title="Verlauf" value={newestActivity ? <span className="tk-ellipsis">{activityText(newestActivity)}</span> : undefined} onClick={() => setSheet('history')} />
+        {rows}
+      </RowList>
       {error && <p role="alert" className="tk-note">{error}</p>}
       {showPrefs && <section className="card"><CoachPrefs port={port} now={now} /></section>}
       {sheet === 'goal' && <GoalSheet port={port} now={now} onClose={() => setSheet(null)} frame={fr.frame}
         onMode={(m) => void fr.setMode(m).catch(saveFailed)} onMinutes={(m) => void fr.setMinutes(m).catch(saveFailed)} />}
       {sheet === 'rules' && <RulesSheet port={port} now={now} newId={newId} onClose={() => setSheet(null)} />}
+      {sheet === 'history' && <ActivityHistory port={port} now={now} onClose={() => setSheet(null)} />}
       {sheet === 'chat' && <CoachChat port={port} now={now} newId={newId} onClose={() => setSheet(null)} />}
     </div>
   );

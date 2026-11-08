@@ -128,6 +128,20 @@ function Detail({ port, store, history, onBack, onDeleted, latest, next }: { por
   );
 }
 
+/** One finished workout from the shared history: the detail view with its own store, history and next steps. */
+export function WorkoutDetail({ port, record, now, onBack }: { port: TrackingPort; record: TrackedRecord; now: () => number; onBack: () => void }) {
+  const records = usePortRecords(port, 'workout').records;
+  const history = useMemo(() => dedupeSessions((records ?? []).map((r) => r.body as LoggedWorkout)), [records]);
+  const statsRecords = usePortRecords(port, 'stats').records;
+  const next = useMemo(() => {
+    const r = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);
+    return (r && readStats(r.body)?.next) || [];
+  }, [statsRecords]);
+  const [store] = useState(() => acquireStore(port, record, now));
+  const newest = history.reduce<LoggedWorkout | null>((a, w) => (!a || (w.endMs ?? w.startMs) > (a.endMs ?? a.startMs) ? w : a), null);
+  return <Detail port={port} store={store} history={history} latest={newest !== null && record.id === newest.id} next={next} onBack={onBack} onDeleted={onBack} />;
+}
+
 export function HistoryScreen({ port, now = Date.now }: { port: TrackingPort; now?: () => number; newId?: () => string }) {
   const q = usePortRecords(port, 'workout');
   const records = q.records;

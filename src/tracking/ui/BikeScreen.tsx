@@ -33,7 +33,7 @@ function RideChart({ ride }: { ride: RideBody }) {
   );
 }
 
-function RideSheet({ ride, onClose }: { ride: BikeRide; onClose: () => void }) {
+export function RideSheet({ ride, onClose }: { ride: BikeRide; onClose: () => void }) {
   const r = ride.body;
   return (
     <Sheet title={rideName(r)} onClose={onClose}>
