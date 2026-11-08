@@ -61,9 +61,9 @@ Rule (one per control; written into `src/tracking/ui/kit/index.ts` as the kit's 
 - `secondary` (outline): every other real action and every jump to another place („Mit dem Coach reden“, „Ansehen“, „Im Profil auswählen“, „Woche planen“).
 - `link` (text): only quiet, optional or dismissing actions („Heute nicht“, „Abbrechen“, „Details“, „Später“).
 - `danger-link`: only delete/remove.
-- Shared pieces: cards, section headings and rows use the kit classes/components; no screen-local copy of the same look.
+- Shared pieces, audited the same way as buttons (user, 08.11.2026: „auch andere elemente prüfen wie cards, titles, etc“): page titles, section headings (`tk-section` vs h2 vs uppercase labels), cards (padding, radius, background, nested cards), rows and row lists, chips/pills, form fields, sheets, empty states, muted/secondary text, icons-as-buttons. Each kind gets one look and, where it repeats, one kit component or class; screen-local copies of the same look go.
 
-- [ ] Audit every `<button>` in `src/web/**` and `src/tracking/ui/**` against the rule; list mismatches with file:line in the report.
+- [ ] Audit every `<button>` and every element kind listed above in `src/web/**` and `src/tracking/ui/**`, using all shots (light, dark, 360 px); list mismatches with file:line in the report.
 - [ ] Fix them; consolidate duplicated card/heading/row styles into the kit; update tests that pin classes.
 - [ ] Shots before/after (light, dark, 360 px) of every changed screen for the controller.
 - [ ] Commit `feat(web): one look per kind of control`.
