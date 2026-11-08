@@ -6,12 +6,11 @@ import { readStats, STATS_ID } from '../../shared/stats';
 import { newestNotes } from '../../shared/change-notes';
 import { dateLabel } from './labels';
 import { localDayKey, timeLabel } from '../../shared/dates';
-import { dateKey } from '../../shared/day-rating';
 import { useTodayAdvice } from './frame-hooks';
-import { ridesOf } from './bike-view';
 import { CoachPrefs } from './CoachPrefs';
 import { CoachChat } from './CoachChat';
 import { GoalSheet, goalSummary, RulesSheet, useRuleList } from './GoalRules';
+import { doneDays, mergedActivities, planRows } from './done-days';
 import { Week, dayName, runText } from './WeekList';
 import { openProposals } from './chat-open';
 import { useGoal, usePortRecords } from './hooks';
@@ -25,7 +24,8 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const changeRecs = usePortRecords(port, 'change').all;
   const ruleRecs = usePortRecords(port, 'rule').all;
   const runRecords = usePortRecords(port, 'run').all;
-  const rode = new Set(ridesOf(usePortRecords(port, 'ride').records).map((r) => dateKey(r.body.startedAtMs)));
+  const activityRecords = usePortRecords(port, 'activities').all;
+  const workoutRecords = usePortRecords(port, 'workout').all;
   const statsRecords = usePortRecords(port, 'stats').all;
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | null>(null);
@@ -41,6 +41,10 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const next = planOfWeek(plans ?? [], addDays(monday, 7));
   // The run coach's runs sit on their days; without a week plan they are listed on their own.
   const runs = runView(runRecords ?? [], now()).week?.runs ?? [];
+  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  // Without a week plan (or in Spontan) the week still shows Monday to today, from what was done.
+  const rowDates = current ? weekDates : weekDates.filter((d) => d <= today);
+  const dayRows = doneDays(rowDates, today, current?.days ?? null, mergedActivities(activityRecords, workoutRecords));
   const recent = Object.values(fr.ratings).filter((r) => r.sports?.length).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 4)
     .map((r) => `${dayName(r.date).slice(0, 2)} ${r.sports!.map((k) => SPORT_LABEL[k]).join(' + ')}`).join(' · ');
 
@@ -64,7 +68,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
     ),
     next && fr.frame.mode !== 'spontaneous' && (
       <Row key="next" title="Nächste Woche" expanded={open === 'next'} onClick={() => setOpen(open === 'next' ? null : 'next')}>
-        <Week days={next.days} label="Wochenplan nächste Woche" runs={runs} />
+        <Week rows={planRows(next.days)} label="Wochenplan nächste Woche" runs={runs} />
       </Row>
     ),
     <Row key="goal" title="Mein Ziel" value={<span className="tk-ellipsis">{goalSummary(goal)}</span>} onClick={() => setSheet('goal')} />,
@@ -77,13 +81,17 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
     <div className="tk-screen tk-coach">
       <PageHead title="Woche" />
       {fr.frame.mode === 'spontaneous' ? (
-        <section className="card" aria-label="Heute">
-          <h2>Heute: {fr.advice.line}</h2>
-          <p className="muted">Zuletzt: {recent || 'noch nichts'}</p>
-        </section>
+        <>
+          <section className="card" aria-label="Heute">
+            <h2>Heute: {fr.advice.line}</h2>
+            <p className="muted">Zuletzt: {recent || 'noch nichts'}</p>
+          </section>
+          <section className="card" aria-label="Wochenübersicht"><Week rows={dayRows} label="Diese Woche" today={today} /></section>
+        </>
       ) : (
         <section className="card" aria-label="Wochenplan">
-          {current ? <Week days={current.days} label="Wochenplan diese Woche" today={today} runs={runs} rode={rode} /> : <p className="muted">Noch kein Wochenplan. Schreib dem Coach, wie deine Woche aussehen soll.</p>}
+          <Week rows={dayRows} label="Wochenplan diese Woche" today={today} runs={runs} />
+          {!current && <p className="muted">Noch kein Wochenplan. Schreib dem Coach, wie deine Woche aussehen soll.</p>}
           {!current && runs.length > 0 && (
             <ul className="tk-week" aria-label="Läufe diese Woche">
               {runs.map((r) => <li key={r.date + r.kind}><b>{runDay(r.date)}</b> <span>{runText(r)}</span></li>)}

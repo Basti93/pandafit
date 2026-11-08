@@ -1134,13 +1134,4 @@ describe('Rad on the phone', () => {
     const card = screen.getByRole('region', { name: /^Heute/ });
     expect(within(card).queryByRole('button', { name: 'Ansehen' })).toBeNull();
   });
-
-  it('Woche marks the days with a ride as gefahren', async () => {
-    const rode = rideRec('r1', 0);
-    await boot({ account: 'anna', seed: [bikeRec(), await bikeWeek(), rode] });
-    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
-    const week = await screen.findByRole('list', { name: 'Wochenplan diese Woche' });
-    const rows = within(week).getAllByRole('listitem').filter((li) => li.textContent?.includes('gefahren'));
-    expect(rows.length).toBe(1);
-  });
 });

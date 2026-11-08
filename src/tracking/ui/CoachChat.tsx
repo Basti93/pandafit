@@ -9,6 +9,7 @@ import { NextChangeCard } from './NextChangeCard';
 import { RuleCard } from './RuleCard';
 import { ChatBubble, ChatNote } from './ChatBubble';
 import { Week } from './WeekList';
+import { planRows } from './done-days';
 import { openProposals, storedWeek, weekAnswer } from './chat-open';
 import { useCatalog, usePortRecords } from './hooks';
 import { Sheet } from './kit';
@@ -45,7 +46,7 @@ function PinnedWeek({ m, warnings, loading, onTake, onDecline }: { m: WeekEntry;
   return (
     <div className="tk-pin" role="group" aria-label={`Vorschlag Wochenplan ${when(p)}`}>
       <b>Vorschlag: Woche {when(p)}</b>
-      <Week days={p.days} label={`Vorschlag für die Woche ab ${shortDateOfKey(p.weekStart)}`} />
+      <Week rows={planRows(p.days)} label={`Vorschlag für die Woche ab ${shortDateOfKey(p.weekStart)}`} />
       {warnings && warnings.length > 0 && <p className="tk-note">Mehr als unsere Regeln für Erholung empfehlen: {warnings.join(' ')}</p>}
       <div className="tk-row">
         <button type="button" disabled={loading} onClick={onTake}>{TAKE}</button>
