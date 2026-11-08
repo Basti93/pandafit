@@ -50,24 +50,106 @@ test('does not start without tokens or during a ride', () => {
   riding.sync.tick('p1');
   expect(riding.children).toHaveLength(0);
 });
-test('runs every 3 hours until the history is complete, then every 6', async () => {
+test('runs a full sync every 3 hours until the history is complete, then every 6', async () => {
   const { sync, children, env, finish } = setup();
+  const full = () => children.filter((c) => !c.args.includes('--quick')).length;
+  // Ticks in steps of one hour; quick checks in between are finished at once.
+  const hours = async (n: number) => {
+    for (let i = 0; i < n; i++) {
+      env.now += HOUR;
+      sync.tick('p1');
+      if (sync.info('p1').running) await finish(0, { status: 'ok' });
+    }
+  };
   sync.tick('p1');
   await finish(0, { status: 'ok', complete: false });
   expect(sync.info('p1')).toMatchObject({ running: false, complete: false, lastRunMs: env.now, problem: null });
-  env.now += 3 * HOUR - 1;
+  await hours(2);
+  expect(full()).toBe(1);
+  env.now += HOUR;
+  sync.tick('p1');
+  expect(full()).toBe(2);
+  await finish(0, { status: 'ok', complete: true });
+  await hours(5);
+  expect(full()).toBe(2);
+  await hours(1);
+  expect(full()).toBe(3);
+});
+test('quick check runs one hour after the last try and passes --quick', async () => {
+  const { sync, children, env, finish } = setup();
+  sync.tick('p1');
+  expect(children[0].args).not.toContain('--quick');
+  await finish(0, { status: 'ok', complete: true });
+  env.now += HOUR - 1;
   sync.tick('p1');
   expect(children).toHaveLength(1);
   env.now += 1;
   sync.tick('p1');
   expect(children).toHaveLength(2);
+  expect(children[1].args).toContain('--quick');
+  await finish(0, { status: 'ok' });
+  env.now += HOUR - 1;
+  sync.tick('p1');
+  expect(children).toHaveLength(2);
+  env.now += 1;
+  sync.tick('p1');
+  expect(children).toHaveLength(3);
+  expect(children[2].args).toContain('--quick');
+});
+test('quick check leaves lastTryMs and complete alone', async () => {
+  const { sync, children, env, finish } = setup();
+  sync.tick('p1');
+  const first = env.now;
+  await finish(0, { status: 'ok', complete: false });
+  env.now += HOUR;
+  sync.tick('p1');
+  expect(children[1].args).toContain('--quick');
+  env.now += 5;
   await finish(0, { status: 'ok', complete: true });
+  expect(sync.info('p1')).toMatchObject({ complete: false, lastRunMs: env.now, problem: null });
+  const file = JSON.parse(fs.readFileSync(path.join((sync as any).dataDir('p1'), 'sync-meta.json'), 'utf8'));
+  expect(file).toMatchObject({ lastTryMs: first, lastQuickMs: first + HOUR, complete: false });
+  // A failed quick check changes nothing but lastQuickMs.
+  env.now += HOUR;
+  sync.tick('p1');
+  await finish(1);
+  expect(sync.info('p1').problem).toBeNull();
+  expect(JSON.parse(fs.readFileSync(path.join((sync as any).dataDir('p1'), 'sync-meta.json'), 'utf8'))).toMatchObject({ lastTryMs: first, lastQuickMs: env.now });
+});
+test('full sync wins when it is due', async () => {
+  const { sync, children, env, finish } = setup();
+  sync.tick('p1');
+  await finish(0, { status: 'ok', complete: false });
   env.now += 3 * HOUR;
   sync.tick('p1');
   expect(children).toHaveLength(2);
-  env.now += 3 * HOUR;
+  expect(children[1].args).not.toContain('--quick');
+});
+test('rate limit from a quick check blocks both for six hours', async () => {
+  const { sync, children, env, finish } = setup();
+  sync.tick('p1');
+  await finish(0, { status: 'ok', complete: true });
+  env.now += HOUR;
+  sync.tick('p1');
+  const started = env.now;
+  await finish(11, { status: 'rate-limit' });
+  expect(sync.info('p1').problem).toBe('rate-limit');
+  env.now = started + 6 * HOUR - 1;
+  sync.tick('p1');
+  expect(children).toHaveLength(2);
+  env.now = started + 6 * HOUR;
   sync.tick('p1');
   expect(children).toHaveLength(3);
+  expect(children[2].args).not.toContain('--quick');
+});
+test('no quick check while a ride is open', async () => {
+  const { sync, children, env, finish } = setup();
+  sync.tick('p1');
+  await finish(0, { status: 'ok', complete: true });
+  env.now += HOUR;
+  env.ride = true;
+  sync.tick('p1');
+  expect(children).toHaveLength(1);
 });
 test('a ride stops a running sync, without counting as a failure, and it resumes afterwards', async () => {
   const { sync, children, env } = setup();
