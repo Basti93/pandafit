@@ -13,6 +13,16 @@ import { placements, RecipesSheet, RecipeView, type RecipeCtx } from './RecipesS
 
 export type Week = { plan: MealPlan; state: MealState };
 
+/** The plan of the week `ms` lies in (any week, also the previous and the next) and the day index; null without a readable plan. */
+export function mealDayOf(records: TrackedRecord[] | null, ms: number): { week: Week; day: number } | null {
+  const w = weekOf(ms);
+  const rec = (records ?? []).find((r) => r.id === `week-${w}` && !r.deleted);
+  const plan = rec ? readMealPlan(rec.body) : null;
+  if (!plan) return null;
+  const stateRec = (records ?? []).find((r) => r.id === stateRecordId(w) && !r.deleted);
+  return { week: { plan, state: readMealState(stateRec?.body) }, day: dayIndex(ms) };
+}
+
 /** The readable plans of this and next week, from the account's records. */
 export function mealWeeks(records: TrackedRecord[] | null, now: number): Week[] {
   const current = weekOf(now);
@@ -105,7 +115,7 @@ export function MealThumb({ recipeId }: { recipeId?: string; title?: string }) {
 }
 
 /** What a meal shows opened, in Essen under its row and on Heute in a sheet: recipe, how long it keeps, who eats. */
-export function MealDetail({ week, meal, onEater, onView, me }: { week: Week; meal: Meal; onEater: (person: string, on: boolean) => void; onView: (recipeId: string) => void; me?: string }) {
+export function MealDetail({ week, meal, onEater, onView, me, readOnly }: { week: Week; meal: Meal; onEater: (person: string, on: boolean) => void; onView: (recipeId: string) => void; me?: string; /** A day that is over: who eats is shown, not changed. */ readOnly?: boolean }) {
   const k = mealKey(meal.day, meal.slot);
   const eaters = eatersOf(week.plan, week.state, k);
   const reuses = week.plan.meals.filter((m) => m.reuseOf === k);
@@ -130,7 +140,7 @@ export function MealDetail({ week, meal, onEater, onView, me }: { week: Week; me
       {extras.length > 0 && <p className="muted pm-meta">{extras.join(' · ')}</p>}
       {!meal.dish.recipeId && meal.dish.source === 'rezept' && meal.dish.sourceUrl && <p className="muted pm-meta pm-source"><a href={meal.dish.sourceUrl} target="_blank" rel="noopener noreferrer">Originalrezept ↗</a></p>}
       {askedBy && <p className="pm-asked">auf Wunsch von {askedBy.name}</p>}
-      <div className="tk-row pm-people" role="group" aria-label="Wer isst mit">
+      {readOnly ? <p className="muted pm-meta">Isst mit: {people.filter((p) => eaters.includes(p.id)).map((p) => p.name).join(', ') || 'niemand'}</p> : <div className="tk-row pm-people" role="group" aria-label="Wer isst mit">
         <span className="muted">Isst mit:</span>
         {people.map((p) => {
           const on = eaters.includes(p.id);
@@ -140,7 +150,7 @@ export function MealDetail({ week, meal, onEater, onView, me }: { week: Week; me
             </button>
           );
         })}
-      </div>
+      </div>}
     </>
   );
 }
@@ -254,29 +264,35 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
   return { records, weeks, change, favs, recipeCtx };
 }
 
-/** Today's meals on Heute, calm: a row per slot, a quiet line for what is cooked today for later, (the Essen tab is the way into the plan). */
-export function TodayMeals({ port, now, fetchFn, account }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string }) {
-  const { weeks, change, recipeCtx } = useMealData(port, now, fetchFn);
+const DAY_WORD = { '-1': 'gestern', '0': 'heute', '1': 'morgen' } as const;
+const PREV_WORD = { '-1': 'vorgestern', '0': 'gestern', '1': 'heute' } as const;
+
+/** The meals of the shown day on Heute, calm: a row per slot, a quiet line for what is cooked today for later (the Essen tab is the way into the plan). Yesterday is read only. */
+export function DayMeals({ port, now, fetchFn, account, offset }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string; offset: -1 | 0 | 1 }) {
+  const { records, change, recipeCtx } = useMealData(port, now, fetchFn);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
-  const t = now();
-  const week = weeks.find((w) => w.plan.week === weekOf(t));
-  const today = dayIndex(t);
-  if (!week) return null;
-  const meals = SLOTS.flatMap((slot) => week.plan.meals.filter((m) => m.day === today && m.slot === slot));
-  if (meals.length === 0) return null;
+  const shown = new Date(now()); shown.setDate(shown.getDate() + offset);
+  const found = useMemo(() => mealDayOf(records, shown.getTime()), [records, shown.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
+  const heading = `Essen ${DAY_WORD[String(offset) as '0']}`;
+  const week = found?.week;
+  const today = found?.day ?? 0;
+  const meals = week ? SLOTS.flatMap((slot) => week.plan.meals.filter((m) => m.day === today && m.slot === slot)) : [];
+  if (!week || meals.length === 0) {
+    return offset === 1 ? <section aria-label={heading}><h2 className="tk-section">{heading}</h2><p className="muted">Für morgen gibt es noch keinen Essensplan.</p></section> : null;
+  }
   const open = meals.find((m) => mealKey(m.day, m.slot) === openKey);
   const label = (m: Meal) => {
     if (!m.reuseOf) return undefined; // the time it takes belongs in the plan, not on Heute
     const from = Number(m.reuseOf.split('-')[0]);
-    return from === today ? 'vorgekocht' : from === today - 1 ? 'Rest von gestern' : `Rest von ${DAY_SHORT[from]}`;
+    return from === today ? 'vorgekocht' : from === today - 1 ? `Rest von ${PREV_WORD[String(offset) as '0']}` : `Rest von ${DAY_SHORT[from]}`;
   };
   // Cooked today, eaten again later (a later day, or the evening for a midday dish): "Heute vorkochen".
-  const ahead = meals.filter((m) => !m.reuseOf && week.plan.meals.some((r) => r.reuseOf === mealKey(m.day, m.slot) && (r.day > m.day || SLOTS.indexOf(r.slot) > SLOTS.indexOf(m.slot))));
+  const ahead = offset === 0 ? meals.filter((m) => !m.reuseOf && week.plan.meals.some((r) => r.reuseOf === mealKey(m.day, m.slot) && (r.day > m.day || SLOTS.indexOf(r.slot) > SLOTS.indexOf(m.slot)))) : [];
   return (
-    <section aria-label="Essen heute">
-      <h2 className="tk-section">Essen heute</h2>
-      <RowList label="Essen heute">
+    <section aria-label={heading}>
+      <h2 className="tk-section">{heading}</h2>
+      <RowList label={heading}>
         {meals.map((m) => (
           <Row key={m.slot} onClick={() => setOpenKey(mealKey(m.day, m.slot))} value={label(m)}
             title={<span className="pm-titleline"><MealThumb recipeId={m.dish.recipeId} title={m.dish.title} /><span className="pm-rowtitle"><b>{SLOT_LABEL[m.slot]}</b> · {m.dish.title}{m.dish.side && <span className="muted"> + {m.dish.side.name}</span>}</span></span>} />
@@ -285,13 +301,16 @@ export function TodayMeals({ port, now, fetchFn, account }: { port: WebPort; now
       {ahead.length > 0 && <p className="muted">Heute vorkochen: {ahead.map((m) => m.dish.title).join(', ')}</p>}
       {open && (
         <Sheet title={open.dish.title} onClose={() => setOpenKey(null)}>
-          <MealDetail week={week} meal={open} onEater={(person, on) => void change(week.plan.week, (s, at) => withEater(s, mealKey(open.day, open.slot), person, on, at))} onView={setViewId} me={account} />
+          <MealDetail week={week} meal={open} readOnly={offset === -1} onEater={(person, on) => void change(week.plan.week, (s, at) => withEater(s, mealKey(open.day, open.slot), person, on, at))} onView={setViewId} me={account} />
         </Sheet>
       )}
       {viewId && <RecipeView ctx={recipeCtx} id={viewId} onClose={() => setViewId(null)} />}
     </section>
   );
 }
+
+/** Today's meals: DayMeals at offset 0. */
+export const TodayMeals = (p: Omit<Parameters<typeof DayMeals>[0], 'offset'>) => <DayMeals {...p} offset={0} />;
 
 /** The meal plan on the phone: one day at a time with a day picker, and the shopping list. Ticks and who eats go back to the Mac. */
 export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string }) {
