@@ -264,6 +264,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
                   <ExpandMark open={isOpen} />
                 </button>
               </h2>
+              <button type="button" className="link tk-info-btn" aria-label={`Anleitung ${e.title}`} aria-expanded={showInfo} onClick={() => { if (!showInfo) setOpenRid(e.rid); toggleInfo(e.rid); }}><span aria-hidden="true">i</span></button>
               <button type="button" className="link tk-more" aria-label={`Mehr zu ${e.title}`} aria-expanded={menu === e.rid} onClick={() => { if (menu !== e.rid) setOpenRid(e.rid); setMenuMore(false); setMenu(menu === e.rid ? null : e.rid); }}>⋯</button>
             </div>
             {menu === e.rid && (
@@ -286,7 +287,6 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
                     placeholder="wählen" options={[{ value: '', label: 'wählen' }, ...partners.map((p) => ({ value: p.rid, label: p.title }))]} /></li>}
                   {e.supersetId !== null && item('Aus Superset lösen', () => { setMenu(null); setMenuMore(false); act((x) => unlinkSuperset(x, e.rid)); }, { aria: `${e.title} aus dem Superset lösen` })}
                   {w.exercises.length > 1 && item('Reihenfolge ändern', () => { setMenu(null); setMenuMore(false); setReorder({ rid: e.rid, pointerId: -1, y: 0 }); }, { aria: `Reihenfolge ändern ${e.title}` })}
-                  {item('Anleitung', () => { setMenu(null); setMenuMore(false); toggleInfo(e.rid); }, { aria: `Anleitung ${e.title}`, expanded: showInfo })}
                 </ul>
                 <div className="tk-links"><ConfirmLink label="Entfernen" question={store.current().exercises.find((x) => x.rid === e.rid)?.sets.some((s) => s.doneMs !== null) ? 'Die erledigten Sätze dieser Übung gehen dabei weg. Wirklich entfernen?' : 'Übung wirklich entfernen?'}
                   onConfirm={() => { setMenu(null); setMenuMore(false); act((x) => removeExercise(x, e.rid)); }} /></div>

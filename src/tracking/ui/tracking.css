@@ -488,3 +488,6 @@
 .tk-run .tk-entry { margin-top: 1rem; }
 .tk-run .tk-weekcard { display: flex; flex-direction: column; gap: .5rem; }
 
+.tk-screen button.tk-info-btn { flex: none; align-self: center; width: 44px; min-height: 44px; padding: 0; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.tk-info-btn span { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border: 1.5px solid currentColor; border-radius: 50%; font: italic 700 .95rem/1 Georgia, serif; color: var(--muted, #aebba9); }
+.tk-info-btn[aria-expanded='true'] span { color: var(--text, #f6eedd); background: var(--card, transparent); }
