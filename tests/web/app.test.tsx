@@ -171,11 +171,17 @@ describe('web app', () => {
     await waitFor(() => expect(a.onWorkoutOpen).toHaveBeenCalledWith('open'));
   });
 
+  it('an open workout from an earlier day says so in its heading', async () => {
+    const open: TrackedRecord = { kind: 'workout', id: 'w-old', updatedMs: NOW - 500, deleted: false, body: { id: 'w-old', title: 'Pull', startMs: NOW - 26 * 3_600_000, endMs: null, source: 'pandafit', exercises: [] } };
+    await boot({ seed: [plan(NOW - 1000), open] });
+    expect(await screen.findByRole('heading', { name: /^Pull läuft – gestartet gestern \d\d:\d\d$/ })).toBeTruthy();
+  });
+
   it('an open workout shows on Heute with "Weitermachen", which leads to the workout', async () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w-open', updatedMs: NOW - 500, deleted: false, body: { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] } };
     await boot({ seed: [plan(NOW - 1000), open] });
     expect(await screen.findByRole('heading', { name: /^Pull läuft – gestartet \d\d:\d\d$/ })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Anders heute?' })).toBeNull(); // no day card beside the open workout
+    expect(screen.queryByRole('button', { name: 'Etwas anderes heute?' })).toBeNull(); // no day card beside the open workout
     fireEvent.click(screen.getByRole('button', { name: 'Weitermachen' }));
     // one tap: the workout itself opens, not the start screen with its card
     expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();

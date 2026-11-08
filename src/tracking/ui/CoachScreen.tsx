@@ -61,10 +61,11 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const visible = thread.filter((m) => !(m.takes || m.declines || m.undoes));
   const last = visible[visible.length - 1];
   const asking = waitingMessage(thread) !== null;
-  const preview = waiting ? 'Vorschlag wartet' : asking ? 'Der Coach denkt nach …' : last ? <>{last.text} <small>{timeLabel(last.atMs)}</small></> : 'Schreib dem Coach';
+  // While a proposal waits, the card above says so; the row then shows no second "waiting".
+  const preview = asking ? 'Der Coach denkt nach …' : last ? <>{last.text} <small>{timeLabel(last.atMs)}</small></> : 'Schreib dem Coach';
   // Fixed order: Nächste Woche, Ziel und Planung, Was der Coach beachtet, Coach. The last change is the Coach row's second line.
   const changed = notes[0] ? <small className="tk-row-sub muted tk-clip">Zuletzt geändert: {notes[0].text}{notes[0].reason ? ` – ${notes[0].reason}` : ''}</small> : null;
-  const coachRow = <Row key="coach" title={<>Coach{changed}</>} value={<span className={waiting ? 'tk-ellipsis tk-waiting' : 'tk-ellipsis'}>{preview}</span>} onClick={() => setSheet('chat')} />;
+  const coachRow = <Row key="coach" title={<>Coach{changed}</>} value={<span className="tk-ellipsis">{preview}</span>} onClick={() => setSheet('chat')} />;
   const ruleCount = rules.length + tasks.length;
   const rest = [
     next && fr.frame.mode !== 'spontaneous' && (

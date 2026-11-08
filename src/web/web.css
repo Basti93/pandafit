@@ -50,6 +50,7 @@ body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemF
 .tk-screen .pm-days button.today { border-color: var(--accent); }
 .tk-screen .pm-days button[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--ink); opacity: 1; }
 .tk-screen .pm-days button[aria-selected='true'] b { color: var(--ink); }
+.tk-screen .pm-days button[aria-selected='true'] span { color: var(--ink); }
 .tk-screen h2.pm-dayname { font-size: 1.3rem; margin-top: .2rem; }
 .pm-dayname small { color: var(--muted); font-size: .85rem; font-weight: 600; }
 .tk-screen .pm-meal { border-top: 4px solid var(--slot); gap: .45rem; }

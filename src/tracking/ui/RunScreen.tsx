@@ -201,7 +201,7 @@ function ManualForm({ plannedOn, now, onSave, onClose }: { plannedOn: (date: str
       <div className="tk-form">
         <label className="tk-field">{testDay ? 'Strecke in den 30 Minuten' : 'Strecke in km'}<input inputMode="decimal" autoFocus placeholder="z. B. 5,2" value={km} onChange={(e) => setKm(e.target.value)} /></label>
         <label className="tk-field">Dauer in Minuten<input inputMode="decimal" placeholder="z. B. 32" value={minutes} onChange={(e) => setMinutes(e.target.value)} /></label>
-        {!ok && missing && <p className="muted" role="status">{missing}.</p>}
+        {!ok && missing && (km.trim() !== '' || minutes.trim() !== '') && <p className="muted" role="status">{missing}.</p>}
         {testDay && <p className="muted">An diesem Tag ist ein Testlauf geplant. Trag die Strecke ein, die du in 30 Minuten geschafft hast, in km.</p>}
       </div>
       <RowList>
@@ -254,7 +254,7 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
   const firstQuestions = status.needsAnswers && !answered;
   const close = () => setSheet(null);
   const saveSettings = (answers: Answers, days: number[]) => {
-    close(); setSavedNote(`Plan angepasst: ${dayList(days)}.`);
+    close(); setSavedNote(`Plan wird angepasst: ${dayList(days)}.`);
     void writeSettings(port, all, now(), (old) => ({ type: 'settings', on: old?.on ?? true, weekdays: days, answers })).catch(() => setSavedNote(null));
   };
   const numbers = status.numbers;

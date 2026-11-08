@@ -507,7 +507,7 @@ async function main() {
     await closeDialog();
     await page.waitForTimeout(400);
   });
-  await step('heute-anders', async () => { await page.getByRole('button', { name: /^Anders heute/ }).click(); await shot('heute-anders-heute'); await closeDialog(); });
+  await step('heute-anders', async () => { await page.getByRole('button', { name: /^Etwas anderes heute/ }).click(); await shot('heute-anders-heute'); await closeDialog(); });
   await step('heute-beweglichkeit', async () => { await page.getByRole('button', { name: /^Beweglichkeit/ }).click(); await page.waitForTimeout(300); await shot('heute-beweglichkeit-sheet'); await closeDialog(); });
 
   // Woche: the week and three rows; goal, rules and the coach chat are sheets.

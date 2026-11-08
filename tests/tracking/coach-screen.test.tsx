@@ -27,14 +27,15 @@ test('Woche shows the week and the rows Mein Ziel, Regeln and Coach; the old for
   expect(screen.queryByLabelText('Planung')).toBeNull();
 });
 
-test('the Coach row previews the last message and says when a proposal waits', async () => {
+test('the Coach row previews the last message and shows no second "waiting" while the card does', async () => {
   const { port } = fakePort([riderMsg, { ...coachMsg, body: { ...(coachMsg.body as object), proposal: undefined, text: 'Alles klar.' } }]);
   render(<CoachScreen port={port} {...env} />);
   expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).toContain('Alles klar.');
   cleanup();
   const waiting = fakePort([riderMsg, coachMsg]);
   render(<CoachScreen port={waiting.port} {...env} />);
-  expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).toContain('Vorschlag wartet');
+  expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).not.toContain('Vorschlag wartet');
+  expect(screen.getAllByText('Vorschlag wartet')).toHaveLength(1);
 });
 
 test('the chat opens as a sheet with the input in it, and closes on × and on Escape', async () => {

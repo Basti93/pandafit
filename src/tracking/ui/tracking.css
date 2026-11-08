@@ -286,7 +286,7 @@
 .tk-screen .tk-focus button { background: transparent; border: 1px solid var(--line, #33493c); border-radius: 999px; color: var(--text, #f6eedd); text-decoration: none; font-weight: 500; min-height: 40px; padding: .3rem .8rem; font-size: .9rem; }
 .tk-screen .tk-focus button[aria-pressed="true"] { background: var(--card, #1c2f26); border-color: var(--accent, #e8964a); font-weight: 700; }
 .tk-screen .tk-focus button:disabled { opacity: .45; }
-/* Heute: chips for "Heute nur", the quiet "Anders heute?" toggle. */
+/* Heute: chips for "Heute nur", the quiet "Etwas anderes heute?" toggle. */
 .tk-chips { display: flex; flex-wrap: wrap; gap: .5rem; }
 .tk-screen .tk-chips button { min-height: 44px; padding: .4rem .9rem; border-radius: 999px; font-weight: 500; }
 .tk-screen .tk-chips button[aria-pressed='true'] { border-color: var(--accent, #e8964a); color: var(--accent, #e8964a); font-weight: 700; }
@@ -433,6 +433,7 @@
 /* Rad: the ride chart and the hours per week (milestone O). */
 .tk-ridechart { margin: 1rem 0 0; }
 .tk-ridechart svg { display: block; width: 100%; height: 6rem; background: transparent; border: 1px solid var(--line, #33493c); border-radius: .5rem; }
+.tk-ridechart .tk-spark-box svg { flex: 1; min-width: 0; width: auto; }
 .tk-ridehead { display: flex; flex-direction: column; gap: .5rem; }
 .tk-ridehead p { margin: 0; }
 .tk-ridehead .tk-ridefacts { font-size: .9rem; }
@@ -486,3 +487,4 @@
 .tk-screen .card button.tk-cardbtn { min-height: 0; padding: 0; align-items: center; }
 .tk-run .tk-entry { margin-top: 1rem; }
 .tk-run .tk-weekcard { display: flex; flex-direction: column; gap: .5rem; }
+

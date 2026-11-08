@@ -67,11 +67,9 @@ export function HealthSheet({ health, onClose }: { health: HealthBody; onClose: 
           <RowList label="Hinweis"><Row title={<span className="tk-health-doctor">{doctor.text}</span>} onClick={rhr ? () => setOpen('rhr') : undefined} /></RowList>
         </div>
       ) : (
-        <>
-          <p className="tk-health-line">{firstLine(health)}</p>
-          {standLine(health) && <p className="muted tk-small">{standLine(health)}</p>}
-        </>
+        <p className="tk-health-line">{firstLine(health)}</p>
       )}
+      {standLine(health) && <p className="muted tk-small">{standLine(health)}</p>}
       {rows.length > 0 && (
         <RowList>
           {rows.map((r) => (

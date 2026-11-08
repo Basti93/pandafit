@@ -12,7 +12,7 @@
  *   One close pattern: × closes; a sub-sheet (a full sheet over another, or `onBack`) has "‹ Zurück" top left instead. "Fertig" only where it really saves.
  *   It sits above all app chrome (header, profile button, rest bar, nav) with an opaque background.
  *   size="small": a bottom sheet of auto height (max 70 %) over a dimmed backdrop, for option lists of up to about six entries
- *   (studio, Anderes Training, the menus, Anders heute, ChoiceRow). A sheet that opens in the same commit as another closes never pops the new one.
+ *   (studio, Anderes Training, the menus, Etwas anderes heute, ChoiceRow). A sheet that opens in the same commit as another closes never pops the new one.
  * PageHead: the page title, an optional muted subtitle, and room for the profile button; 16 px before the first card.
  *   One pattern: the title on top, a switch (.tk-seg) below it, no second title for the chosen half.
  * Switch: a row with the label left and the switch right, the whole row taps. It replaces checkboxes.

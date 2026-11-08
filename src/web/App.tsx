@@ -119,7 +119,13 @@ export class ErrorBoundary extends Component<{ children: ReactNode; onTraining: 
 /** "Samstag, 7. November" */
 const todayTitle = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 /** "14:05", or with the day when it was not today. */
-const sinceText = (ms: number, now: number): string => (localDayKey(ms) === localDayKey(now) ? timeLabel(ms) : `${shortDate(ms)} ${timeLabel(ms)}`);
+/** "14:44" today, "gestern 13:34" the day before, "Sa., 13:34" earlier: an old open workout shows as old. */
+export const sinceText = (ms: number, now: number): string => {
+  if (localDayKey(ms) === localDayKey(now)) return timeLabel(ms);
+  const day = new Date(now); day.setDate(day.getDate() - 1);
+  if (localDayKey(ms) === localDayKey(day.getTime())) return `gestern ${timeLabel(ms)}`;
+  return `${new Date(ms).toLocaleDateString('de-DE', { weekday: 'short' })}, ${timeLabel(ms)}`;
+};
 
 function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
   const plans = usePortRecords(port, 'plan').records;

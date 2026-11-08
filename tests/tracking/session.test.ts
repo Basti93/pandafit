@@ -149,6 +149,23 @@ test('finishing a workout left open for hours ends it at its last confirmed set,
   expect(fresh.status === 'finished' && fresh.workout.endMs).toBe(1_000_000 + 2 * H);
 });
 
+test('a workout left open long before its first set is dated by that set; a normal one keeps its start', () => {
+  const H = 3_600_000;
+  const base = { ...startFromPlan(plan, [], 100 * H, 'w1') };
+  const late = 124 * H; // 24 h after the start
+  const a = confirmSet(base, ex0(base), set0(base), late);
+  const b = confirmSet(a, ex0(a), set0(a, 1), late + 55 * 60_000);
+  const r = finish(b, late + 56 * 60_000);
+  expect(r.status === 'finished' && r.workout.startMs).toBe(late);
+  expect(r.status === 'finished' && r.workout.endMs! - r.workout.startMs).toBe(56 * 60_000);
+  expect(r.status === 'finished' && r.workout.exercises[0].sets.map((s) => s.doneMs)).toEqual([late, late + 55 * 60_000]); // sets untouched
+  const c = finish(a, late + 3_000, 'complete');
+  expect(c.status === 'finished' && c.workout.startMs).toBe(late);
+  const normal = confirmSet(base, ex0(base), set0(base), 100 * H + 5 * 60_000);
+  const n = finish(normal, 100 * H + 30 * 60_000, 'omit');
+  expect(n.status === 'finished' && n.workout.startMs).toBe(100 * H);
+});
+
 test('decimal comma and dot both parse; display uses a comma', () => {
   expect(parseDecimal('62,5')).toBe(62.5);
   expect(parseDecimal('62.5')).toBe(62.5);

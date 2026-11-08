@@ -45,7 +45,7 @@ test('trained today, in the evening: one line, done', async () => {
   expect((await screen.findByRole('heading')).textContent).toBe('Heute erledigt – gut gemacht.');
 });
 
-test('without a plan the suggestion, the way to it and "Anders heute?" are one card; the sheet says what a time does', async () => {
+test('without a plan the suggestion, the way to it and "Etwas anderes heute?" are one card; the sheet says what a time does', async () => {
   const { fakePort } = await import('./fake-port');
   const { port } = fakePort([]);
   const { container } = render(<TodayCard port={port} weekplans={[]} runs={[]} nowMs={NOW} gym={<button type="button">Zum Krafttraining</button>} />);
@@ -53,7 +53,7 @@ test('without a plan the suggestion, the way to it and "Anders heute?" are one c
   expect(container.querySelectorAll('.card').length).toBe(1);
   expect(screen.getByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
   expect(screen.getByText(/^ein ruhiger Einstieg/)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Anders heute?' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Etwas anderes heute?' }));
   expect(screen.getByText('Der Coach schlägt dir dann etwas für diese Zeit vor.')).toBeTruthy();
 });
 test('a rest day says it once', () => {

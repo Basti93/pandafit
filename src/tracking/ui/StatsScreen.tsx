@@ -166,7 +166,7 @@ export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort;
       {any && v.verdicts.length > 0 && <ul className="tk-verdicts">{v.verdicts.map((t) => <li key={t}>{muscles && PAIR_VERDICT.test(t) ? <button type="button" className="link" onClick={() => setSheet('muscles')}>{verdictText(t)} ›</button> : verdictText(t)}</li>)}</ul>}
       <RowList label="Rückblick">
         <Row title="Verlauf" value={latest ? <span className="tk-ellipsis">{latest}</span> : undefined} onClick={onHistory} />
-        {muscles && <Row title="Muskeln" value={gaps > 0 ? `${gaps} zu kurz` : 'ausgewogen'} onClick={() => setSheet('muscles')} />}
+        {muscles && <Row title="Muskeln" value={gaps > 0 ? `${gaps} ${gaps === 1 ? 'Lücke' : 'Lücken'}` : 'ausgewogen'} onClick={() => setSheet('muscles')} />}
         {health && <Row title="Gesundheit" value={healthWord(health)} onClick={() => setSheet('health')} />}
         {any && <Row title="Zeit pro Woche" onClick={() => setSheet('time')} />}
       </RowList>

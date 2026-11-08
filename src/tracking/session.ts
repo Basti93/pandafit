@@ -333,6 +333,9 @@ export function swapExercise(w: TrackedWorkout, ex: string, e: Exercise, history
 export const restRemainingS = (w: TrackedWorkout, nowMs: number): number =>
   w.rest ? Math.max(0, Math.ceil((w.rest.startMs + w.rest.durationS * 1000 - nowMs) / 1000)) : 0;
 
+/** A first confirmed set later than this after the start moves the start to that set. */
+const LATE_FIRST_SET_MS = 3 * 3600_000;
+
 /**
  * Asks before anything is dropped. 'discard' only works when no set is confirmed; otherwise it is ignored and the
  * normal question comes. A workout whose last confirmed set is over 6 hours old ends at that set, not now.
@@ -359,7 +362,10 @@ export function finish(w: TrackedWorkout, nowMs: number, choice?: FinishChoice):
     : w.exercises;
   // The undo data of a coach change is of no use once the workout is over; the ids stay (a second start must not apply them again).
   const changes = w.changes?.map((c) => ({ id: c.id, atMs: c.atMs, prior: [], pos: [], after: [] })); // anchor left out too
-  return { status: 'finished', workout: { ...w, exercises, endMs, rest: null, ...(changes ? { changes } : {}) } };
+  // Started long before the first confirmed set (left open overnight): the workout dates from that set. Only startMs changes, never the sets.
+  const first = confirmed ? Math.min(...doneTimes) : null;
+  const startMs = first !== null && first - w.startMs > LATE_FIRST_SET_MS ? first : w.startMs;
+  return { status: 'finished', workout: { ...w, startMs, exercises, endMs, rest: null, ...(changes ? { changes } : {}) } };
 }
 
 /** A running time: "1:39", past an hour "1:02:05". */

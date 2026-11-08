@@ -23,13 +23,19 @@ function RideChart({ ride }: { ride: RideBody }) {
     const lo = zero ? 0 : Math.min(...vals) - 10, hi = Math.max(...vals) * (zero ? 1.1 : 1), span = Math.max(1, hi - lo);
     return pts.flatMap((p) => { const v = pick(p); return v === null ? [] : [`${((p.t / tMax) * W).toFixed(1)},${(H - 4 - ((v - lo) / span) * (H - 8)).toFixed(1)}`]; }).join(' ');
   };
+  const powers = pts.map((p) => p.powerW).filter((v): v is number => v !== null);
+  const hrs = pts.map((p) => p.hrBpm).filter((v): v is number => v !== null);
+  const num = (v: number) => Math.round(v).toLocaleString('de-DE');
   return (
     <figure className="tk-ridechart" aria-label="Verlauf der Fahrt">
-      <p className="tk-chart-legend tk-small"><span className="tk-chart-key-power">Leistung</span> · <span className="tk-chart-key-hr">Puls</span></p>
+      <p className="tk-chart-legend tk-small"><span className="tk-chart-key-power">Leistung</span> · <span className="tk-chart-key-hr">Puls{hrs.length > 1 ? ` ${num(Math.min(...hrs))}–${num(Math.max(...hrs))}` : ''}</span></p>
+      <div className="tk-spark-box">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Leistung und Puls über die Fahrt" preserveAspectRatio="none">
         <polyline className="tk-chart-hr" points={line((p) => p.hrBpm)} fill="none" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
         <polyline className="tk-chart-power" points={line((p) => p.powerW, true)} fill="none" strokeWidth="2" vectorEffect="non-scaling-stroke" />
       </svg>
+      {powers.length > 1 && <span className="tk-spark-scale" aria-hidden="true"><span>{num(Math.max(...powers))} W</span><span>0</span></span>}
+      </div>
       <figcaption className="muted tk-small"><span>{timeLabel(ride.startedAtMs)}</span><span>{timeLabel(ride.startedAtMs + ride.durationS * 1000)}</span></figcaption>
     </figure>
   );

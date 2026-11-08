@@ -28,7 +28,7 @@ type Advice = ReturnType<typeof useTodayAdvice>;
 
 /**
  * Heute from the week plan: what today is for, with the one thing to do for it. `gym` is the strength plan, shown on a strength day.
- * "Anders heute?" is a row that opens "Heute nur … Min" in a small sheet. Without a plan for today it shows nothing; the caller keeps its own view then.
+ * "Etwas anderes heute?" is a row that opens "Heute nur … Min" in a small sheet. Without a plan for today it shows nothing; the caller keeps its own view then.
  * With a `port` it also knows the frame: the advice (in spontaneous mode instead of the plan) and "Heute nur".
  */
 export function TodayCard(props: Props & { port?: TrackingPort }) {
@@ -40,15 +40,15 @@ function Connected({ port, ...props }: Props & { port: TrackingPort }) {
   return <View {...props} a={a} />;
 }
 
-/** "Anders heute?": a button under the card; it opens a small sheet with the minute chips for today. */
+/** "Etwas anderes heute?": a button under the card; it opens a small sheet with the minute chips for today. */
 function Other({ a, date }: { a?: Advice; date: string }) {
   const [open, setOpen] = useState(false);
   if (!a) return null;
   return (
     <>
-      <button type="button" className="secondary tk-other" aria-haspopup="dialog" onClick={() => setOpen(true)}>Anders heute?</button>
+      <button type="button" className="secondary tk-other" aria-haspopup="dialog" onClick={() => setOpen(true)}>Etwas anderes heute?</button>
       {open && (
-        <Sheet size="small" title="Anders heute?" onClose={() => setOpen(false)}>
+        <Sheet size="small" title="Etwas anderes heute?" onClose={() => setOpen(false)}>
           <p className="muted">Der Coach schlägt dir dann etwas für diese Zeit vor.</p>
           <TodayOnly frame={a.frame} date={date} onChange={(m) => { setOpen(false); void a.setToday(m).catch(() => {}); }} />
         </Sheet>

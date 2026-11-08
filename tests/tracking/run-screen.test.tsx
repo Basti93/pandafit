@@ -439,7 +439,7 @@ test('after Speichern the questions close at once, before the coach answers', as
   fireEvent.click(await screen.findByRole('button', { name: 'Speichern' }));
   await waitFor(() => expect(bodyOf(map, 'settings')?.weekdays).toEqual([1, 3, 5]));
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull());
-  expect(screen.getByRole('status').textContent).toMatch(/Plan angepasst: Di, Do und Sa/);
+  expect(screen.getByRole('status').textContent).toMatch(/Plan wird angepasst: Di, Do und Sa/);
 });
 
 test('days and answers can be changed later, starting from what was saved', async () => {
@@ -515,6 +515,8 @@ test('the run entry says what is missing instead of a mute disabled button', asy
   render(<RunScreen port={port} {...ids} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Lauf eintragen' }));
   const sheet = within(await screen.findByRole('dialog', { name: 'Lauf eintragen' }));
+  expect(sheet.queryByText(/fehlen?\./)).toBeNull(); // nothing typed yet: no scolding
+  fireEvent.change(sheet.getByLabelText('Strecke in km'), { target: { value: 'x' } });
   expect(sheet.getByText('Strecke und Dauer fehlen.')).toBeTruthy();
   fireEvent.change(sheet.getByLabelText('Strecke in km'), { target: { value: '5' } });
   expect(sheet.getByText('Dauer fehlt.')).toBeTruthy();
