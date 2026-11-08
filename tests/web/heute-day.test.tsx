@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SAYINGS } from '../../src/shared/day-text';
@@ -66,6 +66,8 @@ describe('Heute as a day page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Panda fragen' }));
     expect(await screen.findByLabelText('Nachricht an den Coach')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 1, name: 'Heute' })).toBeNull();
+    // The same chat sheet as the "Coach" row on Woche: one dialog named Coach that holds the composer.
+    expect(within(screen.getByRole('dialog', { name: 'Coach' })).getByLabelText('Nachricht an den Coach')).toBeTruthy();
   });
   it('an open synced workout comes first: "Weitermachen" opens it, no "Ansehen und anpassen", Panda stays below', async () => {
     const open = rec('workout', 'w-open', { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] });

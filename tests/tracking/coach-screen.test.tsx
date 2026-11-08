@@ -157,3 +157,14 @@ test('a waiting proposal gets a card under the week with Ansehen, which opens th
   fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
   expect(await screen.findByRole('dialog', { name: 'Coach' })).toBeTruthy();
 });
+
+test('Escape in the proposal sheet closes only that sheet: the chat and its composer stay open and no plan changes', async () => {
+  const { port, map } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  await openChat();
+  await openProposals();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Vorschl(ag|äge)$/ })).toBeNull());
+  expect(within(screen.getByRole('dialog', { name: 'Coach' })).getByLabelText('Nachricht an den Coach')).toBeTruthy();
+  expect(records(map, 'weekplan')).toHaveLength(0); // looking is not taking
+});

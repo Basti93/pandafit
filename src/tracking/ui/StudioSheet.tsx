@@ -34,7 +34,7 @@ export function StudioSheet({ value, known, onChange, onRename, onAway, onClose 
   };
   const typing = mode !== 'pick';
   return (
-    <Sheet size={typing ? 'full' : 'small'} title="Studio" onClose={onClose} actions={typing ? <button type="button" disabled={!studioName(text)} onClick={save}>Speichern</button> : undefined}>
+    <Sheet size={typing ? 'full' : 'small'} title="Studio" display onClose={onClose} actions={typing ? <button type="button" disabled={!studioName(text)} onClick={save}>Speichern</button> : undefined}>
       {typing ? (
         <input type="text" autoFocus maxLength={40} value={text} aria-label={mode === 'new' ? 'Name des neuen Studios' : 'Neuer Name des Studios'}
           onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
