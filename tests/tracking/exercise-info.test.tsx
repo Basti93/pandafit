@@ -36,7 +36,7 @@ describe('workout: Anleitung behind the info icon on the card', () => {
     expect(note.textContent).toMatch(/Füße etwas mehr als hüftbreit/);
     expect(note.textContent).toContain('Quelle: wger.de, CC-BY-SA 3.0');
     expect(screen.queryByRole('button', { name: 'Kniebeuge tauschen' })).toBeNull(); // the menu closed
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung ausblenden' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
     expect(screen.queryByRole('note', { name: 'Anleitung Kniebeuge' })).toBeNull();
   });
 

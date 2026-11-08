@@ -304,7 +304,6 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
                   <ExerciseInfo title={e.title} description={description} icon={icon}
                     images={own ? exerciseImages(own.id) : []} video={videoSearchUrl({ title: e.title, hevyTitle: own?.hevyTitle })}>
                     <StepLine title={e.title} step={stepHere(e.exerciseId, equipment, history, studioHere, overrides, studios.renames)} onChoose={(kg) => chooseStep(e.exerciseId, kg)} />
-                    <button type="button" className="link tk-info-close" aria-label="Anleitung ausblenden" onClick={() => toggleInfo(e.rid)}>Ausblenden</button>
                   </ExerciseInfo>
                 )}
                 {lastTime && <p className="muted tk-sub">{`Zuletzt ${lastTime}`}</p>}

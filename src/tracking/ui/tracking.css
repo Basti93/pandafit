@@ -93,7 +93,6 @@
 .tk-info { background: var(--field); border: 1px solid var(--line); border-radius: var(--radius-m); padding: .7rem .9rem; display: flex; flex-direction: column; gap: .4rem; line-height: 1.45; }
 .tk-screen .card .tk-info p, .tk-info p { margin: 0; }
 .tk-info .tk-credit { font-size: .75rem; color: var(--muted); }
-.tk-screen button.tk-info-close { align-self: flex-end; min-height: 36px; padding: .3rem .9rem; font-size: var(--fs-s); }
 .tk-pick-item { display: flex; flex-direction: column; gap: .3rem; }
 .tk-pick-row { display: flex; align-items: stretch; }
 .tk-pick-row .tk-rowbtn { flex: 1; min-width: 0; }

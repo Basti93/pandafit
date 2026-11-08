@@ -62,9 +62,7 @@ export function PlanSheet({ port, workout, dateText, reason, note, notice, outlo
             </div>
             {showInfo && (
               <ExerciseInfo title={e.title} description={describeExercise(e, catalog)} icon={icon}
-                images={own ? exerciseImages(own.id) : []} video={videoSearchUrl({ title: e.title, hevyTitle: own?.hevyTitle })}>
-                <button type="button" className="link tk-info-close" aria-label="Anleitung ausblenden" onClick={() => setInfo(null)}>Ausblenden</button>
-              </ExerciseInfo>
+                images={own ? exerciseImages(own.id) : []} video={videoSearchUrl({ title: e.title, hevyTitle: own?.hevyTitle })} />
             )}
             {e.sets.length > 0 && <SetHead timed={timed} />}
             {e.sets.map((s, si) => (
