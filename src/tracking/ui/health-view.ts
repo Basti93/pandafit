@@ -1,5 +1,5 @@
 import { HEALTH_ID, readHealth, type HealthBody, type HealthFinding, type HealthWeek } from '../../shared/health';
-import { shortNumericDate } from '../../shared/dates';
+import { shortDate } from '../../shared/dates';
 import type { TrackedRecord } from '../../shared/records';
 import { RULES, SOURCES, type PolicySource } from '../../shared/training-policy';
 
@@ -82,5 +82,5 @@ const HEALTH_SOURCE_IDS = (): Set<string> => new Set(RULES.filter((r) => r.domai
 /** The sources behind the health rules, as the register lists them. */
 export const healthSources = (): PolicySource[] => { const ids = HEALTH_SOURCE_IDS(); return SOURCES.filter((s) => ids.has(s.id)); };
 
-/** "Stand: Mo., 3.11." when the note knows its time; null otherwise. */
-export const standLine = (h: HealthBody): string | null => (h.coachText?.atMs !== undefined ? `Stand: ${shortNumericDate(h.coachText.atMs)}` : null);
+/** "Stand: Mo., 3. Nov." when the note knows its time; null otherwise. */
+export const standLine = (h: HealthBody): string | null => (h.coachText?.atMs !== undefined ? `Stand: ${shortDate(h.coachText.atMs)}` : null);
