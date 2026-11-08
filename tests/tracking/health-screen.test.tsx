@@ -27,25 +27,27 @@ async function show(seed: TrackedRecord[]) {
   await screen.findByRole('heading', { name: 'Rückblick' });
   await new Promise((r) => setTimeout(r, 20));
 }
-const openHealth = () => { fireEvent.click(screen.getByRole('button', { name: 'Gesundheit' })); return screen.getByRole('dialog', { name: 'Gesundheit' }); };
+const openHealth = () => { fireEvent.click(screen.getByRole('button', { name: /^Gesundheit/ })); return screen.getByRole('dialog', { name: 'Gesundheit' }); };
 
 test('the Gesundheit row exists only with a health record', async () => {
   await show([statsRec]);
-  expect(screen.queryByRole('button', { name: 'Gesundheit' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Gesundheit/ })).toBeNull();
   cleanup();
   await show([statsRec, healthRec(body())]);
-  expect(screen.getByRole('button', { name: 'Gesundheit' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /^Gesundheit/ })).toBeTruthy();
 });
 
 test('the sheet starts with the coach text, then rows with a sentence each, and the muted line with the sources', async () => {
   await show([statsRec, healthRec(body({ coachText: { week: '2026-11-02', text: 'Eine ruhige Woche, nichts Besonderes.' } }))]);
   const sheet = openHealth();
   expect(within(sheet).getByText('Eine ruhige Woche, nichts Besonderes.')).toBeTruthy();
-  for (const t of ['Ruhepuls', 'Fitness', 'Bewegung im Alltag', 'Schlaf & HRV']) expect(within(sheet).getByRole('button', { name: t })).toBeTruthy();
-  expect(within(sheet).getByText(/^Keine Diagnose\. Grundlage: WHO-Empfehlungen und Studien zu Ruhepuls, Fitness und Schritten\.$/)).toBeTruthy();
+  for (const t of ['Ruhepuls', 'Fitness', 'Bewegung im Alltag', 'Schlaf & HRV']) expect(within(sheet).getByRole('button', { name: new RegExp(`^${t}`) })).toBeTruthy();
+  expect(within(sheet).getByText(/^Keine Diagnose ·/)).toBeTruthy();
+  // one word per row, no numbers
+  expect(within(sheet).getByRole('button', { name: /^Ruhepuls\s*ruhig/ })).toBeTruthy();
   // a sentence and the lines only when a row is opened
   expect(within(sheet).queryByRole('img', { name: 'Letzte 52 Wochen' })).toBeNull();
-  fireEvent.click(within(sheet).getByRole('button', { name: 'Ruhepuls' }));
+  fireEvent.click(within(sheet).getByRole('button', { name: /^Ruhepuls/ }));
   expect(within(sheet).getByText('Im Ruhepuls fällt gerade nichts auf.')).toBeTruthy();
   expect(within(sheet).getAllByRole('img').length).toBeGreaterThan(0);
 });
@@ -63,13 +65,29 @@ test('an arzt finding is one calm row at the top, with the wording ärztlich abk
   const hint = within(sheet).getByRole('list', { name: 'Hinweis' });
   expect(hint.textContent).toContain('ärztlich abklären');
   expect(sheet.textContent).not.toMatch(/Diagnose:|Erkrankung|du hast/i);
+  // A warning stands alone: no calm overall sentence beside it; the card leads to Ruhepuls.
+  expect(sheet.textContent).not.toMatch(/ruhige Woche|7\.400/);
+  fireEvent.click(within(hint).getByRole('button'));
+  expect(within(sheet).getAllByText(/ärztlich abklären/)).toHaveLength(2); // the card and the opened Ruhepuls row
+});
+
+test('the Rückblick row says the state in one word: ruhig, or Hinweis with a doctor finding', async () => {
+  await show([statsRec, healthRec(body())]);
+  expect(screen.getByRole('button', { name: /^Gesundheit\s*ruhig/ })).toBeTruthy();
+  cleanup();
+  await show([statsRec, healthRec(body({ findings: [f('health.rhr-high', 'Dein Ruhepuls lag an mehreren der letzten Tage über 100. Das lässt du am besten ärztlich abklären.', 'arzt')] }))]);
+  expect(screen.getByRole('button', { name: /^Gesundheit\s*Hinweis/ })).toBeTruthy();
 });
 
 test('the sources sheet lists the register sources of the health rules', async () => {
   await show([statsRec, healthRec(body())]);
   fireEvent.click(within(openHealth()).getByRole('button', { name: /^Quellen/ }));
   const sources = screen.getByRole('dialog', { name: 'Quellen' });
-  for (const t of [/Buchheit 2014/, /Paluch et al\. 2022/, /Bull et al\. 2020/, /Kodama et al\. 2009/, /Zhang et al\. 2016/]) expect(within(sources).getByText(t)).toBeTruthy();
+  // The title is the topic in plain words; one row is open at a time, so read each one open.
+  let seen = '';
+  for (const b of within(sources).getAllByRole('button').filter((x) => x.hasAttribute('aria-expanded'))) { fireEvent.click(b); seen += within(sources).getByRole('list', { name: 'Quellen' }).textContent; }
+  expect(seen).not.toMatch(/DOI|PMID/);
+  for (const t of [/Buchheit 2014/, /Paluch et al\. 2022/, /Bull et al\. 2020/, /Kodama et al\. 2009/, /Zhang et al\. 2016/]) expect(seen).toMatch(t);
   // A page inside the sheet: "‹ Zurück" instead of ×, and it leads back to Gesundheit.
   expect(within(sources).queryByRole('button', { name: 'Schließen' })).toBeNull();
   fireEvent.click(within(sources).getByRole('button', { name: '‹ Zurück' }));

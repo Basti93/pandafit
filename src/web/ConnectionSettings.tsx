@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DEFAULT_MEAL_SETTINGS, SLOT_LABEL, SLOTS, type Diet, type Habit, type MealSettings } from '../shared/meals';
 import type { GarminSyncInfo, HevyStatus } from '../shared/coach-protocol';
 import { ChoiceRow, ConfirmLink, Row, RowList, Sheet, Switch } from '../tracking/ui/kit';
@@ -10,7 +10,7 @@ const HEVY_PROBLEM = { invalid: 'Der Schlüssel funktioniert nicht. Ist er volls
 const GARMIN_PROBLEM: Record<string, string> = { credentials: 'E-Mail oder Passwort wurde abgelehnt.', 'rate-limit': 'Garmin blockt gerade zu viele Versuche. Bitte später nochmal.', setup: 'Das Garmin-Hilfsprogramm fehlt auf dem Server.', failed: 'Das hat nicht geklappt. Bitte später nochmal.' };
 const SENT_NO = 'Gerade keine Verbindung zum Coach.';
 
-const hevyValue = (s: HevyStatus): string => (s.state === 'connected' ? 'verbunden' : s.state === 'connecting' ? 'verbindet…' : 'nicht verbunden');
+const hevyValue = (s: HevyStatus): string => (s.state === 'connected' ? 'verbunden' : s.state === 'connecting' ? 'verbindet…' : 'optional');
 const syncLine = (s: GarminSyncInfo | null): string | null => {
   if (!s) return null;
   if (s.running) return 'Daten werden geholt';
@@ -96,36 +96,52 @@ function MealsSheet({ settings, save, onClose }: { settings: MealSettings; save:
   );
 }
 
-/**
- * What the Mac app used to hold and the server coach uses: Hevy, Garmin, Krafttraining and the meal plan. Rows plus sheets.
- * Nothing shows while the account has no coach on the server, or while it is not reached.
- */
 const n = (x: number) => x.toLocaleString('de-DE');
 /** "Rezeptsammlung: 734 von 1.000" until the collection is used for planning, then "Rezeptsammlung: 1.512 Rezepte". */
 export const collectionLine = (r: { collection: number; unlock: number }): string =>
   r.collection >= r.unlock ? `Rezeptsammlung: ${n(r.collection)} ${r.collection === 1 ? 'Rezept' : 'Rezepte'}` : `Rezeptsammlung: ${n(r.collection)} von ${n(r.unlock)}`;
 
-export function ConnectionSettings({ link }: { link: CoachLink }) {
+/** A titled group of the profile: the title above, a thin line only between groups. */
+export function ProfileGroup({ title, children }: { title: string; children: ReactNode }) {
+  return <section className="tk-pgroup"><h2 className="tk-section">{title}</h2>{children}</section>;
+}
+
+const withHint = (title: string, hint: string) => <>{title}<small className="tk-row-sub muted">{hint}</small></>;
+
+function CoachGroups({ link, plan }: { link: CoachLink; plan: ReactNode }) {
   const snap = useSyncExternalStore(link.subscribe, link.snapshot);
   const [sheet, setSheet] = useState<'hevy' | 'garmin' | 'meals' | null>(null);
   useEffect(() => { link.start(); return () => link.stop(); }, [link]);
   const v = snap.view;
-  if (!v) return null;
+  if (!v) return <ProfileGroup title="Planen">{plan}</ProfileGroup>;
   const send = (m: Parameters<CoachLink['send']>[0]): boolean => link.send(m);
   const meals = v.meals ?? DEFAULT_MEAL_SETTINGS;
   return (
     <>
-      <RowList label="Verbindungen">
-        <Row title="Hevy" value={hevyValue(v.hevy)} onClick={() => setSheet('hevy')} />
-        <Row title="Garmin" value={v.garmin.state === 'connected' ? 'verbunden' : 'nicht verbunden'} onClick={() => setSheet('garmin')} />
-      </RowList>
-      <Switch label="Krafttraining planen" hint="Auch ohne Hevy" checked={v.gymOn} disabled={v.gymOn} onChange={() => send({ type: 'gym-start' })} />
-      <Switch label="Essensplan" hint="Wochenplan mit Einkaufsliste" checked={meals.on} onChange={(on) => send({ type: 'meals-settings', settings: { ...meals, on } })} />
-      {meals.on && <RowList><Row title="Essen anpassen" onClick={() => setSheet('meals')} /></RowList>}
-      {meals.on && v.recipes && <p className="muted" role="status">{collectionLine(v.recipes)}</p>}
+      <ProfileGroup title="Planen">
+        {plan}
+        {v.gymOn ? <p className="muted">Krafttraining · wird geplant</p> : <Switch label="Krafttraining planen" hint="Auch ohne Hevy" checked={false} onChange={() => send({ type: 'gym-start' })} />}
+        <Switch label="Essensplan" hint="Wochenplan mit Einkaufsliste" checked={meals.on} onChange={(on) => send({ type: 'meals-settings', settings: { ...meals, on } })} />
+        {meals.on && <RowList><Row title={withHint('Essen anpassen', 'Vorlieben und Abneigungen')} onClick={() => setSheet('meals')} /></RowList>}
+        {meals.on && v.recipes && <p className="muted" role="status">{collectionLine(v.recipes)}</p>}
+      </ProfileGroup>
+      <ProfileGroup title="Verbindungen">
+        <RowList label="Verbindungen">
+          <Row title={withHint('Hevy', 'Krafttrainings übernehmen')} value={hevyValue(v.hevy)} onClick={() => setSheet('hevy')} />
+          <Row title={withHint('Garmin', 'Ruhepuls und Läufe übernehmen')} value={v.garmin.state === 'connected' ? 'verbunden' : 'optional'} onClick={() => setSheet('garmin')} />
+        </RowList>
+      </ProfileGroup>
       {sheet === 'hevy' && <HevySheet v={v} send={send} onClose={() => setSheet(null)} />}
       {sheet === 'garmin' && <GarminSheet v={v} send={send} onClose={() => setSheet(null)} />}
       {sheet === 'meals' && <MealsSheet settings={meals} save={(settings) => send({ type: 'meals-settings', settings })} onClose={() => setSheet(null)} />}
     </>
   );
+}
+
+/**
+ * The groups "Planen" (with what the caller puts first, the run switch) and "Verbindungen". What the Mac app used to hold and the server coach uses:
+ * Hevy, Garmin, Krafttraining and the meal plan. Without a coach on the server, or while it is not reached, only the caller's part of "Planen" shows.
+ */
+export function ConnectionSettings({ link, plan }: { link: CoachLink | null; plan: ReactNode }) {
+  return link ? <CoachGroups link={link} plan={plan} /> : <ProfileGroup title="Planen">{plan}</ProfileGroup>;
 }

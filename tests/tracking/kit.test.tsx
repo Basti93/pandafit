@@ -118,7 +118,7 @@ test('a row with onClick is a button with a chevron and shows its details only w
 
 test('row language: "›" opens a new page, "⌄" opens the row in place', () => {
   render(<RowList><Row title="Muskeln" onClick={() => {}} /><Row title="Ruhepuls" onClick={() => {}} expanded={false}>mehr</Row></RowList>);
-  expect(screen.getByRole('button', { name: 'Muskeln' }).textContent).toBe('Muskeln›');
+  expect(screen.getByRole('button', { name: /^Muskeln/ }).textContent).toBe('Muskeln›');
   expect(screen.getByRole('button', { name: 'Ruhepuls' }).textContent).toBe('Ruhepuls⌄');
 });
 

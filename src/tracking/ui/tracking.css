@@ -28,7 +28,7 @@
   outline: 2px solid var(--accent, #e8964a); outline-offset: 1px; border-color: var(--accent, #e8964a);
 }
 .tk-screen input, .tk-screen select, .tk-screen textarea, .tk-picker input, .tk-picker select {
-  font: inherit; min-height: 44px; padding: .5rem .6rem; border-radius: .6rem; border: 1px solid var(--line, #33493c); background: var(--field, #101b16); color: inherit;
+  font: inherit; min-height: 44px; padding: .5rem .6rem; border-radius: .6rem; border: 1px solid var(--field-line, var(--line, #33493c)); background: var(--field, #101b16); color: inherit;
 }
 /* One grid for every set row and its header: delete, chip, kg, reps, done. A hint line sits under kg and reps. */
 .tk-set { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) 48px; column-gap: .4rem; row-gap: .15rem; align-items: center; }
@@ -152,7 +152,7 @@
 .tk-state-low .tk-state-dot { background: var(--tk-accent); }
 .tk-state-good .tk-state-dot { background: var(--tk-good); }
 .tk-state-high .tk-state-dot { background: var(--tk-warm); }
-.tk-state-none { color: var(--tk-muted); }
+.tk-state-none, .tk-state-quiet { color: var(--tk-muted); }
 .tk-verdicts { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .3rem; }
 .tk-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .9rem; }
 .tk-legend li { display: flex; align-items: center; gap: .35rem; }
@@ -249,6 +249,8 @@
 .tk-switchrow input[role="switch"]:checked::after { transform: translateX(1.25rem); background: #fff; }
 .tk-switchrow input[role="switch"]:focus-visible { outline: 2px solid var(--tk-accent, #e8964a); outline-offset: 2px; }
 .tk-switchrow input[role="switch"]:disabled { opacity: .5; }
+/* One look for "off": a switch that cannot be turned on yet (its hint says why) is not paler than the others. */
+.tk-switchrow input[role="switch"]:disabled:not(:checked) { opacity: 1; cursor: default; }
 .tk-sheet { position: fixed; inset: 0; z-index: 100; max-width: none; margin: 0; padding: env(safe-area-inset-top) 0 0; gap: 0; background: var(--bg, #12201a); overflow: hidden; outline: 0; }
 .tk-sheet-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; background: var(--bg, #12201a); }
 .tk-sheet-head { display: flex; align-items: center; gap: .5rem; padding: .5rem 1rem; border-bottom: 1px solid var(--line, #33493c); max-width: 640px; width: 100%; margin: 0 auto; } /* in the content column, its line too */
@@ -392,6 +394,11 @@
 .tk-week li { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); column-gap: .25rem; }
 .tk-pin .tk-week li { grid-template-columns: 5.4rem minmax(0, 1fr); }
 .tk-screen button.tk-logout { padding-left: 0; }
+/* Profile groups: a thin line only between groups, none between the rows of one group. */
+.tk-pgroup { border-top: 1px solid var(--line, #33493c); margin-top: .75rem; display: flex; flex-direction: column; }
+.tk-pgroup .tk-switchrow, .tk-pgroup .tk-rowitem { border-top: 0; }
+.tk-pgroup > .tk-section { margin: .75rem 0 .25rem; }
+.tk-pgroup > p.muted { margin: .25rem 0 .5rem; }
 .tk-pagehead { gap: .2rem; }
 .tk-pagehead .tk-title { line-height: 1.25; }
 .tk-pagehead .tk-subtitle { line-height: 1.3; }
@@ -425,14 +432,14 @@
 
 /* Rad: the ride chart and the hours per week (milestone O). */
 .tk-ridechart { margin: 1rem 0 0; }
-.tk-ridechart svg { display: block; width: 100%; height: 6rem; background: var(--field, #101b16); border-radius: .5rem; }
+.tk-ridechart svg { display: block; width: 100%; height: 6rem; background: transparent; border: 1px solid var(--line, #33493c); border-radius: .5rem; }
 .tk-ridehead { display: flex; flex-direction: column; gap: .5rem; }
 .tk-ridehead p { margin: 0; }
 .tk-ridehead .tk-ridefacts { font-size: .9rem; }
 .tk-chart-legend { margin: 0 0 .25rem; }
-.tk-chart-key-power { color: var(--accent, #e8964a); }
+.tk-chart-key-power { color: var(--text, #f6eedd); }
 .tk-chart-key-hr { color: var(--tk-muted, #aebba9); }
-.tk-chart-power { stroke: var(--accent, #e8964a); stroke-linejoin: round; }
+.tk-chart-power { stroke: var(--text, #f6eedd); stroke-linejoin: round; }
 .tk-chart-hr { stroke: var(--tk-muted, #aebba9); opacity: .6; stroke-linejoin: round; }
 .tk-ridechart figcaption, .tk-hourdates { display: flex; justify-content: space-between; margin: .25rem 0 0; }
 .tk-spark { display: block; margin: .75rem 0 0; }
@@ -440,8 +447,14 @@
 .tk-health-line { margin: 1rem 0; }
 .tk-row-more .tk-spark:last-child { margin-bottom: .75rem; }
 .tk-row-more a { color: inherit; text-decoration: underline; }
-.tk-spark svg { display: block; width: 100%; height: 3rem; background: var(--field, #101b16); border-radius: .5rem; }
-.tk-spark-line { stroke: var(--accent, #e8964a); stroke-linejoin: round; stroke-linecap: round; }
+.tk-spark-box { display: flex; align-items: stretch; gap: .4rem; }
+.tk-spark svg { display: block; flex: 1; min-width: 0; height: 3rem; background: transparent; border: 1px solid var(--line, #33493c); border-radius: .5rem; }
+.tk-spark-scale { display: flex; flex-direction: column; justify-content: space-between; text-align: right; min-width: 2.2rem; font-size: .8rem; color: var(--muted, #aebba9); font-variant-numeric: tabular-nums; }
+.tk-spark-line { stroke: var(--muted, #aebba9); stroke-linejoin: round; stroke-linecap: round; }
+.tk-sources a::after { content: ' ↗'; white-space: pre; }
+.tk-health-foot { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.tk-health-foot button.link { padding: 0; min-height: 0; }
+.tk-verdicts button.link { padding: 0; min-height: 0; text-align: left; font-weight: inherit; text-decoration: none; color: inherit; }
 .tk-health-doctor { font-weight: 600; white-space: normal; }
 .tk-source-title { white-space: normal; font-size: .9rem; }
 .tk-hourbars { display: flex; align-items: flex-end; gap: 4px; height: 5rem; margin-top: .5rem; }

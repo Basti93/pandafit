@@ -615,10 +615,10 @@ async function main() {
   await nav('Woche');
   await page.waitForTimeout(500);
   await step('rueckblick', async () => { await page.getByRole('region', { name: 'Rückblick' }).scrollIntoViewIfNeeded(); await shot('woche-rueckblick'); });
-  await step('rueckblick-muscle', async () => { await page.getByRole('region', { name: 'Rückblick' }).getByRole('button', { name: 'Muskeln' }).click(); await page.getByRole('dialog', { name: 'Muskeln' }).locator('.tk-rowbtn').first().click(); await shot('rueckblick-muskel-offen'); await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Zeit pro Woche' }).click(); await shot('rueckblick-zeit-pro-woche'); await page.keyboard.press('Escape'); });
+  await step('rueckblick-muscle', async () => { await page.getByRole('region', { name: 'Rückblick' }).getByRole('button', { name: /^Muskeln/ }).click(); await page.getByRole('dialog', { name: 'Muskeln' }).locator('.tk-rowbtn').first().click(); await shot('rueckblick-muskel-offen'); await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'Zeit pro Woche' }).click(); await shot('rueckblick-zeit-pro-woche'); await page.keyboard.press('Escape'); });
   await step('rueckblick-verlauf', async () => { await page.getByRole('button', { name: /^Verlauf/ }).click(); await shot('rueckblick-verlauf'); await page.getByRole('dialog', { name: 'Verlauf' }).locator('.tk-rowbtn').first().click(); await page.waitForTimeout(300); await shot('rueckblick-verlauf-training'); await page.getByRole('button', { name: '‹ Zurück' }).first().click(); await closeDialog(); });
   await step('gesundheit', async () => {
-    await page.getByRole('button', { name: 'Gesundheit' }).click();
+    await page.getByRole('button', { name: /^Gesundheit/ }).click();
     await page.getByRole('dialog', { name: 'Gesundheit' }).waitFor();
     await shot('gesundheit');
     await page.getByRole('dialog', { name: 'Gesundheit' }).getByRole('button', { name: /^Ruhepuls/ }).click();
@@ -634,7 +634,7 @@ async function main() {
     putRecords(dbh, accountId, [rec('health', 'health', healthBody(true), NOW + 5000)], NOW + 5000);
     dbh.close();
     await fresh('Woche');
-    await page.getByRole('button', { name: 'Gesundheit' }).click();
+    await page.getByRole('button', { name: /^Gesundheit/ }).click();
     await page.getByRole('dialog', { name: 'Gesundheit' }).waitFor();
     await shot('gesundheit-arzt');
     await closeDialog();

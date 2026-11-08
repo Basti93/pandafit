@@ -36,13 +36,14 @@ test('strength: one sentence per lift, the three most trained, the change in wor
     wo(7, 'pf-curl', 'Curls', [set(12, 10)]), wo(100, 'pf-old', 'Alt', [set(10, 10)]),
   ];
   expect(progressRows({ ...base, workouts: w }).map((r) => r.text)).toEqual([
-    'Bankdrücken: etwa 80 kg, leicht gestiegen', 'Kniebeuge: etwa 93 kg, gleich geblieben', 'Rudern: etwa 67 kg',
+    // Rudern has no earlier value: no sentence rather than a bare number.
+    'Bankdrücken: stärker als vor 12 Wochen', 'Kniebeuge: wie vor 12 Wochen',
   ]);
 });
 
 test('strength: a clear rise or drop is named, no signs or tildes', () => {
   const w = [wo(3, 'a', 'Anker', [set(100, 1)]), wo(40, 'a', 'Anker', [set(80, 1)]), wo(4, 'b', 'Boden', [set(60, 1)]), wo(41, 'b', 'Boden', [set(70, 1)])];
   const rows = progressRows({ ...base, workouts: w }).map((r) => r.text);
-  expect(rows).toEqual(['Anker: etwa 100 kg, deutlich gestiegen', 'Boden: etwa 60 kg, deutlich gesunken']);
+  expect(rows).toEqual(['Anker: stärker als vor 12 Wochen', 'Boden: schwächer als vor 12 Wochen']);
   expect(rows.join()).not.toMatch(/[~±()+−]/);
 });

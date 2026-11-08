@@ -139,14 +139,15 @@ describe('web app', () => {
     expect((screen.getByRole('switch', { name: 'Wochenübersicht per E-Mail' }) as HTMLInputElement).checked).toBe(false);
   });
 
-  it('storage persistence is requested at login, and a refusal gets a single calm line', async () => {
+  it('storage persistence is requested at login, and a refusal says nothing on Profil', async () => {
     const a = await boot({ me: 401, persist: false });
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'anna' } });
     fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'pw' } });
     fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
     await waitFor(() => expect(a.persist).toHaveBeenCalled());
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
-    expect((await screen.findAllByText(/Browser kann Daten löschen/)).length).toBe(1);
+    await screen.findByText(/Angemeldet als/);
+    expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
   });
 
   it('says nothing about storage when persistence is granted', async () => {
@@ -214,6 +215,12 @@ describe('web app', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Im Profil auswählen' }));
     expect(await screen.findByRole('heading', { name: 'Profil' })).toBeTruthy();
     expect(screen.getByText('Rad · startet mit der ersten Fahrt am Mac')).toBeTruthy();
+    // Profil is ordered: Planen first (with the run switch), then Nachrichten; the e-mail waits under its switch.
+    const heads = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(heads.indexOf('Planen')).toBeGreaterThanOrEqual(0);
+    expect(heads.indexOf('Planen')).toBeLessThan(heads.indexOf('Nachrichten'));
+    expect(screen.getByRole('switch', { name: 'Wochenübersicht per E-Mail' }).getAttribute('aria-describedby')).toBeTruthy();
+    expect(screen.getByText('Zuerst E-Mail eintragen')).toBeTruthy();
     cleanup();
     await boot({ seed: [plan(NOW - 1000)] });
     await screen.findByRole('button', { name: 'Zum Krafttraining' });
@@ -406,13 +413,14 @@ describe('web app', () => {
     expect(screen.queryByText(/privat/i)).toBeNull(); // private mode is never claimed
   });
 
-  it('the persistence notice sits on Profil only, not over the other tabs', async () => {
+  it('a refused storage persistence shows no notice, on no tab', async () => {
     const again = await boot({ persist: false, seed: [] });
     await screen.findByRole('navigation');
     await waitFor(() => expect(again.persist).toHaveBeenCalled());
     expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
-    expect(await screen.findByText(/Browser kann Daten löschen/)).toBeTruthy();
+    await screen.findByText(/Angemeldet als/);
+    expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
   });
 
   it('the workout state is unknown until read, open for a fresh open workout, and none for a stale one', async () => {

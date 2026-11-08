@@ -22,7 +22,7 @@ import { MealsScreen, mealWeeks, TodayMeals } from './MealsScreen';
 import { TogetherCard, TogetherPage, togetherOf } from './TogetherScreen';
 import type { PushEnv, SubJson } from './push';
 import { ContactSettings, UpdatesSwitch } from './ContactSettings';
-import { ConnectionSettings } from './ConnectionSettings';
+import { ConnectionSettings, ProfileGroup } from './ConnectionSettings';
 import { CoachLink } from './coachLink';
 import { LiveClient, type LiveSocket } from './live';
 import { LiveRide } from './LiveRide';
@@ -385,15 +385,15 @@ function Ausdauer({ port, env, account, hasRun, hasBike }: { port: WebPort; env:
 /** The sync state in a few words: the value of the account row, or a short sentence when something needs saying. */
 const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; lastOkMs: number | null; refused?: number }): string => {
   if (status === 'login') return 'Bitte melde dich neu an. Bis dahin bleibt alles auf diesem Gerät.';
-  if (status === 'offline') return 'Gerade keine Verbindung. Alles bleibt auf diesem Gerät.';
+  if (status === 'offline') return `Gerade keine Verbindung. Alles bleibt auf diesem Gerät.${c.lastOkMs === null ? '' : ` Zuletzt gesichert ${timeLabel(c.lastOkMs)}.`}`;
   if ((c.refused ?? 0) > 0) return 'Ein Eintrag wurde nicht angenommen. Er bleibt auf diesem Gerät.';
   if (c.pending > 0) return c.pending === 1 ? 'Ein Eintrag wartet aufs Senden.' : `${c.pending} Einträge warten aufs Senden.`;
   if (c.lastOkMs === null) return 'Der erste Abgleich folgt gleich.';
-  return `Alles gesichert · ${localDayKey(c.lastOkMs) === localDayKey(Date.now()) ? '' : `${shortDate(c.lastOkMs)} `}${timeLabel(c.lastOkMs)}`;
+  return 'Alles gesichert';
 };
 
 /** The account on this device, a few switches, the coach's timing, and the way out. Rows, not cards. */
-function Profil({ account, port, now, status, onLogout, push, persistRefused, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null; persistRefused: boolean }) {
+function Profil({ account, port, now, status, onLogout, push, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null }) {
   const [confirming, setConfirming] = useState(false);
   usePortRecords(port, 'workout'); // re-renders when the port changes
   const hasBike = bikeVisible(bikeOf(usePortRecords(port, 'bike').records), ridesOf(usePortRecords(port, 'ride').records));
@@ -408,14 +408,16 @@ function Profil({ account, port, now, status, onLogout, push, persistRefused, li
         <Row title={`Angemeldet als ${account}`} value={quiet ? sync : undefined} />
       </RowList>
       {!quiet && <p role="status" className="muted">{sync}</p>}
-      <RunSettingsCard port={port} now={now} />
-      <p className="muted">{hasBike ? 'Rad · gefahren wird am Mac' : 'Rad · startet mit der ersten Fahrt am Mac'}</p>
-      <ContactSettings port={port} now={now} />
-      {link && <ConnectionSettings link={link} />}
-      {push && <PushSettings push={push} port={port} now={now} />}
-      {/* The coach's timing is about notifications: it shows under them once they are on (always where the shell has no push at all). */}
-      {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
-      {persistRefused && <p role="status" className="muted">Dein Browser kann Daten löschen – sie sind aber auf dem Server gesichert.</p>}
+      <ConnectionSettings link={link} plan={<>
+        <RunSettingsCard port={port} now={now} />
+        <p className="muted">{hasBike ? 'Rad · gefahren wird am Mac' : 'Rad · startet mit der ersten Fahrt am Mac'}</p>
+      </>} />
+      <ProfileGroup title="Nachrichten">
+        <ContactSettings port={port} now={now} />
+        {push && <PushSettings push={push} port={port} now={now} />}
+        {/* The coach's timing is about notifications: it shows under them once they are on (always where the shell has no push at all). */}
+        {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
+      </ProfileGroup>
       {confirming ? (
         <p role="status" className="tk-note">
           Einiges ist noch nicht gesendet. Es bleibt auf diesem Gerät gespeichert und geht beim nächsten Anmelden raus.
@@ -452,7 +454,6 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
     return { profileId: typeof j.profileId === 'string' ? j.profileId : null, moved: j.moved === true };
   } }) : null), [env]);
   useEffect(() => env.onOpenTab?.((t) => { const next = tabFor(t); if (!next) return; if (t === 'rad' || t === 'laufen') saveEndurance(env, account, t); setTab(next); }), [env, account]);
-  const [persistRefused, setPersistRefused] = useState(false);
   const [hint, setHint] = useState(false);
   const [, tick] = useState(0);
   const status = useSyncExternalStore(port.onStatus, port.status);
@@ -496,10 +497,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
 
   useEffect(() => {
-    void env.persist().then((ok) => {
-      // A quiet line on Profil only, as long as the browser refuses; no banner over the other tabs.
-      if (!ok) setPersistRefused(true);
-    }, () => {});
+    void env.persist().catch(() => {});
     if (shouldShowInstallHint({ ua: env.ua, standalone: env.standalone, seen: env.storage.getItem(HINT_KEY) === '1' })) {
       setHint(true);
       env.storage.setItem(HINT_KEY, '1');
@@ -542,7 +540,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
-          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} persistRefused={persistRefused} />}
+          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} />}
         </ErrorBoundary>
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>

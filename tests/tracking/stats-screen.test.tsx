@@ -31,7 +31,7 @@ const workouts = [
   workout('w1', new Date(2026, 10, 3, 18).getTime(), 'pf-bench-press', 'Bankdrücken', 3),
   workout('w2', new Date(2026, 9, 27, 18).getTime(), 'hevy-odd', 'Seltsame Maschine', 2),
 ];
-const openMuscles = () => { fireEvent.click(screen.getByRole('button', { name: 'Muskeln' })); return screen.getByRole('dialog', { name: 'Muskeln' }); };
+const openMuscles = () => { fireEvent.click(screen.getByRole('button', { name: /^Muskeln/ })); return screen.getByRole('dialog', { name: 'Muskeln' }); };
 const BAD = /Serie|Streak|Punkte|musst/;
 
 async function show(seed: TrackedRecord[]) {
@@ -46,15 +46,15 @@ test('Rückblick is the verdicts and rows; the week sentence, muscles and number
   const { container } = await show([statsRec(statsBody(days)), ...workouts]);
   expect(screen.getByRole('heading', { name: 'Rückblick' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Verlauf' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Muskeln' })).toBeTruthy();
-  expect(screen.queryByText(/^Diese Woche: /)).toBeNull();
+  expect(screen.getByRole('button', { name: /^Muskeln/ })).toBeTruthy();
+  expect(screen.queryByText(/^\d+ Einheiten?, /)).toBeNull();
   const sheet = openDetails();
   expect(within(sheet).getByText(`Stand: ${dateLabel(NOW - 3_600_000)}`)).toBeTruthy();
-  expect(within(sheet).getByText('Diese Woche: 2 Einheiten, 1 Std 10 Min')).toBeTruthy();
+  expect(within(sheet).getByText('2 Einheiten, 1 Std 10 Min')).toBeTruthy();
   fireEvent.click(within(sheet).getByRole('button', { name: 'Schließen' }));
   expect(screen.queryByRole('button', { name: /Brust/ })).toBeNull();
   expect(container.textContent).not.toMatch(/Wenig|Noch nichts|Locker|Ruhetage|\d+ Minuten|Zielbereich/);
-  expect(screen.queryByRole('region', { name: 'Letzte 8 Wochen' })).toBeNull();
+  expect(screen.queryByRole('region', { name: 'Zeit der letzten Wochen' })).toBeNull();
   expect(screen.queryByRole('table')).toBeNull();
   expect(screen.queryByText(/Ohne bekannten Muskel/)).toBeNull();
   expect(container.textContent).not.toMatch(BAD);
@@ -63,7 +63,7 @@ test('Rückblick is the verdicts and rows; the week sentence, muscles and number
 test('Zeit pro Woche opens the chart with bars and dates only, the sport minutes and the unknown list', async () => {
   await show([statsRec(statsBody(days)), ...workouts]);
   const sheet = openDetails();
-  const last = within(sheet).getByRole('region', { name: 'Letzte 8 Wochen' });
+  const last = within(sheet).getByRole('region', { name: 'Zeit der letzten Wochen' });
   expect(within(last).getByRole('img', { name: 'Woche vom 26.10.: 1 Std 35 Min' })).toBeTruthy();
   expect(within(last).getByRole('img', { name: 'Woche vom 19.10.: 1 Std' })).toBeTruthy();
   expect(last.textContent).toContain('26.10.');
@@ -94,10 +94,10 @@ test('a bike-only profile sees no muscle part at all', async () => {
   const { container } = await show([statsRec(statsBody([day('2026-10-27', { bike: 60 }), day('2026-11-02', { bike: 40 })], { goal: null }))]);
   expect(container.textContent).not.toMatch(/Sätze|Brust|Rücken|Ohne bekannten Muskel/);
   const sheet = openDetails();
-  expect(within(sheet).getByText('Diese Woche: 1 Einheit, 40 Min')).toBeTruthy();
+  expect(within(sheet).getByText('1 Einheit, 40 Min')).toBeTruthy();
   expect(within(sheet).getByText('40 Min')).toBeTruthy();
   expect(sheet.textContent).not.toMatch(/Sätze|Brust|Rücken/);
-  expect(screen.queryByRole('button', { name: 'Muskeln' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Muskeln/ })).toBeNull();
   expect(container.textContent).not.toMatch(BAD);
 });
 
@@ -118,6 +118,12 @@ test('pairs are not listed as numbers; a short side is one plain sentence at the
   await show([workout('w3', new Date(2026, 9, 21, 18).getTime(), 'pf-bench-press', 'Bankdrücken', 12)]);
   const week = screen.getByRole('region', { name: 'Rückblick' });
   expect(week.textContent).toMatch(/Rücken kommt zu kurz/);
+  // the summary card opens Muskeln, where Rücken is the first row and orange
+  fireEvent.click(within(week).getByRole('button', { name: /Rücken kommt zu kurz/ }));
+  const muscles = screen.getByRole('dialog', { name: 'Muskeln' });
+  fireEvent.click(within(muscles).getByRole('button', { name: 'Alle Muskelgruppen anzeigen' }));
+  expect(within(muscles).getAllByRole('button').filter((b) => b.hasAttribute('aria-expanded'))[0]!.textContent).toMatch(/^Rücken/);
+  fireEvent.click(within(muscles).getByRole('button', { name: 'Schließen' }));
   const sheet = openDetails();
   expect(sheet.textContent).not.toMatch(/ : |Verhältnis/);
 });
@@ -209,4 +215,13 @@ test('Fortschritt is in Zeit pro Woche, not on the page', async () => {
   await screen.findByRole('button', { name: 'Zeit pro Woche' });
   expect(screen.queryByRole('region', { name: 'Fortschritt' })).toBeNull();
   expect(within(openDetails()).getByRole('region', { name: 'Fortschritt' })).toBeTruthy();
+});
+
+test('only a real gap is orange: a group that is merely low keeps "Wenig" in the quiet colour', async () => {
+  await show([workout('wa', new Date(2026, 10, 3, 18).getTime(), 'pf-bench-press', 'Bankdrücken', 2), workout('wb', new Date(2026, 9, 20, 18).getTime(), 'pf-bench-press', 'Bankdrücken', 60)]);
+  const muscles = openMuscles();
+  const brust = within(muscles).getByRole('button', { name: /Brust/ });
+  expect(brust.textContent).toContain('Wenig');
+  expect(brust.querySelector('.tk-state-low')).toBeNull();
+  expect(brust.querySelector('.tk-state-quiet')).not.toBeNull();
 });

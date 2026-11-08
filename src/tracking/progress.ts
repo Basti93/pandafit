@@ -32,13 +32,11 @@ type Input = {
   workouts: LoggedWorkout[];
 };
 
-/** How a lift moved between the eight weeks before and the last four, in words; empty without an earlier value. */
-function liftChange(recent: number, before: number | null): string {
-  if (before === null) return '';
+/** How a lift moved between the eight weeks before and the last four, in words: "stärker als vor 12 Wochen"; no number. */
+function liftChange(recent: number, before: number): string {
   const d = recent - before;
-  if (Math.abs(d) < 1) return ', gleich geblieben';
-  const big = Math.abs(d) / before >= 0.05;
-  return d > 0 ? `, ${big ? 'deutlich' : 'leicht'} gestiegen` : `, ${big ? 'deutlich' : 'etwas'} gesunken`;
+  if (Math.abs(d) < 1) return 'wie vor 12 Wochen';
+  return d > 0 ? 'stärker als vor 12 Wochen' : 'schwächer als vor 12 Wochen';
 }
 
 /** At most one sentence per area or lift, only where there is something to say. Plain words, no score. */
@@ -85,8 +83,9 @@ export function progressRows(i: Input): ProgressRow[] {
       lifts.set(e.exerciseId, l);
     }
   }
-  const top = [...lifts.values()].filter((l) => l.recent !== null).sort((a, b) => b.sessions - a.sessions || b.recent! - a.recent!).slice(0, MAX_LIFTS);
-  for (const l of top) rows.push({ text: `${l.title}: etwa ${Math.round(l.recent!)} kg${liftChange(l.recent!, l.before)}` });
+  // A lift without an earlier value has nothing to compare with: it stays out (no word rather than a bare number).
+  const top = [...lifts.values()].filter((l) => l.recent !== null && l.before !== null).sort((a, b) => b.sessions - a.sessions || b.recent! - a.recent!).slice(0, MAX_LIFTS);
+  for (const l of top) rows.push({ text: `${l.title}: ${liftChange(l.recent!, l.before!)}` });
   return rows;
 }
 

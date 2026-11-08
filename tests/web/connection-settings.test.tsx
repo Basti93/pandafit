@@ -24,7 +24,7 @@ const coachState = (over: Record<string, unknown> = {}) => ({ type: 'coach-state
 const setup = async (status: { profileId: string | null; moved: boolean } | null = { profileId: 'p1', moved: true }) => {
   const ws = new FakeSocket();
   const link = new CoachLink({ open: () => ws, status: async () => status });
-  render(<ConnectionSettings link={link} />);
+  render(<ConnectionSettings link={link} plan={null} />);
   await flush();
   return { ws, link };
 };
@@ -43,7 +43,7 @@ describe('ConnectionSettings on the web Profil', () => {
     expect(ws.sent).toEqual([{ type: 'subscribe', profileId: 'p1' }]);
     act(() => ws.say(coachState({ hevy: { state: 'connected', workouts: 12, loading: false, lastSyncMs: null } })));
     expect(screen.getByText('Hevy').parentElement?.textContent).toContain('verbunden');
-    expect(screen.getByText('Garmin').parentElement?.textContent).toContain('nicht verbunden');
+    expect(screen.getByText('Garmin').parentElement?.textContent).toContain('optional');
   });
 
   it('connects Hevy with a key and never keeps the key in the field', async () => {
@@ -79,7 +79,9 @@ describe('ConnectionSettings on the web Profil', () => {
     expect(ws.sent.at(-1)).toMatchObject({ type: 'meals-settings', profileId: 'p1', settings: { on: true, diet: 'vegetarisch' } });
     expect(screen.queryByText('Essen anpassen')).toBeNull();
     act(() => ws.say(coachState({ gym: { state: {} }, meals: { settings: meals(true) } })));
-    expect((screen.getByRole('switch', { name: 'Krafttraining planen' }) as HTMLInputElement).disabled).toBe(true);
+    // Once on, it is a plain line, not a switch that looks broken.
+    expect(screen.queryByRole('switch', { name: 'Krafttraining planen' })).toBeNull();
+    expect(screen.getByText('Krafttraining · wird geplant')).toBeTruthy();
     fireEvent.click(screen.getByText('Essen anpassen'));
     fireEvent.change(screen.getByLabelText('Abneigungen'), { target: { value: 'Pilze, Oliven' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));

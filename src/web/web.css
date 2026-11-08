@@ -1,7 +1,7 @@
 /* Only the shell. Everything else comes from the tracking screens' own tracking.css and its variables. */
-:root { --bg: #12201a; --text: #f6eedd; --ink: #1f1408; --field: #101b16; --card: #1c2f26; --line: #33493c; --muted: #aebba9; --accent: #e8964a; --good: #9ccb68; --good-text: #9ccb68; --danger: #d9806f; color-scheme: dark light; }
+:root { --bg: #12201a; --text: #f6eedd; --ink: #1f1408; --field: #101b16; --card: #1c2f26; --line: #33493c; --muted: #aebba9; --accent: #e8964a; --good: #9ccb68; --good-text: #9ccb68; --danger: #d9806f; color-scheme: dark light;  --field-line: #55705f; --day: #cdd7c8;}
 @media (prefers-color-scheme: light) {
-  :root { --bg: #f7f3e8; --text: #1f2a24; --ink: #1f1408; --field: #ffffff; --card: #ece6d4; --line: #cfc7ad; --muted: #5d6a60; --danger: #a8372a; --good-text: #3f7a1f; }
+  :root { --field-line: var(--line); --day: var(--muted); --bg: #f7f3e8; --text: #1f2a24; --ink: #1f1408; --field: #ffffff; --card: #ece6d4; --line: #cfc7ad; --muted: #5d6a60; --danger: #a8372a; --good-text: #3f7a1f; }
   .tk-pick { background: #dcd5bd !important; color: var(--text) !important; }
   .tk-chip-warm { color: #9a6a00; } .tk-chip-fail { color: #b23a2a; } .tk-chip-drop { color: #2a6aa0; }
 }
@@ -43,10 +43,10 @@ body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemF
 .tk-screen .pm-seg button { flex: 1; background: transparent; color: var(--muted); min-height: 40px; padding: .3rem .6rem; }
 .tk-screen .pm-seg button[aria-pressed='true'] { background: #2d4638; color: var(--text); }
 .pm-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
-.tk-screen .pm-days button { display: flex; flex-direction: column; align-items: center; gap: .05rem; min-width: 0; min-height: 56px; padding: .35rem 0; border-radius: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; }
+.tk-screen .pm-days button { display: flex; flex-direction: column; align-items: center; gap: .05rem; min-width: 0; min-height: 56px; padding: .35rem 0; border-radius: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--field-line, var(--line)); font-weight: 500; }
 .pm-days button b { color: var(--text); font-size: .95rem; }
-.pm-days button span { font-size: .8rem; }
-.tk-screen .pm-days button.past { opacity: .55; }
+.pm-days button span { font-size: .8rem; color: var(--day, var(--muted)); }
+.tk-screen .pm-days button.past { opacity: .75; }
 .tk-screen .pm-days button.today { border-color: var(--accent); }
 .tk-screen .pm-days button[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--ink); opacity: 1; }
 .tk-screen .pm-days button[aria-selected='true'] b { color: var(--ink); }
