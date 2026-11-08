@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { BikeBody, RideBody } from '../../shared/bike';
 import { dayMonthOfKey, shortDate, timeLabel } from '../../shared/dates';
-import { HARDNESS_LABEL } from '../../shared/week-plan';
+import { HARDNESS_LABEL, nextPlanDate } from '../../shared/week-plan';
+import { shortDateOfKey } from '../../shared/dates';
+import { dateKeyOf } from './run-view';
 import type { TrackingPort } from '../ports';
 import { bikeOf, ftpSentence, minText, phaseText, rideFacts, rideName, rideTitle, rideValue, ridesOf, type BikeRide } from './bike-view';
 import { usePortRecords } from './hooks';
@@ -78,17 +80,23 @@ function DevelopmentSheet({ bike, onClose }: { bike: BikeBody; onClose: () => vo
 }
 
 /** The bike on the phone: read only. What is planned next, the last ride, the development. */
-export function BikeScreen({ port }: { port: TrackingPort }) {
+export function BikeScreen({ port, now }: { port: TrackingPort; now?: () => number }) {
   const bike = bikeOf(usePortRecords(port, 'bike').records);
   const rides = ridesOf(usePortRecords(port, 'ride').records);
   const [sheet, setSheet] = useState<'plan' | 'development' | null>(null);
   const [ride, setRide] = useState<BikeRide | null>(null);
+  const weekplans = usePortRecords(port, 'weekplan').records;
   const next = bike?.next ?? null;
+  // The session always names its day: "Heute" or the date of the next bike day in the week plan.
+  const todayKey = now ? dateKeyOf(now()) : null;
+  const bikeDate = todayKey && weekplans ? nextPlanDate(weekplans, todayKey, 'bike') : null;
+  const day = bikeDate === null ? null : bikeDate === todayKey ? 'Heute' : shortDateOfKey(bikeDate);
   const last = rides[0];
   return (
     <div className="tk-screen tk-bike">
       {next ? (
         <section className="card" aria-label="Nächste Fahrt">
+          <p className="muted">{day ? `${day} · ` : ''}Fahren am Mac</p>
           <p className="tk-today-line"><b>{next.name}</b> · {minText(next.minutes)} · {HARDNESS_LABEL[next.hardness]}</p>
           {next.reason && <p className="muted tk-clamp">{next.reason}</p>}
         </section>

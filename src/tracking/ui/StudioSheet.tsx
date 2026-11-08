@@ -7,7 +7,7 @@ export function StudioRow({ value, onOpen }: { value: string | undefined; onOpen
   return (
     <button type="button" className="tk-rowbtn tk-choice" onClick={onOpen}>
       <span className="tk-row-title">Studio</span>
-      <span className="tk-row-value muted">{value ?? '–'}</span>
+      <span className="tk-row-value muted">{value ?? 'noch keins'}</span>
       <span className="tk-chevron" aria-hidden="true">›</span>
     </button>
   );

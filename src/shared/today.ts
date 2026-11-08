@@ -82,7 +82,8 @@ export function todayAdvice(input: TodayInput): TodayAdvice {
     const from = focus.length > 0 ? focus : pool;
     const pick = from.reduce((best, s) => (lastDone(s) < lastDone(best) ? s : best));
     parts = [{ sport: pick, hardness: 'moderate' }];
-    reason = `weil du ${SPORT_LABEL[pick]} am längsten nicht gemacht hast`;
+    // Without any history "longest ago" is not true: a calm start instead.
+    reason = lastDone(pick) === '' ? 'ein ruhiger Einstieg' : `weil du ${SPORT_LABEL[pick]} am längsten nicht gemacht hast`;
   }
 
   // Protective rules, in order; the first that changes the day gives the reason.

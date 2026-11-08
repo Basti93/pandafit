@@ -220,6 +220,8 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
   const gentle = status.complaint === 'half' || view.settings?.answers?.pain === true;
   const todayKey = dateKeyOf(now());
   const today = !paused ? week?.runs.find((r) => r.date === todayKey) ?? null : null;
+  // The card always names its day: today's run, else the next one ahead.
+  const upcoming = !paused ? week?.runs.filter((r) => r.date >= todayKey).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null : null;
   const fp = week ? weekFp(week.runs) : '';
   const sendRec = week ? byId(runSendId(week.week)) : undefined;
   const sendBody = sendRec && !sendRec.deleted ? (sendRec.body as RunSendBody) : null;
@@ -252,16 +254,17 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
         </section>
       )}
       {status.on && gentle && !paused && <p role="status" className="tk-note">{GENTLE}</p>}
-      {status.on && !paused && today && (
-        <section className="card" aria-label="Heute">
-          <p className="tk-today-line"><b>{KIND[today.kind]}</b> · {today.minutes} Min{today.hrCap !== null ? ` · Puls bis ${today.hrCap}` : ''}</p>
-          {today.kind !== 'long' && <p className="muted">{today.counts}</p>}
+      {status.on && !paused && upcoming && (
+        <section className="card" aria-label={upcoming === today ? 'Heute' : 'Nächster Lauf'}>
+          <p className="muted">{upcoming === today ? 'Heute' : shortDateOfKey(upcoming.date)}</p>
+          <p className="tk-today-line"><b>{KIND[upcoming.kind]}</b> · {upcoming.minutes} Min{upcoming.hrCap !== null ? ` · Puls bis ${upcoming.hrCap}` : ''}</p>
+          {upcoming.kind !== 'long' && <p className="muted">{upcoming.counts}</p>}
         </section>
       )}
       {showWeek && week && (
         <section className="tk-weekinfo" aria-label="Läufe dieser Woche">
           {week.reason && <p className="muted">{week.reason}</p>}
-          {week.note && today?.hrCap == null && <p>{week.note}</p>}
+          {week.note && upcoming?.hrCap == null && <p>{week.note}</p>}
           {status.garmin && <GarminBlock week={week} pending={pending} onSend={send} />}
         </section>
       )}

@@ -121,7 +121,7 @@ export function MealThumb({ recipeId, title }: { recipeId?: string; title: strin
   const [failed, setFailed] = useState(false);
   if (recipeId && !failed) return <img className="pm-thumb" src={`/coach/recipes/${recipeId}/image`} alt="" loading="lazy" onError={() => setFailed(true)} />;
   const hue = [...title].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
-  return <span className="pm-thumb rc-blank" style={{ ['--rc-hue' as string]: String(hue) }} aria-hidden="true">{(title.trim()[0] ?? '?').toUpperCase()}</span>;
+  return <span className="pm-thumb rc-blank" style={{ ['--rc-hue' as string]: String(hue) }} aria-hidden="true" />;
 }
 
 /** What a meal shows opened, in Essen under its row and on Heute in a sheet: recipe, how long it keeps, who eats. */
@@ -266,10 +266,8 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
   return { records, weeks, change, favs, recipeCtx };
 }
 
-const SLOT_SHORT: Record<Slot, string> = { fruehstueck: 'Frühstück', mittag: 'Mittag', abend: 'Abend' };
-
-/** Today's meals on Heute, calm: a row per slot, a quiet line for what is cooked today for later, and the way into Essen. */
-export function TodayMeals({ port, now, fetchFn, onOpenPlan }: { port: WebPort; now: () => number; fetchFn: typeof fetch; onOpenPlan: () => void }) {
+/** Today's meals on Heute, calm: a row per slot, a quiet line for what is cooked today for later, (the Essen tab is the way into the plan). */
+export function TodayMeals({ port, now, fetchFn }: { port: WebPort; now: () => number; fetchFn: typeof fetch }) {
   const { weeks, change, recipeCtx } = useMealData(port, now, fetchFn);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
@@ -281,7 +279,7 @@ export function TodayMeals({ port, now, fetchFn, onOpenPlan }: { port: WebPort; 
   if (meals.length === 0) return null;
   const open = meals.find((m) => mealKey(m.day, m.slot) === openKey);
   const label = (m: Meal) => {
-    if (!m.reuseOf) return `${m.dish.minutes} Min`;
+    if (!m.reuseOf) return undefined; // the time it takes belongs in the plan, not on Heute
     const from = Number(m.reuseOf.split('-')[0]);
     return from === today ? 'vorgekocht' : from === today - 1 ? 'Rest von gestern' : `Rest von ${DAY_SHORT[from]}`;
   };
@@ -293,9 +291,8 @@ export function TodayMeals({ port, now, fetchFn, onOpenPlan }: { port: WebPort; 
       <RowList label="Essen heute">
         {meals.map((m) => (
           <Row key={m.slot} onClick={() => setOpenKey(mealKey(m.day, m.slot))} value={label(m)}
-            title={<span className="pm-titleline"><MealThumb recipeId={m.dish.recipeId} title={m.dish.title} /><span className="pm-rowtitle"><b>{SLOT_SHORT[m.slot]}</b> · {m.dish.title}{m.dish.side && <span className="muted"> + {m.dish.side.name}</span>}</span></span>} />
+            title={<span className="pm-titleline"><MealThumb recipeId={m.dish.recipeId} title={m.dish.title} /><span className="pm-rowtitle"><b>{SLOT_LABEL[m.slot]}</b> · {m.dish.title}{m.dish.side && <span className="muted"> + {m.dish.side.name}</span>}</span></span>} />
         ))}
-        <Row title="Essensplan" onClick={onOpenPlan} />
       </RowList>
       {ahead.length > 0 && <p className="muted">Heute vorkochen: {ahead.map((m) => m.dish.title).join(', ')}</p>}
       {open && (
@@ -309,12 +306,12 @@ export function TodayMeals({ port, now, fetchFn, onOpenPlan }: { port: WebPort; 
 }
 
 /** The meal plan on the phone: one day at a time with a day picker, and the shopping list. Ticks and who eats go back to the Mac. */
-export function MealsScreen({ port, now, fetchFn, focusToday }: { port: WebPort; now: () => number; fetchFn: typeof fetch; /** Coming from Heute: the current week even on the weekend, when the next one is shown first. */ focusToday?: boolean }) {
+export function MealsScreen({ port, now, fetchFn }: { port: WebPort; now: () => number; fetchFn: typeof fetch }) {
   const { records, weeks, change: changeWeek, recipeCtx } = useMealData(port, now, fetchFn);
   const t = now();
   const current = weekOf(t);
   const today = dayIndex(t);
-  const first = (today >= 5 && !focusToday && weeks.find((w) => w.plan.week !== current)) || weeks.find((w) => w.plan.week === current) || weeks[0];
+  const first = (today >= 5 && weeks.find((w) => w.plan.week !== current)) || weeks.find((w) => w.plan.week === current) || weeks[0];
   // Records arrive after the first render: nothing chosen yet means the default, decided once they are there.
   const [weekKey, setWeekKey] = useState<string | null>(null);
   const week = weeks.find((w) => w.plan.week === weekKey) ?? first;

@@ -564,7 +564,10 @@ export function WorkoutScreen({ port, plan = null, routine = null, resume = fals
               <button type="button" aria-label={`${plan.name} starten`} onClick={() => void startPlan(plan)}>Training starten</button>
             </section>
           ) : (
-            <button type="button" onClick={() => void begin(startEmpty(now(), newId()))}>Leeres Training starten</button>
+            <>
+              <button type="button" onClick={() => void begin(startEmpty(now(), newId()))}>Leeres Training starten</button>
+              {routines.length === 0 && <p className="muted">Oder leg unter Routinen einen Ablauf an.</p>}
+            </>
           )}
           <div className="tk-rows">
             {!(plan && manyStudios) && <StudioRow value={studio} onOpen={() => setStudioOpen(true)} />}

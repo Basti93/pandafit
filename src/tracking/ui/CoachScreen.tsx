@@ -33,6 +33,8 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
   const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | null>(null);
   const [open, setOpen] = useState<'changed' | 'next' | null>(null);
   const goal = useGoal(port, now());
+  // Until a goal was picked (or the coach changed it) the shown one is only the default.
+  const goalChosen = (usePortRecords(port, 'goal').records ?? []).length > 0;
   const { rules, tasks } = useRuleList(port, now());
   const fr = useTodayAdvice(port, now());
   const thread = chatThread(chat ?? []);
@@ -76,10 +78,14 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
         <Week rows={planRows(next.days)} label="Wochenplan nächste Woche" runs={runs} />
       </Row>
     ),
-    <Row key="goal" title="Mein Ziel" value={<span className="tk-ellipsis">{goalSummary(goal)}</span>} onClick={() => setSheet('goal')} />,
+    <Row key="goal" title="Mein Ziel" value={<span className="tk-ellipsis">{goalChosen ? goalSummary(goal) : `Vorschlag: ${goalSummary(goal)}`}</span>} onClick={() => setSheet('goal')} />,
     <Row key="rules" title="Regeln" value={ruleCount === 0 ? 'keine' : ruleCount === 1 ? '1 Regel' : `${ruleCount} Regeln`} onClick={() => setSheet('rules')} />,
   ];
-  const rows = waiting ? [coachRow, ...rest] : [...rest, coachRow];
+  // Empty week and nothing said yet: the "Woche planen" button is the way to the coach, so no second row for it.
+  // (Only once the records are read: no flash of the empty state while they load.)
+  const loaded = plans !== null && chat !== null;
+  const bare = loaded && !current && !spontaneous && !last && !waiting && !asking;
+  const rows = waiting ? [coachRow, ...rest] : bare ? rest : [...rest, coachRow];
   const saveFailed = () => setError('Die Einstellung konnte nicht gespeichert werden.');
 
   return (
@@ -95,8 +101,13 @@ export function CoachScreen({ port, now, newId, showPrefs = true }: { port: Trac
         </>
       ) : (
         <section className="card" aria-label="Wochenplan">
-          <Week rows={dayRows} label="Wochenplan diese Woche" today={today} runs={runs} />
-          {!current && <p className="muted">Noch kein Wochenplan. Schreib dem Coach, wie deine Woche aussehen soll.</p>}
+          {/* Without a plan seven empty days say nothing: one button instead. */}
+          {current || !loaded ? <Week rows={dayRows} label="Wochenplan diese Woche" today={today} runs={runs} /> : (
+            <>
+              <p className="muted">Noch kein Wochenplan.</p>
+              <button type="button" onClick={() => setSheet('chat')}>Woche planen</button>
+            </>
+          )}
           {!current && runs.length > 0 && (
             <ul className="tk-week" aria-label="Läufe diese Woche">
               {runs.map((r) => <li key={r.date + r.kind}><b>{runDay(r.date)}</b> <span>{runText(r)}</span></li>)}

@@ -23,8 +23,6 @@ type Props = {
   weekplans: TrackedRecord[] | null; runs: TrackedRecord[] | null; nowMs: number; gym: ReactNode; onRun?: () => void;
   /** On the Mac: the bike session to start; elsewhere a note that it starts on the Mac. */
   bike?: ReactNode;
-  /** Something else is the next thing to do (an open workout): today's task then shows as a single row. */
-  quiet?: boolean;
 };
 type Advice = ReturnType<typeof useTodayAdvice>;
 
@@ -42,17 +40,16 @@ function Connected({ port, ...props }: Props & { port: TrackingPort }) {
   return <View {...props} a={a} />;
 }
 
-/** "Anders heute?": a full row under the card; it opens a small sheet with the minute chips for today. */
+/** "Anders heute?": a button under the card; it opens a small sheet with the minute chips for today. */
 function Other({ a, date }: { a?: Advice; date: string }) {
   const [open, setOpen] = useState(false);
   if (!a) return null;
   return (
     <>
-      <button type="button" className="tk-rowbtn tk-choice tk-other" aria-haspopup="dialog" onClick={() => setOpen(true)}>
-        <span className="tk-row-title">Anders heute?</span><span className="tk-chevron" aria-hidden="true">›</span>
-      </button>
+      <button type="button" className="secondary tk-other" aria-haspopup="dialog" onClick={() => setOpen(true)}>Anders heute?</button>
       {open && (
         <Sheet size="small" title="Anders heute?" onClose={() => setOpen(false)}>
+          <p className="muted">Der Coach schlägt dir dann etwas für diese Zeit vor.</p>
           <TodayOnly frame={a.frame} date={date} onChange={(m) => { setOpen(false); void a.setToday(m).catch(() => {}); }} />
         </Sheet>
       )}
@@ -60,14 +57,13 @@ function Other({ a, date }: { a?: Advice; date: string }) {
   );
 }
 
-function View({ weekplans, runs, nowMs, gym, onRun, bike, quiet, a }: Props & { a?: Advice }) {
+function View({ weekplans, runs, nowMs, gym, onRun, bike, a }: Props & { a?: Advice }) {
   const date = dateKeyOf(nowMs);
   const planned = todayPlan(weekplans, nowMs);
   // The advice is the headline whenever it is not the plan day unchanged; the plan day is then one muted line.
   const deviates = a !== undefined && (a.frame.mode === 'spontaneous' || (planned !== null && !a.advice.fromPlan));
-  const today: PlanDay | null = a && deviates
-    ? { date, sport: a.advice.sport, hardness: a.advice.hardness, fixed: false, ...(a.advice.also ? { also: a.advice.also } : {}) }
-    : planned;
+  const adviceDay: PlanDay | null = a ? { date, sport: a.advice.sport, hardness: a.advice.hardness, fixed: false, ...(a.advice.also ? { also: a.advice.also } : {}) } : null;
+  const today: PlanDay | null = adviceDay && deviates ? adviceDay : planned;
   if (a?.advice.done) {
     return (
       <section className="card tk-today-card" aria-label="Heute">
@@ -82,6 +78,10 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, quiet, a }: Props & { 
       <section className="card tk-today-card" aria-label="Heute">
         <h2>{a.advice.label}</h2>
         <p className="muted">{a.advice.reason}</p>
+        {/* One card: the suggestion and the way to it. */}
+        {adviceDay && hasSport(adviceDay, 'gym') && gym}
+        {adviceDay && hasSport(adviceDay, 'run') && onRun && <button type="button" onClick={onRun}>Zum Laufen</button>}
+        {adviceDay && hasSport(adviceDay, 'bike') && (bike ?? <p>Die Radeinheit startest du am Mac.</p>)}
         <Other a={a} date={date} />
       </section>
     );
@@ -91,15 +91,6 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, quiet, a }: Props & { 
   // A run alone says what it is: "Laufen, 50 Min".
   const runAlone = today.sport === 'run' && !today.also && run !== null;
   const title = runAlone ? `Laufen, ${run.minutes} Min${run.kind === 'easy' ? '' : `, ${RUN_KIND[run.kind] ?? ''}`}` : deviates && a ? a.advice.label : label(today);
-  // Another thing is the next one to do (an open workout): today's task is one row under it, not a second big card.
-  if (quiet) {
-    return (
-      <>
-        <RowList><Row title={title} value="Heute" onClick={hasSport(today, 'run') && onRun ? onRun : undefined} /></RowList>
-        <Other a={a} date={date} />
-      </>
-    );
-  }
   return (
     <section className="card tk-today-card" aria-label={deviates ? 'Heute' : 'Heute laut Wochenplan'}>
       <h2>{title}</h2>
@@ -110,12 +101,12 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, quiet, a }: Props & { 
       {hasSport(today, 'run') && (
         <>
           {!runAlone && <p>{run ? `Lauf: ${run.minutes} Min ${RUN_KIND[run.kind] ?? ''}`.trim() : 'Ein Lauf nach Gefühl.'}</p>}
-          {onRun && <button type="button" className={quiet ? 'secondary' : undefined} onClick={onRun}>Zum Laufen</button>}
+          {onRun && <button type="button" onClick={onRun}>Zum Laufen</button>}
         </>
       )}
       {hasSport(today, 'bike') && (bike ?? <p>Die Radeinheit startest du am Mac.</p>)}
       {hasSport(today, 'mobility') && <p>Heute ist Beweglichkeit dran.</p>}
-      {today.sport === 'rest' && <p>Ruhetag. Erholung gehört zum Training.</p>}
+      {today.sport === 'rest' && <p>Erholung gehört zum Training.</p>}
       <Other a={a} date={date} />
     </section>
   );

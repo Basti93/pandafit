@@ -22,7 +22,9 @@ body { font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemF
 /* The page ends a full tab bar plus a little air above it, so its last line (Abmelden, a note) is never under the bar. */
 .web-main { padding-top: env(safe-area-inset-top); padding-bottom: calc(var(--web-nav-h) + env(safe-area-inset-bottom) + 2.5rem); }
 .web-login label { display: flex; flex-direction: column; gap: .3rem; }
-.web-login { padding-top: calc(28vh + env(safe-area-inset-top)); gap: .75rem; }
+/* The form sits in the middle of the screen; the field border is the muted colour so the fields show in the dark scheme too. */
+.web-login { min-height: 100dvh; justify-content: center; padding-top: env(safe-area-inset-top); padding-bottom: 4rem; gap: .75rem; }
+.web-login input { border-color: var(--muted); }
 .web-login button[type='submit'] { margin-top: .25rem; }
 /* Sticky pieces sit below the notch; the tab bar is at the bottom now. */
 .tk-rest { top: calc(env(safe-area-inset-top) + .4rem) !important; }

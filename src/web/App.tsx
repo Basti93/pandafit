@@ -90,6 +90,7 @@ function LoginForm({ env, onDone, note, before, failed }: { env: Env; onDone: (n
   return (
     <form className="web-login tk-screen" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
       <h1 className="tk-title">Pandafit</h1>
+      <p className="muted">Ein Konto bekommst du von der Person, die Pandafit eingerichtet hat.</p>
       {note && <p role="status" className="tk-note">{note}</p>}
       <label>Name<input ref={nameRef} aria-label="Name" autoComplete="username" autoCapitalize="none" value={name} onChange={(e) => setName(e.target.value)} /></label>
       <label>Passwort<input ref={passRef} aria-label="Passwort" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
@@ -119,7 +120,7 @@ const todayTitle = (ms: number): string => new Date(ms).toLocaleDateString('de-D
 /** "14:05", or with the day when it was not today. */
 const sinceText = (ms: number, now: number): string => (localDayKey(ms) === localDayKey(now) ? timeLabel(ms) : `${shortDate(ms)} ${timeLabel(ms)}`);
 
-function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goMeals?: () => void }) {
+function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { port: WebPort; env: Env; account: string; goTraining: (resume?: boolean) => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
   const weekplans = usePortRecords(port, 'weekplan').records;
@@ -144,7 +145,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals
 
   // The strength plan: on a strength day inside the week plan's card, without a week plan as its own card.
   // Name and time in one line, the exercises in two; the reason, the sets and the outlook behind "Details".
-  const toTraining = <button type="button" className={open ? 'secondary' : undefined} onClick={() => goTraining()}>Zum Krafttraining</button>;
+  const toTraining = <button type="button" onClick={() => goTraining()}>Zum Krafttraining</button>;
   const gym = p ? (
     <>
       {p.workout && <p className="muted"><span>{p.workout.name}</span>{p.workout.exercises.length > 0 ? ` · ${durationNote(p.workout)}` : ''}</p>}
@@ -163,7 +164,6 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals
     </>
   ) : (
     <>
-      <p className="muted">Noch kein Krafttraining geplant. Du kannst trotzdem jederzeit trainieren.</p>
       {toTraining}
     </>
   );
@@ -181,22 +181,24 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goMeals
       <PageHead title={todayTitle(now)} />
       {open && (
         <section className="card" aria-label="Training läuft noch">
-          <h2>{(open.body as LoggedWorkout).title} läuft noch – seit {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
+          <h2>{(open.body as LoggedWorkout).title} läuft – gestartet {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
           <button type="button" onClick={() => goTraining(true)}>Weitermachen</button>
         </section>
       )}
       {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
-      {today ? <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} quiet={!!open} /> : (
-        <>
-          <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} quiet={!!open} />
-          <section className="card">{gym}</section>
-          <section className="card">
-            <p className="muted">Noch kein Wochenplan für heute. Mit dem Coach plant ihr die Woche über alle Sportarten.</p>
+      {/* A workout that is open is the one thing to do: no day card beside it. */}
+      {!open && <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} />}
+      {!open && weekplans !== null && plans !== null && !today && !planning && !p && (
+        <section className="card" aria-label="Was Pandafit planen kann">
+          <h2>Was soll Pandafit für dich planen?</h2>
+          <p className="muted">Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit dem Coach.</p>
+          <div className="tk-row">
             <button type="button" className="secondary" onClick={goCoach}>Woche planen</button>
-          </section>
-        </>
+            <button type="button" className="link" onClick={goProfile}>Im Profil auswählen</button>
+          </div>
+        </section>
       )}
-      {goMeals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} onOpenPlan={goMeals} />}
+      {meals && <TodayMeals port={port} now={env.now} fetchFn={env.fetchFn} />}
       {session && <MobilityOffer key={session.id} session={session} hideKey={`pandafit.mobility.notToday.${account}`} storage={env.storage} now={env.now} onDone={() => void markDone()} />}
     </div>
   );
@@ -372,7 +374,7 @@ function Ausdauer({ port, env, account, hasRun, hasBike }: { port: WebPort; env:
           </div>
         )}
       </div>
-      {shown === 'rad' ? <BikeScreen port={port} /> : <RunScreen port={port} now={env.now} newId={env.newId} />}
+      {shown === 'rad' ? <BikeScreen port={port} now={env.now} /> : <RunScreen port={port} now={env.now} newId={env.newId} />}
     </>
   );
 }
@@ -391,6 +393,7 @@ const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; last
 function Profil({ account, port, now, status, onLogout, push, persistRefused, link }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null; persistRefused: boolean }) {
   const [confirming, setConfirming] = useState(false);
   usePortRecords(port, 'workout'); // re-renders when the port changes
+  const hasBike = bikeVisible(bikeOf(usePortRecords(port, 'bike').records), ridesOf(usePortRecords(port, 'ride').records));
   const c = port.syncState();
   const tryLogout = () => { if (c.pending > 0 || (c.refused ?? 0) > 0) setConfirming(true); else onLogout(); };
   const sync = syncText(status, c);
@@ -403,6 +406,7 @@ function Profil({ account, port, now, status, onLogout, push, persistRefused, li
       </RowList>
       {!quiet && <p role="status" className="muted">{sync}</p>}
       <RunSettingsCard port={port} now={now} />
+      <p className="muted">{hasBike ? 'Rad · gefahren wird am Mac' : 'Rad · startet mit der ersten Fahrt am Mac'}</p>
       <ContactSettings port={port} now={now} />
       {link && <ConnectionSettings link={link} />}
       {push && <PushSettings push={push} port={port} now={now} />}
@@ -467,9 +471,6 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
     return () => { clearTimeout(give); unsub(); release(); };
   }, [link]);
   const hasMeals = (linkMeals ?? storedMeals) || mealWeeks(mealRecords, env.now()).length > 0;
-  // Set by "Essensplan" on Heute; any other way into Essen keeps the usual default week.
-  const [mealsToday, setMealsToday] = useState(false);
-  useEffect(() => { if (tab !== 'essen') setMealsToday(false); }, [tab]);
   // Laufen once "Laufen planen" is on or the run coach suggests it: nothing of it for a person who does not run.
   const runRecords = usePortRecords(port, 'run').records;
   const run = runView(runRecords ?? [], env.now());
@@ -533,9 +534,9 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
-          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} goMeals={hasMeals ? () => { setMealsToday(true); setTab('essen'); } : undefined} />}
+          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(r) => { setResume(!!r); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => setTab('coach')} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
           {tab === 'training' && <Training port={port} env={env} resume={resume} />}
-          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} focusToday={mealsToday} />}
+          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen port={port} now={env.now} newId={env.newId} showPrefs={false} />}
           {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} persistRefused={persistRefused} />}

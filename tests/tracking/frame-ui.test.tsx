@@ -32,7 +32,7 @@ test('the planning and time rows in the goal sheet write the frame, stamped abov
 test('spontaneous mode shows the advice instead of the week', async () => {
   const { port } = fakePort([plan(['gym', 'bike', 'run']), frameRecord({ mode: 'spontaneous', minutes: null }, 1)]);
   render(<CoachScreen port={port} {...env} />);
-  expect(await screen.findByRole('heading', { name: /^Heute: .* – weil / })).toBeTruthy();
+  expect(await screen.findByRole('heading', { name: /^Heute: .* – (weil |ein ruhiger Einstieg)/ })).toBeTruthy();
   expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
 });
 
@@ -61,7 +61,7 @@ test('the start screen without a plan shows the advice with its reason', async (
   const { port } = fakePort([]);
   render(<TodayCard port={port} weekplans={[]} runs={[]} nowMs={NOW} gym={null} />);
   expect(await screen.findByRole('heading')).toBeTruthy();
-  expect(screen.getByText(/^weil /)).toBeTruthy();
+  expect(screen.getByText(/^(weil |ein ruhiger Einstieg)/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: /^Anders heute/ }));
   expect(screen.getByRole('group', { name: 'Heute nur' })).toBeTruthy();
 });

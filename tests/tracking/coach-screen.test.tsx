@@ -138,3 +138,13 @@ test('the coach writes by itself only when switched on here; the settings are sa
   await waitFor(() => expect(records(map, 'coachprefs')[0]?.body).toEqual({ week: { on: false, day: 6, hour: 18 }, evening: { on: true, hour: 19 } }));
   expect(await screen.findByRole('button', { name: /Uhrzeit am Vorabend/ })).toBeTruthy();
 });
+
+test('without a week plan: one "Woche planen" button, no empty day list, no second Coach row; the goal is a suggestion', async () => {
+  const { port } = fakePort();
+  render(<CoachScreen port={port} {...env} />);
+  expect(await screen.findByRole('button', { name: 'Woche planen' })).toBeTruthy();
+  expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Coach/ })).toBeNull();
+  expect(screen.getByRole('button', { name: /^Mein Ziel/ }).textContent).toContain('Vorschlag: Muskeln aufbauen');
+  await openChat();
+});

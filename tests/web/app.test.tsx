@@ -75,6 +75,11 @@ describe('web app', () => {
     expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual(['Heute', 'Woche', 'Kraft']);
   });
 
+  it('the login says where an account comes from', async () => {
+    await boot({ me: 401 });
+    expect(await screen.findByText('Ein Konto bekommst du von der Person, die Pandafit eingerichtet hat.')).toBeTruthy();
+  });
+
   it('login failure shows a calm message', async () => {
     await boot({ me: 401, loginStatus: 401 });
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'anna' } });
@@ -167,7 +172,8 @@ describe('web app', () => {
   it('an open workout shows on Heute with "Weitermachen", which leads to the workout', async () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w-open', updatedMs: NOW - 500, deleted: false, body: { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] } };
     await boot({ seed: [plan(NOW - 1000), open] });
-    expect(await screen.findByRole('heading', { name: /^Pull läuft noch – seit \d\d:\d\d$/ })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: /^Pull läuft – gestartet \d\d:\d\d$/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Anders heute?' })).toBeNull(); // no day card beside the open workout
     fireEvent.click(screen.getByRole('button', { name: 'Weitermachen' }));
     // one tap: the workout itself opens, not the start screen with its card
     expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();
@@ -193,15 +199,30 @@ describe('web app', () => {
 
   it('without a plan there is a calm note and a workout can still be started', async () => {
     await boot({ seed: [] });
-    expect(await screen.findByText(/Noch kein Krafttraining geplant/)).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
     expect(await screen.findByRole('button', { name: 'Leeres Training starten' })).toBeTruthy();
+    expect(screen.getByText('Oder leg unter Routinen einen Ablauf an.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Studio/ }).textContent).toContain('noch keins');
+  });
+
+  it('a new account sees what Pandafit can plan, with the way to Profil; it goes once something is on', async () => {
+    await boot({ seed: [] });
+    expect(await screen.findByRole('heading', { name: 'Was soll Pandafit für dich planen?' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Woche planen' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Im Profil auswählen' }));
+    expect(await screen.findByRole('heading', { name: 'Profil' })).toBeTruthy();
+    expect(screen.getByText('Rad · startet mit der ersten Fahrt am Mac')).toBeTruthy();
+    cleanup();
+    await boot({ seed: [plan(NOW - 1000)] });
+    await screen.findByRole('button', { name: 'Zum Krafttraining' });
+    expect(screen.queryByRole('heading', { name: 'Was soll Pandafit für dich planen?' })).toBeNull();
   });
 
   it('the mobility card comes from the plan and Gemacht writes the done record', async () => {
     const s = session(NOW - 3600_000);
     const a = await boot({ seed: [plan(NOW - 1000, s)] });
-    expect(await screen.findByText('8 Min')).toBeTruthy();
+    expect(await screen.findByText('Beweglichkeit · 8 Min')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /^Beweglichkeit/ }));
     expect(await screen.findByText('Hüftbeuger dehnen')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Gemacht' }));
@@ -244,7 +265,7 @@ describe('web app', () => {
   it('the tab bar steps aside while a field has focus, so the keyboard never pushes it over an input', async () => {
     await boot({ seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
-    fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
     const field = await screen.findByLabelText('Nachricht an den Coach');
     const nav = screen.getByRole('navigation', { name: 'Seiten' });
     fireEvent.focusIn(field);
@@ -406,7 +427,7 @@ describe('web app', () => {
 
   it('a malformed plan record does not white-screen the page', async () => {
     await boot({ seed: [{ kind: 'plan', id: 'current', updatedMs: 1, deleted: false, body: { workout: { name: 'X', exercises: [{ title: 'Ohne Sätze' }] } } }, { kind: 'complaint', id: 'c', updatedMs: 1, deleted: false, body: null }] });
-    expect(await screen.findByText(/Noch kein Krafttraining geplant/)).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
   });
 
   it('an error boundary shows a calm message and still offers the workout page', () => {
@@ -583,22 +604,20 @@ describe('Essen on the phone', () => {
       expect(screen.queryByText('Essen heute')).toBeNull();
     });
 
-    it('one row per slot of today in order, tapping opens the meal, the link goes to Essen', async () => {
+    it('one row per slot of today in order, tapping opens the meal', async () => {
       await boot({ account: 'anna', seed: [mealPlan] });
       const list = await screen.findByRole('list', { name: 'Essen heute' });
       const rows = within(list).getAllByRole('listitem').map((r) => r.textContent ?? '');
       expect(rows[0]).toContain('Frühstück · Skyr mit Beeren');
-      expect(rows[1]).toContain('Mittag · Linsen-Bolognese');
-      expect(rows[0]).toContain('5 Min');
+      expect(rows[1]).toContain('Mittagessen · Linsen-Bolognese');
+      expect(rows[0]).not.toContain('Min'); // how long it takes is for the plan, not for Heute
       expect(rows.some((r) => r.includes('Tomatensuppe'))).toBe(false);
       expect(screen.queryByText(/Heute vorkochen/)).toBeNull();
       fireEvent.click(within(list).getByRole('button', { name: /Linsen-Bolognese/ }));
       expect(await screen.findByRole('dialog')).toBeTruthy();
       expect(screen.getByText('Verrühren.')).toBeTruthy();
       fireEvent.keyDown(document, { key: 'Escape' });
-      fireEvent.click(await within(list).findByRole('button', { name: /Essensplan/ }));
-      expect(await screen.findByRole('heading', { name: 'Heute' })).toBeTruthy();
-      expect(screen.getByRole('group', { name: 'Ansicht' })).toBeTruthy();
+      expect(within(list).queryByRole('button', { name: /Essensplan/ })).toBeNull(); // the Essen tab is the way in, no second one
     });
 
     it('says rest and cook-ahead in words', async () => {

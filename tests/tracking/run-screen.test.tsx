@@ -99,7 +99,16 @@ test('a planned run shows what counts today', async () => {
   expect(screen.getByText('Ruhiger Start in die Woche.')).toBeTruthy();
 });
 
-test('no run today: no today card', async () => {
+test('no run today: the card names the next run with its day', async () => {
+  const { port } = fakePort([rec('status', statusBody()), rec(`week-${WEEK}`, weekBody([planned({ date: '2026-11-07', minutes: 45 })]))]);
+  render(<RunScreen port={port} {...ids} />);
+  const next = await screen.findByRole('region', { name: 'Nächster Lauf' });
+  expect(within(next).getByText('Sa., 7. Nov.')).toBeTruthy();
+  expect(within(next).getByText(/45 Min/)).toBeTruthy();
+  expect(screen.queryByRole('region', { name: 'Heute' })).toBeNull();
+});
+
+test('no run today: no card named Heute', async () => {
   const { port } = fakePort([rec('status', statusBody()), rec(`week-${WEEK}`, weekBody([planned({ date: '2026-11-07' })]))]);
   render(<RunScreen port={port} {...ids} />);
   await screen.findByRole('region', { name: 'Läufe dieser Woche' });

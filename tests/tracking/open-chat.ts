@@ -1,8 +1,9 @@
 import { fireEvent, screen } from '@testing-library/react';
 
-/** The Woche page has a row "Coach" that opens the chat sheet. */
+/** The Woche page has a row "Coach" that opens the chat sheet; without a week plan the button "Woche planen" does. */
 export async function openChat(): Promise<HTMLElement> {
-  fireEvent.click(await screen.findByRole('button', { name: /^Coach/ }));
+  const row = await screen.findAllByRole('button', { name: /^(Coach|Woche planen)/ });
+  fireEvent.click(row.find((b) => b.textContent?.startsWith('Coach')) ?? row[0]!);
   return screen.findByRole('dialog', { name: 'Coach' });
 }
 

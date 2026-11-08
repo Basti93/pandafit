@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { TodayCard } from '../../src/tracking/ui/TodayCard';
 import type { TrackedRecord } from '../../src/shared/records';
 import { weekDates } from '../../src/shared/week-plan';
@@ -45,9 +45,19 @@ test('trained today, in the evening: one line, done', async () => {
   expect((await screen.findByRole('heading')).textContent).toBe('Heute erledigt – gut gemacht.');
 });
 
-test('while a workout is open, today shows as one row, not as a second card', () => {
-  const { container } = render(<TodayCard weekplans={[plan(['rest', 'rest', 'gym'])]} runs={[]} nowMs={NOW} gym={<p>Oberkörper A</p>} quiet />);
-  expect(container.querySelector('.card')).toBeNull();
-  expect(screen.queryByText('Oberkörper A')).toBeNull();
-  expect(screen.getByText('Kraft, mittel')).toBeTruthy();
+test('without a plan the suggestion, the way to it and "Anders heute?" are one card; the sheet says what a time does', async () => {
+  const { fakePort } = await import('./fake-port');
+  const { port } = fakePort([]);
+  const { container } = render(<TodayCard port={port} weekplans={[]} runs={[]} nowMs={NOW} gym={<button type="button">Zum Krafttraining</button>} />);
+  await screen.findByRole('heading');
+  expect(container.querySelectorAll('.card').length).toBe(1);
+  expect(screen.getByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
+  expect(screen.getByText(/^ein ruhiger Einstieg/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Anders heute?' }));
+  expect(screen.getByText('Der Coach schlägt dir dann etwas für diese Zeit vor.')).toBeTruthy();
+});
+test('a rest day says it once', () => {
+  render(<TodayCard weekplans={[plan([])]} runs={[]} nowMs={NOW} gym={null} />);
+  expect(screen.getByText('Erholung gehört zum Training.')).toBeTruthy();
+  expect(screen.queryByText(/^Ruhetag\./)).toBeNull();
 });
