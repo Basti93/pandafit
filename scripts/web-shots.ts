@@ -21,6 +21,10 @@ import { addDays, mondayOf, type PlanDay, type Hardness, type Sport } from '../s
 import type { TrackedRecord } from '../src/shared/records';
 
 const out = resolve(process.argv[2] ?? 'web-shots');
+// SHOTS_SIZE=WxH (default 390x844), SHOTS_DARK=1 for the dark scheme, SHOTS_EMPTY=1 for a new account without any data (main tabs only).
+const [VW, VH] = (process.env.SHOTS_SIZE ?? '390x844').split('x').map(Number) as [number, number];
+const DARK = process.env.SHOTS_DARK === '1';
+const EMPTY = process.env.SHOTS_EMPTY === '1';
 const filter = process.argv[3] ?? '';
 const NAME = 'mira';
 const PASSWORD = 'shots demo pass 1';
@@ -376,7 +380,7 @@ const openWorkout = () => {
 const dbPath = join(mkdtempSync(join(tmpdir(), 'pf-shots-')), 'shots.db');
 const db = openDb(dbPath);
 const accountId = await createAccount(db, NAME, PASSWORD);
-const result = putRecords(db, accountId, records, NOW);
+const result = putRecords(db, accountId, EMPTY ? [] : records, NOW);
 if (result.refused.length) throw new Error(`shots: seed refused: ${JSON.stringify(result.refused.slice(0, 3))}`);
 const app = buildServer({ dbPath, staticDir: resolve('out/web') });
 await app.listen({ port: 0, host: '127.0.0.1' });
@@ -389,7 +393,7 @@ const missed: string[] = [];
 async function main() {
   try { browser = await chromium.launch({ headless: true }); }
   catch (e) { throw new Error(`no browser could be launched (${(e as Error).message.split('\n')[0]}). Install one with: npx playwright-core install chromium`); }
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'de-DE' });
+  const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: VW < 700 ? 2 : 1, isMobile: VW < 700, hasTouch: VW < 700, locale: 'de-DE', colorScheme: DARK ? 'dark' : 'light' });
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
   page.on('pageerror', (e) => console.log('pageerror', e.message));
@@ -461,6 +465,22 @@ async function main() {
   await page.getByLabel('Passwort').fill(PASSWORD);
   await page.getByRole('button', { name: 'Anmelden' }).click();
   await page.getByRole('heading', { level: 1, name: /^\p{L}+, \d+\. \p{L}+$/u }).waitFor();
+  if (EMPTY) {
+    // A new person: what the first look at every tab shows, without any data.
+    await page.waitForTimeout(2500);
+    await shot('neu-heute');
+    for (const label of await page.getByRole('navigation').getByRole('button').allInnerTexts()) {
+      const name = label.trim();
+      if (!name || name === 'Heute') continue;
+      await nav(name);
+      await page.waitForTimeout(800);
+      await shot(`neu-${name.toLowerCase().replace(/[^a-z]+/g, '-')}`);
+    }
+    await page.getByRole('button', { name: 'Profil', exact: true }).click();
+    await page.waitForTimeout(800);
+    await shot('neu-profil');
+    return;
+  }
   await page.getByRole('navigation').getByRole('button', { name: 'Statistik', exact: true }).waitFor({ timeout: 30_000 });
   await page.waitForFunction(() => document.body.innerText.includes('Pull'), null, { timeout: 30_000 }).catch(() => {});
   await page.waitForTimeout(1500);
