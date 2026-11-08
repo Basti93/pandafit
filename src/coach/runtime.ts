@@ -35,7 +35,7 @@ import { GarminWorkouts } from './run/garmin-workouts';
 import { RunCoach } from './run/run-coach';
 import { dateKey, dayRatings, type DayInput, type DayRating } from './day-load';
 import { allTraining } from './all-training';
-import { activitiesHint, activityData, allActivities, ActivitySeen } from './activity-feed';
+import { activitiesHint, activityData, allActivities, ActivitySeen, doneByDate } from './activity-feed';
 import { manualRuns } from './run/runs';
 import { CoachTasks, type CoachId, type TaskFrom } from './coach-tasks';
 import { statsContent } from './stats/stats-content';
@@ -362,18 +362,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
   });
   // A coach must never fail over the extra block.
   /** Which sports were really done on each date, from every source. Planned sessions are not in it. */
-  const doneOf = (id: string): Record<string, Sport[]> => {
-    const out: Record<string, Sport[]> = {};
-    try {
-      for (const a of activitiesOf(id)) {
-        const sport: Sport | null = a.source === 'rad' ? 'bike' : a.source === 'kraft' ? 'gym' : a.key.startsWith('lauf-') || /run/i.test(a.sport ?? '') ? 'run' : null;
-        if (!sport) continue;
-        const date = dateKey(a.startMs);
-        if (!(out[date] ?? []).includes(sport)) out[date] = [...(out[date] ?? []), sport];
-      }
-    } catch { /* then the hint says nothing was done */ }
-    return out;
-  };
+  const doneOf = (id: string): Record<string, Sport[]> => { try { return doneByDate(activitiesOf(id)); } catch { return {}; } };
   const activityHintOf = (id: string): string => { try { return activitiesHint(activitiesOf(id), nowMs()); } catch { return ''; } };
   // New activities, planned or not, make every coach plan again (the run coach sees it in its own key).
   const activitySeen = new ActivitySeen(path.join(coachDir, 'chat', 'activities-seen.json'));

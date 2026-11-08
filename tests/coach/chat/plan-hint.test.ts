@@ -61,9 +61,25 @@ describe('planned is never done', () => {
     const h = planHint([rec], NOW, 'gym', undefined, {});
     expect(h).toMatch(/"date":"2026-11-07"[^}]*"erledigt":\[\]/);
     expect(h).toContain('Ein vergangener Plantag oder heute ohne den geplanten Sport in erledigt ist nicht gemacht.');
-    expect(h.match(/"erledigt"/g)).toHaveLength(1);
+    expect(h.match(/"erledigt"/g)).toHaveLength(6);
+    expect(h).not.toMatch(/"date":"2026-11-08"[^}]*"erledigt"/);
   });
   test('done sports of today are named', () => {
     expect(planHint([rec], NOW, 'gym', undefined, { '2026-11-07': ['gym', 'run'] })).toContain('"erledigt":["gym","run"]');
+  });
+});
+
+describe('past plan days of the week', () => {
+  const rec = plan('2026-11-02', { 0: 'gym', 5: 'bike' });
+  test('a planned past day with nothing done has an empty erledigt, before today', () => {
+    const h = planHint([rec], NOW, 'gym', undefined, {});
+    expect(h).toMatch(/"date":"2026-11-02"[^}]*"sport":"gym"[^}]*"erledigt":\[\]/);
+    expect(h.indexOf('2026-11-02')).toBeLessThan(h.indexOf('2026-11-07'));
+  });
+  test('a Garmin-only cycling or strength activity counts as done', async () => {
+    const { allActivities, doneByDate } = await import('../../../src/coach/activity-feed');
+    const g = (id: string, sport: string, startMs: number) => ({ id, sport, name: 'x', startMs, durationS: 3600, fromBikeCoach: false }) as never;
+    const done = doneByDate(allActivities({ rides: [], workouts: [], activities: [g('g1', 'cycling', Date.UTC(2026, 10, 6, 9)), g('g2', 'strength_training', Date.UTC(2026, 10, 6, 17))] }));
+    expect(done['2026-11-06']).toEqual(['bike', 'gym']);
   });
 });

@@ -18,7 +18,8 @@ type Deps = {
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
-const kindOf = (s: TrainingSession): ActivityKind => {
+/** Which kind an activity is, from its source or, for Garmin, its sport. */
+export const kindOf = (s: TrainingSession): ActivityKind => {
   if (s.source === 'kraft') return 'kraft';
   if (s.source === 'rad') return 'rad';
   const sport = s.sport ?? '';

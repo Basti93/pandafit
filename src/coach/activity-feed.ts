@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { overlapsByHalf, trainingSessions, type TrainingInput, type TrainingSession } from './all-training';
 import { dateKey } from './day-load';
+import { kindOf } from './activities-export';
+import type { Sport } from '../shared/week-plan';
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
@@ -24,6 +26,18 @@ export const allActivities = (input: TrainingInput & { manualRuns?: ManualRun[] 
     sessions.push({ key: `lauf-${r.id}`, source: 'andere', title: null, sport: 'running', startMs: r.startMs, minutes: r.durationS / 60 });
   }
   return sessions;
+};
+
+/** The sports really done on each local date, each once, by the kind mapping of the activity list (Garmin included). */
+export const doneByDate = (sessions: TrainingSession[]): Record<string, Sport[]> => {
+  const out: Record<string, Sport[]> = {};
+  for (const s of sessions) {
+    const kind = kindOf(s);
+    const sport: Sport | null = kind === 'rad' ? 'bike' : kind === 'kraft' ? 'gym' : kind === 'lauf' ? 'run' : null;
+    const date = dateKey(s.startMs);
+    if (sport && !(out[date] ?? []).includes(sport)) out[date] = [...(out[date] ?? []), sport];
+  }
+  return out;
 };
 
 const clock = (ms: number): string => {
