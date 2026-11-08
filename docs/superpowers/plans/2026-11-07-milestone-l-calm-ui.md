@@ -92,7 +92,7 @@ Everything else in the reviews is in scope.
   - the storage hint only when persistence was refused, in one plain sentence;
   - "Abmelden" as the last row, a link.
   - A back arrow "‹ Zurück" in the Profil header.
-- **Login:** the primary button always looks enabled. With empty fields it shows "Bitte Name und Passwort eingeben". The form is placed a bit lower.
+- **Login:** the primary button always looks enabled. With empty fields it shows "Bitte gib deinen Namen und dein Passwort ein.". The form is placed a bit lower.
 - **Tests:**
   - the kit: the sheet opens, closes on × and Escape, and focus goes to it;
   - the switch row toggles;
@@ -109,7 +109,7 @@ Commit: `feat(ui): calm building blocks, profile and login use them`.
   3. "Zuletzt geändert ›": one row showing the newest change; it opens the five lines.
   4. Row "Mein Ziel ›" with the value "Muskeln aufbauen · Rücken". It opens a sheet with the goal choice, focus chips (+ duration), sport priorities, the planning mode and time per session (moved here from the top of the page).
   5. Row "Regeln ›" with the value "4 Regeln". It opens a sheet listing rules and forwarded requests as one list. Each row shows text plus a muted kind (Wunsch, pausiert, an Kraft-Coach). Tapping a row shows Pausieren / Fortsetzen and a danger link "Löschen". Below the list are "Regel hinzufügen" and "Übung ausschließen".
-  6. Row "Coach" with a preview of the last message (one line, muted time) and a "›". It opens the chat sheet. When a proposal is open, the row says "Vorschlag wartet".
+  6. Row "Coach" with a preview of the last message (one line, muted time) and a "›". It opens the chat sheet. When a proposal is open, the row says "Ein Vorschlag wartet auf dich".
 - **Remove:** the intro paragraph; the old prefs card (moved to Profil in Task 1).
 - **Chat sheet:**
   - full screen; messages oldest to newest; on open it scrolls to the newest;
@@ -190,7 +190,7 @@ Commit: `feat(ui): the live workout shows the next set and little else`.
   - **Editor:**
     - each exercise is one row "Name  − 3 +  ×";
     - "Speichern" is sticky at the bottom; "Abbrechen" is a link;
-    - with missing data: "Name und mindestens eine Übung";
+    - with missing data: "Gib einen Namen und mindestens eine Übung an.";
     - focus goes to the name.
 - **Verlauf:**
   - The list rows are the title and date, with month headings. It shows the last 8 weeks, then "Ältere anzeigen". No set count.

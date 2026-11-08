@@ -34,8 +34,8 @@ test('the Coach row previews the last message and shows no second "waiting" whil
   cleanup();
   const waiting = fakePort([riderMsg, coachMsg]);
   render(<CoachScreen port={waiting.port} {...env} />);
-  expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).not.toContain('Vorschlag wartet');
-  expect(screen.getAllByText('Vorschlag wartet')).toHaveLength(1);
+  expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).not.toContain('Ein Vorschlag wartet auf dich');
+  expect(screen.getAllByText('Ein Vorschlag wartet auf dich')).toHaveLength(1);
 });
 
 test('the chat opens as a sheet with the input in it, and closes on × and on Escape', async () => {
@@ -65,7 +65,7 @@ test('open proposals sit behind one slim strip above the input; once decided the
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Vorschlag' })).toBeNull()); // the sheet closes with the last one
   expect(chat.queryByRole('button', { name: /Vorschlag/ })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Übernehmen' })).toBeNull();
-  expect(await chat.findByText(/^Übernommen: Wochenplan/)).toBeTruthy();
+  expect(await chat.findByText(/^Du hast den Wochenplan ab .* übernommen\./)).toBeTruthy();
 });
 
 test('an old proposal that was never answered is a line in the history, not a pin', async () => {
@@ -80,7 +80,7 @@ test('an old proposal that was never answered is a line in the history, not a pi
 test('sends a message and shows that the coach is thinking', async () => {
   const { port, map } = fakePort();
   render(<CoachScreen port={port} {...env} />);
-  expect(await screen.findByText(/Noch kein Wochenplan/)).toBeTruthy();
+  expect(await screen.findByText(/Es gibt noch keinen Wochenplan/)).toBeTruthy();
   await openChat();
   fireEvent.change(screen.getByLabelText('Nachricht an den Coach'), { target: { value: '  3× Rad bitte ' } });
   fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
@@ -97,7 +97,7 @@ test('taking a proposal writes the week plan and shows it; then it cannot be tak
   await waitFor(() => expect(records(map, 'weekplan')).toHaveLength(1));
   expect(records(map, 'weekplan')[0]).toMatchObject({ id: '2026-11-02', body: { fromMessage: 'c1', weekStart: '2026-11-02' } });
   expect(records(map, 'chat').some((r) => (r.body as { takes?: string }).takes === 'c1')).toBe(true);
-  expect(await screen.findByText(/Übernommen: Wochenplan/)).toBeTruthy();
+  expect(await screen.findByText(/Du hast den Wochenplan ab .* übernommen\./)).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Übernehmen' })).toBeNull();
   expect(screen.getByRole('list', { name: 'Wochenplan diese Woche' }).textContent).toContain('Kraft · mittel');
   expect(screen.queryByRole('status')).toBeNull();
@@ -111,7 +111,7 @@ test('declining writes a decline and changes no plan', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Nein danke' }));
   await waitFor(() => expect(records(map, 'chat').some((r) => (r.body as { declines?: string }).declines === 'c1')).toBe(true));
   expect(records(map, 'weekplan')).toHaveLength(0);
-  expect(await screen.findByText(/Vorschlag abgelehnt/)).toBeTruthy();
+  expect(await screen.findByText(/Du hast den Wochenplan ab .* abgelehnt\./)).toBeTruthy();
 });
 
 test('the run coach runs sit on their days in the week, and are listed alone without a week plan', async () => {
@@ -153,7 +153,7 @@ test('without a week plan: one "Woche planen" button, no empty day list, no seco
 test('a waiting proposal gets a card under the week with Ansehen, which opens the chat', async () => {
   const { port } = fakePort([riderMsg, coachMsg]);
   render(<CoachScreen port={port} {...env} />);
-  const card = await screen.findByRole('region', { name: 'Vorschlag wartet' });
+  const card = await screen.findByRole('region', { name: 'Ein Vorschlag wartet auf dich' });
   fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
   expect(await screen.findByRole('dialog', { name: 'Coach' })).toBeTruthy();
 });

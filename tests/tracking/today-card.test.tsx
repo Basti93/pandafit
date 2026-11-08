@@ -52,7 +52,7 @@ test('without a plan the suggestion, the way to it and "Etwas anderes heute?" ar
   await screen.findByRole('heading');
   expect(container.querySelectorAll('.card').length).toBe(1);
   expect(screen.getByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
-  expect(screen.getByText(/^ein ruhiger Einstieg/)).toBeTruthy();
+  expect(screen.getByText(/^Das passt heute als ruhiger Einstieg/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Etwas anderes heute?' }));
   expect(screen.getByText('Der Coach schlägt dir dann etwas für diese Zeit vor.')).toBeTruthy();
 });

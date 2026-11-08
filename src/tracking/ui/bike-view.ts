@@ -48,11 +48,11 @@ export function ftpSentence(b: BikeBody): string {
   if (!first || newest - first.atMs < MIN_BACK_MS) return base;
   const d = Math.round(b.ftpW - first.ftpW);
   const since = `seit ${monthName(first.atMs)}`;
-  return d === 0 ? `${base} – ${since} gleich` : `${base} – ${since} ${Math.abs(d)} W ${d > 0 ? 'mehr' : 'weniger'}`;
+  return d === 0 ? `${base}, ${since} gleich` : `${base}, ${since} ${Math.abs(d)} W ${d > 0 ? 'mehr' : 'weniger'}`;
 }
 
 export const phaseText = (b: BikeBody): string | null => {
   if (!b.phase) return null;
   const w = b.phase.weeksLeft;
-  return `Phase ${b.phase.name}${w > 0 ? ` – noch ${w} ${w === 1 ? 'Woche' : 'Wochen'} bis zur nächsten Phase` : ''}`;
+  return `Phase ${b.phase.name}${w > 0 ? `, noch ${w} ${w === 1 ? 'Woche' : 'Wochen'} bis zur nächsten Phase` : ''}`;
 };

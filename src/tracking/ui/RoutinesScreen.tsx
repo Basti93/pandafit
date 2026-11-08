@@ -26,7 +26,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
 
   const count = (b: GymWorkout) => `${b.exercises.length} ${b.exercises.length === 1 ? 'Übung' : 'Übungen'}`;
   const openRecord = (records ?? []).find((r) => r.id === open);
-  const note = failed && <p role="status" className="tk-note">Gerade nicht gespeichert. Versuch es gleich nochmal.</p>;
+  const note = failed && <p role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>;
 
   const closeAll = () => { setDraft(null); setOpen(null); setFailed(false); };
   // One sheet for a routine: it reads first and turns into the editor, so Back and × always close the whole thing.
@@ -39,7 +39,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
       return (
         <Sheet title={draft.isNew ? 'Neue Routine' : 'Routine bearbeiten'} onClose={closeAll}
           actions={<>
-            {!valid && (draft.name !== '' || draft.exercises.length > 0) && <p className="muted tk-oneline">Name und mindestens eine Übung</p>}
+            {!valid && (draft.name !== '' || draft.exercises.length > 0) && <p className="muted tk-oneline">Gib einen Namen und mindestens eine Übung an.</p>}
             <button type="button" disabled={!valid} onClick={async () => {
               if (saving.current) return; // a double tap saves once
               saving.current = true;
@@ -79,7 +79,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
           <button type="button" onClick={() => { setOpen(null); onStart(body); }}>Training starten</button>
           <button type="button" className="secondary" onClick={() => setDraft({ id: openRecord.id, isNew: false, name: body.name, exercises: body.exercises, updatedMs: openRecord.updatedMs })}>Bearbeiten</button>
         </>}>
-        {body.exercises.length === 0 ? <p className="muted">Noch keine Übung.</p> : (
+        {body.exercises.length === 0 ? <p className="muted">Diese Routine hat noch keine Übung.</p> : (
           <RowList label="Übungen">{body.exercises.map((e, i) => <Row key={i} title={e.title} value={`${e.sets.length} Sätze`} />)}</RowList>
         )}
         {note}

@@ -347,8 +347,8 @@ export function readLinkRequest(id: string, body: unknown): LinkRequest | null {
 export const linkAnswer = (r: LinkResult | null): string => {
   switch (r?.state) {
     case 'saved': return `Gespeichert: ${r.title ?? 'Rezept'}`;
-    case 'wait': return `Gespeichert, wird noch aufbereitet: ${r.title ?? 'Rezept'}`;
-    case 'veg': return 'Nicht vegetarisch – nicht gespeichert';
+    case 'wait': return `Gespeichert: ${r.title ?? 'Rezept'}. Das Rezept wird noch aufbereitet.`;
+    case 'veg': return 'Das Rezept ist nicht vegetarisch. Darum ist es nicht gespeichert.';
     case 'none': return 'Auf der Seite ist kein Rezept zu finden';
     case 'limit': return 'Für heute sind es genug Rezepte. Morgen geht es weiter.';
     case 'bad': return 'Das ist kein Link, den ich öffnen kann. Er muss mit https beginnen.';
@@ -399,7 +399,7 @@ export function readPlaceRequest(id: string, body: unknown): PlaceRequest | null
 }
 export const placeAnswer = (r: PlaceState | null): string => {
   switch (r) {
-    case 'placed': return 'Ist im Plan.';
+    case 'placed': return 'Das Rezept ist jetzt im Plan.';
     case 'nofit': return 'Das passt nicht zu den Angaben der Esser dieser Mahlzeit.';
     case 'past': return 'Dieser Tag ist schon vorbei.';
     case 'noplan': return 'Für diese Woche gibt es keinen Plan mehr, den ich ändern kann.';

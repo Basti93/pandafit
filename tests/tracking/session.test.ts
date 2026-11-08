@@ -453,7 +453,7 @@ describe('start without legs (noLegs)', () => {
   test('drops leg exercises and says so', () => {
     const { w, lines } = run([squat, bench], true);
     expect(w.exercises.map((e) => e.exerciseId)).toEqual(['pf-bench-press']);
-    expect(lines).toContain('Ohne Beine, wie abgesprochen.');
+    expect(lines).toContain('Heute geht es ohne Beine, wie abgesprochen.');
   });
   test('keeps both when unset', () => {
     const { w, lines } = run([squat, bench]);

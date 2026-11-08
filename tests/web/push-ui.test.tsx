@@ -168,6 +168,6 @@ describe('push notifications on the phone', () => {
     const push = fakePush();
     await boot({ push, loggedIn: true });
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
-    expect(await screen.findByText('Essens- und Laufplan, Antworten vom Coach, neue Version.')).toBeTruthy();
+    expect(await screen.findByText('Für neue Essens- und Laufpläne, Antworten vom Coach und neue Versionen.')).toBeTruthy();
   });
 });

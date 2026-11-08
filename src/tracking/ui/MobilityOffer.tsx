@@ -38,7 +38,7 @@ export function MobilityOffer({ session, hideKey, storage, now, onDone }: { sess
             <button type="button" className="link" onClick={() => { hideToday(storage, hideKey, now()); setHidden(true); }}>Heute nicht</button>
           </>}>
           {/* The stored reason opens with "Nach dem Training …", which is wrong on a rest day: only its note on left-out areas stays. */}
-          <p>Kurz und ruhig, nur wenn du magst.{omitted ? ` ${omitted}` : ''}</p>
+          <p>Es ist kurz und ruhig. Mach es nur, wenn du magst.{omitted ? ` ${omitted}` : ''}</p>
           <ol className="tk-mob-list">
             {session.exercises.map((e) => <li key={e.id}><b>{e.title}</b><span>{e.howTo}</span></li>)}
           </ol>

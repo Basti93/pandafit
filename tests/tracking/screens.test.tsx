@@ -112,7 +112,7 @@ test('finish with open sets asks, and leaving them out keeps them unconfirmed', 
   await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].sets[0].doneMs).toBe(100_000));
   fireEvent.click(screen.getByRole('button', { name: 'Training beenden' }));
   expect(await screen.findByRole('button', { name: 'Trotzdem als gemacht eintragen' })).toBeTruthy();
-  expect((await screen.findByRole('dialog', { name: 'Ein Satz offen' })).textContent).toContain('Offene Sätze nicht eintragen');
+  expect((await screen.findByRole('dialog', { name: 'Ein Satz ist noch offen' })).textContent).toContain('Offene Sätze nicht eintragen');
   fireEvent.click(screen.getByRole('button', { name: 'Offene Sätze nicht eintragen' }));
   await waitFor(() => expect(bodyOf(map, 'workout:open1').endMs).toBe(100_000));
   expect(bodyOf(map, 'workout:open1').exercises[0].sets[1].doneMs).toBeNull();
@@ -633,7 +633,7 @@ test('a double tap on saving a routine makes one routine with one id per draft',
   fireEvent.click(await screen.findByRole('button', { name: 'Neue Routine' }));
   fireEvent.change(screen.getByLabelText('Name der Routine'), { target: { value: 'Push' } });
   expect((screen.getByRole('button', { name: 'Speichern' }) as HTMLButtonElement).disabled).toBe(true);
-  expect(screen.getByText('Name und mindestens eine Übung')).toBeTruthy();
+  expect(screen.getByText('Gib einen Namen und mindestens eine Übung an.')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Übung hinzufügen' }));
   fireEvent.change(screen.getByLabelText('Suchen'), { target: { value: 'Bankdrücken' } });
   fireEvent.click(await screen.findByRole('button', { name: 'Bankdrücken' }));
@@ -779,10 +779,10 @@ describe('effort question after an exercise', () => {
     const { port } = fakePort([rec(planned())]);
     render(<WorkoutScreen port={port} {...ids} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-    expect(screen.queryByText('Danke – das fließt in den nächsten Vorschlag ein.')).toBeNull();
+    expect(screen.queryByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Satz 1 erledigt' }));
     fireEvent.click(within(await screen.findByRole('group', { name: 'Wie viele hättest du bei Bankdrücken noch geschafft?' })).getByRole('button', { name: '1–2' }));
-    expect(await screen.findByText('Danke – das fließt in den nächsten Vorschlag ein.')).toBeTruthy();
+    expect(await screen.findByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeTruthy();
   });
   it('can be skipped, and switched off on this device', async () => {
     const { port, map } = fakePort([rec(planned())]);
@@ -829,7 +829,7 @@ describe('next time, in the history of the latest workout', () => {
   it('shows one line per exercise with the reason', async () => {
     const { port } = fakePort([rec(finished('a', 5000)), rec(finished('b', 9000)), stats([step()])]);
     render(<WorkoutDetail port={port} record={rec(finished('b', 9000))} now={ids.now} onBack={() => {}} />);
-    expect(await screen.findByText('Nächstes Mal: 62,5 kg × 8 – weil du alle Wiederholungen geschafft hast.')).toBeTruthy();
+    expect(await screen.findByText('Nächstes Mal: 62,5 kg × 8, weil du alle Wiederholungen geschafft hast.')).toBeTruthy();
     expect(screen.queryByText('Kommt nach der Auswertung')).toBeNull();
   });
   it('shows nothing about the next time until the publish arrives', async () => {
@@ -862,7 +862,7 @@ describe('Zuletzt geändert on the week page', () => {
     render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
     const line = await screen.findByText(/Zuletzt geändert: Bankdrücken 3/);
     expect(line.closest('button')!.textContent).toMatch(/^Coach/);
-    expect(line.textContent).toContain('– weil du');
+    expect(line.textContent).toContain(', weil du');
   });
   it('without notes the Coach row has no such line', async () => {
     const { port } = fakePort([stats([])]);
@@ -926,11 +926,11 @@ describe('Zuletzt geändert in the chat', () => {
   it('the Coach row shows the reason; the chat opens the newest 5 with date, text and reason', async () => {
     const { port } = fakePort([stats]);
     render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
-    expect((await screen.findByText(/Zuletzt geändert: Bankdrücken 7/)).textContent).toContain('– Grund 7');
+    expect((await screen.findByText(/Zuletzt geändert: Bankdrücken 7/)).textContent).toContain(', Grund 7');
     fireEvent.click(screen.getByRole('button', { name: /^Coach/ }));
     fireEvent.click(await screen.findByRole('button', { name: /^Zuletzt geändert/ }));
     const lines = within(screen.getByRole('list', { name: 'Zuletzt geändert' })).getAllByRole('listitem');
     expect(lines).toHaveLength(5);
-    expect(lines[0]!.textContent).toBe('Sa., 7. Nov. · Bankdrücken 7 – Grund 7');
+    expect(lines[0]!.textContent).toBe('Sa., 7. Nov. · Bankdrücken 7, Grund 7');
   });
 });

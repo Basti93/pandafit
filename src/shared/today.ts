@@ -55,6 +55,10 @@ const wordsOf = (date: string, parts: Parts, noLegs: boolean): string =>
   noLegs ? dayParts(asDay(date, parts)).map((p) => (p.sport === 'gym' ? 'Kraft ohne Beine' : dayLabel(asDay(date, [p])))).join(' + ') : dayLabel(asDay(date, parts));
 const REST: Parts = [{ sport: 'rest', hardness: 'easy' }];
 
+/** The reason as a whole sentence for the card: "Das passt heute, weil …" instead of a bare clause. */
+export const reasonSentence = (reason: string): string =>
+  reason.startsWith('weil ') ? `Das passt heute, ${reason}.` : reason.startsWith('laut ') ? `So steht es in ${reason.slice(5)}.` : `Das passt heute ${reason}.`;
+
 export function todayAdvice(input: TodayInput): TodayAdvice {
   const { date, ratings, goal } = input;
   const before = (n: number): DayRating | undefined => ratings[addDays(date, -n)];
@@ -62,7 +66,7 @@ export function todayAdvice(input: TodayInput): TodayAdvice {
   if (input.hour !== undefined && ratings[date]?.hardness != null && input.hour >= ruleNumber('today.done-after-hour')) {
     const reason = 'weil du heute schon trainiert hast';
     const label = wordsOf(date, REST, false);
-    return { sport: 'rest', hardness: 'easy', label, reason, line: `${label} – ${reason}`, fromPlan: false, done: true };
+    return { sport: 'rest', hardness: 'easy', label, reason, line: `${label}, ${reason}`, fromPlan: false, done: true };
   }
   const plan = input.frame.mode === 'week' ? input.planDay ?? null : null;
 
@@ -83,7 +87,7 @@ export function todayAdvice(input: TodayInput): TodayAdvice {
     const pick = from.reduce((best, s) => (lastDone(s) < lastDone(best) ? s : best));
     parts = [{ sport: pick, hardness: 'moderate' }];
     // Without any history "longest ago" is not true: a calm start instead.
-    reason = lastDone(pick) === '' ? 'ein ruhiger Einstieg' : `weil du ${SPORT_LABEL[pick]} am längsten nicht gemacht hast`;
+    reason = lastDone(pick) === '' ? 'als ruhiger Einstieg' : `weil du ${SPORT_LABEL[pick]} am längsten nicht gemacht hast`;
   }
 
   // Protective rules, in order; the first that changes the day gives the reason.
@@ -110,5 +114,5 @@ export function todayAdvice(input: TodayInput): TodayAdvice {
   const [first, also] = parts as [AlsoPart, AlsoPart?];
   const label = wordsOf(date, parts, noLegs);
   const legs = noLegs ? false : plan?.legs;
-  return { sport: first.sport, hardness: first.hardness, ...(also ? { also } : {}), label, reason, line: `${label} – ${reason}`, fromPlan, ...(legs !== undefined ? { legs } : {}) };
+  return { sport: first.sport, hardness: first.hardness, ...(also ? { also } : {}), label, reason, line: `${label}, ${reason}`, fromPlan, ...(legs !== undefined ? { legs } : {}) };
 }

@@ -55,7 +55,7 @@ export function Development({ exerciseId, title, history, onBack, inSheet = fals
     <div className="tk-screen">
       {!inSheet && <button type="button" className="link tk-back" onClick={onBack}>‹ Zurück</button>}
       <h1 className="tk-title">{title}</h1>
-      {rows.length === 0 ? <p className="muted">Noch keine erledigten Sätze.</p> : (
+      {rows.length === 0 ? <p className="muted">Du hast noch keine Sätze erledigt.</p> : (
         <>
           {progress && <p>{progress}</p>}
           <p className="muted tk-sub">Bester Satz je Training</p>
@@ -90,7 +90,7 @@ function Detail({ port, store, history, onBack, onDeleted, latest, next, inSheet
       {!inSheet && <button type="button" className="link tk-back" onClick={onBack}>‹ Zurück</button>}
       <h1 className="tk-title">{w.title}</h1>
       <p className="muted">{dateLabel(w.startMs)}</p>
-      {save === 'unsaved' && <p role="status" className="tk-note">Gerade nicht gespeichert. Die Änderung bleibt hier und wird beim nächsten Schritt erneut gespeichert.</p>}
+      {save === 'unsaved' && <p role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Die Änderung bleibt hier und wird beim nächsten Schritt erneut gespeichert.</p>}
       {editing ? (
         w.exercises.map((e) => (
           <section key={e.rid} className="tk-ex" aria-label={e.title}>

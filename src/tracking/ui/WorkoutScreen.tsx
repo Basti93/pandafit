@@ -113,7 +113,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
   const overrides = useMemo(() => loadStepOverrides(loadSteps ?? [], studios.renames), [loadSteps, studios]);
   const studioHere = hereKey(w, [...history], studios);
   const chooseStep = (exerciseId: string, stepKg: number | null) => {
-    void port.list('loadstep').then((stored) => port.put(stepChange(stored, exerciseId, studioHere, stepKg, now()))).catch(() => setNotice('Gerade nicht gespeichert. Versuch es gleich nochmal.'));
+    void port.list('loadstep').then((stored) => port.put(stepChange(stored, exerciseId, studioHere, stepKg, now()))).catch(() => setNotice('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.'));
   };
   const statsMuscles = useMemo(() => {
     const r = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);
@@ -204,7 +204,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
     ending.current = true; leaving.current = true;
     try {
       store.flushDrafts();
-      if (!(await store.remove())) { leaving.current = false; setNotice('Gerade nicht gespeichert. Das Training bleibt offen, versuch es gleich nochmal.'); return; }
+      if (!(await store.remove())) { leaving.current = false; setNotice('Das konnte gerade nicht gespeichert werden. Das Training bleibt offen. Versuch es gleich nochmal.'); return; }
       closeStore(port, store);
       onLeave('Das Training wurde verworfen.');
     } finally { ending.current = false; }
@@ -221,7 +221,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
       </div>
       {save === 'unsaved' && (
         <p role="status" className="tk-note">
-          Gerade nicht gespeichert. Dein Training bleibt hier offen und wird mit dem nächsten Schritt erneut gespeichert.
+          Das konnte gerade nicht gespeichert werden. Dein Training bleibt hier offen und wird mit dem nächsten Schritt erneut gespeichert.
           {' '}<button type="button" className="secondary" onClick={() => act((x) => x)}>Jetzt nochmal speichern</button>
         </p>
       )}
@@ -304,7 +304,6 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
                   <ExerciseInfo title={e.title} description={description} icon={icon}
                     images={own ? exerciseImages(own.id) : []} video={videoSearchUrl({ title: e.title, hevyTitle: own?.hevyTitle })}>
                     <StepLine title={e.title} step={stepHere(e.exerciseId, equipment, history, studioHere, overrides, studios.renames)} onChoose={(kg) => chooseStep(e.exerciseId, kg)} />
-                    <button type="button" className="link tk-info-close" aria-label="Anleitung ausblenden" onClick={() => toggleInfo(e.rid)}>Ausblenden</button>
                   </ExerciseInfo>
                 )}
                 {lastTime && <p className="muted tk-sub">{`Zuletzt ${lastTime}`}</p>}
@@ -322,7 +321,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
                   <EffortQuestion title={e.title} onAnswer={(a) => act((x) => setEffort(x, e.rid, a))}
                     onOff={() => { setEffortOn(false); act((x) => setEffort(x, e.rid, 'skip')); }} />
                 )}
-                {e.effort && e.effort !== 'skip' && <><p className="muted tk-sub">Noch möglich: {EFFORT_LABEL[e.effort]}</p><p className="muted tk-sub">Danke – das fließt in den nächsten Vorschlag ein.</p></>}
+                {e.effort && e.effort !== 'skip' && <><p className="muted tk-sub">Noch möglich: {EFFORT_LABEL[e.effort]}</p><p className="muted tk-sub">Danke! Das fließt in den nächsten Vorschlag ein.</p></>}
                 {note && <NotesField store={store} label={`Notiz zu ${e.title}`} value={e.notes} onCommit={(text) => act((x) => editNotes(x, e.rid, text))} />}
               </div>
             )}
@@ -357,11 +356,11 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
       )}
       {studioOpen && (
         <StudioSheet value={w.studio} known={known} onClose={() => setStudioOpen(false)}
-          onChange={(n, created) => { act((x) => setStudio(x, n ?? '', { history, catalog, studios, overrides })); if (n && created) void rememberStudio(port, n, now()).catch(() => setNotice('Gerade nicht gespeichert. Versuch es gleich nochmal.')); }}
-          onRename={(from, to) => { void renameStudio(port, from, to, now()).then(() => act((x) => setStudio(x, to))).catch(() => setNotice('Gerade nicht gespeichert. Versuch es gleich nochmal.')); }} />
+          onChange={(n, created) => { act((x) => setStudio(x, n ?? '', { history, catalog, studios, overrides })); if (n && created) void rememberStudio(port, n, now()).catch(() => setNotice('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.')); }}
+          onRename={(from, to) => { void renameStudio(port, from, to, now()).then(() => act((x) => setStudio(x, to))).catch(() => setNotice('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.')); }} />
       )}
       {ask && ask.question === 'open-sets' && (
-        <Sheet title={ask.open === 1 ? 'Ein Satz offen' : `${ask.open} Sätze offen`} onClose={() => setAsk(null)}
+        <Sheet title={ask.open === 1 ? 'Ein Satz ist noch offen' : `${ask.open} Sätze sind noch offen`} onClose={() => setAsk(null)}
           actions={<>
             <button type="button" onClick={() => void end('omit')}>Offene Sätze nicht eintragen</button>
             <button type="button" className="secondary" onClick={() => void end('complete')}>Trotzdem als gemacht eintragen</button>
@@ -371,7 +370,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
         </Sheet>
       )}
       {ask && ask.question === 'nothing-confirmed' && (
-        <Sheet title="Noch nichts erledigt" onClose={() => setAsk(null)}
+        <Sheet title="Du hast noch nichts erledigt" onClose={() => setAsk(null)}
           actions={<>
             <button type="button" onClick={() => setAsk(null)}>Weiter trainieren</button>
             <button type="button" className="secondary" onClick={() => void end('complete')}>Alle Sätze als erledigt markieren</button>
@@ -522,7 +521,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
     const r = (statsQ ?? []).find((x) => x.id === STATS_ID && !x.deleted);
     return (r && readStats(r.body)?.next) || [];
   }, [statsQ]);
-  const saveFailed = () => setMessage('Gerade nicht gespeichert. Versuch es gleich nochmal.');
+  const saveFailed = () => setMessage('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.');
   // A studio with workouts is hidden (they keep it), one without is removed. Another known studio takes its place.
   const awayStudio = (name: string, used: boolean) => {
     const gone = resolveStudio(name, studios.renames).toLowerCase();
@@ -629,7 +628,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
               // One-shot: a throwaway store, disposed at once, so a failed delete is never retried.
               const once = createWorkoutStore(port, rec, now);
               const ok = await once.remove().finally(() => once.dispose());
-              if (!ok) setMessage('Gerade nicht gespeichert. Das Training bleibt offen, versuch es gleich nochmal.');
+              if (!ok) setMessage('Das konnte gerade nicht gespeichert werden. Das Training bleibt offen. Versuch es gleich nochmal.');
             }} />
         ))}
       </div>
@@ -668,7 +667,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
             {!(plan && manyStudios) && <StudioRow value={studio} onOpen={() => setStudioOpen(true)} />}
             {(plan || routines.length > 0) && (
               <button type="button" className="tk-rowbtn tk-choice" onClick={() => setOthers(true)}>
-                <span className="tk-row-title">Routine oder leer</span><span className="tk-chevron" aria-hidden="true">›</span>
+                <span className="tk-row-title">Routine oder leeres Training</span><span className="tk-chevron" aria-hidden="true">›</span>
               </button>
             )}
           </div>
@@ -687,7 +686,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
           onStart={() => { const d = draft; if (d) void startNext(plan, sheet.also); else { setSheet(null); void startPlan(plan); } }} />
       )}
       {others && (
-        <Sheet size="small" title="Routine oder leer" onClose={() => setOthers(false)}>
+        <Sheet size="small" title="Routine oder leeres Training" onClose={() => setOthers(false)}>
           <ul className="tk-rows">
             {routines.map((r) => {
               const body = r.body as GymWorkout;

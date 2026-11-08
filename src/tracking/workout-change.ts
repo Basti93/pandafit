@@ -89,8 +89,8 @@ export function undoRefusal(w: TrackedWorkout, id: string): string | null {
   if (!c) return 'Das gibt es nicht mehr.';
   const mine = rids(c.after as { rid?: string }[]);
   const rows = w.exercises.filter((e) => mine.has(e.rid));
-  if (rows.some((e) => e.sets.some((s) => s.doneMs !== null && s.doneMs >= c.atMs))) return 'Geht nicht, weil du in dieser Übung schon weitertrainiert hast.';
-  if (edited(rows) !== edited(c.after as TrackedWorkout['exercises'])) return 'Geht nicht, weil du sie inzwischen selbst geändert hast.';
+  if (rows.some((e) => e.sets.some((s) => s.doneMs !== null && s.doneMs >= c.atMs))) return 'Das geht nicht, weil du in dieser Übung schon weitertrainiert hast.';
+  if (edited(rows) !== edited(c.after as TrackedWorkout['exercises'])) return 'Das geht nicht, weil du sie inzwischen selbst geändert hast.';
   return null;
 }
 

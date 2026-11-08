@@ -86,17 +86,17 @@ function LoginForm({ env, onDone, note, before, failed }: { env: Env; onDone: (n
   const nameRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
   const submit = async () => {
-    if (!name.trim() || !password) { setMsg('Bitte Name und Passwort eingeben'); (name.trim() ? passRef : nameRef).current?.focus(); return; }
+    if (!name.trim() || !password) { setMsg('Bitte gib deinen Namen und dein Passwort ein.'); (name.trim() ? passRef : nameRef).current?.focus(); return; }
     setBusy(true); setMsg(null);
     try {
       await before?.(); // no sync may run while the login changes under it
       const res = await post(env, '/login', { name: name.trim(), password });
       if (res.ok) { setPassword(''); env.storage.removeItem(LOGGED_OUT_KEY); onDone(name.trim().toLowerCase()); return; }
       failed?.();
-      setMsg(res.status === 429 ? 'Gerade zu viele Versuche. Warte bitte einen Moment.' : res.status === 401 ? 'Name oder Passwort stimmt nicht. Versuch es gern nochmal.' : 'Das hat gerade nicht geklappt. Versuch es gleich nochmal.');
+      setMsg(res.status === 429 ? 'Das waren gerade zu viele Versuche. Warte bitte einen Moment.' : res.status === 401 ? 'Name oder Passwort stimmt nicht. Versuch es gern nochmal.' : 'Das hat gerade nicht geklappt. Versuch es gleich nochmal.');
     } catch (e) {
       failed?.();
-      setMsg((e as { name?: string }).name === 'TimeoutError' ? 'Der Server antwortet gerade nicht. Deine Einträge auf diesem Gerät sind sicher. Versuch es gleich nochmal.' : 'Keine Verbindung. Deine Einträge auf diesem Gerät sind sicher. Versuch es gleich nochmal.');
+      setMsg((e as { name?: string }).name === 'TimeoutError' ? 'Der Server antwortet gerade nicht. Deine Einträge auf diesem Gerät sind sicher. Versuch es gleich nochmal.' : 'Es gibt gerade keine Verbindung. Deine Einträge auf diesem Gerät sind sicher. Versuch es gleich nochmal.');
     } finally { setBusy(false); }
   };
   return (
@@ -223,7 +223,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
       {offset === 0 && <>
       {open && (
         <section className="card" aria-label="Training läuft noch">
-          <h2>{(open.body as LoggedWorkout).title} läuft – gestartet {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
+          <h2>{(open.body as LoggedWorkout).title} läuft seit {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
           <button type="button" onClick={() => goTraining('resume')}>Weitermachen</button>
         </section>
       )}
@@ -374,7 +374,7 @@ function PushSettings({ push, port, now }: { push: PushState; port: WebPort; now
       {p.support === 'none' && <p className="muted">In diesem Browser gibt es keine Benachrichtigungen.</p>}
       {p.support === 'ok' && (
         <>
-          <Switch label="Benachrichtigungen" hint="Essens- und Laufplan, Antworten vom Coach, neue Version." checked={push.on && granted} disabled={push.busy}
+          <Switch label="Benachrichtigungen" hint="Für neue Essens- und Laufpläne, Antworten vom Coach und neue Versionen." checked={push.on && granted} disabled={push.busy}
             onChange={(on) => void (on ? push.enable() : push.disable())} />
           {push.on && granted && <UpdatesSwitch port={port} now={now} />}
           {push.on && !granted && <p className="muted">{PUSH_DENIED}</p>}
@@ -437,7 +437,7 @@ function Ausdauer({ port, env, account, hasRun, hasBike }: { port: WebPort; env:
 /** The sync state in a few words: the value of the account row, or a short sentence when something needs saying. */
 const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; lastOkMs: number | null; refused?: number }): string => {
   if (status === 'login') return 'Bitte melde dich neu an. Bis dahin bleibt alles auf diesem Gerät.';
-  if (status === 'offline') return `Gerade keine Verbindung. Alles bleibt auf diesem Gerät.${c.lastOkMs === null ? '' : ` Zuletzt gesichert ${timeLabel(c.lastOkMs)}.`}`;
+  if (status === 'offline') return `Gerade gibt es keine Verbindung. Alles bleibt auf diesem Gerät.${c.lastOkMs === null ? '' : ` Zuletzt gesichert um ${timeLabel(c.lastOkMs)}.`}`;
   if ((c.refused ?? 0) > 0) return 'Ein Eintrag wurde nicht angenommen. Er bleibt auf diesem Gerät.';
   if (c.pending > 0) return c.pending === 1 ? 'Ein Eintrag wartet aufs Senden.' : `${c.pending} Einträge warten aufs Senden.`;
   if (c.lastOkMs === null) return 'Der erste Abgleich folgt gleich.';
@@ -462,7 +462,7 @@ function Profil({ account, port, now, status, onLogout, push, link }: { link: Co
       {!quiet && <p role="status" className="muted">{sync}</p>}
       <ConnectionSettings link={link} plan={<>
         <RunSettingsCard port={port} now={now} />
-        <p className="muted">{hasBike ? 'Rad · gefahren wird am Mac' : 'Rad · startet mit der ersten Fahrt am Mac'}</p>
+        <p className="muted">{hasBike ? 'Rad · gefahren wird am Mac' : 'Rad · Es geht mit der ersten Fahrt am Mac los.'}</p>
       </>} />
       <ProfileGroup title="Nachrichten">
         <ContactSettings port={port} now={now} />

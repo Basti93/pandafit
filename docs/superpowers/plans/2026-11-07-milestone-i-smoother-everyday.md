@@ -100,7 +100,7 @@ Commit: `feat(everyday): own rest survives a swap, taken changes replan at once,
 
 **Run feeling:**
 - New `RunBody` `{ type: 'feel', runId, feel: 'easy' | 'right' | 'hard', atMs }`, id `run-feel-<runId>`. Validate it.
-- **App:** for the newest run of the last 3 days that has no feel record and no "skipped" mark (skip = the same record with `feel: null`), show one line "Wie war der Lauf am <Tag>?" with the buttons leicht / passend / schwer / Überspringen, then "Danke – das fließt in den nächsten Laufplan ein."
+- **App:** for the newest run of the last 3 days that has no feel record and no "skipped" mark (skip = the same record with `feel: null`), show one line "Wie war der Lauf am <Tag>?" with the buttons leicht / passend / schwer / Überspringen, then "Danke! Das fließt in den nächsten Laufplan ein."
   - Place it where runs are shown: the run screen or TodayCard area, wherever the run list or `RunCard` lives. Keep it to one card.
   - The runs the app knows come from the records the run screen already reads. If Garmin runs are only coach-side, the coach publishes `lastRun: { id, date, kind }` in the stats record, so the app can ask.
 - **Run coach:**

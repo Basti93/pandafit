@@ -48,7 +48,7 @@ export function ExerciseProposals({ port, now = Date.now, newId }: { port: Track
   return (
     <section className="tk-proposals" aria-label="Übungen einordnen">
       <h3>Übungen einordnen</h3>
-      {failed && <p role="status" className="tk-note">Gerade nicht gespeichert. Versuch es gleich nochmal.</p>}
+      {failed && <p role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}
       <ul className="tk-proposal-list">
         {cards.map(({ r, p, others }) => (
           <li key={r.id}>

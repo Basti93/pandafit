@@ -71,8 +71,8 @@ try {
   step('the next workout opens in its sheet and closes');
 
   await page.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true }).click();
-  // Start an empty workout: directly, or through the "Routine oder leer" sheet when a plan or routines exist.
-  const anderes = page.getByRole('button', { name: 'Routine oder leer' });
+  // Start an empty workout: directly, or through the "Routine oder leeres Training" sheet when a plan or routines exist.
+  const anderes = page.getByRole('button', { name: 'Routine oder leeres Training' });
   const empty = page.getByRole('button', { name: 'Leeres Training starten' });
   await empty.or(anderes).first().waitFor();
   if (await anderes.count() > 0 && await empty.count() === 0) await anderes.click();

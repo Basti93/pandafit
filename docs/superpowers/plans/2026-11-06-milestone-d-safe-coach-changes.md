@@ -88,9 +88,9 @@ Brief and acceptance: `docs/roadmap.md`, section "Meilenstein D — Brief". Spec
   - It works only while the stored weekplan is still the one this take wrote (same `takenFrom` and no newer `updatedMs`).
   - Otherwise show "Geht nicht mehr, weil der Wochenplan danach geändert wurde."
 
-### D. "Geht nicht, weil …" from the planners
+### D. "Das geht nicht, weil …" from the planners
 
-- **Gym coach:** when a Claude plan is rejected by the guardrails after the retry, the stored plan reason is a plain sentence. It says why, in words from the rejection reason, and that a simple plan follows instead. Example: "Mein Plan passte nicht zu deinen Grenzen (zu viele Sätze), deshalb heute ein einfacher Plan."
+- **Gym coach:** when a Claude plan is rejected by the guardrails after the retry, the stored plan reason is a plain sentence. It says why, in words from the rejection reason, and that a simple plan follows instead. Example: "Mein Plan passte nicht zu deinen Grenzen (zu viele Sätze), deshalb gibt es heute einen einfachen Plan."
   - Map the guardrail reasons to short German phrases in one table next to the guardrails.
   - `NEUTRAL_REASON` stays only for plain rule plans when no Claude plan was attempted.
 - **Week proposal dropped** (`chat-coach.ts` 152–165): name the broken rule(s) in words from `checkWeekPlan`'s result instead of the generic sentence.

@@ -58,7 +58,7 @@ const FOR_LABEL: Record<keyof typeof COACH_LABEL, string> = { bike: 'Rad', gym: 
 const sportOf = (s: string): string => (s === 'all' ? 'Alle Sportarten' : FOR_LABEL[s as keyof typeof FOR_LABEL] ?? 'Alle Sportarten');
 
 const attemptWith = (setError: (e: string | null) => void) => async (f: () => Promise<unknown>) => {
-  try { await f(); setError(null); } catch { setError('Konnte nicht gespeichert werden. Versuch es gleich nochmal.'); }
+  try { await f(); setError(null); } catch { setError('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.'); }
 };
 
 /** The goal: what the training is for, the focus muscles (for good or for some weeks), sport priorities, and how the week is planned. Every write is stamped above what is stored. */
@@ -135,7 +135,7 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
         onChange={(strength) => void saveGoal({ ...stored, strength })} />
       {goal.ended && (
         <div className="tk-row">
-          <span className="muted">{goal.ended.focus.length ? `Dein Fokus auf ${focusLabel(goal.ended.focus)}` : 'Dein befristeter Fokus'} ist am {dayLabel(goal.ended.until)} ausgelaufen – jetzt wieder dein Grundziel.</span>
+          <span className="muted">{goal.ended.focus.length ? `Dein Fokus auf ${focusLabel(goal.ended.focus)}` : 'Dein befristeter Fokus'} ist am {dayLabel(goal.ended.until)} ausgelaufen. Jetzt gilt wieder dein Grundziel.</span>
           <button type="button" className="link tk-small" onClick={() => void attempt(async () => {
             const have = (await port.list('goal')).find((r) => r.id === 'goal');
             const cur = storedGoalOf(have ? [have] : []);
@@ -145,7 +145,7 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
       )}
       <button type="button" className="tk-rowbtn tk-choice" aria-expanded={focusOpen} onClick={() => setFocusOpen(!focusOpen)}>
         <span className="tk-row-title">Muskeln im Fokus</span>
-        <span className="tk-row-value muted">{`${focusText}${goal.temporary?.focus && goal.focus.length ? ` – bis ${dayLabel(goal.temporary.until)}` : ''}`}</span>
+        <span className="tk-row-value muted">{`${focusText}${goal.temporary?.focus && goal.focus.length ? ` bis ${dayLabel(goal.temporary.until)}` : ''}`}</span>
         <ExpandMark open={focusOpen} />
       </button>
       {focusOpen && (

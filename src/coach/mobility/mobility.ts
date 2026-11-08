@@ -112,10 +112,10 @@ export function suggestMobility(input: MobilityInput, rideKey: (endMs: number) =
 
   const left = excluded.size > 0 || list !== MOBILITY_EXERCISES ? ' Bereiche, die dich gerade stören, habe ich weggelassen.' : '';
   const reason = forSession === 'bike'
-    ? `Nach dem Radfahren eine kurze, ruhige Beweglichkeitseinheit, nur wenn du magst.${left}`
+    ? `Nach dem Radfahren gibt es eine kurze, ruhige Beweglichkeitseinheit, nur wenn du magst.${left}`
     : forSession === 'run'
-    ? `Nach dem Laufen eine kurze, ruhige Beweglichkeitseinheit für Waden, Hüftbeuger und Oberschenkelrückseite, nur wenn du magst.${left}`
-    : `Nach dem Krafttraining eine kurze, ruhige Beweglichkeitseinheit für die Muskeln, die du genutzt hast, nur wenn du magst.${left}`;
+    ? `Nach dem Laufen gibt es eine kurze, ruhige Beweglichkeitseinheit für Waden, Hüftbeuger und Oberschenkelrückseite, nur wenn du magst.${left}`
+    : `Nach dem Krafttraining gibt es eine kurze, ruhige Beweglichkeitseinheit für die Muskeln, die du genutzt hast, nur wenn du magst.${left}`;
   return {
     id: `mobility-${forSession}-${forSession === 'strength' ? triggerMs : rideKey(triggerMs)}`, forSession,
     minutes: Math.max(6, Math.min(10, picked.length * 2)),

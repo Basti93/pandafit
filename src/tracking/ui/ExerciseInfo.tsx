@@ -69,7 +69,7 @@ export function ExerciseInfo({ title, description, images = [], video, icon, chi
           ))}
         </div>
       )}
-      {description ? <DescriptionText text={description.text} /> : <p className="tk-info-empty">{icon}<span className="muted">Noch keine Beschreibung.</span></p>}
+      {description ? <DescriptionText text={description.text} /> : <p className="tk-info-empty">{icon}<span className="muted">Für diese Übung gibt es noch keine Beschreibung.</span></p>}
       <a className="tk-video" href={video} {...external}>Video ansehen</a>
       {children}
       <Credits images={images} text={credit} />

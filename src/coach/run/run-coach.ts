@@ -568,6 +568,6 @@ export const focusText = (mode: ComplaintMode, phase: 1 | 2, hold = false): stri
   if (mode === 'pause') return 'Nächste Woche ruht das Laufen. Sobald es wieder passt, geht es sanft weiter.';
   if (mode !== null) return 'Nächste Woche bleibt der Plan sanft, mit halber Zeit.';
   if (hold) return `Nächste Woche bleibt der Plan, wie er ist, ${HOLD_REASON}.`;
-  if (phase === 1) return 'Nächste Woche: ruhige Läufe, die Zeit auf den Beinen wächst behutsam.';
-  return 'Nächste Woche: Der lange Lauf wächst Schritt für Schritt, die anderen Läufe bleiben ruhig.';
+  if (phase === 1) return 'Nächste Woche gibt es ruhige Läufe, und die Zeit auf den Beinen wächst behutsam.';
+  return 'Nächste Woche wächst der lange Lauf Schritt für Schritt, die anderen Läufe bleiben ruhig.';
 };

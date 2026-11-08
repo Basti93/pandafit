@@ -54,7 +54,7 @@ export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUnd
 
   const write = async (m: ChatMessage) => {
     setError(null);
-    try { await port.put({ kind: 'chat', id: newId(), updatedMs: now(), deleted: false, body: m }); return true; } catch { setError('Konnte nicht gespeichert werden. Versuch es gleich nochmal.'); return false; }
+    try { await port.put({ kind: 'chat', id: newId(), updatedMs: now(), deleted: false, body: m }); return true; } catch { setError('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.'); return false; }
   };
   const send = async () => {
     const t = text.trim().slice(0, MAX_CHAT_TEXT);
@@ -97,13 +97,13 @@ export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUnd
               ) : changeTaken(workout, key(m)) ? (
                 <div className="tk-row"><span className="muted">Übernommen.</span>
                   <button type="button" className="link" onClick={() => undo(m)}>{UNDO}</button></div>
-              ) : <p className="muted">{proposalAnswer(thread, m.id) === 'declined' ? `${DECLINED}.` : 'Rückgängig gemacht.'}</p>}
+              ) : <p className="muted">{proposalAnswer(thread, m.id) === 'declined' ? `${DECLINED}.` : 'Du hast das rückgängig gemacht.'}</p>}
             </>
           )}
         </ChatBubble>
       ))}
       {line && <p role="note" className="tk-note">{line}</p>}
-      {waiting && <p role="status" className="muted">Der Coach denkt nach … (braucht Netz)</p>}
+      {waiting && <p role="status" className="muted">Der Coach denkt nach … Dafür braucht er Netz.</p>}
       {error && <p role="alert" className="tk-note">{error}</p>}
       <form className="tk-row tk-chat-input" onSubmit={(e) => { e.preventDefault(); void send(); }}>
         <textarea aria-label="Nachricht an den Coach im Training" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} placeholder="Was ist los?" />

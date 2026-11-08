@@ -10,10 +10,10 @@ import { readContact } from '../src/shared/contact';
  */
 export type PushType = 'version' | 'meal' | 'run' | 'rest' | 'coach';
 export const MESSAGES: Record<PushType, { title: string; body: string }> = {
-  version: { title: 'Pandafit', body: 'Neue Version von Pandafit. Beim nächsten Öffnen ist sie da.' },
+  version: { title: 'Pandafit', body: 'Es gibt eine neue Version von Pandafit. Beim nächsten Öffnen ist sie da.' },
   meal: { title: 'Pandafit', body: 'Dein Essensplan für die Woche ist da.' },
   run: { title: 'Pandafit', body: 'Dein Laufplan für die Woche ist da.' },
-  rest: { title: 'Pandafit', body: 'Pause vorbei. Weiter mit dem nächsten Satz.' },
+  rest: { title: 'Pandafit', body: 'Die Pause ist vorbei. Weiter geht es mit dem nächsten Satz.' },
   coach: { title: 'Pandafit', body: 'Dein Coach hat dir geschrieben.' },
 };
 export const MAX_SUBSCRIPTIONS = 10;

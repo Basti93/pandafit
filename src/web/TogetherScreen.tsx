@@ -59,7 +59,7 @@ export function TogetherPage({ t, now, onBack }: { t: TogetherBody; now: number;
         <h2>Euer Berg</h2>
         <p>Auf dem Weg zum <b>{t.peak.name}</b></p>
         <PeakBar t={t} />
-        <p className="muted">{t.peak.done} von {t.peak.total} Höhenmetern. Jede Minute zählt 10 Höhenmeter, für alle gleich. Danach: {t.peak.next}.</p>
+        <p className="muted">Ihr habt {t.peak.done} von {t.peak.total} Höhenmetern geschafft. Jede Minute zählt 10 Höhenmeter, für alle gleich. Danach: {t.peak.next}.</p>
         <h3 className="tk-section gm-label">{weekTitle(t, now)}</h3>
         <ul className="gm-list">
           {people.map((p) => (

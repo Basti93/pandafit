@@ -55,7 +55,7 @@ export function CatalogScreen({ port, now = Date.now, newId = () => crypto.rando
         {fam !== 'other' && <p className="muted tk-family">Gleiche Übungsart: {familyLabel(fam)}</p>}
         {isOut ? (
           <>
-            <p className="muted">Der Coach schlägt sie nicht mehr vor. Zurücknehmen unter Woche &gt; Regeln.</p>
+            <p className="muted">Der Coach schlägt sie nicht mehr vor. Du kannst das unter Woche &gt; Regeln zurücknehmen.</p>
             {fromChat.length > 0 && <p className="muted tk-note">Ausgeschlossen durch die Regel „{fromChat[0].text}“. Du findest sie unter Woche.</p>}
             {own.length > 0 && <div className="tk-cat-actions"><button type="button" className="secondary" onClick={() => void allow(e)}>Wieder erlauben</button></div>}
           </>
@@ -75,7 +75,7 @@ export function CatalogScreen({ port, now = Date.now, newId = () => crypto.rando
       {/* Unknown exercises wait here to be sorted in (not on the training screen); nothing shows when none wait. */}
       <ExerciseProposals port={port} now={now} newId={newId} />
       <input className="tk-search" aria-label="Übung suchen" placeholder="Übung oder Muskel suchen" value={q} onChange={(e) => setQ(e.target.value)} />
-      {error && <p role="alert" className="tk-note">Konnte nicht gespeichert werden. Versuch es gleich nochmal.</p>}
+      {error && <p role="alert" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}
       {hits.length === 0 && <p className="muted">Nichts gefunden.</p>}
       <ExerciseGroups exercises={hits} used={used} searching={needle !== ''} item={(e) => (
         <Row key={e.id} title={e.title} value={excluded.has(e.id) ? 'ausgeschlossen' : undefined} expanded={info === e.id} onClick={() => setInfo(info === e.id ? null : e.id)}>

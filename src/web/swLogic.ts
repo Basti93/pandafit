@@ -31,10 +31,10 @@ export async function handleFetch(r: Req, origin: string, allow: ReadonlySet<str
 
 /** The only texts the worker ever shows: what the server sends is used for its type only. */
 const NOTES: Record<string, { body: string; url: string; alert?: boolean }> = {
-  version: { body: 'Neue Version von Pandafit. Beim nächsten Öffnen ist sie da.', url: '/' },
+  version: { body: 'Es gibt eine neue Version von Pandafit. Beim nächsten Öffnen ist sie da.', url: '/' },
   meal: { body: 'Dein Essensplan für die Woche ist da.', url: '/?tab=essen' },
   run: { body: 'Dein Laufplan für die Woche ist da.', url: '/?tab=laufen' },
-  rest: { body: 'Pause vorbei. Weiter mit dem nächsten Satz.', url: '/', alert: true },
+  rest: { body: 'Die Pause ist vorbei. Weiter geht es mit dem nächsten Satz.', url: '/', alert: true },
   coach: { body: 'Dein Coach hat dir geschrieben.', url: '/?tab=coach' },
 };
 export type Note = { title: string; options: { body: string; tag: string; icon: string; badge: string; data: { url: string }; renotify?: boolean; silent?: boolean; vibrate?: number[] } };

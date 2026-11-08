@@ -59,7 +59,7 @@ function AddRecipeSheet({ requests, onAdd, onClose }: { requests: LinkRequest[];
         <label className="tk-field"><span>Link zum Rezept</span>
           <input autoFocus type="url" inputMode="url" aria-label="Link zum Rezept" maxLength={LINK_URL_MAX} placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
         </label>
-        <p className="muted pm-meta">Das Rezept erscheint unter „Von mir“. Nur vegetarische Rezepte, nur Links mit https.</p>
+        <p className="muted pm-meta">Das Rezept erscheint unter „Von mir“. Es gehen nur vegetarische Rezepte und nur Links mit https.</p>
       </form>
       {(sentAt !== null || last) && <p className={last?.result ? 'pm-reply' : 'pm-reply pending'} role="status">{linkAnswer(last?.result ?? null)}</p>}
     </Sheet>
@@ -221,7 +221,7 @@ function Shopping({ week, onSet, onOwn }: { week: Week; onSet: (item: string, st
       </form>
       {list.total === 0 && list.own.length === 0 && <p className="muted">Diese Woche gibt es nichts einzukaufen.</p>}
       {list.sections.map((s) => group(SECTION_LABEL[s.section] ?? s.section, s.items))}
-      {group('Kleine Mengen, kurz prüfen', list.pantry)}
+      {group('Kleine Mengen, schau kurz nach', list.pantry)}
       {group('Eigenes', list.own)}
       {group('Schon da', list.have, 'pm-have-list')}
     </>

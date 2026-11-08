@@ -156,14 +156,14 @@ test('"für 4 Wochen" writes a temporary focus and keeps the base; the line name
   fireEvent.click(c.getByRole('button', { name: 'Rücken' }));
   await waitFor(() => expect(body(map, 'goal:goal').temporary).toEqual({ focus: ['chest', 'back'], until: '2026-12-02' }));
   expect(body(map, 'goal:goal').focus).toEqual(['chest']);
-  expect(await c.findByText('Brust, Rücken – bis Mi., 2. Dez.')).toBeTruthy();
+  expect(await c.findByText('Brust, Rücken bis Mi., 2. Dez.')).toBeTruthy();
 });
 
 test('an ended focus shows once with OK, then it is gone', async () => {
   const { port, map } = fakePort([goalRecord({ strength: 'muscle', focus: ['chest'], sports: {}, temporary: { focus: ['back'], until: '2026-11-01' } }, NOW - 5000)]);
   render(<CoachScreen port={port} {...env} />);
   const c = await goalSheet();
-  expect(await c.findByText(/Dein Fokus auf Rücken ist am So\., 1\. Nov\. ausgelaufen – jetzt wieder dein Grundziel\./)).toBeTruthy();
+  expect(await c.findByText(/Dein Fokus auf Rücken ist am So\., 1\. Nov\. ausgelaufen\. Jetzt gilt wieder dein Grundziel\./)).toBeTruthy();
   expect(c.getByText('Brust')).toBeTruthy();
   fireEvent.click(c.getByRole('button', { name: 'OK' }));
   await waitFor(() => expect((body(map, 'goal:goal').temporary as { endedSeenMs?: number }).endedSeenMs).toBe(NOW));

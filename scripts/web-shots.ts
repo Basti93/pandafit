@@ -535,7 +535,7 @@ async function main() {
   await fresh('Kraft');
   await shot('kraft-training-start');
   await step('kraft-studio', async () => { await page.getByRole('button', { name: /^Studio/ }).click({ timeout: 1000 }); await shot('kraft-training-start-studio'); await closeDialog(); });
-  await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Routine oder leer' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
+  await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Routine oder leeres Training' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
   await step('kraft-plan', async () => {
     await page.getByRole('button', { name: 'Ansehen und anpassen' }).click({ timeout: 1000 });
     const sheet = page.getByRole('dialog', { name: 'Nächstes Training' });

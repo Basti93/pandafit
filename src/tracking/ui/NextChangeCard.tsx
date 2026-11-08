@@ -23,12 +23,12 @@ export function NextChangeCard({ port, changeId, records, now, history }: { port
   if (history) {
     if (c.state === 'proposed') return null;
     if (c.state === 'used') return <div className="tk-histline"><span className="muted">✓ Im Training berücksichtigt</span><span className="muted tk-block">{c.reason}</span></div>;
-    const line = c.state === 'taken' ? `Übernommen: ${c.reason}` : c.state === 'declined' ? DECLINED : 'Rückgängig gemacht.';
+    const line = c.state === 'taken' ? `Übernommen: ${c.reason}` : c.state === 'declined' ? DECLINED : 'Du hast das rückgängig gemacht.';
     return (
       <div className="tk-histline">
         <span className="muted">{line}</span>
         {c.state === 'taken' && <button type="button" className="link" onClick={() => void go('undone')}>{UNDO}</button>}
-        {failed && <span role="status" className="tk-note">Gerade nicht gespeichert. Versuch es gleich nochmal.</span>}
+        {failed && <span role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</span>}
       </div>
     );
   }
@@ -41,11 +41,11 @@ export function NextChangeCard({ port, changeId, records, now, history }: { port
           <button type="button" className="link" onClick={() => void go('declined')}>{DECLINE}</button>
         </div>
       )}
-      {c.state === 'taken' && <div className="tk-row"><span className="muted">Übernommen fürs nächste Training.</span><button type="button" className="link" onClick={() => void go('undone')}>{UNDO}</button></div>}
-      {c.state === 'used' && <p className="muted">Im Training berücksichtigt.</p>}
+      {c.state === 'taken' && <div className="tk-row"><span className="muted">Das gilt jetzt fürs nächste Training.</span><button type="button" className="link" onClick={() => void go('undone')}>{UNDO}</button></div>}
+      {c.state === 'used' && <p className="muted">Der Coach hat das im Training berücksichtigt.</p>}
       {c.state === 'declined' && <p className="muted">{DECLINED}.</p>}
-      {c.state === 'undone' && <p className="muted">Rückgängig gemacht.</p>}
-      {failed && <p role="status" className="tk-note">Gerade nicht gespeichert. Versuch es gleich nochmal.</p>}
+      {c.state === 'undone' && <p className="muted">Du hast das rückgängig gemacht.</p>}
+      {failed && <p role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}
     </div>
   );
 }

@@ -127,7 +127,7 @@ Commit: `feat(rules): personal rules and goals are synced records`.
 Acceptance tests:
 - an excluded id never appears in the gym prompt list, the ruleWorkout output, a similar-exercise suggestion, or a workout started from a plan or routine (with a notice);
 - `checkWorkout` rejects it with the phrase;
-- a chat swap into it is refused with "Geht nicht, weil …";
+- a chat swap into it is refused with "Das geht nicht, weil …";
 - a paused or deleted rule has no effect;
 - goal 'strength' changes the weekly ranges as `weeklySetRange` defines for non-muscle goals;
 - wishes appear in the gym, run, bike and chat prompts for their sport.

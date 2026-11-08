@@ -371,7 +371,7 @@ test('a Hevy row unknown to the catalog shows the back from the stats muscles', 
 test('without a stats record the same exercise shows "Muskel unbekannt", not Sonstiges', async () => { /* → getByRole('img', { name: 'Muskel unbekannt' }) */ });
 test('a malformed stats record is ignored', async () => { /* body: { type: 'stats' } → 'Muskel unbekannt', no throw */ });
 test('a Smith machine squat shows no free-weight text and no pictures', async () => {
-  /* open Ausführung for ('h-smith', 'Squat (Smith Machine)') → note contains 'Noch keine Beschreibung.' and no <img> inside the note, no 'Beschrieben am Beispiel' */
+  /* open Ausführung for ('h-smith', 'Squat (Smith Machine)') → note contains 'Für diese Übung gibt es noch keine Beschreibung.' and no <img> inside the note, no 'Beschrieben am Beispiel' */
 });
 test('the machine reverse fly from Hevy shows its machine text', async () => {
   /* ('h-rdf', 'Rear Delt Reverse Fly (Machine)') → note text matches the Task 3 description, not /Kurzhantel/ */

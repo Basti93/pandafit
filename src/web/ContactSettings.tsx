@@ -36,7 +36,7 @@ export function ContactSettings({ port, now }: { port: WebPort; now: () => numbe
   const remove = () => { void save({ email: null, weekly: false }); setOpen(false); };
   return (
     <>
-      <Switch label="Wochenübersicht per E-Mail" hint={contact.email === null ? 'Zuerst E-Mail eintragen' : 'Sonntagabend: Rückblick und nächste Woche'}
+      <Switch label="Wochenübersicht per E-Mail" hint={contact.email === null ? 'Trag zuerst deine E-Mail ein.' : 'Jeden Sonntagabend bekommst du einen Rückblick und die nächste Woche.'}
         checked={contact.weekly && contact.email !== null} disabled={contact.email === null}
         onChange={(weekly) => void save({ email: contact.email, weekly })} />
       <RowList>
@@ -47,7 +47,7 @@ export function ContactSettings({ port, now }: { port: WebPort; now: () => numbe
           actions={<><button type="button" className="primary" onClick={submit}>Speichern</button>{contact.email !== null && <button type="button" className="link" onClick={remove}>Entfernen</button>}</>}>
           <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
             <input type="email" autoComplete="email" aria-label="E-Mail-Adresse" autoFocus value={text} onChange={(e) => { setText(e.target.value); setBad(false); }} />
-            {bad && <p role="alert" className="muted">Bitte eine gültige Adresse</p>}
+            {bad && <p role="alert" className="muted">Bitte gib eine gültige Adresse ein.</p>}
           </form>
         </Sheet>
       )}

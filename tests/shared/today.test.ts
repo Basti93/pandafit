@@ -12,7 +12,7 @@ const planDay = (o: Partial<PlanDay>): PlanDay => ({ date: TODAY, sport: 'bike',
 describe('todayAdvice', () => {
   it('1: a raised resting pulse makes a hard day a rest day and a moderate one easy', () => {
     const hard = todayAdvice(base({ planDay: planDay({}), readiness: { restingHrRaised: true } }));
-    expect(hard).toMatchObject({ sport: 'rest', fromPlan: false, line: 'Ruhetag – weil dein Ruhepuls erhöht ist' });
+    expect(hard).toMatchObject({ sport: 'rest', fromPlan: false, line: 'Ruhetag, weil dein Ruhepuls erhöht ist' });
     expect(todayAdvice(base({ planDay: planDay({ hardness: 'moderate' }), readiness: { restingHrRaised: true } })))
       .toMatchObject({ sport: 'bike', hardness: 'easy', reason: 'weil dein Ruhepuls erhöht ist' });
   });
@@ -27,7 +27,7 @@ describe('todayAdvice', () => {
     const ratings = rated(past(1, { hardness: 'hard', legs: true, sports: ['gym'] }));
     // the planned sport stays: strength goes on without legs, bike and run get less hard
     expect(todayAdvice(base({ ratings, planDay: planDay({ sport: 'gym', hardness: 'hard' }) })))
-      .toMatchObject({ sport: 'gym', hardness: 'hard', legs: false, label: 'Kraft ohne Beine', line: 'Kraft ohne Beine – weil deine Beine gestern hart gearbeitet haben', fromPlan: false });
+      .toMatchObject({ sport: 'gym', hardness: 'hard', legs: false, label: 'Kraft ohne Beine', line: 'Kraft ohne Beine, weil deine Beine gestern hart gearbeitet haben', fromPlan: false });
     expect(todayAdvice(base({ ratings, planDay: planDay({ sport: 'gym', hardness: 'moderate', also: { sport: 'bike', hardness: 'hard' } }) })))
       .toMatchObject({ sport: 'gym', legs: false, label: 'Kraft ohne Beine + Rad, mittel', also: { sport: 'bike', hardness: 'moderate' } });
     expect(todayAdvice(base({ ratings, planDay: planDay({ sport: 'bike', hardness: 'hard' }) })))
@@ -53,14 +53,14 @@ describe('todayAdvice', () => {
 
   it('without any history the reason is a calm start, not "longest ago"', () => {
     const a = todayAdvice(base({ ratings: {}, frame: { mode: 'spontaneous' } }));
-    expect(a).toMatchObject({ hardness: 'moderate', reason: 'ein ruhiger Einstieg' });
-    expect(a.line).toBe(`${a.label} – ein ruhiger Einstieg`);
+    expect(a).toMatchObject({ hardness: 'moderate', reason: 'als ruhiger Einstieg' });
+    expect(a.line).toBe(`${a.label}, als ruhiger Einstieg`);
   });
 
   it('5: spontaneous, the focus sport done longest ago, else the one done longest ago, at moderate', () => {
     const ratings = rated(past(1, { hardness: 'easy', sports: ['bike'] }), past(3, { hardness: 'moderate', sports: ['gym'] }), past(6, { hardness: 'easy', sports: ['run'] }));
     const eq = todayAdvice(base({ ratings, frame: { mode: 'spontaneous' }, goal: { sports: { gym: 'equal', bike: 'equal', run: 'equal' } } }));
-    expect(eq).toMatchObject({ sport: 'run', hardness: 'moderate', reason: 'weil du Laufen am längsten nicht gemacht hast', line: 'Laufen, mittel – weil du Laufen am längsten nicht gemacht hast' });
+    expect(eq).toMatchObject({ sport: 'run', hardness: 'moderate', reason: 'weil du Laufen am längsten nicht gemacht hast', line: 'Laufen, mittel, weil du Laufen am längsten nicht gemacht hast' });
     const focus = todayAdvice(base({ ratings, frame: { mode: 'spontaneous' }, goal: { sports: { gym: 'focus', bike: 'focus', run: 'equal' } } }));
     expect(focus.sport).toBe('gym');
   });

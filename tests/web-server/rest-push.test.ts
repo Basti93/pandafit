@@ -62,7 +62,7 @@ describe('rest end alarm', () => {
       await vi.advanceTimersByTimeAsync(1);
       expect(sent).toHaveLength(1);
       expect(sent[0]).toMatchObject({ endpoint: sub('phone').endpoint, type: 'rest' });
-      expect(JSON.parse(sent[0]!.payload)).toEqual({ type: 'rest', title: 'Pandafit', body: 'Pause vorbei. Weiter mit dem nächsten Satz.' });
+      expect(JSON.parse(sent[0]!.payload)).toEqual({ type: 'rest', title: 'Pandafit', body: 'Die Pause ist vorbei. Weiter geht es mit dem nächsten Satz.' });
       await vi.advanceTimersByTimeAsync(120_000);
       expect(sent).toHaveLength(1);
     } finally { vi.useRealTimers(); }
@@ -135,6 +135,6 @@ describe('rest end alarm', () => {
     await send(s, 'rest', 'x'); await send(s, 'meal', 'x');
     expect(calls[0]!.headers).toMatchObject({ TTL: '60', Urgency: 'high' });
     expect(calls[1]!.headers).toMatchObject({ TTL: String(24 * 3600), Urgency: 'normal' });
-    expect(MESSAGES.rest.body).toBe('Pause vorbei. Weiter mit dem nächsten Satz.');
+    expect(MESSAGES.rest.body).toBe('Die Pause ist vorbei. Weiter geht es mit dem nächsten Satz.');
   });
 });

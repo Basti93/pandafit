@@ -89,7 +89,7 @@ test('an existing note is shown without asking', async () => {
 test('the end sheet: not entering is the primary choice, Trotzdem als gemacht eintragen the second, Zurück changes nothing', async () => {
   const f = await running();
   fireEvent.click(screen.getByRole('button', { name: 'Training beenden' }));
-  const sheet = await screen.findByRole('dialog', { name: '3 Sätze offen' });
+  const sheet = await screen.findByRole('dialog', { name: '3 Sätze sind noch offen' });
   const buttons = within(sheet).getAllByRole('button').filter((b) => b.getAttribute('aria-label') !== 'Schließen');
   expect(buttons.map((b) => b.textContent)).toEqual(['Offene Sätze nicht eintragen', 'Trotzdem als gemacht eintragen', 'Zurück']);
   expect(buttons[0]!.className).not.toMatch(/secondary|link/); // the filled one
@@ -112,7 +112,7 @@ test('the header menu: discard asks first and then removes the workout; Studio a
   expect(f.map.get('workout:w1')!.deleted).toBe(false);
   fireEvent.click(within(menu).getByRole('button', { name: 'Ja' }));
   await waitFor(() => expect(f.map.get('workout:w1')!.deleted).toBe(true));
-  expect(await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ })).toBeTruthy();
 });
 
 test('Coach fragen from the header menu opens the coach panel', async () => {
@@ -134,14 +134,14 @@ test('the rest bar is one button that skips, with +30 s next to it', async () =>
   await waitFor(() => expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull());
 });
 
-test('the start screen: studio is a row, the others live behind "Routine oder leer"', async () => {
+test('the start screen: studio is a row, the others live behind "Routine oder leeres Training"', async () => {
   const f = fakePort([]);
   const plan = { name: 'Plan', exercises: [{ templateId: 'pf-squat', title: 'Kniebeuge', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal' as const, weightKg: 60, reps: 8 }] }] };
   render(<WorkoutScreen port={f.port} plan={plan} {...ids} />);
-  await screen.findByRole('button', { name: /^(Routine oder leer|Leeres Training starten)$/ });
+  await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ });
   expect(screen.queryByRole('button', { name: 'Leeres Training starten' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Routine oder leer' }));
-  fireEvent.click(within(screen.getByRole('dialog', { name: 'Routine oder leer' })).getByRole('button', { name: 'Leeres Training starten' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Routine oder leeres Training' }));
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'Routine oder leeres Training' })).getByRole('button', { name: 'Leeres Training starten' }));
   await waitFor(() => expect(f.state.puts.some((p) => p.kind === 'workout')).toBe(true));
 });
 

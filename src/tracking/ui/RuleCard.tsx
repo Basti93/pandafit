@@ -30,7 +30,7 @@ export function RuleCard({ port, ruleId, records, catalog, now, history }: { por
   const [blocked, setBlocked] = useState(false);
   const rec = (records ?? []).find((r) => r.id === ruleId);
   const rule = rulesOf(records ?? []).find((r) => r.id === ruleId);
-  if (!rule) return rec?.deleted ? <div className="tk-nextchange"><p className="muted">{undone ? 'Rückgängig gemacht.' : 'Gelöscht.'}</p></div> : null;
+  if (!rule) return rec?.deleted ? <div className="tk-nextchange"><p className="muted">{undone ? 'Du hast das rückgängig gemacht.' : 'Die Regel ist gelöscht.'}</p></div> : null;
   const go = async (to: RuleState) => {
     try {
       const cur = (await port.list('rule')).find((r) => r.id === ruleId);
@@ -73,7 +73,7 @@ export function RuleCard({ port, ruleId, records, catalog, now, history }: { por
         <span className="muted">{line}</span>
         {undoable && <button type="button" className="link" onClick={() => void undo()}>{UNDO}</button>}
         {blocked && <span className="muted">Geht nicht mehr, weil das Ziel danach geändert wurde.</span>}
-        {failed && <span role="status" className="tk-note">Gerade nicht gespeichert. Versuch es gleich nochmal.</span>}
+        {failed && <span role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</span>}
       </div>
     );
   }
@@ -89,13 +89,13 @@ export function RuleCard({ port, ruleId, records, catalog, now, history }: { por
       )}
       {(rule.state === 'active' || rule.state === 'paused') && (
         <div className="tk-row">
-          <span className="muted">{rule.kind === 'goal' ? 'Ziel geändert.' : rule.state === 'paused' ? 'Pausiert.' : 'Gilt ab jetzt.'}</span>
+          <span className="muted">{rule.kind === 'goal' ? 'Dein Ziel ist geändert.' : rule.state === 'paused' ? 'Die Regel ist pausiert.' : 'Die Regel gilt ab jetzt.'}</span>
           {(rule.kind !== 'goal' || (rule.state === 'active' && !blocked && readGoalField(rec?.body, 'prior'))) && <button type="button" className="link" onClick={() => void undo()}>{UNDO}</button>}
         </div>
       )}
       {blocked && <p className="muted">Geht nicht mehr, weil das Ziel danach geändert wurde.</p>}
       {rule.state === 'declined' && <p className="muted">{DECLINED}.</p>}
-      {failed && <p role="status" className="tk-note">Gerade nicht gespeichert. Versuch es gleich nochmal.</p>}
+      {failed && <p role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}
     </div>
   );
 }

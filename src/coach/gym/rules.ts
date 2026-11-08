@@ -66,10 +66,10 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
     return {
       workout: { name: HISTORY_NAME, exercises: withRamps(core, core.map((t) => exerciseOf(t, ctx)), ctx) },
       reason: legsTired && !recentLegs
-        ? 'Deine häufigsten Übungen der letzten Monate, ohne Beinarbeit, damit die Beine geschont bleiben.'
+        ? 'Heute gibt es deine häufigsten Übungen der letzten Monate, ohne Beinarbeit, damit die Beine geschont bleiben.'
         : legsTired
-        ? 'Deine häufigsten Übungen der letzten Monate, ohne schwere Beinarbeit, weil die Beine noch Pause brauchen.'
-        : 'Deine häufigsten Übungen der letzten Monate in ruhigem Aufbau, damit sich Fortschritt gut messen lässt.',
+        ? 'Heute gibt es deine häufigsten Übungen der letzten Monate, ohne schwere Beinarbeit, weil die Beine noch Pause brauchen.'
+        : 'Heute gibt es deine häufigsten Übungen der letzten Monate in ruhigem Aufbau, damit sich Fortschritt gut messen lässt.',
     };
   }
   const machines = ctx.templates.filter((t) => t.equipment === 'machine' && allowed(t));
@@ -83,10 +83,10 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
   return {
     workout: { name: 'Ganzkörper an Geräten', exercises },
     reason: !hasHistory
-      ? 'Noch keine früheren Trainings: ein einfaches Ganzkörpertraining an Geräten, ohne Gewichte. Taste dich in Ruhe heran.'
+      ? 'Du hast noch keine früheren Trainings. Darum gibt es ein einfaches Ganzkörpertraining an Geräten, ohne Gewichte. Taste dich in Ruhe heran.'
       : withWeights
-        ? 'Aus deinem Verlauf passt gerade keine Übung gut, deshalb ein einfaches Ganzkörpertraining an Geräten. Wo du eine Übung schon kennst, steht ein Gewicht aus deinem Verlauf dabei, sonst taste dich in Ruhe heran.'
-        : 'Aus deinem Verlauf passt gerade keine Übung gut, deshalb ein einfaches Ganzkörpertraining an Geräten, ohne Gewichte. Taste dich in Ruhe heran.',
+        ? 'Aus deinem Verlauf passt gerade keine Übung gut, deshalb gibt es ein einfaches Ganzkörpertraining an Geräten. Wo du eine Übung schon kennst, steht ein Gewicht aus deinem Verlauf dabei, sonst taste dich in Ruhe heran.'
+        : 'Aus deinem Verlauf passt gerade keine Übung gut, deshalb gibt es ein einfaches Ganzkörpertraining an Geräten, ohne Gewichte. Taste dich in Ruhe heran.',
   };
 }
 
