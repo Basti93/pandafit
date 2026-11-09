@@ -8,7 +8,7 @@ import { goalRecord } from '../../src/shared/personal';
 import type { TrackedRecord } from '../../src/shared/records';
 import { CoachScreen } from '../../src/tracking/ui/CoachScreen';
 import { fakePort } from '../tracking/fake-port';
-import { openChat, openProposals } from '../tracking/open-chat';
+import { openChat, proposalIn } from '../tracking/open-chat';
 
 afterEach(cleanup);
 const NOW = new Date(2026, 10, 4, 18).getTime();
@@ -37,7 +37,7 @@ test('a rider message becomes a proposed exclude rule with valid ids; taking it 
   const { port, map } = fakePort([...recs.values()]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   expect(await screen.findByText(/Betrifft: Kniebeuge, Frontkniebeuge/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
   await waitFor(() => expect(state(map, 'rule-m1')).toBe('active'));
@@ -63,7 +63,7 @@ test('Nein danke declines', async () => {
   const { port, map } = fakePort([...recs.values()]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   fireEvent.click(await screen.findByRole('button', { name: 'Nein danke' }));
   await waitFor(() => expect(state(map, 'rule-m1')).toBe('declined'));
 });
@@ -102,7 +102,7 @@ test('a goal proposal writes the goal record on take, merged into the current go
   const { port, map } = fakePort([...recs.values()]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   fireEvent.click(await screen.findByRole('button', { name: 'Übernehmen' }));
   await waitFor(() => expect(state(map, 'rule-m1')).toBe('active'));
   const g = goalOfProfile({ all: (_i: string, k?: string) => [...map.values()].filter((r) => r.kind === k) } as never, 'p', '2026-11-04');
@@ -119,7 +119,7 @@ test('a goal Rückgängig is refused once the goal changed since', async () => {
   const { port, map } = fakePort([...recs.values()]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   fireEvent.click(await screen.findByRole('button', { name: 'Übernehmen' }));
   await waitFor(() => expect(state(map, 'rule-m1')).toBe('active'));
   await port.put(goalRecord({ strength: 'fitness', focus: [], sports: {} }, NOW + 99_000, map.get('goal:goal')));
@@ -158,7 +158,7 @@ test('a goal proposal with weeks writes a temporary focus and leaves the base; R
   const { port, map } = fakePort([...recs.values()]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   fireEvent.click(await screen.findByRole('button', { name: 'Übernehmen' }));
   await waitFor(() => expect(state(map, 'rule-m1')).toBe('active'));
   const all = { all: (_i: string, k?: string) => [...map.values()].filter((r) => r.kind === k) } as never;

@@ -83,8 +83,8 @@ export function RuleCard({ port, ruleId, records, catalog, now, history }: { por
       {rule.kind === 'exclude' && titles.length > 0 && <p className="muted">Betrifft: {titles.join(', ')}</p>}
       {rule.state === 'proposed' && (
         <div className="tk-row">
-          <button type="button" onClick={() => void go('active')}>{TAKE}</button>
-          <button type="button" className="link" onClick={() => void go('declined')}>{DECLINE}</button>
+          <button type="button" className="primary" onClick={() => void go('active')}>{TAKE}</button>
+          <button type="button" className="secondary" onClick={() => void go('declined')}>{DECLINE}</button>
         </div>
       )}
       {(rule.state === 'active' || rule.state === 'paused') && (

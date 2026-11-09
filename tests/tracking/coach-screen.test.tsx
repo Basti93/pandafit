@@ -2,9 +2,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { CoachScreen } from '../../src/tracking/ui/CoachScreen';
 import type { TrackedRecord } from '../../src/shared/records';
+import { changeRecord } from '../../src/shared/changes';
 import { weekDates } from '../../src/shared/week-plan';
 import { fakePort } from './fake-port';
-import { openChat, openProposals } from './open-chat';
+import { openChat, proposalIn, openMoreProposals } from './open-chat';
 
 afterEach(cleanup);
 const NOW = new Date(2026, 10, 4, 18).getTime();
@@ -38,34 +39,86 @@ test('the Coach row previews the last message and shows no second "waiting" whil
   expect(screen.getAllByText('Ein Vorschlag wartet auf dich')).toHaveLength(1);
 });
 
-test('the chat opens as a sheet with the input in it, and closes on × and on Escape', async () => {
+test('the chat opens as a page with the input in it, and closes on Zurück and on Escape', async () => {
   const { port } = fakePort([riderMsg]);
   render(<CoachScreen port={port} {...env} />);
   const chat = await openChat();
   expect(within(chat).getByLabelText('Nachricht an Bo')).toBeTruthy();
-  fireEvent.click(within(chat).getByRole('button', { name: 'Schließen' }));
+  fireEvent.click(within(chat).getByRole('button', { name: 'Zurück' }));
   expect(screen.queryByRole('dialog')).toBeNull();
   await openChat();
   fireEvent.keyDown(document, { key: 'Escape' });
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 
-test('open proposals sit behind one slim strip above the input; once decided they are one line without buttons', async () => {
-  const { port } = fakePort([riderMsg, coachMsg]);
+test('the open week plan stands in Bo’s bubble with Übernehmen and Nein danke; taking it writes the plan once', async () => {
+  const { port, map } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  const chat = await openChat();
+  await proposalIn(chat);
+  const group = within(chat).getByRole('group', { name: /^Vorschlag Wochenplan/ });
+  expect(group.closest('.tk-bubble')).toBeTruthy();
+  expect(within(chat).queryByRole('button', { name: /^Bo hat noch/ })).toBeNull();
+  fireEvent.click(within(group).getByRole('button', { name: 'Übernehmen' }));
+  await waitFor(() => expect(records(map, 'weekplan')).toHaveLength(1));
+  await waitFor(() => expect(records(map, 'chat').filter((r) => (r.body as { takes?: string }).takes === 'c1')).toHaveLength(1));
+  expect(await within(chat).findByText(/^Du hast den Wochenplan ab .* übernommen\./)).toBeTruthy();
+  expect(within(chat).queryByRole('button', { name: 'Übernehmen' })).toBeNull();
+});
+
+const ruleMsg: TrackedRecord = { kind: 'chat', id: 'c2', updatedMs: 3, deleted: false, body: { role: 'coach', text: 'Noch etwas.', atMs: NOW - 400, nextChange: 'chg-m1' } };
+const proposedChange = changeRecord('m1', [{ op: 'drop', exerciseId: 'pf-squat' }], 'Knie zwickt, deshalb ohne Kniebeuge.', 1000);
+
+test('more open proposals wait behind one strip; exactly one stands in a bubble', async () => {
+  const { port } = fakePort([riderMsg, coachMsg, ruleMsg, proposedChange]);
+  render(<CoachScreen port={port} {...env} />);
+  const chat = await openChat();
+  await proposalIn(chat);
+  expect(within(chat).getAllByRole('button', { name: 'Übernehmen' })).toHaveLength(1);
+  fireEvent.click(within(chat).getByRole('button', { name: /^Bo hat noch einen weiteren Vorschlag/ }));
+  expect(await screen.findByRole('dialog', { name: 'Vorschlag' })).toBeTruthy();
+});
+
+test('Bo speaks left with his still picture, you speak right, each with the time', async () => {
+  const { port } = fakePort([riderMsg, { ...coachMsg, body: { ...(coachMsg.body as object), proposal: undefined, text: 'Alles klar.' } }]);
   render(<CoachScreen port={port} {...env} />);
   const chat = within(await openChat());
-  expect(chat.queryByRole('group', { name: /^Vorschlag Wochenplan/ })).toBeNull(); // not stacked above the input
-  expect(chat.queryByRole('button', { name: 'Übernehmen' })).toBeNull();
-  const sheet = within(await openProposals());
-  const pin = within(sheet.getByRole('group', { name: /^Vorschlag Wochenplan/ }));
-  expect(pin.getByRole('button', { name: 'Übernehmen' })).toBeTruthy();
-  expect(screen.getAllByRole('button', { name: 'Übernehmen' })).toHaveLength(1); // none in the history
-  fireEvent.click(pin.getByRole('button', { name: 'Übernehmen' }));
-  await waitFor(() => expect(screen.queryByRole('group', { name: /^Vorschlag Wochenplan/ })).toBeNull());
-  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Vorschlag' })).toBeNull()); // the sheet closes with the last one
-  expect(chat.queryByRole('button', { name: /Vorschlag/ })).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Übernehmen' })).toBeNull();
-  expect(await chat.findByText(/^Du hast den Wochenplan ab .* übernommen\./)).toBeTruthy();
+  const mine = chat.getByText('Freitag Studio').closest('.tk-bubble')!;
+  expect(mine.classList.contains('right')).toBe(true);
+  expect(mine.querySelector('time')?.textContent).toMatch(/^\d\d:\d\d$/);
+  const bo = chat.getByText('Alles klar.').closest('.tk-bo')!;
+  expect(bo.querySelector('img')).toBeTruthy();
+  expect(bo.querySelector('.tk-bubble.right')).toBeNull();
+  expect(bo.querySelector('time')?.textContent).toMatch(/^\d\d:\d\d$/);
+});
+
+test('only the head Bo moves: he listens in the chat head, the bubbles show the still', async () => {
+  const { port } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  const chat = await openChat();
+  await proposalIn(chat);
+  expect(chat.querySelectorAll('canvas')).toHaveLength(1);
+  expect(chat.querySelector('.tk-sheet-head canvas')).toBeTruthy();
+  expect(chat.querySelector('.tk-bubble canvas, .tk-bo canvas')).toBeNull();
+});
+
+test('a chip writes its sentence into the field and goes away with it', async () => {
+  const { port } = fakePort([riderMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  const chat = within(await openChat());
+  fireEvent.click(chat.getByRole('button', { name: 'Mir tut etwas weh' }));
+  expect((chat.getByLabelText('Nachricht an Bo') as HTMLTextAreaElement).value).toBe('Mir tut etwas weh');
+  expect(chat.queryByRole('button', { name: 'Mir tut etwas weh' })).toBeNull();
+});
+
+test('Zuletzt geändert is a card on top that opens the list', async () => {
+  const stats: TrackedRecord = { kind: 'stats', id: 'stats', updatedMs: 1, deleted: false, body: { type: 'stats', atMs: 1, goal: null, days: [], muscles: {}, changes: [{ atMs: NOW - 1000, coach: 'gym', text: 'Bankdrücken 3', reason: 'Schulter' }] } };
+  const { port } = fakePort([riderMsg, stats]);
+  render(<CoachScreen port={port} {...env} />);
+  const chat = within(await openChat());
+  fireEvent.click(chat.getByRole('button', { name: /^Zuletzt geändert/ }));
+  const sheet = within(await screen.findByRole('dialog', { name: 'Zuletzt geändert' }));
+  expect(sheet.getAllByRole('listitem')[0]!.textContent).toContain('Bankdrücken 3, Schulter');
 });
 
 test('an old proposal that was never answered is a line in the history, not a pin', async () => {
@@ -92,7 +145,7 @@ test('taking a proposal writes the week plan and shows it; then it cannot be tak
   const { port, map } = fakePort([riderMsg, coachMsg]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   fireEvent.click(await screen.findByRole('button', { name: 'Übernehmen' }));
   await waitFor(() => expect(records(map, 'weekplan')).toHaveLength(1));
   expect(records(map, 'weekplan')[0]).toMatchObject({ id: '2026-11-02', body: { fromMessage: 'c1', weekStart: '2026-11-02' } });
@@ -107,7 +160,7 @@ test('declining writes a decline and changes no plan', async () => {
   const { port, map } = fakePort([riderMsg, coachMsg]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   fireEvent.click(await screen.findByRole('button', { name: 'Nein danke' }));
   await waitFor(() => expect(records(map, 'chat').some((r) => (r.body as { declines?: string }).declines === 'c1')).toBe(true));
   expect(records(map, 'weekplan')).toHaveLength(0);
@@ -159,10 +212,10 @@ test('a waiting proposal gets a card under the week with Ansehen, which opens th
 });
 
 test('Escape in the proposal sheet closes only that sheet: the chat and its composer stay open and no plan changes', async () => {
-  const { port, map } = fakePort([riderMsg, coachMsg]);
+  const { port, map } = fakePort([riderMsg, coachMsg, ruleMsg, proposedChange]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await openMoreProposals();
   fireEvent.keyDown(document, { key: 'Escape' });
   await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Vorschl(ag|äge)$/ })).toBeNull());
   expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensei' })).getByLabelText('Nachricht an Bo')).toBeTruthy();

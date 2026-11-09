@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 
 /** The Woche page has a row "Coach" that opens the chat sheet; without a week plan the button "Woche planen" does. */
 export async function openChat(): Promise<HTMLElement> {
@@ -7,8 +7,14 @@ export async function openChat(): Promise<HTMLElement> {
   return screen.findByRole('dialog', { name: 'Bo, dein Sensei' });
 }
 
-/** Open proposals sit behind one slim strip above the chat input ("1 Vorschlag ›"); it opens them in a small sheet. */
-export async function openProposals(): Promise<HTMLElement> {
-  fireEvent.click(await screen.findByRole('button', { name: /^\d Vorschl(ag|äge)/ }));
+/** The first open proposal stands in Bo's bubble in the chat; this finds it there (a week plan is a group, the others are their cards). */
+export async function proposalIn(chat?: HTMLElement): Promise<HTMLElement> {
+  const bubble = await within(chat ?? (await screen.findByRole('dialog', { name: 'Bo, dein Sensei' }))).findByRole('button', { name: 'Übernehmen' });
+  return (bubble.closest('.tk-bubble') as HTMLElement | null) ?? bubble;
+}
+
+/** More open proposals wait behind one strip above the input; it opens them in a small sheet. */
+export async function openMoreProposals(): Promise<HTMLElement> {
+  fireEvent.click(await screen.findByRole('button', { name: /^Bo hat noch/ }));
   return screen.findByRole('dialog', { name: /^Vorschl(ag|äge)$/ });
 }

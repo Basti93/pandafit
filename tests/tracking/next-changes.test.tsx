@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
-import { openChat, openProposals } from './open-chat';
+import { openChat, proposalIn } from './open-chat';
 import { CoachScreen } from '../../src/tracking/ui/CoachScreen';
 import { applyNextChanges, changeRecord, moveChange, readChange, takenChanges, usedMarks, type NextOp } from '../../src/shared/changes';
 import { EXERCISES } from '../../src/shared/exercises';
@@ -176,7 +176,7 @@ test('propose -> take -> the plan is regenerated -> reopen -> start: the change 
   const { port, map } = fakePort([...recs.values()]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   fireEvent.click(await screen.findByRole('button', { name: 'Übernehmen' }));
   await waitFor(() => expect(stateOf(map, 'chg-m1')).toBe('taken'));
   expect(await screen.findByRole('button', { name: 'Rückgängig' })).toBeTruthy();
@@ -201,7 +201,7 @@ test('the rider can say no, and undo while it is not used', async () => {
   const { port, map } = fakePort([chatRec('c1', { role: 'coach', text: 'Vorschlag.', atMs: NOW - 500, nextChange: 'chg-m1' }), proposed(), chatRec('c2', { role: 'coach', text: 'Zwei.', atMs: NOW - 400, nextChange: 'chg-m2' }), proposed('m2')]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
-  await openProposals();
+  await proposalIn();
   const nein = await screen.findAllByRole('button', { name: 'Nein danke' });
   fireEvent.click(nein[0]!);
   await waitFor(() => expect(stateOf(map, 'chg-m1')).toBe('declined'));

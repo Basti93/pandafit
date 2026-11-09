@@ -37,7 +37,7 @@ if (typeof window !== 'undefined') {
  * One close pattern: × top right. A sub-page has "‹ Zurück" at the top left instead: a full sheet opened over another sheet
  * (it closes back to the one below), or a sheet given `onBack` (a page inside the same sheet).
  */
-export function Sheet({ title, onClose, onBack, children, actions, size = 'full', lead, display, page }: { title: string; onClose: () => void; onBack?: () => void; children: ReactNode; actions?: ReactNode; size?: 'full' | 'small'; /** A small decorative picture before the title (Panda in the coach chat). */ lead?: ReactNode; /** Set the (short) title in the display face. Only for titles without measures or user text. */ display?: boolean; /** A page like the chat: a round back button top left instead of ×. */ page?: boolean }) {
+export function Sheet({ title, onClose, onBack, children, actions, size = 'full', lead, display, page, subtitle }: { title: string; onClose: () => void; onBack?: () => void; children: ReactNode; actions?: ReactNode; size?: 'full' | 'small'; /** A small decorative picture before the title (Panda in the coach chat). */ lead?: ReactNode; /** Set the (short) title in the display face. Only for titles without measures or user text. */ display?: boolean; /** A page like the chat: a round back button top left instead of ×. */ page?: boolean; /** A muted line below the title (the chat head). */ subtitle?: string }) {
   const id = useId();
   // Decided once, when it opens: is there a sheet below it?
   const [over] = useState(() => stack.length > 0);
@@ -85,7 +85,12 @@ export function Sheet({ title, onClose, onBack, children, actions, size = 'full'
         {page && <BackButton onClick={onBack ?? onClose} />}
         {back && <button type="button" className="link tk-sheet-back" onClick={back}>‹ Zurück</button>}
         {lead}
-        <h2 id={`${id}-t`} className={display ? 'tk-display' : undefined}>{title}</h2>
+        {subtitle ? (
+          <div className="tk-sheet-titles">
+            <h2 id={`${id}-t`} className={display ? 'tk-display' : undefined}>{title}</h2>
+            <p className="tk-sheet-sub">{subtitle}</p>
+          </div>
+        ) : <h2 id={`${id}-t`} className={display ? 'tk-display' : undefined}>{title}</h2>}
         {!back && !page && <button type="button" className="link tk-sheet-x" aria-label="Schließen" onClick={onClose}>×</button>}
       </header>
       <div className="tk-sheet-body">{children}</div>

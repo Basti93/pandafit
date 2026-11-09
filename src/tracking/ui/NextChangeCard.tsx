@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { changesOf, moveChange, type ChangeState } from '../../shared/changes';
 import type { TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
+import { Tag } from './kit';
 import { DECLINE, DECLINED, TAKE, UNDO } from '../../shared/wording';
 
 /**
@@ -22,7 +23,7 @@ export function NextChangeCard({ port, changeId, records, now, history }: { port
   };
   if (history) {
     if (c.state === 'proposed') return null;
-    if (c.state === 'used') return <div className="tk-histline"><span className="muted">✓ Im Training berücksichtigt</span><span className="muted tk-block">{c.reason}</span></div>;
+    if (c.state === 'used') return <div className="tk-histline"><Tag>Im Training berücksichtigt</Tag><span className="muted tk-block">{c.reason}</span></div>;
     const line = c.state === 'taken' ? `Übernommen: ${c.reason}` : c.state === 'declined' ? DECLINED : 'Du hast das rückgängig gemacht.';
     return (
       <div className="tk-histline">
@@ -37,8 +38,8 @@ export function NextChangeCard({ port, changeId, records, now, history }: { port
       <p>{c.state === 'proposed' ? `Fürs nächste Training: ${c.reason}` : c.reason}</p>
       {c.state === 'proposed' && (
         <div className="tk-row">
-          <button type="button" onClick={() => void go('taken')}>{TAKE}</button>
-          <button type="button" className="link" onClick={() => void go('declined')}>{DECLINE}</button>
+          <button type="button" className="primary" onClick={() => void go('taken')}>{TAKE}</button>
+          <button type="button" className="secondary" onClick={() => void go('declined')}>{DECLINE}</button>
         </div>
       )}
       {c.state === 'taken' && <div className="tk-row"><span className="muted">Das gilt jetzt fürs nächste Training.</span><button type="button" className="link" onClick={() => void go('undone')}>{UNDO}</button></div>}
