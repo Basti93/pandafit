@@ -1,8 +1,9 @@
+process.env.TZ = 'Europe/Berlin'; // the clock-change test must cross a real change on any machine
 import { describe, expect, it } from 'vitest';
 import { addWeeks, type Dish, type Meal, type Slot } from '../../src/shared/meals';
 import {
   askedSentence, eatersLine, favSentence, headSentence, mealSentence, nextMeal, nextWeekRows, openSentence, placeButton, placeDefault, placedSentence,
-  recipeSentence, restOfWeek, rowSentence, shoppingSentence, shoppingWeek, slotKicker, todayMeals, type Week,
+  mealKicker, recipeSentence, restOfWeek, rowSentence, shoppingSentence, shoppingWeek, slotKicker, todayMeals, type Week,
 } from '../../src/web/essen/meals-view';
 
 const MO = 0, MI = 2, SA = 5, SO = 6;
@@ -25,6 +26,25 @@ const nextWeek = week(NEXT, [meal(MO, 'fruehstueck', 'Haferbrei mit Beeren'), me
 const weeks = [thisWeek, nextWeek];
 
 describe('Essen in words', () => {
+  it('looks forward over days without meals; a later day names its weekday; nothing ahead is null', () => {
+    const gap = week(THIS, [meal(MO, 'abend', 'Suppe'), meal(3, 'fruehstueck', 'Müsli')]);
+    const r = nextMeal([gap], at(MO, 21, 0))!;
+    expect([r.when, r.meal.day]).toEqual(['später', 3]);
+    expect(mealKicker(r)).toBe('Donnerstag · Frühstück um 8 Uhr');
+    expect(headSentence(todayMeals([gap], at(MO, 21, 0)), r)).toBe('Für heute steht nichts mehr an. Am Donnerstag gibt es um 8 Uhr Müsli.');
+    expect(nextMeal([gap], at(SA, 12, 0))).toBeNull();
+    const across = nextMeal([gap, nextWeek], at(SA, 12, 0))!;
+    expect([across.week.plan.week, across.when]).toEqual([NEXT, 'später']);
+  });
+  it('a day without meals in an existing plan says so', () => {
+    const friday = at(4, 12, 0);
+    expect(todayMeals(weeks, friday)).toEqual([]);
+    expect(headSentence([], nextMeal(weeks, friday))).toBe('Heute ist nichts geplant. Am Sonntag gibt es um 19 Uhr Nudeln.');
+  });
+  it('small sentences keep their singular and drop unknown people', () => {
+    expect(rowSentence(thisWeek, meal(MO, 'mittag', 'Toast', {}, { minutes: 1 }))).toBe('Etwa 1 Minute.');
+    expect(askedSentence(thisWeek, meal(MO, 'abend', 'X', { askedBy: 'weg' }))).toBeNull();
+  });
   it('a meal is dran until two hours after its time, then the next one, after dinner tomorrow', () => {
     expect(nextMeal(weeks, at(MO, 9, 30))!.meal.slot).toBe('fruehstueck');
     expect(nextMeal(weeks, at(MO, 10, 1))!.meal.slot).toBe('mittag');

@@ -14,7 +14,7 @@ import { cap, numberWord } from '../../tracking/ui/week-path';
 
 export type Week = { plan: MealPlan; state: MealState };
 export type MealAt = { week: string; meal: string };
-export type MealRef = { week: Week; meal: Meal; when: 'heute' | 'morgen' };
+export type MealRef = { week: Week; meal: Meal; when: 'heute' | 'morgen' | 'später' };
 
 /** The plan of the week `ms` lies in (any week, also the previous and the next) and the day index; null without a readable plan. */
 export function mealDayOf(records: TrackedRecord[] | null, ms: number): { week: Week; day: number } | null {
@@ -71,10 +71,15 @@ function tomorrowOf(nowMs: number): { week: string; day: number } {
 export function nextMeal(weeks: Week[], nowMs: number): MealRef | null {
   const now = todayMeals(weeks, nowMs).find((t) => !t.over);
   if (now) return { week: now.week, meal: now.meal, when: 'heute' };
+  // Look forward day by day through the planned weeks; the first day with a meal wins ("morgen" only for the next day).
   const t = tomorrowOf(nowMs);
-  const week = weeks.find((w) => w.plan.week === t.week);
-  const meal = week ? inSlotOrder(week.plan.meals.filter((m) => m.day === t.day))[0] : undefined;
-  return week && meal ? { week, meal, when: 'morgen' } : null;
+  const ahead = weeks
+    .filter((w) => w.plan.week >= t.week)
+    .flatMap((w) => w.plan.meals.map((meal) => ({ week: w, meal })))
+    .filter(({ week, meal }) => week.plan.week > t.week || meal.day >= t.day)
+    .sort((a, b) => a.week.plan.week.localeCompare(b.week.plan.week) || a.meal.day - b.meal.day || SLOTS.indexOf(a.meal.slot) - SLOTS.indexOf(b.meal.slot))[0];
+  if (!ahead) return null;
+  return { ...ahead, when: ahead.week.plan.week === t.week && ahead.meal.day === t.day ? 'morgen' : 'später' };
 }
 
 // ---- Times of day ----
@@ -96,13 +101,14 @@ export function headSentence(today: { meal: Meal; over: boolean }[], next: MealR
   if (!next) return `${nothing} ${NEXT_PLAN}`;
   const what = `um ${slotHour(next.meal.slot)} ${next.meal.dish.title}`;
   if (next.when === 'morgen') return `${nothing} Morgen gibt es ${what}.`;
+  if (next.when === 'später') return `${nothing} Am ${DAY_LONG[next.meal.day]} gibt es ${what}.`;
   const over = today.filter((t) => t.over).map((t) => `das ${SLOT_LABEL[t.meal.slot]}`);
   const behind = over.length === 0 ? '' : `${cap(listAnd(over))} ${over.length > 1 ? 'liegen' : 'liegt'} hinter dir. `;
   return `${behind}Als Nächstes gibt es ${what}.`;
 }
 
 export const mealKicker = (r: MealRef): string =>
-  `${r.when === 'heute' ? 'Jetzt dran' : 'Morgen'} · ${SLOT_LABEL[r.meal.slot]} ${slotAt(r.meal.slot)}`;
+  `${r.when === 'heute' ? 'Jetzt dran' : r.when === 'morgen' ? 'Morgen' : DAY_LONG[r.meal.day]} · ${SLOT_LABEL[r.meal.slot]} ${slotAt(r.meal.slot)}`;
 
 export function mealPageKicker(week: Week, meal: Meal, nowMs: number): string {
   const key = localDayKey(dateOf(week.plan.week, meal.day).getTime());
@@ -132,15 +138,15 @@ export function mealSentence(week: Week, meal: Meal): string {
 
 export const askedSentence = (week: Week, meal: Meal): string | null => {
   if (!meal.askedBy) return null;
-  const name = week.plan.people.find((p) => p.id === meal.askedBy)?.name ?? meal.askedBy;
-  return `Auf Wunsch von ${name}.`;
+  const name = week.plan.people.find((p) => p.id === meal.askedBy)?.name;
+  return name ? `Auf Wunsch von ${name}.` : null;
 };
 
 export function rowSentence(week: Week, meal: Meal): string {
   const source = meal.reuseOf ? parseMealKey(meal.reuseOf) : null;
   if (source) return `Rest von ${DAY_LONG[source.day]}.`;
   const rest = restDays(week, meal);
-  return rest.length > 0 ? `Reicht auch für ${listAnd(rest)}.` : `Etwa ${meal.dish.minutes} Minuten.`;
+  return rest.length > 0 ? `Reicht auch für ${listAnd(rest)}.` : `Etwa ${meal.dish.minutes} ${meal.dish.minutes === 1 ? 'Minute' : 'Minuten'}.`;
 }
 
 export const pastSentence = (slot: Slot): string => `War heute ${SLOT_WHEN[slot]} dran.`;
