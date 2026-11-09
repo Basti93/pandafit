@@ -1,4 +1,4 @@
-import type { CoachClientMessage } from '../../shared/coach-protocol';
+import type { CoachClientMessage } from '../../coach/protocol';
 import { PASSES, passById, type PassState } from '../../shared/passes';
 import { heightAt, topOf } from './riding';
 

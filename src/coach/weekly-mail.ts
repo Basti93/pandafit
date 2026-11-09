@@ -8,6 +8,10 @@ import { planDayText } from '../tracking/ui/plan-text';
 import { ruleNumber } from '../shared/training-policy';
 import { sendMail, type MailConfig, type SendResult } from './mail-client';
 import { dateKey } from '../shared/day-rating';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
+import { createLogger } from '../shared/node/log';
+
+const log = createLogger('weekly-mail');
 
 export type WeeklyMailInput = {
   profileName: string;
@@ -78,7 +82,7 @@ export class MailSent {
   mark(profileId: string, week: string): void {
     const s = this.load();
     s[profileId] = week;
-    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(s)); fs.renameSync(tmp, this.file); } catch { /* sent again at worst once more */ }
+    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); writeJsonAtomic(this.file, s); } catch (e) { log.error('weekly mail state not saved', e); /* sent again at worst once more */ }
   }
 }
 

@@ -3,8 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { answerJsonSchema, Coach, SYSTEM_PROMPT } from '../../src/coach/coach';
 import { ClaudeError } from '../../src/coach/claude-client';
-import { checkSession } from '../../src/coach/guardrails';
-import { rampTest } from '../../src/coach/rules';
+import { checkSession } from '../../src/coach/session-limits';
+import { rampTest } from '../../src/shared/ramp';
 import type { Sample } from '../../src/shared/sample';
 import type { Session } from '../../src/shared/session';
 
@@ -500,4 +500,13 @@ test('the bike changes become notes: the FTP changes with their cause, anything 
   const notes = c.changeNotes('pa');
   expect(notes.at(-1)).toEqual({ atMs: NOW, coach: 'bike', text: 'FTP: 215 W', reason: 'von dir gesetzt' });
   expect(notes.every((n) => n.coach === 'bike')).toBe(true);
+});
+
+test('notes are capped at 50 per profile and 500 characters each', () => {
+  const c = make(); c.scanRides([A]);
+  for (let i = 0; i < 60; i++) c.note('pa', `n${i} ${'x'.repeat(i === 59 ? 900 : 5)}`, 'ok');
+  const notes = c.state('pa').notes;
+  expect(notes).toHaveLength(50);
+  expect(notes[0]!.text.startsWith('n10 ')).toBe(true);
+  expect(notes[49]!.text).toHaveLength(500);
 });

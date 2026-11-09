@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { CoachClientMessage } from '../../shared/coach-protocol';
+import type { CoachClientMessage } from '../protocol';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 /** The most keys a clock keeps; past that the oldest stamps go first. */
 const MAX_KEYS = 5000;
@@ -51,9 +52,7 @@ export class ChangeClock {
       for (const [k] of oldest) stamps.delete(k);
     }
     fs.mkdirSync(path.dirname(this.file), { recursive: true, mode: 0o700 });
-    const tmp = `${this.file}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(Object.fromEntries(stamps)), { mode: 0o600 });
-    fs.renameSync(tmp, this.file);
+    writeJsonAtomic(this.file, Object.fromEntries(stamps), { mode: 0o600 });
   }
 
   /** True when a change at `atMs` is not older than the item's last one. Changes nothing. */

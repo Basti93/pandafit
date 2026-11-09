@@ -5,6 +5,7 @@ export class FakeBlePort implements BlePort {
   online: Record<DeviceKind, boolean> = { trainer: true, hr: true, clicker: false };
   writes: { kind: DeviceKind; bytes: number[] }[] = [];
   connectAttempts = 0;
+  attemptsBy: Record<DeviceKind, number> = { trainer: 0, hr: 0, clicker: 0 };
   private subs = new Map<DeviceKind, (b: Buffer) => void>();
   private disconnectCb: (kind: DeviceKind) => void = () => {};
   private controlCb: (b: Buffer) => void = () => {};
@@ -12,6 +13,7 @@ export class FakeBlePort implements BlePort {
 
   async connect(kind: DeviceKind): Promise<void> {
     this.connectAttempts++;
+    this.attemptsBy[kind]++;
     if (!this.online[kind]) throw new Error(`${kind} offline`);
     this.connected.add(kind);
   }

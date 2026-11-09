@@ -5,8 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { createAccount } from '../../web-server/auth';
 import { openDb } from '../../web-server/db';
 import { buildServer } from '../../web-server';
+import { buildInternal } from '../../web-server/internal';
 import { MESSAGES, b64u, buildVersion, runWeekOf, newVapidKeys, validEndpoint, webPushSender, type PushType, type Sender } from '../../web-server/push';
-import { login, NOW, PW_A, PW_B, post } from './helpers';
+import { login, NOW, PW_A, PW_B, post, rec } from './helpers';
 
 const KEY = newVapidKeys().publicKey; // any valid P-256 point
 const AUTH = b64u(Buffer.alloc(16, 3));
@@ -29,7 +30,8 @@ async function server(o: { version?: string; db?: string } = {}) {
   const gone = new Set<string>();
   const send: Sender = vi.fn(async (s, type, payload) => { sent.push({ endpoint: s.endpoint, type, payload }); return gone.has(s.endpoint) ? 'gone' : 'ok'; });
   const app = buildServer({ dbPath, nowMs: () => NOW, push: { send, version: o.version } });
-  return { app, dbPath, sent, gone, send };
+  const internal = buildInternal({ dbPath, token: 'a'.repeat(64), nowMs: () => NOW, push: { send } });
+  return { app, internal, dbPath, sent, gone, send };
 }
 const settle = () => new Promise((r) => setTimeout(r, 20));
 const subscribe = (app: any, cookie: string, body: unknown) => app.inject({ method: 'POST', url: '/push/subscribe', headers: H(cookie), payload: body });
@@ -343,15 +345,38 @@ describe('run week notification', () => {
 
 describe('coach note notification', () => {
   const note = (id: string, body: object) => ({ kind: 'chat', id, updatedMs: NOW, deleted: false, body: { role: 'coach', text: 'Morgen: Rad, locker.', atMs: NOW, ...body } });
+  const viaCoach = (internal: any, records: unknown[]) => internal.inject({ method: 'POST', url: '/internal/accounts/1/records', headers: { authorization: `Bearer ${'a'.repeat(64)}` }, payload: { records } });
   it('a new coach message written for a push notifies its account once; answers and rider messages do not', async () => {
+    const { app, internal, sent } = await server();
+    const a = (await login(app, 'anna', PW_A)).cookie!;
+    await subscribe(app, a, sub('anna'));
+    await viaCoach(internal, [note('n1', { push: true })]);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ endpoint: sub('anna').endpoint, type: 'coach' });
+    await viaCoach(internal, [{ ...note('n1', { push: true }), updatedMs: NOW + 1 }, note('n2', {}), { ...note('n3', { push: true }), body: { role: 'rider', text: 'x', atMs: NOW, push: true } }]);
+    await settle();
+    expect(sent).toHaveLength(1);
+  });
+  it('a client cannot write a coach message with push: only that record is refused, the rest is stored', async () => {
     const { app, sent } = await server();
     const a = (await login(app, 'anna', PW_A)).cookie!;
     await subscribe(app, a, sub('anna'));
-    await post(app, H(a), [note('n1', { push: true })]);
-    await vi.waitFor(() => expect(sent).toHaveLength(1));
-    expect(sent[0]).toMatchObject({ endpoint: sub('anna').endpoint, type: 'coach' });
-    await post(app, H(a), [{ ...note('n1', { push: true }), updatedMs: NOW + 1 }, note('n2', {}), { ...note('n3', { push: true }), body: { role: 'rider', text: 'x', atMs: NOW, push: true } }]);
+    const res = await post(app, H(a), [note('n1', { push: true }), note('n2', {}), rec('w1')]);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().accepted).toBe(2);
+    expect(res.json().refused).toEqual([{ kind: 'chat', id: 'n1', reason: 'coach push message from a client' }]);
     await settle();
-    expect(sent).toHaveLength(1);
+    expect(sent).toHaveLength(0);
+    const ids = (await app.inject({ method: 'GET', url: '/records', headers: H(a) })).json().records.map((r: { id: string }) => r.id);
+    expect(ids.sort()).toEqual(['n2', 'w1']);
+  });
+  it('a linked Mac (device token) runs a coach and may send a coach message with push', async () => {
+    const { app, sent } = await server();
+    const a = (await login(app, 'anna', PW_A)).cookie!;
+    await subscribe(app, a, sub('anna'));
+    const t = (await app.inject({ method: 'POST', url: '/device-token', payload: { name: 'anna', password: PW_A, deviceName: 'mac' } })).json().token;
+    const res = await app.inject({ method: 'POST', url: '/records', headers: { authorization: `Bearer ${t}` }, payload: { records: [note('n1', { push: true })] } });
+    expect(res.json().refused ?? []).toEqual([]);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
   });
 });

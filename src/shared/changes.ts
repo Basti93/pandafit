@@ -1,6 +1,6 @@
 import type { TrackedRecord } from './records';
 import type { Exercise } from './exercises';
-import type { GymExercise, GymWorkout } from '../coach/gym/types';
+import type { GymExercise, GymWorkout } from './gym/types';
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 /** The nearest 0.5 kg. */

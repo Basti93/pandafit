@@ -10,6 +10,10 @@ export type TrackingPort = {
   put(r: TrackedRecord, opts?: { seenMs?: number }): Promise<PutResult>;
   /** Fires after every local `put` and after every remote change that arrives. Listeners must tell the two apart by comparing `updatedMs`. */
   subscribe(fn: () => void): () => void;
+  /** Like `subscribe`, but only for changes to records of `kind`. Optional: without it the records cache reloads on every change. */
+  subscribeKind?(kind: RecordKind, fn: () => void): () => void;
+  /** Fires when `syncState()` may have changed (counts, last sync, sync status). Optional. */
+  subscribeSync?(fn: () => void): () => void;
   /** `refused` counts records the other side did not accept; they stay safe on this device. */
   syncState(): { pending: number; lastOkMs: number | null; refused?: number };
   /** Arms (or with null cancels) a notification for the end of the rest, for when the screen is locked. Fire and forget: never throws, never awaited. */

@@ -1,6 +1,5 @@
 import { avgTemp, bestWindowDistance, easyPace, looksComplete, readRunFit, unzipFit, type RunSample } from '../../../src/coach/run/fit';
 import { buildFit, zipOf } from './fixtures';
-import { deflateRawSync } from 'node:zlib';
 
 const band = { fromBpm: 114, toBpm: 143 };
 const pace = (sPerKm: number) => 1000 / sPerKm;

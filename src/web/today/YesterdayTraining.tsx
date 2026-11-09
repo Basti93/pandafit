@@ -1,6 +1,7 @@
+import { bodyOf } from '../../shared/record-bodies';
 import type { ActivityItem } from '../../shared/activities';
 import { localDayKey } from '../../shared/dates';
-import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
+import type { TrackedRecord } from '../../shared/records';
 import { activityText, mergedActivities } from '../../tracking/ui/done-days';
 import { activitiesOn } from './day-data';
 
@@ -11,7 +12,7 @@ export function YesterdayTraining({ activities, workouts, mobility, date }: { ac
   const titles = (a: ActivityItem): string[] => {
     if (a.kind !== 'kraft' || !a.ref) return [];
     const w = (workouts ?? []).find((r) => r.id === a.ref && !r.deleted);
-    return w ? (w.body as LoggedWorkout).exercises.map((e) => e.title) : [];
+    return w ? bodyOf('workout', w).exercises.map((e) => e.title) : [];
   };
   return (
     <section className="card" aria-label="Training gestern">

@@ -3,7 +3,7 @@ import { request, type IncomingHttpHeaders, type IncomingMessage } from 'node:ht
 import { connect as tcp, type AddressInfo } from 'node:net';
 import { Readable } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify from 'fastify';
 import { WebSocket, WebSocketServer } from 'ws';
 import { setup, login, PW_A, PW_B } from './helpers';
 import { buildServer } from '../../web-server';

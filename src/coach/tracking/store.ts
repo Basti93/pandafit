@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import type { RecordKind, TrackedRecord } from '../../shared/records';
 import { lineAfterAck, planWrite, type WriteOrigin } from '../../tracking/kept-copy';
 import type { PutResult } from '../../tracking/ports';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 const MAX_OVERWRITTEN = 200;
 
@@ -24,13 +25,32 @@ const valid = (d: unknown): d is FileData => {
 /** The Mac's own copy of tracked records, one file per profile. Writes are synchronous: temp file, then rename. */
 export class RecordStore {
   private readonly dir: string;
+  /** Parsed files by profile, valid while mtime and size match (another process may write the file). */
+  private readonly cache = new Map<string, { mtimeMs: number; size: number; data: FileData }>();
   constructor(opts: { dir: string }) { this.dir = opts.dir; }
 
   private file(profileId: string): string { return path.join(this.dir, `${encodeURIComponent(profileId)}.json`); }
 
   private load(profileId: string): FileData {
     const f = this.file(profileId);
-    if (!fs.existsSync(f)) return empty();
+    let st: fs.Stats;
+    try { st = fs.statSync(f); } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') { this.cache.delete(profileId); return empty(); }
+      throw e;
+    }
+    const hit = this.cache.get(profileId);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.data;
+    this.cache.delete(profileId);
+    const data = this.readFile(profileId, f);
+    this.remember(profileId, f, data);
+    return data;
+  }
+
+  private remember(profileId: string, f: string, data: FileData): void {
+    try { const st = fs.statSync(f); this.cache.set(profileId, { mtimeMs: st.mtimeMs, size: st.size, data }); } catch { this.cache.delete(profileId); }
+  }
+
+  private readFile(profileId: string, f: string): FileData {
     // A read error (busy, no permission) is not corruption: let it through, the file is fine.
     const text = fs.readFileSync(f, 'utf8');
     let parsed: unknown;
@@ -49,19 +69,16 @@ export class RecordStore {
   private save(profileId: string, data: FileData): void {
     fs.mkdirSync(this.dir, { recursive: true });
     const f = this.file(profileId);
-    const fd = fs.openSync(`${f}.tmp`, 'w');
-    try {
-      fs.writeFileSync(fd, JSON.stringify(data));
-      fs.fsyncSync(fd);
-    } finally { fs.closeSync(fd); }
-    fs.renameSync(`${f}.tmp`, f);
+    this.cache.delete(profileId);
+    writeJsonAtomic(f, data);
+    this.remember(profileId, f, data);
   }
 
   /** A write made on this Mac. `seenMs` is the version it stands on, when the writer knows one. */
   put(profileId: string, r: TrackedRecord, seenMs?: number): PutResult & { copies: TrackedRecord[] } {
     const copies: TrackedRecord[] = [];
     const [result] = this.write(profileId, [r], { from: 'local', seenMs }, copies);
-    return { ...result!, copies };
+    return { ...result!, copies: copies.map((c) => structuredClone(c)) };
   }
 
   /**
@@ -71,11 +88,18 @@ export class RecordStore {
   putMany(profileId: string, records: TrackedRecord[], from: 'remote' | 'import' = 'import'): TrackedRecord[] {
     const copies: TrackedRecord[] = [];
     this.write(profileId, records, { from }, copies);
-    return copies;
+    return copies.map((c) => structuredClone(c));
   }
 
   private write(profileId: string, records: TrackedRecord[], origin: WriteOrigin, copies: TrackedRecord[]): PutResult[] {
     const data = this.load(profileId);
+    // Kept as copies: the caller may change its objects after the write, the cache must not change with them.
+    const own = records.map((r) => structuredClone(r));
+    // The cached object is mutated in place: if this throws before the save, drop it.
+    try { return this.apply(profileId, data, own, origin, copies); } catch (e) { this.cache.delete(profileId); throw e; }
+  }
+
+  private apply(profileId: string, data: FileData, records: TrackedRecord[], origin: WriteOrigin, copies: TrackedRecord[]): PutResult[] {
     let changed = false;
     const keepLoser = (loser: TrackedRecord) => {
       const text = JSON.stringify(loser);
@@ -107,17 +131,20 @@ export class RecordStore {
   acknowledged(profileId: string, records: TrackedRecord[]): void {
     if (records.length === 0) return;
     const data = this.load(profileId);
-    for (const r of records) { const e = data.entries[keyOf(r)]; if (e) { e.serverMs = r.updatedMs; e.line = lineAfterAck(e.line, r.updatedMs); } }
-    this.save(profileId, data);
+    try {
+      for (const r of records) { const e = data.entries[keyOf(r)]; if (e) { e.serverMs = r.updatedMs; e.line = lineAfterAck(e.line, r.updatedMs); } }
+      this.save(profileId, data);
+    } catch (e) { this.cache.delete(profileId); throw e; }
   }
 
+  // Records leave the store as copies: the parsed file is cached, and callers (e.g. the meal plan) change what they get.
   all(profileId: string, kind?: RecordKind): TrackedRecord[] {
-    return Object.values(this.load(profileId).entries).map(e => e.record).filter(r => !kind || r.kind === kind);
+    return Object.values(this.load(profileId).entries).map(e => e.record).filter(r => !kind || r.kind === kind).map((r) => structuredClone(r));
   }
 
   changedSince(profileId: string, cursor: number): { records: TrackedRecord[]; cursor: number } {
     const data = this.load(profileId);
-    const records = Object.values(data.entries).filter(e => e.seq > cursor).sort((a, b) => a.seq - b.seq).map(e => e.record);
+    const records = Object.values(data.entries).filter(e => e.seq > cursor).sort((a, b) => a.seq - b.seq).map(e => structuredClone(e.record));
     return { records, cursor: data.seq };
   }
 
@@ -130,7 +157,6 @@ export class RecordStore {
     fs.writeFileSync(f, secret, { mode: 0o600 });
     return secret;
   }
-
-  /** Copies that lost to a newer one, newest last, at most 200 per profile. */
-  overwritten(profileId: string): TrackedRecord[] { return this.load(profileId).overwritten; }
+  /** Copies that lost to a newer one, newest last, at most 200 per profile. A copy: the caller cannot change the store. */
+  overwritten(profileId: string): TrackedRecord[] { return [...this.load(profileId).overwritten]; }
 }

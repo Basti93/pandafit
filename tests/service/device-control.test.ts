@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { FakeBlePort } from '../../src/service/ble/fake-device';
-import { readRide } from '../../src/service/recorder';
+import { readRide } from '../../src/ride-format/read';
 import { RideService } from '../../src/service/ride-service';
 import type { ServerMessage, StateMessage } from '../../src/shared/protocol';
 

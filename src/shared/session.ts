@@ -5,7 +5,7 @@ const stepSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('erg'), ftpFraction: z.number().positive(), hrHold: z.boolean().optional(), ...base }),
   z.object({ kind: z.literal('grade'), gradePct: z.number(), scale: z.number().positive(), sudden: z.boolean().optional(), ...base }),
 ]);
-const sessionSchema = z.object({ id: z.string().min(1), name: z.string(), description: z.string().optional(), steps: z.array(stepSchema).min(1) });
+export const sessionSchema = z.object({ id: z.string().min(1), name: z.string(), description: z.string().optional(), steps: z.array(stepSchema).min(1) });
 
 export type Step = z.infer<typeof stepSchema>;
 export type Session = z.infer<typeof sessionSchema>;
@@ -15,4 +15,9 @@ export const parseSession = (input: unknown): Session => sessionSchema.parse(inp
  * Fraction of FTP at which a section is ridden. Climbs run on a watt target:
  * the Hub One has only one sprocket, so a simulated grade would be far above FTP at normal cadence.
  */
+/** Id of the ramp test session; no other session may use it. */
+export const RAMP_ID = 'ramp-test';
+
 export const stepFtpFraction = (s: Step): number => (s.kind === 'erg' ? s.ftpFraction : Math.max(0.5, 0.55 + (s.gradePct * s.scale) / 20));
+export const estimateTss = (session: Session): number =>
+  session.steps.reduce((sum, x) => sum + (x.durationS / 3600) * stepFtpFraction(x) ** 2 * 100, 0);

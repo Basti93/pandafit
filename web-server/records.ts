@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { applyRecord, RECORD_KINDS, type RecordKind, type TrackedRecord } from '../src/shared/records';
 import { generationOf } from './db';
-import { mealWeekOf, runWeekOf } from './push';
+import { mealWeekOf, runWeekOf, type Push } from './push';
 
 /** The records of one account, shared by the public routes (login) and the internal ones (the coach). */
 const KINDS: readonly RecordKind[] = RECORD_KINDS;
@@ -16,6 +16,12 @@ type Row = { kind: string; id: string; updated_ms: number; deleted: number; body
 const toRecord = (r: Row): TrackedRecord => ({ kind: r.kind as RecordKind, id: r.id, updatedMs: r.updated_ms, deleted: r.deleted === 1, body: JSON.parse(r.body) as unknown });
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown, max: number): v is string => typeof v === 'string' && v.length > 0 && v.length <= max;
+
+/** A coach message that sends a push. Only the coach itself writes one; a client's copy is refused. */
+const isCoachPush = (r: Record<string, unknown>): boolean => {
+  const b = r.body;
+  return r.kind === 'chat' && isObj(b) && b.role === 'coach' && b.push === true;
+};
 
 /** The list of a POST body, or null when the body is not `{ records: [...] }` within the limit. */
 export const recordsOfBody = (body: unknown): unknown[] | null => {
@@ -32,7 +38,7 @@ export const pageOfQuery = (q: { since?: string; limit?: string }): { since: num
 };
 
 /** Stores what is newer, keeps what lost, in one transaction. A new meal or run week is reported so its push goes out after the commit. */
-export function putRecords(db: DatabaseSync, accountId: number, list: unknown[], nowMs: number): { accepted: number; refused: { kind: unknown; id: unknown; reason: string }[]; newMealWeek: boolean; newRunWeek: boolean; newCoachNote: boolean } {
+export function putRecords(db: DatabaseSync, accountId: number, list: unknown[], nowMs: number, from: 'client' | 'coach' = 'coach'): { accepted: number; refused: { kind: unknown; id: unknown; reason: string }[]; newMealWeek: boolean; newRunWeek: boolean; newCoachNote: boolean } {
   const account = accountId, t = nowMs;
   const refused: { kind: unknown; id: unknown; reason: string }[] = [];
   let accepted = 0, newMealWeek = false, newRunWeek = false, newCoachNote = false;
@@ -60,6 +66,7 @@ export function putRecords(db: DatabaseSync, accountId: number, list: unknown[],
         : r.updatedMs > t + MAX_AHEAD_MS ? 'updatedMs too far ahead'
         : typeof r.deleted !== 'boolean' ? 'bad deleted'
         : r.body === undefined ? 'missing body'
+        : from === 'client' && isCoachPush(r) ? 'coach push message from a client'
         : Buffer.byteLength(JSON.stringify(r.body)) > RECORD_BODY_LIMIT ? 'body too large'
         : null;
       if (reason) { refused.push({ ...ref, reason }); continue; }
@@ -101,4 +108,13 @@ export function listRecords(db: DatabaseSync, accountId: number, since: number, 
   const rows = db.prepare('SELECT * FROM records WHERE account_id = ? AND seq > ? ORDER BY seq LIMIT ?').all(accountId, since, n + 1) as Row[];
   const page = rows.slice(0, n);
   return { records: page.map(toRecord), cursor: page.length ? page[page.length - 1]!.seq : since, more: rows.length > n, reset, generation: generationOf(db) };
+}
+
+/** putRecords, then the pushes the new records call for. They are fire and forget and sent only after the data is safe. */
+export function putRecordsAndNotify(db: DatabaseSync, push: Push, accountId: number, list: unknown[], nowMs: number, from: 'client' | 'coach'): { accepted: number; refused: { kind: unknown; id: unknown; reason: string }[] } {
+  const { accepted, refused, newMealWeek, newRunWeek, newCoachNote } = putRecords(db, accountId, list, nowMs, from);
+  if (newMealWeek) void push.notifyAccount(accountId, 'meal');
+  if (newRunWeek) void push.notifyAccount(accountId, 'run');
+  if (newCoachNote) void push.notifyAccount(accountId, 'coach');
+  return { accepted, refused };
 }

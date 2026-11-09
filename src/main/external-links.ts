@@ -19,7 +19,7 @@ export function opensExternally(u: string, webOrigins: readonly string[] = []): 
 /** The https origins of the account links in the data folder's `accounts/` (one file per profile). Unreadable files count for nothing. */
 export function linkedWebOrigins(accountsDir: string): string[] {
   const found = new Set<string>();
-  let names: string[] = [];
+  let names: string[];
   try { names = fs.readdirSync(accountsDir); } catch { return []; }
   for (const name of names) {
     if (!/^[A-Za-z0-9-]+$/.test(name)) continue;

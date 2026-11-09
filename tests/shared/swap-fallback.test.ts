@@ -1,7 +1,7 @@
 import { applyNextChanges, changeRecord, moveChange, readChange, usedMarks } from '../../src/shared/changes';
 import { EXERCISES } from '../../src/shared/exercises';
 import { startFromPlan } from '../../src/tracking/session';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 
 const ex = (templateId: string, title: string) => ({ templateId, title, restS: null, supersetId: null, notes: '', sets: [1, 2, 3].map(() => ({ type: 'normal' as const, weightKg: 40, reps: 8 })) });
 const plan: GymWorkout = { name: 'Plan', exercises: [ex('pf-incline-bench-press', 'Schrägbankdrücken'), ex('pf-squat', 'Kniebeuge')] };

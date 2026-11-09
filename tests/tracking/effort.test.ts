@@ -2,7 +2,7 @@ import { asksEffort, MAX_EFFORT_QUESTIONS } from '../../src/tracking/effort';
 import { confirmSet, editSet, setEffort, startFromPlan, swapExercise, type TrackedWorkout } from '../../src/tracking/session';
 import { EXERCISES } from '../../src/shared/exercises';
 import type { LoggedWorkout } from '../../src/shared/records';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 
 const plan = (reps: number | null, repRange?: { start: number; end: number }, n = 1): GymWorkout => ({ name: 'P', exercises: Array.from({ length: n }, (_, i) => ({
   templateId: `pf-x${i}`, title: `X${i}`, restS: null, supersetId: null, notes: '',

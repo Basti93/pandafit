@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { TrackedRecord } from '../../shared/records';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 /** What the accepted week plans of a profile are, as a short key: changes when the rider takes a plan. */
 export const weekPlanKey = (records: TrackedRecord[]): string =>
@@ -28,7 +29,7 @@ export class PlanSeen {
     if ((seen[profileId] ?? '') === key) return false;
     const first = seen[profileId] === undefined;
     seen[profileId] = key;
-    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(seen)); fs.renameSync(tmp, this.file); } catch { /* asked again next scan */ }
+    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); writeJsonAtomic(this.file, seen); } catch { /* asked again next scan */ }
     return !(quietFirst && first);
   }
 }

@@ -1,5 +1,7 @@
 import type { Session, Step } from '../shared/session';
-import { checkSession, estimateTss, mustBeEasy, mustBeGentle, RAMP_ID, tssCap, type CoachContext } from './guardrails';
+import { checkSession, mustBeEasy, mustBeGentle, tssCap, type CoachContext } from './session-limits';
+import { estimateTss, RAMP_ID } from '../shared/session';
+
 import { loadModel, type RideSummary } from './metrics';
 
 const min = (n: number) => n * 60;
@@ -42,13 +44,6 @@ export const ruleBasedSession = (ctx: CoachContext): { session: Session; reason:
     if (checkSession(shorter, ctx).ok) return { session: shorter, reason: 'Du bist gut erholt, zwei kräftige Intervalle bringen heute einen guten Reiz.' };
   }
   return { session: fitToCap(steady('regel-grundlage', 'Grundlage', 40, 0.65), ctx), reason: 'Eine gleichmäßige Fahrt baut Ausdauer auf, ohne dich zu überfordern.' };
-};
-
-export const rampTest = (_ftpW: number): Session => {
-  const steps: Step[] = [];
-  steps.push(erg(5, 0.45, 'Warmup'));
-  for (let pct = 50; pct <= 150; pct += 5) steps.push(erg(1, pct / 100, `Rampe ${pct} %`));
-  return { id: RAMP_ID, name: 'Rampentest', steps };
 };
 
 export const ftpFromRamp = (summary: RideSummary): { ftpW: number | null; hitCeiling: boolean } => ({

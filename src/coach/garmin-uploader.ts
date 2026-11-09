@@ -1,9 +1,12 @@
 import { spawn } from 'node:child_process';
+import { createLogger } from '../shared/node/log';
+import { guardChild, pythonErrorClass } from './child-guard';
 import path from 'node:path';
 import { plainTokens, TokensUnopenable, type GarminTokens, type TokenCheckout } from './secrets/garmin-tokens';
 
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
 const TIMEOUT_MS = 120_000;
+const log = createLogger('garmin-upload');
 
 export type UploadResult = { status: 'uploaded' } | { status: 'failed'; reason: string };
 type Options = {
@@ -49,26 +52,27 @@ export class GarminUploader {
       child = (this.opts.spawnFn ?? spawn)(this.opts.python, [
         this.opts.script, '--tokens', handle.dir, '--file', path.join(this.opts.exportsDir, `${rideId}.fit`), '--name', name, '--start-ms', String(startMs),
         ...(description ? ['--description', description] : []),
-      ], { stdio: ['ignore', 'pipe', 'ignore'] });
-    } catch { checkin(); return false; }
+      ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) { log.error('upload helper did not start', e, { profileId }); checkin(); return false; }
     const run = { child, handle };
     this.running.set(profileId, run);
     let out = '';
     let ended = false;
+    let exitCode: number | null = null;
     // A run that hangs loses its tokens folder at once, not only when it finally exits.
-    const timer = setTimeout(() => { child.kill(); checkin(); }, TIMEOUT_MS);
-    timer.unref?.();
+    const guard = guardChild(child, TIMEOUT_MS, () => { log.warn('upload timed out', { profileId }); checkin(); });
     const end = (result: UploadResult): void => {
       if (ended) return;
       ended = true;
-      clearTimeout(timer);
+      guard.clear();
+      if (result.status !== 'uploaded') log.warn('upload failed', { profileId, rideId, code: exitCode, timedOut: guard.timedOut(), pyError: pythonErrorClass(guard.stderr()) });
       checkin();
       if (this.running.get(profileId) === run) this.running.delete(profileId);
       this.opts.onResult(profileId, rideId, result);
     };
     child.stdout?.on('data', (b: Buffer) => { out += String(b); });
     child.on('error', () => end(FAILED));
-    child.on('close', () => end(parse(out)));
+    child.on('close', (code) => { exitCode = code; end(parse(out)); });
     return true;
   }
 

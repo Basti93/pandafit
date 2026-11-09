@@ -1,24 +1,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { readMeta, readRide } from '../service/recorder';
+import { readMeta, readRide } from '../ride-format/read';
 import type { Profile } from '../shared/profiles';
-import type { RideDetail } from '../shared/coach-protocol';
+import type { RideDetail } from './protocol';
 import { DUTCH_WORDS, recordAnswer } from '../shared/language';
 import { PASSES } from '../shared/passes';
 import type { Session } from '../shared/session';
 import { thinSamples } from '../shared/bike';
 import { ClaudeError } from './claude-client';
-import { readTasks, type GivenTask, TASKS_GUIDE, zTasks, type CoachId } from './coach-tasks';
-import { checkSession, RAMP_ID, type CoachContext } from './guardrails';
+import { readTasks, type GivenTask, TASKS_GUIDE, zTasks } from './coach-tasks';
+import { checkSession, type CoachContext } from './session-limits';
+import { RAMP_ID } from '../shared/session';
 import { cleanDebrief, debriefAnswerSchema, debriefJsonSchema, DEBRIEF_SYSTEM_PROMPT, ruleDebrief } from './debrief';
-import { uploadSettings, withUploadMode, type RideUpload, type UploadMode } from './garmin-upload';
+import { uploadSettings, withUploadMode, type RideUpload, type UploadMode } from '../shared/garmin-upload';
 import type { StrengthWorkout } from './hevy';
 import { strengthPromptData } from './strength';
 import { garminPromptData, readinessFrom, type GarminCoachData } from './readiness';
 import { cleanSamples, loadModel, onTargetPctOf, powerCurveOf, summarizeRide, type RideSummary } from './metrics';
 import { complaintFromNote, type ComplaintStatus } from './motivation';
-import { adjustSession, ftpFromRamp, rampTest, ruleBasedSession } from './rules';
+import { adjustSession, ftpFromRamp, ruleBasedSession } from './rules';
+import { rampTest } from '../shared/ramp';
 import type { RecordStore } from './tracking/store';
 import { migrateRules, personalHint } from './tracking/personal';
 import { dateKey } from '../shared/day-rating';
@@ -65,6 +67,9 @@ export const answerSchema = z.object({
 });
 // `claude` rejects the $schema field that zod adds automatically.
 const { $schema: _ignored, ...answerProps } = z.toJSONSchema(answerSchema);
+/** A profile keeps its latest notes only, each cut to this length. */
+const NOTES_KEEP = 50;
+const NOTE_MAX = 500;
 export const answerJsonSchema: object = answerProps;
 
 export const SYSTEM_PROMPT = `Du bist Radsport-Coach für eine freizeitfahrende Person auf einem Indoor-Trainer.
@@ -255,7 +260,8 @@ export class Coach {
   note(profileId: string, text: string, complaintText = text): void {
     this.update(profileId, (s) => {
       const now = this.deps.nowMs();
-      s.notes.push({ atMs: now, text });
+      s.notes.push({ atMs: now, text: text.slice(0, NOTE_MAX) });
+      if (s.notes.length > NOTES_KEEP) s.notes.splice(0, s.notes.length - NOTES_KEEP);
       if (this.addComplaint(s, complaintText, now)) {
         // Safe immediately, even if the AI is not answering right now.
         s.next = { ...ruleBasedSession(this.context(s)), source: 'rules' };

@@ -1,7 +1,16 @@
 import { EXERCISE_IMAGES, type ExerciseImage } from '../shared/exercise-images';
-import { FEDB_EXERCISES, fedbImageFile } from '../shared/fedb';
+import { fedbImageFile } from '../shared/fedb-image';
+import { fedbIfLoaded } from './fedb-lazy';
 
-const FEDB_IMAGE_COUNT = new Map(FEDB_EXERCISES.map((e) => [e.id, e.images?.length ?? 0]));
+let counts: Map<string, number> | null = null;
+let countsOf: unknown = null;
+// Built from the base catalog once it is loaded; before that its pictures are not known (the screens render again when it arrives).
+const fedbImageCount = (id: string): number => {
+  const list = fedbIfLoaded();
+  if (!list) return 0;
+  if (countsOf !== list) { counts = new Map(list.map((e) => [e.id, e.images?.length ?? 0])); countsOf = list; }
+  return counts?.get(id) ?? 0;
+};
 const FEDB_CREDIT = { author: 'free-exercise-db (gemeinfrei)', licence: 'Unlicense', sourceUrl: 'https://github.com/yuhonas/free-exercise-db' };
 
 /**
@@ -11,7 +20,7 @@ const FEDB_CREDIT = { author: 'free-exercise-db (gemeinfrei)', licence: 'Unlicen
 export const exerciseImages = (exerciseId: string): ExerciseImage[] => {
   const wger = EXERCISE_IMAGES[exerciseId];
   if (wger) return wger;
-  const n = FEDB_IMAGE_COUNT.get(exerciseId) ?? 0;
+  const n = fedbImageCount(exerciseId);
   return Array.from({ length: n }, (_, i) => ({ file: fedbImageFile(exerciseId, i + 1), ...FEDB_CREDIT }));
 };
 

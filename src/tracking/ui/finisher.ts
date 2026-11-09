@@ -1,3 +1,4 @@
+import { bodyOf } from '../../shared/record-bodies';
 import type { ActivityItem } from '../../shared/activities';
 import { localDayKey } from '../../shared/dates';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
@@ -38,7 +39,7 @@ export function latestFinishedStrength(workouts: TrackedRecord[] | null, nowMs: 
   let best: LoggedWorkout | null = null;
   for (const r of workouts ?? []) {
     if (r.deleted) continue;
-    const w = { ...(r.body as LoggedWorkout), id: r.id };
+    const w = { ...bodyOf('workout', r), id: r.id };
     // Today, or within the window across midnight (a workout ending 23:30 keeps its card until 02:30).
     if (w.endMs === null || (localDayKey(w.endMs) !== today && !(nowMs - w.endMs >= 0 && nowMs - w.endMs <= FINISHER_WINDOW_MS))) continue;
     if (!best || w.endMs > (best.endMs as number)) best = w;

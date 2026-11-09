@@ -3,6 +3,7 @@ import path from 'node:path';
 import { RIDE_ID, readRideUpload } from '../ride-upload-format';
 import { CoachHttpError, type CoachHttp } from './coach-http';
 import { remoteDir } from './home';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 /** After a failed run, a profile's uploads wait this long. */
 const RETRY_MS = 60_000;
@@ -66,8 +67,7 @@ export class RideUploads {
   private saveRefusals(profileId: string, d: Record<string, Refused>): void {
     const f = this.refusedFile(profileId);
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(`${f}.tmp`, JSON.stringify(d));
-    fs.renameSync(`${f}.tmp`, f);
+    writeJsonAtomic(f, d);
   }
   /** A refusal waits 1 min, then twice as long each time, up to six hours. */
   private refuse(profileId: string, rideId: string, reason: Refused['reason']): void {
@@ -97,14 +97,13 @@ export class RideUploads {
     const f = this.ledgerFile(profileId);
     const d = { ...this.ledger(profileId), [rideId]: sha256 };
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(`${f}.tmp`, JSON.stringify(d));
-    fs.renameSync(`${f}.tmp`, f);
+    writeJsonAtomic(f, d);
   }
 
   /** The profile's closed rides, oldest first. */
   closed(profileId: string): string[] {
     if (!SAFE_ID.test(profileId)) return [];
-    let names: string[] = [];
+    let names: string[];
     try { names = fs.readdirSync(this.opts.ridesDir); } catch { return []; }
     return names.filter((n) => RIDE_ID.test(n) && closedRide(this.opts.ridesDir, n, profileId)).sort();
   }

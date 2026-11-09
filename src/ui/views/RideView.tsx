@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { ClientMessage, StateMessage } from '../../shared/protocol';
 import { stepTargetZone, zoneBounds, zoneOf } from '../../shared/hr-zones';
-import { clampTargetW } from '../../shared/guardrails';
+import { clampTargetW } from '../../shared/target-power';
 import { stepFtpFraction, type Step } from '../../shared/session';
 import { beep, beepsAt, saveSoundEnabled, soundEnabled } from '../countdown';
 import { hrZoneColor, ZoneChip } from '../hr-zone-style';

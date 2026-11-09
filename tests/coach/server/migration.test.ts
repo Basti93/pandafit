@@ -92,7 +92,7 @@ const make = (o: { root?: string; nowMs?: number; ask?: (input: { systemPrompt: 
 const tree = (dir: string): string[] => {
   const out: string[] = [];
   const walk = (d: string, rel: string) => {
-    let names: string[] = [];
+    let names: string[];
     try { names = fs.readdirSync(d); } catch { return; }
     for (const n of names.sort()) {
       const p = path.join(d, n);

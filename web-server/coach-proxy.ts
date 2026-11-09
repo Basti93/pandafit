@@ -3,6 +3,7 @@ import { request as httpsRequest } from 'node:https';
 import type { Duplex } from 'node:stream';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { WebSocket, WebSocketServer, type RawData } from 'ws';
+import { startHeartbeat } from '../src/shared/node/server-kit';
 
 const MiB = 1024 * 1024;
 /** What a body to the coach may weigh: a ride's upload, one item of the move from the Mac, its manifest or meal file, anything else. */
@@ -143,15 +144,7 @@ export function registerCoachProxy(app: FastifyInstance, opts: CoachProxyOptions
   const perAccount = new Map<number, number>();
 
   // A phone or Mac that changed networks can leave a half-open socket that never closes on its own and holds a slot.
-  const alive = new WeakMap<WebSocket, boolean>();
-  const heartbeat = setInterval(() => {
-    for (const c of wss.clients) {
-      if (alive.get(c) === false) { c.terminate(); continue; }
-      alive.set(c, false);
-      try { c.ping(); } catch { /* closing */ }
-    }
-  }, opts.pingMs ?? PING_MS);
-  heartbeat.unref();
+  const heartbeat = startHeartbeat(wss, opts.pingMs ?? PING_MS);
 
   const refuse = (socket: Duplex, status: number, text: string) => {
     socket.end(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
@@ -159,8 +152,7 @@ export function registerCoachProxy(app: FastifyInstance, opts: CoachProxyOptions
 
   const join = (client: WebSocket, account: number, query: string) => {
     client.on('error', () => {});
-    alive.set(client, true);
-    client.on('pong', () => alive.set(client, true));
+    heartbeat.watch(client);
     const up = new WebSocket(`${wsBase}/ws${query}`, { headers: internal(account), handshakeTimeout: 10_000 });
     upstreams.add(up);
     up.on('error', () => {});
@@ -217,7 +209,7 @@ export function registerCoachProxy(app: FastifyInstance, opts: CoachProxyOptions
   });
 
   app.addHook('onClose', async () => {
-    clearInterval(heartbeat);
+    heartbeat.stop();
     for (const c of wss.clients) c.terminate();
     for (const u of upstreams) u.terminate();
     wss.close();

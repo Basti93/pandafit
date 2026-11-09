@@ -1,8 +1,10 @@
+import { requireLocalToken, servicePort } from '../shared/node/local-token';
 import { FakeBlePort } from './ble/fake-device';
 import { NobleBlePort } from './ble/noble-adapter';
 import { SimBlePort } from './ble/sim-device';
 import type { BlePort, DeviceKind } from './ble/device-port';
 import { Diagnostics, withDiagnostics } from './diagnostics';
+import { removeStaleTemps } from '../shared/node/atomic-write';
 import { LiveLog } from './live-log';
 import { RideService } from './ride-service';
 import { startWsServer } from './ws-server';
@@ -14,6 +16,7 @@ const started = Date.now();
 const nowMs = () => started + (Date.now() - started) * scale;
 const fake = process.env.BIKE_FAKE_BLE === '1' ? new FakeBlePort() : null;
 const sim = process.env.BIKE_SIM === '1' ? new SimBlePort() : null;
+removeStaleTemps(dir); // leftovers of a crash during a write
 const diagnostics = new Diagnostics(dir, nowMs);
 const ble: BlePort = withDiagnostics(fake ?? sim ?? new NobleBlePort(dir), diagnostics, nowMs);
 if (sim) setInterval(() => sim.step(1), 1000 / scale);
@@ -28,7 +31,8 @@ const service = new RideService({
   onRideChange: (riding) => parent?.postMessage({ riding }),
 });
 const wss = startWsServer(service, {
-  port: Number(process.env.BIKE_PORT ?? 7410),
+  port: servicePort(7410),
+  token: requireLocalToken(),
   devOrigin: process.env.ELECTRON_RENDERER_URL ? new URL(process.env.ELECTRON_RENDERER_URL).origin : undefined,
 });
 setInterval(() => {

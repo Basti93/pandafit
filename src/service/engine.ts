@@ -1,10 +1,11 @@
-import { clampTargetW } from '../shared/guardrails';
+import { clampTargetW } from '../shared/target-power';
 import type { RideEvent, Sample } from '../shared/sample';
-import { stepFtpFraction, type Session, type Step } from '../shared/session';
+import { RAMP_ID, stepFtpFraction, type Session, type Step } from '../shared/session';
 import { zoneBounds } from '../shared/hr-zones';
 import type { Reading } from './ble/device-manager';
 
-const GAP_THRESHOLD_MS = 5000;
+/** A silence longer than this counts as a gap in the ride (also used to spot a crash gap on recovery). */
+export const GAP_THRESHOLD_MS = 5000;
 const HR_HOLD_S = 30;
 // Heart rate follows power with a delay, see docs/hr-zones.md.
 const HR_ZONE_SETTLE_S = 180;
@@ -13,7 +14,6 @@ const CADENCE_HOLD_S = 20;
 const CADENCE_FLOOR_RPM = 50;
 const AUTO_STEP_PCT = 5;
 const AUTO_MAX_PCT = 20;
-const RAMP_ID = 'ramp-test';
 const CLIMB_ENTRY_S = 25;
 // Riding by heart rate, our own choice: see docs/hr-zones.md.
 const HOLD_EVERY_S = 30;
@@ -26,14 +26,13 @@ const HOLD_CEILING_FRACTION = 0.8;
 const PAUSE_AFTER_S = 4;
 const RESUME_ABOVE_W = 40;
 
-export type EngineState = {
-  stepIndex: number; stepRemainingS: number; rideElapsedS: number;
-  targetW: number | null; gradePct: number | null; gear: number | null;
-  label: string; nextLabel: string | null; secondsToNext: number; autoReducedPct: number; paused: boolean;
-};
+import type { EngineState } from '../shared/device-types';
+export type { EngineState };
 export type TrainerCommand = { targetW: number };
 export type EngineOptions = {
   session: Session; ftpW: number; resumeAtS?: number; skippedS?: number; startSeq?: number; nowMs: () => number; maxHrBpm?: number; hrMaxBpm?: number;
+  /** Restored after a crash, see recovery.ts. */
+  adjustPct?: number; adjustedStep?: number; autoPct?: number; autoStep?: number; holdPct?: number;
 };
 
 export class RideEngine {
@@ -62,6 +61,11 @@ export class RideEngine {
     this.elapsedS = opts.resumeAtS ?? 0;
     this.skippedS = opts.skippedS ?? 0;
     this.seq = opts.startSeq ?? 0;
+    this.adjustPct = opts.adjustPct ?? 0;
+    this.adjustedStep = opts.adjustedStep ?? -1;
+    this.autoPct = opts.autoPct ?? 0;
+    this.autoStep = opts.autoStep ?? -1;
+    this.holdPct = opts.holdPct ?? 0;
   }
 
   tick(reading: Reading): { sample: Sample; command: TrainerCommand | null; events: RideEvent[] } {

@@ -1,14 +1,17 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { GarminStatus } from '../shared/coach-protocol';
+import { createLogger } from '../shared/node/log';
+import { guardChild } from './child-guard';
+import type { GarminStatus } from './protocol';
 import { plainTokens, TokensUnopenable, type GarminTokens, type TokenCheckout } from './secrets/garmin-tokens';
 
+const log = createLogger('garmin');
 const TIMEOUT_MS = 5 * 60_000; // Also long enough to fetch the two-factor code.
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
 
 type Options = { baseDir: string; python: string; script: string; onUpdate: () => void; spawnFn?: typeof spawn; timeoutMs?: number; tokens?: GarminTokens };
-type Running = { child: ReturnType<typeof spawn>; timer: ReturnType<typeof setTimeout>; handle: TokenCheckout };
+type Running = { child: ReturnType<typeof spawn>; guard: { clear(): void }; handle: TokenCheckout };
 
 /** Holds the Garmin login per profile. The password goes to the helper program only over stdin and is not kept anywhere here. */
 export class GarminLink {
@@ -49,17 +52,17 @@ export class GarminLink {
     const checkin = (): void => { try { this.tokens.checkin(handle); } catch { /* the folder is wiped either way */ } };
     let child: ReturnType<typeof spawn>;
     try {
-      child = (this.opts.spawnFn ?? spawn)(this.opts.python, [this.opts.script], { stdio: ['pipe', 'pipe', 'ignore'] });
+      child = (this.opts.spawnFn ?? spawn)(this.opts.python, [this.opts.script], { stdio: ['pipe', 'pipe', 'pipe'] });
     } catch { checkin(); this.set(profileId, { state: 'failed', reason: 'setup' }); return; }
     const finish = (status: GarminStatus): void => {
       const run = this.running.get(profileId);
       if (!run || run.child !== child) return;
-      clearTimeout(run.timer);
+      run.guard.clear();
       this.running.delete(profileId);
       this.set(profileId, status);
     };
-    const timer = setTimeout(() => { child.kill(); checkin(); finish({ state: 'failed', reason: 'failed' }); }, this.opts.timeoutMs ?? TIMEOUT_MS);
-    this.running.set(profileId, { child, timer, handle });
+    const guard = guardChild(child, this.opts.timeoutMs ?? TIMEOUT_MS, () => { log.warn('login timed out', { profileId }); checkin(); finish({ state: 'failed', reason: 'failed' }); });
+    this.running.set(profileId, { child, guard, handle });
     this.set(profileId, { state: 'connecting' });
 
     let buffer = '';
@@ -80,7 +83,10 @@ export class GarminLink {
       }
     });
     child.on('error', () => { checkin(); finish({ state: 'failed', reason: 'setup' }); });
-    child.on('close', () => { checkin(); finish({ state: 'failed', reason: 'failed' }); });
+    child.on('close', (code: number | null) => {
+      if (this.running.get(profileId)?.child === child) log.warn('login helper ended without a result', { profileId, code });
+      checkin(); finish({ state: 'failed', reason: 'failed' });
+    });
     child.stdin?.on('error', () => { /* process already ended, close reports the error */ });
     child.stdin?.write(`${JSON.stringify({
       tokens: handle.dir,
@@ -100,7 +106,7 @@ export class GarminLink {
     if (!SAFE_ID.test(profileId)) return;
     const run = this.running.get(profileId);
     if (run) {
-      clearTimeout(run.timer);
+      run.guard.clear();
       this.running.delete(profileId);
       try { this.tokens.checkin(run.handle, { discard: true }); } catch { /* wiped either way */ }
       run.child.kill();

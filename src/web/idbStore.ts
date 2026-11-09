@@ -27,6 +27,8 @@ export type IdbStore = {
   /** Last known counts, readable at once. */
   counts(): { pending: number; refused: number };
   subscribe(fn: () => void): () => void;
+  /** Only for writes that changed records of this kind. */
+  subscribeKind(kind: RecordKind, fn: () => void): () => void;
   close(): void;
 };
 
@@ -72,6 +74,8 @@ export async function openIdb(account: string, factory: IDBFactory = indexedDB, 
   };
   watch(db);
   const subs = new Set<() => void>();
+  const kindSubs = new Map<RecordKind, Set<() => void>>();
+  const notifyKinds = (kinds: Set<RecordKind>) => kinds.forEach((k) => kindSubs.get(k)?.forEach((f) => { try { f(); } catch { /* one listener must not stop the rest */ } }));
   const notify = () => subs.forEach((f) => { try { f(); } catch { /* one listener must not stop the rest */ } });
   let counts = { pending: 0, refused: 0 };
 
@@ -113,6 +117,7 @@ export async function openIdb(account: string, factory: IDBFactory = indexedDB, 
 
   async function apply(rs: TrackedRecord[], origin: WriteOrigin): Promise<PutResult[]> {
     if (rs.length === 0) return [];
+    const touched = new Set<RecordKind>();
     let wrote = false; // also a first attempt whose commit we did not hear about
     const { results } = await run(async (d) => {
       // Local writes ask for a durable commit where the browser supports the option.
@@ -131,14 +136,14 @@ export async function openIdb(account: string, factory: IDBFactory = indexedDB, 
           const copyKey = `${plan.copy.kind}:${plan.copy.id}`;
           const other = (await req(records.get(copyKey))) as Row | undefined;
           const { keep } = applyRecord(other?.rec, plan.copy);
-          if (!other || keep !== other.rec) { seq += 1; any = true; records.put({ key: copyKey, seq, rec: keep, remote: false } satisfies Row); }
+          if (!other || keep !== other.rec) { seq += 1; any = true; touched.add(plan.copy.kind); records.put({ key: copyKey, seq, rec: keep, remote: false } satisfies Row); }
         }
         if (!plan.replaces) {
           // The same version came back: now the device knows the server has it.
           if (have && plan.serverMs !== have.serverMs) records.put({ ...have, serverMs: plan.serverMs, line: plan.line } satisfies Row);
           continue;
         }
-        seq += 1; any = true;
+        seq += 1; any = true; touched.add(r.kind);
         records.put({ key, seq, rec: plan.keep, remote: origin.from === 'remote', serverMs: plan.serverMs, line: plan.line } satisfies Row);
       }
       if (any) { meta.put(seq, 'seq'); wrote = true; }
@@ -146,7 +151,7 @@ export async function openIdb(account: string, factory: IDBFactory = indexedDB, 
       return { any, results };
     });
     await refreshCounts();
-    if (wrote) notify();
+    if (wrote) { notifyKinds(touched); notify(); }
     return results;
   }
 
@@ -226,6 +231,12 @@ export async function openIdb(account: string, factory: IDBFactory = indexedDB, 
     },
     counts: () => counts,
     subscribe(fn) { subs.add(fn); return () => { subs.delete(fn); }; },
+    subscribeKind(kind, fn) {
+      const set = kindSubs.get(kind) ?? new Set<() => void>();
+      kindSubs.set(kind, set);
+      set.add(fn);
+      return () => { set.delete(fn); };
+    },
     close() { closed = true; try { db?.close(); } catch { /* ignore */ } db = null; },
   };
 }

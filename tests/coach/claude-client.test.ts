@@ -17,7 +17,15 @@ test('returns structured_output', async () => {
   const { bin } = fake(`echo '{"result":"","structured_output":{"a":1}}'`);
   expect(await ask(bin)).toEqual({ a: 1 });
 });
-test('never passes --bare, disables tools and closes stdin', async () => {
+test('the prompt goes through stdin, not argv, also when it is huge', async () => {
+  const { bin, d } = fake(`echo "$@" > ${'$'}(dirname "$0")/args; cat > ${'$'}(dirname "$0")/stdin; echo '{"structured_output":{}}'`);
+  const prompt = 'Zeile mit Umlaut ä\n'.repeat(15_000);
+  expect(prompt.length).toBeGreaterThan(200 * 1024);
+  await askClaude({ prompt, systemPrompt: 's', schema: { type: 'object' }, workDir: dir(), bin });
+  expect(fs.readFileSync(path.join(d, 'stdin'), 'utf8')).toBe(prompt);
+  expect(fs.readFileSync(path.join(d, 'args'), 'utf8')).not.toContain('Umlaut');
+});
+test('never passes --bare, disables tools and reads the prompt from stdin', async () => {
   const { bin, d } = fake(`echo "$@" > ${'$'}(dirname "$0")/args; cat > ${'$'}(dirname "$0")/stdin; echo '{"structured_output":{}}'`);
   await ask(bin);
   const args = fs.readFileSync(path.join(d, 'args'), 'utf8');
@@ -26,7 +34,7 @@ test('never passes --bare, disables tools and closes stdin', async () => {
   expect(args).toContain('--tools');
   expect(args).toContain('--json-schema');
   expect(args).toContain('--no-session-persistence');
-  expect(fs.readFileSync(path.join(d, 'stdin'), 'utf8')).toBe('');
+  expect(fs.readFileSync(path.join(d, 'stdin'), 'utf8')).toBe('p');
 });
 test('kills the process at the timeout and reports timeout', async () => {
   const { bin } = fake('sleep 30');

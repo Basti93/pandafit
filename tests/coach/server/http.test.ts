@@ -7,7 +7,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import WebSocket from 'ws';
 import { Household } from '../../../src/coach/server/household';
 import { buildCoachServer } from '../../../src/coach/server/http';
-import type { CoachServerMessage } from '../../../src/shared/coach-protocol';
+import type { CoachServerMessage } from '../../../src/coach/protocol';
 import type { Profile } from '../../../src/shared/profiles';
 import { DEFAULT_MEAL_SETTINGS } from '../../../src/shared/meals';
 import { taggingAi } from '../meals/fake-ai';

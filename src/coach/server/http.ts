@@ -1,10 +1,13 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import type { IncomingMessage } from 'node:http';
 import path from 'node:path';
+import { createLogger, logServerErrors, fastifyLogger } from '../../shared/node/log';
+import { ACCOUNT_ID, startHeartbeat, tokenDigest, tokenMatches } from '../../shared/node/server-kit';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
-import { QUEUEABLE, type CoachClientMessage, type CoachServerMessage, type CoachStateMessage } from '../../shared/coach-protocol';
+import { parseCoachClientMessage } from '../../shared/coach-messages';
+import { QUEUEABLE, type CoachClientMessage, type CoachServerMessage, type CoachStateMessage } from '../protocol';
 import { ChangeClock, changeKey, isHouseholdKey } from './change-clock';
 import { HandledQids } from './handled-qids';
 import { RIDE_ID } from '../ride-upload-format';
@@ -15,6 +18,8 @@ import { LIVE_TYPES, type LiveMessage } from '../../shared/live';
 import { LiveChannel } from './live';
 import { MAX_ITEM_BYTES, MigrationError, parseManifest } from './migration';
 
+const dropLog = createLogger('coach-queue');
+
 export type CoachServerOptions = {
   household: Household; internalToken: string; nowMs?: () => number;
   /** How often sockets are pinged; one that has not answered the previous ping by then is cut. Shorter in tests. */
@@ -24,15 +29,12 @@ export type CoachServerOptions = {
 };
 
 const MAX_PAYLOAD = 256 * 1024;
-const ACCOUNT = /^[1-9][0-9]{0,15}$/;
 /** A client's id for a queued entry: a uuid, with room to spare. */
 const MAX_QID = 100;
 
 type Conn = { ws: WebSocket; subscribed: boolean; /** Follows the running ride (the phone). */ watching: boolean; lastSent: string | null };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
-/** Compares digests, so neither the length nor the content of the token leaks through the time taken. */
-const digest = (s: string): Buffer => createHash('sha256').update(s).digest();
 
 /** Per account: what the restore drill compares. Counts only, never content, read from the disk without starting a coach. */
 const accountCounts = (a: { profileId: string; dir: string }) => {
@@ -58,12 +60,13 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
   const nowMs = opts.nowMs ?? (() => Date.now());
   // No limit on a request's total time: an upload streamed through the api at the client's pace (up to 128 MiB) must complete.
   // A connection that goes silent is cut instead; Node's headersTimeout still bounds the headers.
-  const app = Fastify({ logger: false, bodyLimit: 64 * 1024, requestTimeout: 0, connectionTimeout: opts.idleMs ?? 60_000 });
-  const tokenDigest = digest(opts.internalToken);
+  const app = Fastify({ logger: fastifyLogger(), bodyLimit: 64 * 1024, requestTimeout: 0, connectionTimeout: opts.idleMs ?? 60_000 });
+  logServerErrors(app);
+  const expectedToken = tokenDigest(opts.internalToken);
 
-  const tokenOk = (h: unknown): boolean => typeof h === 'string' && h.length > 0 && timingSafeEqual(digest(h), tokenDigest);
+  const tokenOk = (h: unknown): boolean => tokenMatches(h, expectedToken);
   const accountOf = (h: unknown): number | null => {
-    if (typeof h !== 'string' || !ACCOUNT.test(h)) return null;
+    if (typeof h !== 'string' || !ACCOUNT_ID.test(h)) return null;
     const id = Number(h);
     return Number.isSafeInteger(id) ? id : null;
   };
@@ -122,11 +125,8 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
 
   app.put('/rides/:rideId', { bodyLimit: 32 * 1024 * 1024 }, async (req, reply) => {
     const accountId = authorised(req.raw)!;
+    const target = rideTarget(accountId);
     const a = household.account(accountId);
-    const target = a ? { dir: a.dir, profileId: a.profileId } : (() => {
-      const bound = desk.boundProfileId(accountId);
-      return bound ? { dir: path.join(household.accountsDir(), String(accountId)), profileId: bound } : null;
-    })();
     if (!target) return reply.code(404).send({ error: 'not moved' });
     const upload = req.body;
     const rideId = (req.params as { rideId: string }).rideId;
@@ -174,7 +174,7 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
     const account = household.account(accountId);
     if (!account) return reply.code(404).send({ error: 'not moved' });
     const store = household.meals()?.recipes() ?? null;
-    let found: ReturnType<NonNullable<typeof store>['imageOf']> = null;
+    let found: ReturnType<NonNullable<typeof store>['imageOf']>;
     try { found = store && /^[cl]-[0-9a-f]{14}$/.test(id) && store.canSee(id, account.profileId) ? store.imageOf(id) : null; } catch { found = null; }
     if (!found) return reply.code(404).send({ error: 'no picture' });
     let stat: fs.Stats;
@@ -357,8 +357,10 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
           // Handled before and its ack lost: acked again, never applied twice.
           if (qid !== null && qidsOf(a).has(qid)) return;
           const inner = m.message;
-          if (typeof m.atMs !== 'number' || !Number.isFinite(m.atMs) || !isObj(inner)) return;
-          if (typeof inner.type !== 'string' || !QUEUEABLE.has(inner.type as CoachClientMessage['type'])) return;
+          const dropInvalid = (): void => { dropLog.warn('queued message invalid, dropped', { type: isObj(inner) && typeof inner.type === 'string' ? inner.type.slice(0, 40) : null, qid }); };
+          if (typeof m.atMs !== 'number' || !Number.isFinite(m.atMs) || !isObj(inner)) return dropInvalid();
+          if (typeof inner.type !== 'string' || !QUEUEABLE.has(inner.type as CoachClientMessage['type'])) return dropInvalid();
+          if (parseCoachClientMessage(inner) === null) return dropInvalid();
           // A clock running ahead on the client never makes a change newer than now.
           apply(c, a, inner, Math.min(m.atMs, now), true);
         } finally {
@@ -373,27 +375,19 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
       }
       if (m.type === 'live-watch') { c.watching = true; live.hello(a.accountId, c); return; }
       if (typeof m.type === 'string' && LIVE_TYPES.has(m.type)) { live.handle(a.accountId, a.profileId, c, m); return; }
+      if (parseCoachClientMessage(m) === null) return;
       apply(c, a, m, now, false);
     } catch { /* an invalid message changes nothing */ }
   };
 
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_PAYLOAD });
   // A socket whose other end vanished without a close (the api restarted, the network broke) is found and cut.
-  const alive = new WeakMap<WebSocket, boolean>();
-  const heartbeat = setInterval(() => {
-    for (const ws of wss.clients) {
-      if (alive.get(ws) === false) { ws.terminate(); continue; }
-      alive.set(ws, false);
-      try { ws.ping(); } catch { /* closing */ }
-    }
-  }, opts.pingMs ?? 30_000);
-  heartbeat.unref();
+  const heartbeat = startHeartbeat(wss, opts.pingMs ?? 30_000);
   app.server.on('upgrade', (req: IncomingMessage, socket, head) => {
     if ((req.url ?? '').split('?')[0] !== '/ws') { socket.destroy(); return; }
     wss.handleUpgrade(req, socket, head, (ws) => {
       ws.on('error', () => {});
-      alive.set(ws, true);
-      ws.on('pong', () => alive.set(ws, true));
+      heartbeat.watch(ws);
       const accountId = authorised(req);
       if (accountId === null) { ws.close(4401, 'unauthorized'); return; }
       const a = household.account(accountId);
@@ -409,7 +403,7 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
   });
 
   app.addHook('onClose', async () => {
-    clearInterval(heartbeat);
+    heartbeat.stop();
     for (const ws of wss.clients) ws.terminate();
     wss.close();
     for (const off of unlisten.values()) off();

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { SecretCodec } from './secret-box';
+import { writeFileAtomic } from '../../shared/node/atomic-write';
 
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
 const TOKEN_FILE = 'garmin_tokens.json';
@@ -72,14 +73,7 @@ export const sealedTokens = (opts: { garminDir: string; runDir: string; codec: (
   const sealBack = (id: string, text: string): void => {
     const target = sealedFile(id);
     fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
-    const tmp = `${target}.tmp`;
-    const fd = fs.openSync(tmp, 'w', 0o600);
-    try {
-      fs.writeFileSync(fd, opts.codec(id).seal(text));
-      fs.fsyncSync(fd);
-    } finally { fs.closeSync(fd); }
-    fs.chmodSync(tmp, 0o600);
-    fs.renameSync(tmp, target);
+    writeFileAtomic(target, opts.codec(id).seal(text), { mode: 0o600 });
   };
 
   return {

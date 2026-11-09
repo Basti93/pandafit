@@ -1,13 +1,13 @@
 import { ZoneChip } from '../hr-zone-style';
 import { useEffect } from 'react';
 import type { RideSummary } from '../../coach/metrics';
-import { progressText, rideProgress } from '../../coach/progress';
+import { progressText, rideProgress } from '../../shared/progress';
 import type { Together } from '../../coach/together';
-import type { CoachClientMessage, RideDetail } from '../../shared/coach-protocol';
+import type { CoachClientMessage, RideDetail } from '../../coach/protocol';
 import type { RideDebrief } from '../../coach/debrief';
 import type { CoachState } from '../../coach/state';
 import { DebriefCard, debriefHandlers } from './DebriefCard';
-import type { GarminUploadSettings } from '../../coach/garmin-upload';
+import type { GarminUploadSettings } from '../../shared/garmin-upload';
 import { GarminUploadButton } from './GarminUploadButton';
 import { PandaMark } from './PandaMark';
 import { RideCharts } from './RideCharts';

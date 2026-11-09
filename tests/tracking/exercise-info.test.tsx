@@ -171,18 +171,18 @@ describe('MuscleIcon', () => {
   test('with null is labelled as unknown and highlights nothing', () => {
     render(<MuscleIcon group={null} />);
     const icon = screen.getByRole('img', { name: 'Muskel unbekannt' });
-    expect(icon.querySelector('[fill="var(--tk-accent)"]')).toBeNull();
+    expect(icon.querySelector('[fill="var(--accent)"]')).toBeNull();
     expect(icon.textContent).toContain('?');
   });
 
   test('is an image named after the muscle group, with the group drawn in the accent colour', () => {
     const { container } = render(<><MuscleIcon group="chest" /><MuscleIcon group="calves" size={24} /><MuscleIcon group="other" /></>);
-    expect(screen.getByRole('img', { name: 'Brust' }).querySelector('[data-region="chest"]')?.getAttribute('fill')).toBe('var(--tk-accent)');
+    expect(screen.getByRole('img', { name: 'Brust' }).querySelector('[data-region="chest"]')?.getAttribute('fill')).toBe('var(--accent)');
     const calves = screen.getByRole('img', { name: 'Waden' });
     expect(calves.getAttribute('width')).toBe('24');
-    expect(calves.querySelector('[data-region="calves"]')?.getAttribute('fill')).toBe('var(--tk-accent)');
+    expect(calves.querySelector('[data-region="calves"]')?.getAttribute('fill')).toBe('var(--accent)');
     expect(calves.querySelector('[data-region="chest"]')).toBeNull(); // the back view has no chest
-    expect(screen.getByRole('img', { name: 'Sonstiges' }).querySelector('[fill="var(--tk-accent)"]')).toBeNull();
+    expect(screen.getByRole('img', { name: 'Sonstiges' }).querySelector('[fill="var(--accent)"]')).toBeNull();
     expect(container.querySelectorAll('svg')).toHaveLength(3);
   });
 });

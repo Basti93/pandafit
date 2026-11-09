@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CoachClientMessage } from '../../shared/coach-protocol';
+import type { CoachClientMessage } from '../../coach/protocol';
 import { reviewFields, type GarminSuggestion, type ReviewKey } from '../../shared/garmin-profile';
 import type { Profile } from '../../shared/profiles';
 import type { ClientMessage } from '../../shared/protocol';

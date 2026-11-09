@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import type { AccountStatus, CoachHome } from '../../src/shared/coach-protocol';
+import type { AccountStatus, CoachHome } from '../../src/coach/protocol';
 import { App } from '../../src/ui/App';
 
 afterEach(cleanup);

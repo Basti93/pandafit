@@ -1,4 +1,5 @@
 /* Throwaway check program for the device test (Plan Task 2). */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import noble from '@stoprocent/noble';
 import { encodeRequestControl, encodeSimulation, encodeTargetPower, parseIndoorBikeData } from '../src/service/ble/ftms-codec';
 import { parseHeartRate } from '../src/service/ble/hr-codec';

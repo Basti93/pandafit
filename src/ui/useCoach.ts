@@ -6,7 +6,9 @@ import type { Together } from '../coach/together';
 import type { GarminReadiness } from '../shared/garmin';
 import type { GarminSuggestion } from '../shared/garmin-profile';
 import type { StrengthHealth } from '../coach/strength';
-import { COACH_PORT, type CoachClientMessage, type AccountStatus, type GarminStatus, type GarminSyncInfo, type HevyStatus, type RideDetail, type CoachHome } from '../shared/coach-protocol';
+import { localSocketUrl } from './local-token';
+import { COACH_PORT } from '../shared/protocol';
+import { type CoachClientMessage, type AccountStatus, type GarminStatus, type GarminSyncInfo, type HevyStatus, type RideDetail, type CoachHome } from '../coach/protocol';
 
 const IDLE_ACCOUNT: AccountStatus = { state: 'idle', name: null, reason: null, refused: 0, offline: false, lastSyncMs: null };
 
@@ -42,7 +44,7 @@ export const useCoach = (profileId: string | null) => {
     let closed = false;
     let timer: ReturnType<typeof setTimeout>;
     const open = () => {
-      const ws = new WebSocket(`ws://127.0.0.1:${COACH_PORT}`);
+      const ws = new WebSocket(localSocketUrl(COACH_PORT));
       socket.current = ws;
       ws.onopen = () => {
         setConnected(true);

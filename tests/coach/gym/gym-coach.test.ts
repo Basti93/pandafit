@@ -10,7 +10,7 @@ import { ruleWorkout } from '../../../src/coach/gym/rules';
 import { GymCoach } from '../../../src/coach/gym/gym-coach';
 import { NEUTRAL_REASON } from '../../../src/coach/gym/prompt';
 import { HevyError, type HevyRoutines } from '../../../src/coach/gym/hevy-routines';
-import type { ExerciseTemplate } from '../../../src/coach/gym/types';
+import type { ExerciseTemplate } from '../../../src/shared/gym/types';
 import type { StrengthWorkout } from '../../../src/coach/hevy';
 import type { RideSummary } from '../../../src/coach/metrics';
 import type { Complaint } from '../../../src/coach/motivation';

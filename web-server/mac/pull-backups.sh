@@ -38,11 +38,18 @@ if [ -n "$coach_newest" ]; then
 fi
 
 # the server's configuration and credentials (paths relative to the home directory on the server), a new
-# server cannot be set up without them; they never go into the repository. A changed file keeps its previous
-# version with the time of the pull as suffix; these few small files are kept, KEEP_DAYS does not apply.
-SECRETS="$TARGET/secrets"
+# server cannot be set up without them; they never go into the repository. They are kept apart from the backups
+# (SECRETS_DIR), so a copy of the backup folder never carries them. A changed file keeps its previous version
+# with the time of the pull as suffix; these few small files are kept, KEEP_DAYS does not apply.
+SECRETS="${SECRETS_DIR:-$HOME/.pandafit-secrets}"
 umask 077
 mkdir -p "$SECRETS" && chmod 700 "$SECRETS"
+# Older versions put the copies below the backup folder; nothing is deleted here, the owner moves or removes them.
+if [ ! -e "$SECRETS/.old-copies-warned" ] && [ -d "$TARGET/secrets" ] && [ -n "$(/bin/ls -A "$TARGET/secrets" 2>/dev/null)" ]; then
+  echo "$(date '+%F %T') WARNUNG: alte Zugangsdaten-Kopien in $TARGET/secrets, bitte nach $SECRETS verschieben oder löschen" >> "$LOG"
+  notify "Alte Zugangsdaten-Kopien liegen noch in $TARGET/secrets."
+  : > "$SECRETS/.old-copies-warned"
+fi
 for file in ${SECRET_FILES:-pandafit/web-server/.env}; do
   /usr/bin/rsync -a --backup --suffix=".$(date +%F-%H%M%S)" --timeout=120 \
     -e "/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=20" "$SERVER:$file" "$SECRETS/" 2>> "$LOG" \

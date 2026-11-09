@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { apiFetch } from '../tracking/ui/data/api';
 import {
   DAY_SHORT, dayDate, dayIndex, eatersOf, mealKey, placeAnswer, readPlaceRequest, recipeAmount, SLOT_LABEL, SLOTS, weekOf, type Meal, type MealPlan, type MealState,
   type PlaceRequest, type RecipeDetail, type RecipePage, type RecipeSummary, type Slot,
@@ -37,7 +38,7 @@ const readDetail = (x: unknown): RecipeDetail | null => {
 };
 async function getJson(fetchFn: typeof fetch, path: string): Promise<unknown> {
   try {
-    const res = await fetchFn(path, { credentials: 'same-origin', redirect: 'error', signal: AbortSignal.timeout(15_000) });
+    const res = await apiFetch(fetchFn, path);
     return res.ok ? await res.json() : null;
   } catch { return null; }
 }
@@ -47,7 +48,7 @@ const imageUrl = (id: string) => `/coach/recipes/${id}/image`;
 const hueOf = (id: string): number => [...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
 
 /** The recipe's picture, or the colour block when it has none or cannot be loaded. `big` is the 16:9 picture of the recipe view. */
-export function RecipePicture({ id, title, has, big }: { id: string; title: string; has: boolean; big?: boolean }) {
+export function RecipePicture({ id, has, big }: { id: string; has: boolean; big?: boolean }) {
   const [failed, setFailed] = useState(false);
   const cls = big ? 'rc-hero' : 'rc-thumb';
   if (has && !failed) return <img className={cls} src={imageUrl(id)} alt="" loading="lazy" onError={() => setFailed(true)} />;
@@ -137,7 +138,7 @@ export function RecipesSheet({ ctx, onClose, onAddLink }: { ctx: RecipeCtx; onCl
           {shown.map((r) => (
             <li key={r.id} className="rc-row">
               <button type="button" className="rc-open" onClick={() => setViewId(r.id)}>
-                <RecipePicture id={r.id} title={r.title} has={r.image} />
+                <RecipePicture id={r.id} has={r.image} />
                 <span className="rc-text"><span className="rc-title">{r.title}</span><small className="muted">{minutesLine(r)}{r.own ? ' · von dir' : ''}</small></span>
               </button>
               <Heart on={ctx.favs.has(r.id)} title={r.title} onToggle={() => ctx.toggleFav(r.id, !ctx.favs.has(r.id))} />
@@ -171,7 +172,7 @@ export function RecipeView({ ctx, id, onClose, onDeleted }: { ctx: RecipeCtx; id
       {d === 'error' && <p className="muted" role="status">Dieses Rezept ist gerade nicht zu öffnen.</p>}
       {d && d !== 'error' && (
         <div className="rc-view">
-          <RecipePicture id={d.id} title={d.title} has={d.image} big />
+          <RecipePicture id={d.id} has={d.image} big />
           <div className="rc-headline"><p className="muted rc-facts">{factsLine(d)}</p><Heart on={fav} title={d.title} onToggle={() => ctx.toggleFav(id, !fav)} /></div>
           {d.tags.length > 0 && <ul className="rc-tags" aria-label="Schlagwörter">{d.tags.map((t) => <li key={t}>{t.replace(' und ', ' & ')}</li>)}</ul>}
           <div className="rc-portions" role="group" aria-label="Portionen">

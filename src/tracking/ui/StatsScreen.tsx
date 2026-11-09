@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
+import { ReadFailed } from './ReadFailed';
 import { STATE_LABELS, type GroupBalance } from '../../shared/muscle-balance';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
-import { readStats, SPORTS, STATS_ID, type Sport, type StatsBody } from '../../shared/stats';
+import { readStats, STATS_ID, type Sport, type StatsBody } from '../../shared/stats';
 import type { TrackingPort } from '../ports';
 import { statsView, weekMinutes, weekSessions, wellFormed, type StatsView, type WeekStats } from '../stats';
 import { durationText } from '../../shared/duration';
@@ -162,7 +163,7 @@ export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort;
   return (
     <section className="tk-lookback" aria-label="Rückblick">
       <h2 className="tk-section">Rückblick</h2>
-      {failed && <p role="status" className="tk-note">Der Rückblick konnte gerade nicht gelesen werden. Es ist nichts verloren. <button type="button" onClick={retry}>Nochmal versuchen</button></p>}
+      {failed && <ReadFailed text="Der Rückblick konnte gerade nicht gelesen werden. Es ist nichts verloren." retry={retry} />}
       {any && v.verdicts.length > 0 && <ul className="tk-verdicts">{v.verdicts.map((t) => <li key={t}>{verdictText(t)}</li>)}</ul>}
       <RowList label="Rückblick">
         <Row title="Verlauf" value={latest ? <span className="tk-ellipsis">{latest}</span> : undefined} onClick={onHistory} />

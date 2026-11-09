@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StrengthWorkout } from '../../src/coach/hevy';
-import type { ExerciseTemplate } from '../../src/coach/gym/types';
+import type { ExerciseTemplate } from '../../src/shared/gym/types';
 import { checkWorkout, reasonPhrase, type GymContext } from '../../src/coach/gym/guardrails';
 import { ruleWorkout } from '../../src/coach/gym/rules';
 import { buildGymPrompt } from '../../src/coach/gym/prompt';
@@ -15,7 +15,7 @@ import { weeklySetRange } from '../../src/shared/muscle-targets';
 import { similarExercises } from '../../src/tracking/similar';
 import { startFromPlan } from '../../src/tracking/session';
 import { checkOps } from '../../src/tracking/workout-change';
-import { statsView } from '../../src/tracking/stats';
+import { statsView } from '../../src/tracking/stats-node';
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 2, 12);

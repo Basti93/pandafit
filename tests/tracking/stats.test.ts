@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StatsBody, StatsDay, Sport } from '../../src/shared/stats';
 import type { LoggedWorkout } from '../../src/shared/records';
-import { statsView } from '../../src/tracking/stats';
+import { statsView } from '../../src/tracking/stats-node';
 
 // Local time on purpose: a week is Monday to Sunday where the person lives.
 const NOW = new Date(2026, 10, 4, 12).getTime(); // Wednesday 4 Nov 2026; the current week starts Monday 2 Nov

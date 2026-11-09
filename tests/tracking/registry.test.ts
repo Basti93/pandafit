@@ -1,7 +1,7 @@
 import { acquireStore, releaseStore, openStoreCount } from '../../src/tracking/registry';
 import { confirmSet, startFromPlan } from '../../src/tracking/session';
 import type { LoggedWorkout } from '../../src/shared/records';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 import { fakePort } from './fake-port';
 
 const plan: GymWorkout = { name: 'P', exercises: [{ templateId: 'pf-squat', title: 'K', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal', weightKg: null, reps: null }] }] };

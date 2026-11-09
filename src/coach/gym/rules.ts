@@ -1,4 +1,4 @@
-import type { ExerciseTemplate, GymExercise, GymWorkout } from './types';
+import type { ExerciseTemplate, GymExercise, GymWorkout } from '../../shared/gym/types';
 import { RECENT_DAYS } from './limits';
 import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
 import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork, suggestNext } from './history';

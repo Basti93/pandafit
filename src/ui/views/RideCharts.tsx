@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { RideDetail } from '../../shared/coach-protocol';
+import type { RideDetail } from '../../coach/protocol';
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 

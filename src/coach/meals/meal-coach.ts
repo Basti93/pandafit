@@ -18,6 +18,7 @@ import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
 import { constraintsFor, ruleMeals, seeded, skeleton, type Member, type Slotted } from './rules';
 import { applyChat, buildChatPrompt, CHAT_SYSTEM_PROMPT, chatAnswerJsonSchema, chatAnswerSchema, listDish, putDish, REPLY_NO_AI, REPLY_NO_PLAN, replySwapped, ruleTarget, type ChatResult } from './chat';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -131,8 +132,7 @@ export class MealCoach {
     for (const k of Object.keys(d.plans)) if (!keep.has(k)) { delete d.plans[k]; delete d.states[k]; delete d.notices[k]; }
     fs.mkdirSync(this.deps.dir, { recursive: true });
     const f = this.file();
-    fs.writeFileSync(`${f}.tmp`, JSON.stringify(d));
-    fs.renameSync(`${f}.tmp`, f);
+    writeJsonAtomic(f, d);
   }
 
   /** The recipe collection, opened on first use; null without a directory for it. */

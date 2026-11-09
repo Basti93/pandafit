@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { RideDebrief } from '../../coach/debrief';
 import type { CoachState } from '../../coach/state';
-import type { CoachClientMessage } from '../../shared/coach-protocol';
+import type { CoachClientMessage } from '../../coach/protocol';
 import { PandaMark } from './PandaMark';
 
 export const coachScreen = (s: CoachState | null): 'feedback' | 'debrief' | 'coach' => {

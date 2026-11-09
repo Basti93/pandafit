@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { Sheet } from '../tracking/ui/kit';
+import { useWakeLock } from '../tracking/ui/hooks';
 import { LIVE_ADJUST_PCT, LIVE_FRESH_MS, type LiveCommandKind } from '../shared/live';
 import type { CommandResult, LiveClient } from './live';
 
@@ -18,33 +19,6 @@ const num = (n: number | null): string => (n === null ? '–' : String(Math.roun
 
 type Key = 'down' | 'up' | 'mark' | 'skip';
 type Shown = 'wait' | 'ok' | 'fail';
-
-/** The screen stays on while the ride display is open. Best effort: a browser without it just lets the screen dim. */
-function useWakeLock(on: boolean): void {
-  useEffect(() => {
-    if (!on) return;
-    let lock: { release(): Promise<void> } | null = null;
-    let gone = false;
-    const get = async () => {
-      try {
-        const wl = (navigator as unknown as { wakeLock?: { request(t: 'screen'): Promise<{ release(): Promise<void> }> } }).wakeLock;
-        if (!wl || gone) return;
-        const l = await wl.request('screen');
-        if (gone) { void l.release().catch(() => {}); return; }
-        lock = l;
-      } catch { /* refused or not available: the screen may dim */ }
-    };
-    void get();
-    // The browser drops the lock when the page is hidden; ask again when it is back.
-    const again = () => { if (document.visibilityState === 'visible' && !lock) void get(); };
-    document.addEventListener('visibilitychange', again);
-    return () => {
-      gone = true;
-      document.removeEventListener('visibilitychange', again);
-      try { void lock?.release().catch(() => {}); } catch { /* released anyway */ }
-    };
-  }, [on]);
-}
 
 export function LiveRide({ client, now }: { client: LiveClient; now: () => number }) {
   const snap = useSyncExternalStore(client.subscribe, client.snapshot);

@@ -1,4 +1,4 @@
-import type { CoachHome } from '../../shared/coach-protocol';
+import type { CoachHome } from '../../coach/protocol';
 
 /** One muted line: whether this Mac's rides are on the server. Nothing for a profile that has not moved or where it cannot be told. */
 export const backupLine = (home: CoachHome | undefined): string | null => {

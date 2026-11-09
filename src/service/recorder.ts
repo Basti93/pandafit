@@ -1,20 +1,10 @@
 import nodeFs from 'node:fs';
 import path from 'node:path';
 import type { RideEvent, Sample } from '../shared/sample';
+import { readRide, type RideMeta, type RideStatus } from '../ride-format/read';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
 
-export type RideStatus = 'open' | 'finished' | 'aborted' | 'discarded';
-export type RideMeta = { rideId: string; profileId: string; sessionId: string; startedAtMs: number; status: RideStatus };
 type Fs = typeof nodeFs;
-
-const parseLines = <T>(file: string): T[] => {
-  if (!nodeFs.existsSync(file)) return [];
-  const out: T[] = [];
-  for (const line of nodeFs.readFileSync(file, 'utf8').split('\n')) {
-    if (!line) continue;
-    try { out.push(JSON.parse(line) as T); } catch { /* truncated line after a crash */ }
-  }
-  return out;
-};
 
 /** Removes an incomplete last line, so that further appending stays cleanly readable. */
 const trimPartialLine = (file: string): void => {
@@ -41,8 +31,9 @@ export class RideRecorder {
 
   static create(dir: string, meta: RideMeta, fs: Fs = nodeFs): RideRecorder {
     nodeFs.mkdirSync(path.join(dir, meta.rideId), { recursive: true });
-    const rec = new RideRecorder(dir, meta, fs);
-    rec.writeMeta(meta);
+    const versioned = { ...meta, formatVersion: 1 };
+    const rec = new RideRecorder(dir, versioned, fs);
+    rec.writeMeta(versioned);
     return rec;
   }
 
@@ -100,20 +91,6 @@ export class RideRecorder {
   }
 
   private writeMeta(meta: RideMeta): void {
-    const target = path.join(this.rideDir, 'meta.json');
-    this.fs.writeFileSync(`${target}.tmp`, JSON.stringify(meta));
-    nodeFs.renameSync(`${target}.tmp`, target);
+    writeJsonAtomic(path.join(this.rideDir, 'meta.json'), meta, { fs: this.fs });
   }
 }
-
-export const readMeta = (dir: string, rideId: string): RideMeta =>
-  JSON.parse(nodeFs.readFileSync(path.join(dir, rideId, 'meta.json'), 'utf8')) as RideMeta;
-
-export const readRide = (dir: string, rideId: string): { meta: RideMeta; samples: Sample[]; events: RideEvent[] } => {
-  const rideDir = path.join(dir, rideId);
-  return {
-    meta: JSON.parse(nodeFs.readFileSync(path.join(rideDir, 'meta.json'), 'utf8')) as RideMeta,
-    samples: parseLines<Sample>(path.join(rideDir, 'samples.jsonl')),
-    events: parseLines<RideEvent>(path.join(rideDir, 'events.jsonl')),
-  };
-};

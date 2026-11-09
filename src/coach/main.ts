@@ -1,11 +1,15 @@
+import { removeStaleTemps } from '../shared/node/atomic-write';
 import fs from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { originAllowed } from '../service/ws-server';
-import { findOpenRides } from '../service/recovery';
+import { localClientAllowed } from '../shared/node/ws-guard';
+import { coachPort, requireLocalToken, servicePort } from '../shared/node/local-token';
+import { findOpenRides } from '../ride-format/recovery';
 import type { Profile } from '../shared/profiles';
-import { COACH_PORT, type CoachClientMessage, type CoachHome, type CoachServerMessage } from '../shared/coach-protocol';
+import { parseCoachClientMessage } from '../shared/coach-messages';
+import { COACH_PORT } from '../shared/protocol';
+import { type CoachHome, type CoachServerMessage } from './protocol';
 import { askClaude, findClaude } from './claude-client';
 import { computeTogether } from './together';
 import type { CoachState } from './state';
@@ -27,9 +31,11 @@ import { createRouter, mealsStayLocal } from './remote/router';
 const dir = process.env.BIKE_DATA_DIR;
 const coachDir = process.env.BIKE_COACH_DIR;
 if (!dir || !coachDir) throw new Error('BIKE_DATA_DIR und BIKE_COACH_DIR fehlen');
-const port = Number(process.env.BIKE_COACH_PORT ?? COACH_PORT);
+const port = coachPort(COACH_PORT);
+const localToken = requireLocalToken();
 const SCAN_MS = Number(process.env.BIKE_COACH_SCAN_MS ?? 10_000);
 const WAIT_MS = Number(process.env.BIKE_COACH_WAIT_MS ?? 5 * 60_000);
+removeStaleTemps(coachDir); // leftovers of a crash during a write
 const workDir = path.join(coachDir, 'work');
 fs.mkdirSync(workDir, { recursive: true });
 // The runtime keeps rides/, coach/, garmin/, hevy/ and accounts/ side by side, as the Mac always has.
@@ -154,7 +160,7 @@ const router = createRouter({ local: runtime, remote, mealsLocal, togetherLocal:
 // The ride companion: the running ride goes to the server of a moved profile, the phone's checked commands come back. Optional and
 // outside the ride's path: the relay is a plain client of the local service and never throws into anything.
 const relay = new LiveRelay({
-  serviceUrl: `ws://127.0.0.1:${process.env.BIKE_SERVICE_PORT ?? SERVICE_PORT}`,
+  serviceUrl: `ws://127.0.0.1:${servicePort(SERVICE_PORT)}/?t=${localToken}`,
   rideOpen: () => !noOpenRide(),
   target: (id) => { const r = onServer(id) ? remote(id) : null; return r ? (m) => r.sendLive(m) : null; },
   nowMs: () => Date.now(),
@@ -163,7 +169,7 @@ const relay = new LiveRelay({
 const http = createServer();
 const wss = new WebSocketServer({
   server: http,
-  verifyClient: originAllowed(process.env.ELECTRON_RENDERER_URL ? new URL(process.env.ELECTRON_RENDERER_URL).origin : undefined),
+  verifyClient: localClientAllowed(localToken, process.env.ELECTRON_RENDERER_URL ? new URL(process.env.ELECTRON_RENDERER_URL).origin : undefined),
 });
 const subs = new Map<WebSocket, string>();
 const lastSent = new Map<WebSocket, string>();
@@ -195,7 +201,8 @@ function fromServer(profileId: string, m: CoachServerMessage): void {
 wss.on('connection', (socket) => {
   socket.on('message', (raw) => {
     try {
-      const m = JSON.parse(String(raw)) as CoachClientMessage;
+      const m = parseCoachClientMessage(JSON.parse(String(raw)));
+      if (!m) { try { socket.send(JSON.stringify({ type: 'error', message: 'Ungültige Nachricht.' } satisfies CoachServerMessage)); } catch { /* connection gone */ } return; }
       if (m.type === 'subscribe') subs.set(socket, m.profileId);
       router.handle(m, (msg) => {
         if (msg.type === 'coach-state') { sendView(socket, msg); return; }

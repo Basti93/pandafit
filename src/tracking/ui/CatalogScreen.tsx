@@ -7,7 +7,7 @@ import { exerciseImages, videoSearchUrl } from '../media';
 import type { TrackingPort } from '../ports';
 import { matchesSearch } from '../similar';
 import { ExerciseInfo } from './ExerciseInfo';
-import { finishedWorkouts, useCatalog, useExcluded, usePortRecords } from './hooks';
+import { finishedWorkouts, useCatalog, useFedb, useExcluded, usePortRecords } from './hooks';
 import { ExerciseGroups } from './ExerciseGroups';
 import { ExerciseProposals } from './ExerciseProposals';
 import { Row, RowList, Sheet } from './kit';
@@ -18,6 +18,7 @@ import { Row, RowList, Sheet } from './kit';
  */
 export function CatalogScreen({ port, now = Date.now, newId = () => crypto.randomUUID() }: { port: TrackingPort; now?: () => number; newId?: () => string }) {
   const catalog = useCatalog(port);
+  const loading = useFedb() === null;
   const excluded = useExcluded(port);
   const rules = usePortRecords(port, 'rule').all;
   const [q, setQ] = useState('');
@@ -76,7 +77,8 @@ export function CatalogScreen({ port, now = Date.now, newId = () => crypto.rando
       <ExerciseProposals port={port} now={now} newId={newId} />
       <input className="tk-search" aria-label="Übung suchen" placeholder="Übung oder Muskel suchen" value={q} onChange={(e) => setQ(e.target.value)} />
       {error && <p role="alert" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}
-      {hits.length === 0 && <p className="muted">Nichts gefunden.</p>}
+      {loading && <p className="muted" role="status">Der Katalog wird geladen.</p>}
+      {hits.length === 0 && !loading && <p className="muted">Nichts gefunden.</p>}
       <ExerciseGroups exercises={hits} used={used} searching={needle !== ''} item={(e) => (
         <Row key={e.id} title={e.title} value={excluded.has(e.id) ? 'ausgeschlossen' : undefined} expanded={info === e.id} onClick={() => setInfo(info === e.id ? null : e.id)}>
           {details(e)}

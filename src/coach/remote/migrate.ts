@@ -8,6 +8,7 @@ import type { Manifest, MigrationItem } from '../server/migration';
 import { CoachHttpError, type CoachHttp } from './coach-http';
 import { markMealsMoved, markMoved, mealFile, mealsDue, recordDrift, remoteDir } from './home';
 import type { RideUploads } from './ride-upload';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 /**
  * paused: ride (a ride opened), records (records not on the server yet), finish (the finish was cut off; asked again with the same
@@ -109,8 +110,7 @@ const vacuumInto = (from: string, to: string): void => {
 };
 
 const writeJson = (file: string, data: unknown): void => {
-  fs.writeFileSync(`${file}.tmp`, JSON.stringify(data));
-  fs.renameSync(`${file}.tmp`, file);
+  writeJsonAtomic(file, data);
 };
 
 /** The reason a refused upload gives the move. */

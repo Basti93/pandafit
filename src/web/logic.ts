@@ -1,3 +1,4 @@
+import { bodyOf } from '../shared/record-bodies';
 import type { TrackedRecord } from '../shared/records';
 import { readOutlook, type GymOutlook } from '../shared/gym-outlook';
 
@@ -7,7 +8,7 @@ const MOBILITY_WINDOW_MS = DAY;
 const MOBILITY_PAUSE_MS = 2 * DAY;
 
 export type PlanBody = {
-  workout: import('../coach/gym/types').GymWorkout | null; reason: string | null; source: string | null; note: string | null;
+  workout: import('../shared/gym/types').GymWorkout | null; reason: string | null; source: string | null; note: string | null;
   questions: string[]; atMs: number; mobility: MobilitySession | null; outlook: GymOutlook | null;
 };
 export type MobilitySession = { id: string; forSession: 'bike' | 'strength' | 'run'; minutes: number; exercises: { id: string; title: string; howTo: string; area: string }[]; reason: string };
@@ -46,7 +47,7 @@ export function mobilityToShow(plan: TrackedRecord | undefined, mobility: Tracke
 
 export function openComplaints(records: TrackedRecord[]): (Complaint & { id: string })[] {
   return records.filter((r) => !r.deleted && isObj(r.body) && typeof r.body.text === 'string' && typeof r.body.status === 'string' && r.body.status !== 'over')
-    .map((r) => ({ id: r.id, ...(r.body as Complaint) })).sort((a, b) => b.atMs - a.atMs);
+    .map((r) => ({ id: r.id, ...bodyOf('complaint', r) })).sort((a, b) => b.atMs - a.atMs);
 }
 
 export const isIphoneBrowser = (ua: string): boolean => /iPhone|iPad|iPod/.test(ua);

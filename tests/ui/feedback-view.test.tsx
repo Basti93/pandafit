@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { FeedbackView } from '../../src/ui/views/FeedbackView';
 import type { RideSummary } from '../../src/coach/metrics';
-import type { RideDetail } from '../../src/shared/coach-protocol';
+import type { RideDetail } from '../../src/coach/protocol';
 
 afterEach(cleanup);
 

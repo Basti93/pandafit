@@ -1,5 +1,5 @@
-import type { GarminUploadSettings } from '../coach/garmin-upload';
-import type { CoachClientMessage, CoachStateMessage, GarminStatus, GarminSyncInfo, HevyStatus } from '../shared/coach-protocol';
+import type { GarminUploadSettings } from '../shared/garmin-upload';
+import type { CoachClientMessage, CoachStateMessage, GarminStatus, GarminSyncInfo, HevyStatus } from '../coach/protocol';
 import type { MealSettings } from '../shared/meals';
 import type { LiveSocket } from './live';
 
@@ -70,7 +70,7 @@ export class CoachLink {
 
   private async connect(): Promise<void> {
     if (this.stopped || this.ws) return;
-    let status: Awaited<ReturnType<typeof this.o.status>> = null;
+    let status: Awaited<ReturnType<typeof this.o.status>>;
     try { status = await this.o.status(); } catch { status = null; }
     if (this.stopped || this.ws) return;
     if (!status) { this.later(); return; }

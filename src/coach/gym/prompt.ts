@@ -11,7 +11,7 @@ import { MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS } from './limits';
 import type { LoadStepOverrides } from '../../shared/loads';
 import { repRangeOf } from '../../shared/muscle-targets';
 import type { GymState } from './state';
-import type { ExerciseTemplate } from './types';
+import type { ExerciseTemplate } from '../../shared/gym/types';
 import type { Renames } from '../../shared/studio';
 import { TASKS_GUIDE, zTasks } from '../coach-tasks';
 import { restMid } from '../../shared/rest';

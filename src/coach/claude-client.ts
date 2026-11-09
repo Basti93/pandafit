@@ -34,14 +34,17 @@ const parseOutput = (stdout: string): ClaudeOutput | null => {
 export const askClaude = (input: {
   prompt: string; systemPrompt: string; schema: object; workDir: string; bin: string; timeoutMs?: number; model?: string; spawnFn?: typeof spawn;
 }): Promise<unknown> => new Promise((resolve, reject) => {
+  // The prompt goes through stdin: argv has a size limit and shows in the process list.
   // Deliberately without --bare: that mode does not read the subscription login.
   const args = [
-    '-p', input.prompt, '--system-prompt', input.systemPrompt,
+    '-p', '--system-prompt', input.systemPrompt,
     '--output-format', 'json', '--json-schema', JSON.stringify(input.schema),
     '--tools', '', '--setting-sources', '', '--strict-mcp-config', '--no-session-persistence',
     ...(input.model ? ['--model', input.model] : []),
   ];
-  const child = (input.spawnFn ?? spawn)(input.bin, args, { cwd: input.workDir, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = (input.spawnFn ?? spawn)(input.bin, args, { cwd: input.workDir, stdio: ['pipe', 'pipe', 'pipe'] });
+  child.stdin?.on('error', () => { /* the process ended first; its exit code tells */ });
+  child.stdin?.end(input.prompt);
   let stdout = '';
   let stderr = '';
   let settled = false;

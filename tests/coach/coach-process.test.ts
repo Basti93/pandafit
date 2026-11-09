@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { WebSocket } from 'ws';
-import { rampTest } from '../../src/coach/rules';
-import { connect, hardKill, rideId, send, session, sleep, startService, waitForSamples, type Svc } from '../chaos/helpers';
-import { readRide } from '../../src/service/recorder';
+import { rampTest } from '../../src/shared/ramp';
+import { TOKEN, connect, hardKill, rideId, send, session, sleep, startService, waitForSamples, type Svc } from '../chaos/helpers';
+import { readRide } from '../../src/ride-format/read';
 
 type Coach = { child: ChildProcess; port: number };
 let port = 7700;
@@ -35,7 +35,7 @@ const seed = (root: string) => {
 const startCoach = async (root: string, bin: string, extra: Record<string, string> = {}): Promise<Coach> => {
   const p = port++;
   const child = spawn('npx', ['tsx', 'src/coach/main.ts'], {
-    env: { ...process.env, BIKE_DATA_DIR: path.join(root, 'rides'), BIKE_COACH_DIR: path.join(root, 'coach'), BIKE_CLAUDE_BIN: bin, BIKE_COACH_PORT: String(p), BIKE_COACH_SCAN_MS: '50', ...extra },
+    env: { ...process.env, BIKE_DATA_DIR: path.join(root, 'rides'), BIKE_COACH_DIR: path.join(root, 'coach'), BIKE_CLAUDE_BIN: bin, BIKE_COACH_PORT: String(p), PANDAFIT_LOCAL_TOKEN: TOKEN, BIKE_COACH_SCAN_MS: '50', ...extra },
     stdio: ['ignore', 'pipe', 'inherit'], detached: true,
   });
   await new Promise<void>((r) => child.stdout!.once('data', () => r()));
@@ -44,7 +44,7 @@ const startCoach = async (root: string, bin: string, extra: Record<string, strin
   return c;
 };
 const subscribe = (p: number) => new Promise<{ ws: WebSocket; last: () => any }>((resolve, reject) => {
-  const ws = new WebSocket(`ws://127.0.0.1:${p}`);
+  const ws = new WebSocket(`ws://127.0.0.1:${p}/?t=${TOKEN}`);
   let last: any = null;
   // Other pushes (records-changed) come between: the helper keeps the last coach state.
   ws.on('message', (m) => { const x = JSON.parse(String(m)); if (x?.type !== 'records-changed') last = x; });
@@ -79,6 +79,16 @@ test('without feedback the plan still updates after the waiting time', async () 
   await until(() => sub.last()?.state?.next?.source === 'claude');
   sub.ws.close();
 }, 20000);
+test('an invalid message is answered with an error message', async () => {
+  const root = temp(); seed(root);
+  const c = await startCoach(root, fakeClaude());
+  const sub = await subscribe(c.port);
+  const got: any[] = [];
+  sub.ws.on('message', (m) => got.push(JSON.parse(String(m))));
+  sub.ws.send('{"type":"nonsense"}');
+  await until(() => got.some((m) => m.type === 'error' && typeof m.message === 'string'));
+  sub.ws.close();
+}, 20000);
 test('hanging claude does not block state requests', async () => {
   const root = temp(); seed(root);
   const c = await startCoach(root, fakeClaude('sleep 30'), { BIKE_COACH_WAIT_MS: '0' });
@@ -111,7 +121,7 @@ test('foreign origin is rejected', async () => {
   const root = temp(); seed(root);
   const c = await startCoach(root, fakeClaude());
   const opened = await new Promise((r) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${c.port}`, { origin: 'https://evil.example' });
+    const ws = new WebSocket(`ws://127.0.0.1:${c.port}/?t=${TOKEN}`, { origin: 'https://evil.example' });
     ws.once('open', () => r(true)); ws.once('error', () => r(false));
   });
   expect(opened).toBe(false);

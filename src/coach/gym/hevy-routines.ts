@@ -3,7 +3,11 @@ import { restOf } from '../../shared/rest';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Exercise } from '../../shared/exercises';
-import type { ExerciseTemplate, GymWorkout } from './types';
+import type { ExerciseTemplate, GymWorkout } from '../../shared/gym/types';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
+import { createLogger } from '../../shared/node/log';
+
+const log = createLogger('hevy-routines');
 
 const API = 'https://api.hevyapp.com';
 const FOLDER_TITLE = 'Pandafit';
@@ -83,9 +87,8 @@ export class HevyRoutines {
     const templates = raw.map((t) => ({ id: t.id, title: t.title, type: t.type ?? '', primaryMuscle: t.primary_muscle_group ?? '', equipment: t.equipment ?? '' }));
     try {
       fs.mkdirSync(this.opts.dir, { recursive: true, mode: 0o700 });
-      fs.writeFileSync(`${file}.tmp`, JSON.stringify({ fetchedMs: this.opts.nowMs(), templates }), { mode: 0o600 });
-      fs.renameSync(`${file}.tmp`, file);
-    } catch { /* The fetched templates still count; the next plan fetches again. */ }
+      writeJsonAtomic(file, { fetchedMs: this.opts.nowMs(), templates }, { mode: 0o600 });
+    } catch (e) { log.error('hevy templates not cached', e); /* The fetched templates still count; the next plan fetches again. */ }
     return templates;
   }
 

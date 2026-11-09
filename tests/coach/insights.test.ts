@@ -3,8 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { Coach } from '../../src/coach/coach';
 import { bestPowers, loadSeries, summarizeRide, type RideSummary } from '../../src/coach/metrics';
-import { rideProgress } from '../../src/coach/progress';
-import type { RideMeta } from '../../src/service/recorder';
+import { rideProgress } from '../../src/shared/progress';
+import type { RideMeta } from '../../src/ride-format/read';
 import type { Sample } from '../../src/shared/sample';
 import type { Session } from '../../src/shared/session';
 

@@ -1,5 +1,5 @@
 import { ZoneChip } from '../hr-zone-style';
-import { estimateTss } from '../../coach/guardrails';
+import { estimateTss, RAMP_ID } from '../../shared/session';
 import type { Session } from '../../shared/session';
 import { WorkoutBar } from './WorkoutBar';
 
@@ -20,7 +20,7 @@ export const SessionFacts = ({ session }: { session: Session; ftpW: number }) =>
   return (
     <dl className="facts">
       <div><dt>Dauer</dt><dd>{fmtMin(totalS)}</dd></div>
-      <div><dt>Anstrengung</dt><dd>{session.id === 'ramp-test' ? 'bis zum Limit' : effort(session)}</dd></div>
+      <div><dt>Anstrengung</dt><dd>{session.id === RAMP_ID ? 'bis zum Limit' : effort(session)}</dd></div>
       {grades.length > 0 && <div><dt>Steilste Stelle</dt><dd>{Math.max(...grades).toLocaleString('de-DE')} %</dd></div>}
     </dl>
   );

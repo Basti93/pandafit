@@ -8,6 +8,7 @@ import { nutritionFlags, unhealthyReason } from './recipe-health';
 import { importRecipe, norm, PROTEIN_UNKNOWN, sanitizeUrl, type Structure, type StoredRecipe } from './recipe-import';
 import { searchRecipes, type SearchQuery } from './recipe-search';
 import { allTags, classify, completeTags, deriveVersion, hardTags, mergeTags, parseQualityMin, slotsFrom, tagAi, tagInputHash, tagInputOf, tagLabels, tagPromptVersion, vocabulary, FACETS, type AiTags, type TagAsk } from './recipe-tags';
+import { writeFileAtomic } from '../../shared/node/atomic-write';
 
 /**
  * The recipe collection: `<root>/recipes/recipes.db` (node:sqlite), the `inbox/` an outside fetcher fills with JSONL files,
@@ -266,13 +267,10 @@ export class RecipeStore {
     const ext = EXT[pic.type];
     const dir = this.imagesDir();
     const final = path.join(dir, `${id}.${ext}`);
-    const tmp = path.join(dir, `.${id}.${crypto.randomBytes(4).toString('hex')}.tmp`);
     try {
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-      const fd = fs.openSync(tmp, 'w', 0o600);
-      try { fs.writeFileSync(fd, pic.bytes); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-      fs.renameSync(tmp, final);
-    } catch { try { fs.rmSync(tmp, { force: true }); } catch { /* gone */ } return false; }
+      writeFileAtomic(final, pic.bytes, { mode: 0o600 });
+    } catch { return false; }
     this.open().prepare('INSERT INTO images (recipe_id, ext) VALUES (?, ?) ON CONFLICT(recipe_id) DO UPDATE SET ext = excluded.ext').run(id, ext);
     return true;
   }
@@ -318,7 +316,7 @@ export class RecipeStore {
     const rows = this.open().prepare(`SELECT id, json, ai_json, tag_hash, tag_key, tag_tries FROM recipes WHERE ${where} ORDER BY imported_ms, id LIMIT ?`).all(...args, limit) as { id: string; json: string; ai_json: string | null; tag_hash: string | null; tag_key: string | null; tag_tries: number }[];
     return rows.flatMap((r) => {
       const json = this.parse(r);
-      let ai: AiTags | null = null;
+      let ai: AiTags | null;
       try { ai = r.ai_json ? (JSON.parse(r.ai_json) as AiTags) : null; } catch { ai = null; }
       return json ? [{ id: r.id, json, ai, hash: r.tag_hash, key: r.tag_key, tries: r.tag_tries }] : [];
     });
@@ -446,7 +444,7 @@ export class RecipeStore {
     let n = 0;
     for (const row of rows) {
       const old = this.parse(row);
-      let raw: { recipe?: unknown } | null = null;
+      let raw: { recipe?: unknown } | null;
       try { raw = row.raw ? (JSON.parse(row.raw) as { recipe?: unknown }) : null; } catch { raw = null; }
       if (!old || !raw?.recipe) { o.prepare('UPDATE recipes SET derive_version = ? WHERE id = ?').run(this.version(), row.id); continue; }
       const r = await importRecipe(raw.recipe);
@@ -459,7 +457,7 @@ export class RecipeStore {
         o.prepare('UPDATE recipes SET fp = ?, title = ?, rating = ?, rating_n = ?, minutes = ?, protein = ?, vegan = ?, quality = ?, flagged = ?, derive_version = ?, json = ? WHERE id = ?')
           .run(fingerprint(next.title, next.ingredients), next.title, next.rating?.value ?? null, next.rating?.count ?? null, minutes, protein, vegan, quality, flagged, this.version(), JSON.stringify(next), row.id);
       } catch { o.prepare('UPDATE recipes SET derive_version = ? WHERE id = ?').run(this.version(), row.id); continue; }
-      let ai: AiTags | null = null;
+      let ai: AiTags | null;
       try { ai = row.ai_json ? (JSON.parse(row.ai_json) as AiTags) : null; } catch { ai = null; }
       if (ai && old.tags) {
         // The old classification stays; when the AI's input changed it is asked again in the background (tag_key emptied).

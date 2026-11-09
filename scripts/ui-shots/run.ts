@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { _electron as electron, type Page } from 'playwright-core';
-import { rampTest } from '../../src/coach/rules';
+import { rampTest } from '../../src/shared/ramp';
 import { STARTER_SESSIONS } from '../../src/shared/starter-sessions';
 
 const out = process.argv[2] ?? 'ui-shots';
@@ -86,7 +86,7 @@ const stub = () => {
     static OPEN = 1; readyState = 1; onopen?: () => void; onmessage?: (e: { data: string }) => void; onclose?: () => void;
     private coach: boolean;
     constructor(url: string) {
-      this.coach = url.endsWith('7411');
+      this.coach = /:7411\b/.test(url);
       setTimeout(() => {
         if (this.coach && !w.__coach) { this.readyState = 3; this.onclose?.(); return; }
         this.onopen?.();

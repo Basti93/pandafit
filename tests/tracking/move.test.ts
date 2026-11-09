@@ -2,7 +2,7 @@ import { EXERCISES } from '../../src/shared/exercises';
 import { readWorkoutChange } from '../../src/shared/chat';
 import { confirmSet, linkWith, moveExercise, moveExerciseTo, startFromPlan, type TrackedWorkout } from '../../src/tracking/session';
 import { takeChange, undoChange } from '../../src/tracking/workout-change';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 
 const ex = (id: string, title: string) => ({ templateId: id, title, restS: null, supersetId: null, notes: '', sets: [1, 2].map(() => ({ type: 'normal' as const, weightKg: 50, reps: 8 })) });
 const plan: GymWorkout = { name: 'P', exercises: [ex('pf-bench-press', 'A'), ex('pf-squat', 'B'), ex('pf-leg-press', 'C'), ex('pf-bench-press', 'D')] };

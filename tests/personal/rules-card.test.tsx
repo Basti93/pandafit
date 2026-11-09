@@ -124,7 +124,7 @@ test('an exercise can be excluded with all its variants; an exercise of the othe
 test('the goal selects write the goal record, stamped above the stored one', async () => {
   const { port, map } = fakePort([goalRecord({ strength: 'muscle', focus: [], sports: {} }, NOW + 5000)]);
   render(<CoachScreen port={port} {...env} />);
-  const c = await goalSheet();
+  await goalSheet();
   await choose(/^Ziel(?! und)/, 'Kraft steigern');
   await waitFor(() => expect(body(map, 'goal:goal').strength).toBe('strength'));
   expect(map.get('goal:goal')!.updatedMs).toBeGreaterThan(NOW + 5000);

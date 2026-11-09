@@ -2,11 +2,15 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
-import { QUEUEABLE, type CoachClientMessage, type CoachHome, type CoachServerMessage, type CoachStateMessage } from '../../shared/coach-protocol';
+import { QUEUEABLE, type CoachClientMessage, type CoachHome, type CoachServerMessage, type CoachStateMessage } from '../protocol';
 import type { LiveMessage } from '../../shared/live';
 import { ruleBasedSession } from '../rules';
 import { loadState, type CoachState } from '../state';
 import { computeTogether } from '../together';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
+import { createLogger } from '../../shared/node/log';
+
+const log = createLogger('remote-coach');
 
 export type RemoteCoachOptions = {
   /** `<coachDir>/remote/<profileId>`: state.json and queue.json. */
@@ -53,14 +57,8 @@ export const ruleFallback = (coachDir: string, profileId: string, ftpW: number, 
 
 /** Temp file, fsync, rename, fsync of the folder: after a power cut the file is the old one or the new one, never empty. */
 const writeAtomic = (file: string, data: unknown): void => {
-  const dir = path.dirname(file);
-  fs.mkdirSync(dir, { recursive: true });
-  const tmp = `${file}.tmp`;
-  const fd = fs.openSync(tmp, 'w');
-  try { fs.writeSync(fd, JSON.stringify(data)); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-  fs.renameSync(tmp, file);
-  const dfd = fs.openSync(dir, 'r');
-  try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); }
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, data);
 };
 
 /**
@@ -127,7 +125,7 @@ export class RemoteCoach {
   private queueBlocked = false;
   private saveQueue(): void {
     if (this.queueBlocked) return;
-    try { writeAtomic(this.queueFile, this.queue); } catch { /* kept in memory, written with the next change */ }
+    try { writeAtomic(this.queueFile, this.queue); } catch (e) { log.error('offline queue not saved', e); /* kept in memory, written with the next change */ }
   }
 
   private changed(): void { try { this.opts.onMessage(this.view()); } catch { /* a listener never stops the coach */ } }
@@ -216,7 +214,7 @@ export class RemoteCoach {
     if (m.type === 'coach-state') {
       if (!isObj(m.state) || (m.state as { profileId?: unknown }).profileId !== this.opts.profileId) return;
       this.cache = { receivedMs: this.opts.nowMs(), view: m as CoachStateMessage };
-      try { writeAtomic(this.stateFile, this.cache); } catch { /* shown from memory, written with the next state */ }
+      try { writeAtomic(this.stateFile, this.cache); } catch (e) { log.error('state cache not saved', e); /* shown from memory, written with the next state */ }
       this.changed();
       return;
     }

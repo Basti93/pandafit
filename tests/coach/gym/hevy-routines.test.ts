@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { HevyLinks } from '../../../src/coach/hevy';
 import { HevyError, HevyRoutines } from '../../../src/coach/gym/hevy-routines';
-import type { GymWorkout } from '../../../src/coach/gym/types';
+import type { GymWorkout } from '../../../src/shared/gym/types';
 
 const KEY = '00000000-1111-2222-3333-444444444444';
 const NOW = Date.UTC(2026, 10, 2, 12);

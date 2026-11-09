@@ -1,17 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { exportFit } from '../../service/export/fit';
-import { readRide } from '../../service/recorder';
+import { exportFit } from '../../ride-format/export/fit';
+import { readRide } from '../../ride-format/read';
 import { RIDE_FILE_NAMES, RIDE_ID, readRideFiles, readRideUpload, rideHash, type RideFiles, type RideUpload } from '../ride-upload-format';
+import { writeFileAtomic } from '../../shared/node/atomic-write';
 
 export type StoreResult = { ok: true; sha256: string; same: boolean } | { ok: false; reason: 'invalid' | 'hash' | 'open' | 'profile' };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
-const writeSynced = (file: string, data: string | Buffer): void => {
-  const fd = fs.openSync(file, 'w', 0o600);
-  try { fs.writeFileSync(fd, data); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-};
+const writeSynced = (file: string, data: string | Buffer): void => writeFileAtomic(file, data, { mode: 0o600 });
 
 /** A FIT file starts with a header of at least 14 bytes that has `.FIT` at bytes 8 to 11. */
 const isFit = (b: Buffer): boolean => b.length >= 14 && b.subarray(8, 12).toString('latin1') === '.FIT';
@@ -100,7 +98,7 @@ const closedMeta = (ridesDir: string, rideId: string, profileId: string): { stat
 
 /** The profile's closed rides the server holds, oldest first. Folders like `.replaced-<ms>` and `.incoming-` do not count. */
 export const listRides = (ridesDir: string, profileId: string): StoredRide[] => {
-  let names: string[] = [];
+  let names: string[];
   try { names = fs.readdirSync(ridesDir); } catch { return []; }
   const out: StoredRide[] = [];
   for (const rideId of names.filter((n) => RIDE_ID.test(n)).sort()) {

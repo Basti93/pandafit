@@ -4,6 +4,7 @@ import { prefsOf, type ChatMessage } from '../../shared/chat';
 import type { TrackedRecord } from '../../shared/records';
 import { addDays, dayLabel, mondayOf, planFor, type PlanDay } from '../../shared/week-plan';
 import { dateKey } from '../day-load';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 type Sent = Record<string, { week?: string; evening?: string }>;
 
@@ -15,7 +16,7 @@ export class SentPrompts {
   mark(id: string, k: 'week' | 'evening', v: string): void {
     const s = this.load();
     s[id] = { ...s[id], [k]: v };
-    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(s)); fs.renameSync(tmp, this.file); } catch { /* sent again at worst once more */ }
+    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); writeJsonAtomic(this.file, s); } catch { /* sent again at worst once more */ }
   }
   private load(): Sent {
     if (this.sent) return this.sent;

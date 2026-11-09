@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ClaudeError } from './claude-client';
 import { policyRule, ruleValues } from '../shared/training-policy';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
+import { createLogger } from '../shared/node/log';
+
+const log = createLogger('ai-gate');
 
 /** What every AI caller sends; `background` marks work that may wait (tagging, backfills) and counts against the daily budget. */
 export type GateInput = { prompt: string; systemPrompt: string; schema: object; timeoutMs?: number; model?: string; background?: boolean };
@@ -45,7 +49,7 @@ export class AiGate {
   }
 
   private save(): void {
-    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); fs.writeFileSync(this.file, JSON.stringify(this.state)); } catch { /* the gate still works in memory */ }
+    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); writeJsonAtomic(this.file, this.state); } catch (e) { log.error('ai gate state not saved', e); /* the gate still works in memory */ }
   }
 
   blockedUntilMs(): number { return this.state.blockedUntilMs > this.nowMs() ? this.state.blockedUntilMs : 0; }

@@ -7,7 +7,7 @@ import { WorkoutDetail } from '../../src/tracking/ui/HistoryScreen';
 import { ExercisesScreen } from '../../src/tracking/ui/ExercisesScreen';
 import { ExercisePicker } from '../../src/tracking/ui/ExercisePicker';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 import { fakePort } from './fake-port';
 import { EQUIPMENT, MUSCLES, TYPES } from '../../src/tracking/ui/labels';
 
@@ -540,7 +540,7 @@ async function dirtyOpen() {
 }
 
 test('a tombstone from elsewhere with unsaved work here: stay open, say so, and the next write wins', async () => {
-  const { port, map, state, notify } = await dirtyOpen();
+  const { map, state, notify } = await dirtyOpen();
   map.set('workout:open1', { ...rec(open()), deleted: true, updatedMs: 5_000_000 });
   notify();
   expect((await screen.findByRole('note')).textContent).toMatch(/anderen Gerät/);
@@ -553,7 +553,7 @@ test('a tombstone from elsewhere with unsaved work here: stay open, say so, and 
 });
 
 test('a remote finish with unsaved work here: stay open and keep writing', async () => {
-  const { port, map, state, notify } = await dirtyOpen();
+  const { map, state, notify } = await dirtyOpen();
   map.set('workout:open1', { ...rec(open({ endMs: 99_999 })), updatedMs: 5_000_000 });
   notify();
   expect((await screen.findByRole('note')).textContent).toMatch(/beendet/);

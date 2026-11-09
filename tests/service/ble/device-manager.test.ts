@@ -249,7 +249,7 @@ test('connecting a searching device tries right away, without starting a second 
   await vi.advanceTimersByTimeAsync(10);
   expect(m.getStatus().hr).toBe('connected');
   const attempts = port.connectAttempts;
-  await vi.advanceTimersByTimeAsync(20_000);
+  await vi.advanceTimersByTimeAsync(5_000); // shorter than the silence watchdog
   expect(port.connectAttempts).toBe(attempts);
 });
 test('a connected device ignores connect', async () => {
@@ -261,4 +261,102 @@ test('a connected device ignores connect', async () => {
   m.connect('trainer');
   await vi.advanceTimersByTimeAsync(10);
   expect(port.connectAttempts).toBe(attempts);
+});
+
+const trainerData = Buffer.from([0x41, 0x00, 0x64, 0x00]);
+test('a silent trainer is treated as lost after 10 s and reconnected', async () => {
+  const port = new FakeBlePort();
+  const m = new DeviceManager(port, { retryMs: 2000 });
+  const statuses: string[] = [];
+  m.onStatus((s) => statuses.push(s.trainer));
+  m.setWatchdog(true);
+  m.start();
+  await settle();
+  expect(m.getStatus().trainer).toBe('connected');
+  port.attemptsBy.trainer = 0;
+  await vi.advanceTimersByTimeAsync(9000);
+  expect(m.getStatus().trainer).toBe('connected');
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(statuses).toContain('searching');
+  await vi.advanceTimersByTimeAsync(2500);
+  expect(port.attemptsBy.trainer).toBeGreaterThan(0);
+  expect(m.getStatus().trainer).toBe('connected');
+  m.stop();
+});
+test('without a ride a silent device is never dropped', async () => {
+  const port = new FakeBlePort();
+  const m = new DeviceManager(port, { retryMs: 2000 });
+  const statuses: string[] = [];
+  m.onStatus((s) => statuses.push(s.trainer));
+  m.start();
+  await settle();
+  statuses.length = 0;
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(statuses).not.toContain('searching');
+  expect(m.getStatus().trainer).toBe('connected');
+  m.stop();
+});
+test('readings keep the watchdog quiet, per device', async () => {
+  const port = new FakeBlePort();
+  const m = new DeviceManager(port, { retryMs: 2000 });
+  const trainerSeen: string[] = [];
+  const hrSeen: string[] = [];
+  m.onStatus((st) => { trainerSeen.push(st.trainer); hrSeen.push(st.hr); });
+  m.setWatchdog(true);
+  m.start();
+  await settle();
+  trainerSeen.length = 0;
+  hrSeen.length = 0;
+  for (let i = 0; i < 20; i++) {
+    port.emit('trainer', trainerData);
+    await vi.advanceTimersByTimeAsync(1000);
+  }
+  expect(trainerSeen).not.toContain('searching'); // the trainer kept sending
+  expect(hrSeen).toContain('searching'); // the silent strap alone was dropped
+  m.stop();
+});
+test('a device switched off by hand is not touched by the watchdog', async () => {
+  const port = new FakeBlePort();
+  const m = new DeviceManager(port, { retryMs: 2000 });
+  m.start();
+  await settle();
+  await m.disconnect('hr');
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(m.getStatus().hr).toBe('off');
+  m.stop();
+});
+test('the watchdog does not fire while a connect is in progress', async () => {
+  const port = new FakeBlePort();
+  port.online.trainer = false;
+  const m = new DeviceManager(port, { retryMs: 2000 });
+  m.start();
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(m.getStatus().trainer).toBe('searching');
+  expect(port.attemptsBy.trainer).toBeGreaterThan(2);
+  m.stop();
+});
+test('reconnect backoff doubles up to 30 s and resets after a successful connect', async () => {
+  const port = new FakeBlePort();
+  const m = new DeviceManager(port, { retryMs: 2000 });
+  m.start();
+  await settle();
+  port.drop('trainer'); // offline: every attempt fails
+  const base = port.attemptsBy.trainer;
+  const attemptsAt = async (ms: number) => { await vi.advanceTimersByTimeAsync(ms); return port.attemptsBy.trainer - base; };
+  expect(await attemptsAt(1999)).toBe(0);
+  expect(await attemptsAt(1)).toBe(1); // t=2 s
+  expect(await attemptsAt(3999)).toBe(1);
+  expect(await attemptsAt(1)).toBe(2); // t=6 s (+4 s)
+  expect(await attemptsAt(8000)).toBe(3); // t=14 s (+8 s)
+  expect(await attemptsAt(16000)).toBe(4); // t=30 s (+16 s)
+  expect(await attemptsAt(30000)).toBe(5); // t=60 s (capped at 30 s)
+  expect(await attemptsAt(30000)).toBe(6);
+  port.online.trainer = true;
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(m.getStatus().trainer).toBe('connected');
+  port.drop('trainer');
+  port.online.trainer = true;
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(m.getStatus().trainer).toBe('connected'); // back at 2 s
+  m.stop();
 });

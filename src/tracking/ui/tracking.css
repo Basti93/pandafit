@@ -1,16 +1,14 @@
-/* Standalone: the web build does not load the Electron CSS. Variables mirror src/ui/style.css and can be overridden. */
+/* Tracking screens: colours, sizes and fonts come from src/design/tokens.css. */
 .tk-screen {
-  --tk-bg: var(--bg); --tk-text: var(--text); --tk-ink: var(--ink); --tk-field: var(--field);
-  --tk-card: var(--card); --tk-line: var(--line); --tk-muted: var(--muted); --tk-accent: var(--accent); --tk-good: var(--good); --tk-warm: var(--low);
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--tk-text);
+  font-family: var(--font-ui); color: var(--text);
   display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); max-width: 640px; margin: 0 auto; box-sizing: border-box; width: 100%;
 }
 .tk-screen *, .tk-picker * { box-sizing: border-box; }
-.tk-screen .muted, .tk-picker .muted { color: var(--tk-muted); }
-.tk-title { font-size: 1.5rem; margin: 0; }
-.tk-screen h2 { font-size: 1rem; margin: 0; }
-.tk-picker h3 { font-size: var(--fs-xs); color: var(--tk-muted); margin: .8rem 0 .4rem; text-transform: uppercase; letter-spacing: .05em; }
-.tk-screen .card { background: var(--tk-card); border-radius: var(--radius-card); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-screen .muted, .tk-picker .muted { color: var(--muted); }
+.tk-title { font-size: var(--text-2xl); margin: 0; }
+.tk-screen h2 { font-size: var(--text-m); margin: 0; }
+.tk-picker h3 { font-size: var(--text-s); color: var(--muted); margin: .8rem 0 .4rem; text-transform: uppercase; letter-spacing: .05em; }
+.tk-screen .card { background: var(--card); border-radius: var(--radius-card); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-screen .card .card { background: none; border: 0; border-radius: 0; padding: 0; }
 .tk-row { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
 .tk-row .spacer { flex: 1; }
@@ -33,35 +31,35 @@
 }
 /* One grid for every set row and its header: delete, chip, kg, reps, done. A hint line sits under kg and reps. */
 .tk-set { display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) 48px; column-gap: .4rem; row-gap: .15rem; align-items: center; }
-.tk-head { font-size: var(--fs-2xs); font-weight: 600; color: var(--tk-muted); text-transform: uppercase; letter-spacing: .04em; text-align: center; margin-bottom: -.3rem; }
-.tk-set .tk-num { width: 100%; min-width: 0; text-align: center; font-size: var(--fs-l); }
+.tk-head { font-size: var(--text-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; text-align: center; margin-bottom: -.3rem; }
+.tk-set .tk-num { width: 100%; min-width: 0; text-align: center; font-size: var(--text-l); }
 .tk-chip-wrap { position: relative; width: 44px; height: 44px; }
-.tk-chip { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: .7rem; background: var(--tk-field); border: 1px solid var(--tk-line); font-weight: 700; font-size: 1.05rem; }
-.tk-chip-warm { color: var(--low); font-size: .72rem; border-style: dashed; }
+.tk-chip { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: .7rem; background: var(--field); border: 1px solid var(--line); font-weight: 700; font-size: var(--text-m); }
+.tk-chip-warm { color: var(--low); font-size: var(--text-xs); border-style: dashed; }
 .tk-chip-fail { color: var(--chip-fail); }
 .tk-chip-drop { color: var(--chip-drop); }
-.tk-chip-wrap:focus-within .tk-chip { outline: 2px solid var(--tk-accent); outline-offset: 1px; }
+.tk-chip-wrap:focus-within .tk-chip { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tk-screen .tk-chip-wrap .tk-type { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; opacity: 0; cursor: pointer; padding: 0; }
-.tk-screen button.tk-del { min-width: 32px; width: 32px; padding: 0; background: transparent; color: var(--tk-muted); font-weight: 400; font-size: var(--fs-l); opacity: .75; }
-.tk-screen button.tk-check { border-radius: var(--radius-round); width: 48px; height: 48px; min-height: 48px; padding: 0; background: transparent; border: 2px solid var(--tk-muted); color: var(--tk-muted); font-size: var(--fs-2xl); }
-.tk-screen button.tk-check.on { background: var(--tk-good); border-color: var(--tk-good); color: var(--tk-ink); }
+.tk-screen button.tk-del { min-width: 32px; width: 32px; padding: 0; background: transparent; color: var(--muted); font-weight: 400; font-size: var(--text-l); opacity: .75; }
+.tk-screen button.tk-check { border-radius: var(--radius-round); width: 48px; height: 48px; min-height: 48px; padding: 0; background: transparent; border: 2px solid var(--muted); color: var(--muted); font-size: var(--text-xl); }
+.tk-screen button.tk-check.on { background: var(--good); border-color: var(--good); color: var(--ink); }
 .tk-set.tk-edit { grid-template-columns: 32px 44px minmax(0, 1fr) minmax(0, 1fr) 48px; }
-.tk-hint, .tk-plates { grid-column: 2 / 4; text-align: center; font-size: var(--fs-2xs); }
+.tk-hint, .tk-plates { grid-column: 2 / 4; text-align: center; font-size: var(--text-xs); }
 .tk-edit .tk-hint, .tk-edit .tk-plates { grid-column: 3 / 5; }
 .tk-step select { width: auto; min-height: 36px; padding: .2rem .6rem; }
-.tk-step { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; font-size: var(--fs-s); }
+.tk-step { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; font-size: var(--text-s); }
 .tk-ex-head { display: flex; align-items: flex-start; gap: var(--space-2); }
 .tk-ex-head h2 { flex: 1; min-width: 0; overflow-wrap: anywhere; padding-top: .55rem; }
 .tk-ex-head .muted { padding-top: .6rem; }
-.tk-screen button.tk-more { flex: none; padding: 0; width: 44px; font-size: var(--fs-2xl); line-height: 1; }
+.tk-screen button.tk-more { flex: none; padding: 0; width: 44px; font-size: var(--text-xl); line-height: 1; }
 .tk-menu { justify-content: flex-end; }
-.tk-studio { margin: 0; font-size: var(--fs-s); display: flex; gap: var(--space-2); align-items: center; flex-wrap: nowrap; }
+.tk-studio { margin: 0; font-size: var(--text-s); display: flex; gap: var(--space-2); align-items: center; flex-wrap: nowrap; }
 .tk-studio select { width: auto; max-width: 65%; flex: 0 1 auto; padding: .2rem .4rem; }
-.tk-studio button { padding: .1rem var(--space-2); font-size: var(--fs-xs); }
+.tk-studio button { padding: .1rem var(--space-2); font-size: var(--text-s); }
 .tk-studio input { width: auto; flex: 1 1 8rem; min-width: 0; }
-.tk-sub { margin: -.3rem 0 0; font-size: var(--fs-s); }
+.tk-sub { margin: -.3rem 0 0; font-size: var(--text-s); }
 .tk-screen .tk-notes { width: 100%; resize: none; overflow: hidden; line-height: 1.4; font: inherit; }
-.tk-screen button.tk-skip { background: var(--skip-bg); color: var(--tk-ink); border: 1px solid var(--skip-line); }
+.tk-screen button.tk-skip { background: var(--skip-bg); color: var(--ink); border: 1px solid var(--skip-line); }
 .tk-rest { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem var(--space-4); border-radius: 1rem; background: var(--good); color: var(--ink); font-weight: 700; }
 /* One callout: card fill, a 4 px bar on the left (amber for a note, green for the effort question), the same radius and padding. */
 .tk-note { background: var(--card); border-left: 4px solid var(--low); padding: .7rem var(--space-4); border-radius: var(--radius-m); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
@@ -75,12 +73,12 @@
 .tk-form { display: flex; flex-direction: column; gap: .6rem; }
 .tk-form label, .tk-field { display: flex; flex-direction: column; gap: var(--space-1); color: var(--muted); }
 .tk-progress { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
-.tk-progress li { display: grid; grid-template-columns: 6rem 1fr auto; gap: var(--space-2); align-items: center; font-size: var(--fs-m); }
+.tk-progress li { display: grid; grid-template-columns: 6rem 1fr auto; gap: var(--space-2); align-items: center; font-size: var(--text-m); }
 .tk-bar { height: .7rem; border-radius: var(--radius-pill); background: var(--accent); display: block; }
 @media (max-width: 400px) { .tk-screen { padding: .6rem; } .tk-set { column-gap: .3rem; } .tk-set.tk-edit { grid-template-columns: 28px 44px minmax(0, 1fr) minmax(0, 1fr) 48px; } .tk-screen button.tk-del { width: 28px; min-width: 28px; } }
 .tk-wide { grid-column: 1 / -1; }
 .tk-field-wrap { display: flex; flex-direction: column; min-width: 0; }
-.tk-invalid { color: var(--low); font-size: .75rem; }
+.tk-invalid { color: var(--low); font-size: var(--text-xs); }
 .tk-num[aria-invalid="true"] { border-color: var(--low); }
 .tk-tabs { display: flex; gap: var(--space-2); }
 .tk-open { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -92,11 +90,11 @@
 /* How to do an exercise: inline, collapsed by default, in the workout and in the picker. */
 .tk-info { background: var(--field); border: 1px solid var(--line); border-radius: var(--radius-m); padding: .7rem .9rem; display: flex; flex-direction: column; gap: .4rem; line-height: 1.45; }
 .tk-screen .card .tk-info p, .tk-info p { margin: 0; }
-.tk-info .tk-credit { font-size: .75rem; color: var(--muted); }
+.tk-info .tk-credit { font-size: var(--text-xs); color: var(--muted); }
 .tk-pick-item { display: flex; flex-direction: column; gap: .3rem; }
 .tk-pick-row { display: flex; align-items: stretch; }
 .tk-pick-row .tk-rowbtn { flex: 1; min-width: 0; }
-.tk-sheet button.tk-info-toggle { flex: none; width: 44px; min-height: 44px; padding: 0; text-decoration: none; font-size: var(--fs-xl); }
+.tk-sheet button.tk-info-toggle { flex: none; width: 44px; min-height: 44px; padding: 0; text-decoration: none; font-size: var(--text-l); }
 .tk-sheet button.tk-info-toggle[aria-expanded="true"] { color: var(--text); }
 /* Pictures (line drawings on white), the video link and the muscle icon. */
 .tk-info-pic { margin: 0; display: flex; flex-direction: column; gap: .2rem; }
@@ -107,7 +105,7 @@
 .tk-desc p.tk-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .tk-info-pic a, .tk-info .tk-credit a { color: inherit; }
 .tk-info-empty { display: flex; align-items: center; gap: var(--space-2); }
-.tk-info a.tk-video { align-self: flex-start; min-height: 40px; display: inline-flex; align-items: center; color: var(--tk-muted); text-decoration: underline; font-weight: 600; }
+.tk-info a.tk-video { align-self: flex-start; min-height: 40px; display: inline-flex; align-items: center; color: var(--muted); text-decoration: underline; font-weight: 600; }
 .tk-info a.tk-video::after { content: ' ↗'; white-space: pre; }
 .tk-muscle-icon { display: block; flex: none; }
 .tk-ex-icon { flex: none; padding-top: .65rem; }
@@ -131,16 +129,16 @@
 
 .tk-elapsed { font-variant-numeric: tabular-nums; font-weight: 600; }
 /* Done sets: a green row. Done exercises: green edge, a badge, the rest calmer. The current exercise: accent edge. */
-.tk-set.tk-done { background: color-mix(in srgb, var(--tk-good) 22%, transparent); border-radius: .7rem; }
-.tk-done .tk-num { opacity: 1; text-decoration: none; color: var(--tk-text); border-color: var(--tk-good); }
-.tk-ex-done { border-left: 5px solid var(--tk-good); }
-.tk-ex-done .tk-ex-head h2 { color: var(--tk-good); }
-.tk-ex-badge { flex: none; align-self: center; padding: .15rem .6rem; border-radius: var(--radius-pill); background: var(--tk-good); color: var(--tk-ink); font-size: var(--fs-2xs); font-weight: 700; }
-.tk-ex-current { border-left: 5px solid var(--tk-accent); scroll-margin-top: 4.5rem; }
+.tk-set.tk-done { background: color-mix(in srgb, var(--good) 22%, transparent); border-radius: .7rem; }
+.tk-done .tk-num { opacity: 1; text-decoration: none; color: var(--text); border-color: var(--good); }
+.tk-ex-done { border-left: 5px solid var(--good); }
+.tk-ex-done .tk-ex-head h2 { color: var(--good); }
+.tk-ex-badge { flex: none; align-self: center; padding: .15rem .6rem; border-radius: var(--radius-pill); background: var(--good); color: var(--ink); font-size: var(--text-xs); font-weight: 700; }
+.tk-ex-current { border-left: 5px solid var(--accent); scroll-margin-top: 4.5rem; }
 /* The statistics page. Sport colours come from the palette (accent and muted tones), told apart by the legend and by position. */
-.tk-screen { --tk-sport-bike: var(--tk-accent); --tk-sport-strength: var(--tk-muted); --tk-sport-run: color-mix(in srgb, var(--tk-accent) 45%, var(--tk-muted)); --tk-sport-mobility: color-mix(in srgb, var(--tk-muted) 55%, var(--tk-card)); --tk-sport-other: color-mix(in srgb, var(--tk-text) 40%, var(--tk-card)); }
+.tk-screen { --tk-sport-bike: var(--accent); --tk-sport-strength: var(--muted); --tk-sport-run: color-mix(in srgb, var(--accent) 45%, var(--muted)); --tk-sport-mobility: color-mix(in srgb, var(--muted) 55%, var(--card)); --tk-sport-other: color-mix(in srgb, var(--text) 40%, var(--card)); }
 .tk-stats { display: flex; flex-direction: column; gap: .6rem; }
-.tk-stats h3 { font-size: 1rem; margin: .4rem 0 0; }
+.tk-stats h3 { font-size: var(--text-m); margin: .4rem 0 0; }
 .tk-sport-bike { background: var(--tk-sport-bike); }
 .tk-sport-strength { background: var(--tk-sport-strength); }
 .tk-sport-run { background: var(--tk-sport-run); }
@@ -148,23 +146,23 @@
 .tk-sport-other { background: var(--tk-sport-other); }
 .tk-muscle-title { display: inline-flex; align-items: center; gap: var(--space-2); }
 .tk-week-line { font-weight: 600; }
-.tk-state { display: inline-flex; align-items: center; gap: .4rem; font-size: var(--fs-s); }
-.tk-state-dot { width: .6rem; height: .6rem; border-radius: var(--radius-round); background: var(--tk-muted); }
-.tk-state-low .tk-state-dot { background: var(--tk-accent); }
-.tk-state-good .tk-state-dot { background: var(--tk-good); }
-.tk-state-high .tk-state-dot { background: var(--tk-warm); }
-.tk-state-none, .tk-state-quiet { color: var(--tk-muted); }
+.tk-state { display: inline-flex; align-items: center; gap: .4rem; font-size: var(--text-s); }
+.tk-state-dot { width: .6rem; height: .6rem; border-radius: var(--radius-round); background: var(--muted); }
+.tk-state-low .tk-state-dot { background: var(--accent); }
+.tk-state-good .tk-state-dot { background: var(--good); }
+.tk-state-high .tk-state-dot { background: var(--low); }
+.tk-state-none, .tk-state-quiet { color: var(--muted); }
 .tk-verdicts { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .3rem; }
-.tk-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: var(--fs-s); }
+.tk-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: var(--text-s); }
 .tk-legend li { display: flex; align-items: center; gap: .35rem; }
 .tk-swatch { width: .8rem; height: .8rem; border-radius: 3px; display: inline-block; }
 .tk-stack-chart { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; align-items: end; }
 .tk-stack-col { display: flex; flex-direction: column; align-items: center; gap: .2rem; font-variant-numeric: tabular-nums; }
-.tk-stack { width: 100%; max-width: 2.6rem; height: 8rem; display: flex; flex-direction: column-reverse; gap: 2px; border-bottom: 1px solid var(--tk-line); }
+.tk-stack { width: 100%; max-width: 2.6rem; height: 8rem; display: flex; flex-direction: column-reverse; gap: 2px; border-bottom: 1px solid var(--line); }
 .tk-stack > span { display: block; width: 100%; min-height: 2px; }
 .tk-stack > span:last-child { border-radius: 4px 4px 0 0; }
-.tk-stack-date { font-size: .7rem; color: var(--tk-muted); }
-.tk-small { font-size: var(--fs-2xs); }
+.tk-stack-date { font-size: var(--text-xs); color: var(--muted); }
+.tk-small { font-size: var(--text-xs); }
 .tk-pairs { margin: 0; padding-left: 1.2rem; }
 .tk-week { list-style: none; margin: .4rem 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .tk-week li { padding: .3rem var(--space-2); border-radius: var(--radius-s); }
@@ -199,7 +197,7 @@
 .tk-proposal-list { list-style: none; padding: 0; margin: var(--space-1) 0; }
 .tk-proposal-list li { display: flex; flex-wrap: wrap; gap: .4rem .8rem; align-items: center; justify-content: space-between; padding: .35rem 0; }
 .tk-proposal-actions { display: flex; gap: .4rem; }
-.tk-proposal-actions button { padding: .3rem .7rem; font-size: var(--fs-s); }
+.tk-proposal-actions button { padding: .3rem .7rem; font-size: var(--text-s); }
 
 .tk-rules label { display: inline-flex; align-items: center; gap: .4rem; }
 .tk-rule-list { list-style: none; margin: var(--space-2) 0; padding: 0; }
@@ -207,12 +205,12 @@
 
 .tk-rule { display: flex; gap: .4rem; align-items: center; flex-wrap: nowrap; }
 .tk-rule-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.tk-rules .tk-small { padding: .15rem var(--space-2); font-size: var(--fs-2xs); white-space: nowrap; flex: none; }
+.tk-rules .tk-small { padding: .15rem var(--space-2); font-size: var(--text-xs); white-space: nowrap; flex: none; }
 
-.tk-frame-line { font-size: var(--fs-s); }
+.tk-frame-line { font-size: var(--text-s); }
 .tk-frame-line select, .tk-today-only select { font-size: inherit; width: auto; display: inline-block; margin: 0 var(--space-1); padding: .2rem var(--space-2); }
-.tk-today-only { display: block; margin-top: .5rem; font-size: var(--fs-s); }
-.tk-day { text-align: center; font-size: 0.85em; margin: 0.6em 0 0.2em; }
+.tk-today-only { display: block; margin-top: .5rem; font-size: var(--text-s); }
+.tk-day { text-align: center; font-size: var(--text-s); margin: 0.6em 0 0.2em; }
 
 /* Exercise catalog page: groups as an accordion of rows. */
 .tk-family { margin: 0; }
@@ -220,17 +218,17 @@
 
 /* ---- Calm UI kit: rows, switch, sheet (components in kit/). ---- */
 /* One section heading, whatever the element (h2 or h3): .tk-screen h2 must not make it bigger. */
-.tk-section, .tk-screen .tk-section { font-size: var(--fs-2xs); font-weight: 600; color: var(--tk-muted); text-transform: uppercase; letter-spacing: .05em; margin: var(--space-4) 0 0; }
+.tk-section, .tk-screen .tk-section { font-size: var(--text-xs); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: var(--space-4) 0 0; }
 .tk-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .tk-rowitem { border-top: 1px solid var(--line); }
 .tk-rowitem:first-child, .tk-rows > .tk-choice:first-child { border-top: 0; }
 .tk-rowbtn { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 48px; padding: var(--space-2) 0; text-align: left; font: inherit; color: inherit; }
 .tk-screen button.tk-rowbtn, .tk-sheet button.tk-rowbtn { background: none; border: 0; border-radius: 0; font-weight: 400; justify-content: flex-start; padding: var(--space-2) 0; color: inherit; }
 .tk-row-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.tk-row-value { flex: none; max-width: 55%; text-align: right; font-size: var(--fs-m); }
-.tk-chevron { flex: none; width: 1rem; text-align: center; color: var(--tk-muted); font-size: var(--fs-3xl); line-height: 1; transition: transform .15s; }
+.tk-row-value { flex: none; max-width: 55%; text-align: right; font-size: var(--text-m); }
+.tk-chevron { flex: none; width: 1rem; text-align: center; color: var(--muted); font-size: var(--text-xl); line-height: 1; transition: transform .15s; }
 .tk-chevron.open { transform: rotate(90deg); }
-.tk-chevron-down { font-size: var(--fs-l); line-height: .6; padding-bottom: .35rem; }
+.tk-chevron-down { font-size: var(--text-l); line-height: .6; padding-bottom: .35rem; }
 .tk-chevron-down.open { transform: rotate(180deg); padding: .35rem 0 0; }
 .tk-row-more { padding: 0 0 var(--space-2); display: flex; flex-direction: column; gap: var(--space-2); }
 /* Rows of one list share one divider: a ChoiceRow after another row gets the same thin line as a Switch row (the row button reset would drop it). */
@@ -239,7 +237,7 @@
 .tk-switchrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); min-height: 48px; padding: var(--space-2) 0; cursor: pointer; border-top: 1px solid var(--line); }
 .tk-switchrow:first-child { border-top: 0; }
 .tk-switchtext { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
-.tk-switchtext small { font-size: var(--fs-xs); }
+.tk-switchtext small { font-size: var(--text-s); }
 .tk-screen .tk-switchrow input[role="switch"], .tk-switchrow input[role="switch"] {
   appearance: none; -webkit-appearance: none; flex: none; width: 3rem; height: 1.75rem; min-height: 0; padding: 0; border-radius: var(--radius-pill); position: relative;
   background: color-mix(in srgb, var(--muted) 40%, var(--bg)); box-shadow: inset 0 0 0 1.5px var(--muted); border: 0; cursor: pointer; transition: background .15s;
@@ -247,15 +245,15 @@
 .tk-switchrow input[role="switch"]::after { content: ''; position: absolute; top: .2rem; left: .2rem; width: 1.35rem; height: 1.35rem; border-radius: var(--radius-round); background: var(--switch-knob); transition: transform .15s; }
 .tk-switchrow input[role="switch"]:checked { background: var(--accent); box-shadow: none; }
 .tk-switchrow input[role="switch"]:checked::after { transform: translateX(1.25rem); background: var(--switch-knob-on); }
-.tk-switchrow input[role="switch"]:focus-visible { outline: 2px solid var(--tk-accent); outline-offset: 2px; }
+.tk-switchrow input[role="switch"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tk-switchrow input[role="switch"]:disabled { opacity: .5; }
 /* One look for "off": a switch that cannot be turned on yet (its hint says why) is not paler than the others. */
 .tk-switchrow input[role="switch"]:disabled:not(:checked) { opacity: 1; cursor: default; }
 .tk-sheet { position: fixed; inset: 0; z-index: 100; max-width: none; margin: 0; padding: env(safe-area-inset-top) 0 0; gap: 0; background: var(--bg); overflow: hidden; outline: 0; }
 .tk-sheet-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; background: var(--bg); }
 .tk-sheet-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); max-width: 640px; width: 100%; margin: 0 auto; } /* in the content column, its line too */
-.tk-sheet-head h2 { flex: 1; font-size: 1.15rem; }
-.tk-screen button.tk-sheet-x { font-size: 1.6rem; line-height: 1; text-decoration: none; padding: 0; width: 44px; }
+.tk-sheet-head h2 { flex: 1; font-size: var(--text-l); }
+.tk-screen button.tk-sheet-x { font-size: var(--text-2xl); line-height: 1; text-decoration: none; padding: 0; width: 44px; }
 /* A sub-page inside a sheet: "‹ Zurück" at the top left instead of ×. */
 .tk-screen button.tk-sheet-back { flex: none; text-decoration: none; padding: 0 .4rem 0 0; min-height: 44px; }
 .tk-sheet-body { flex: 1; overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); max-width: 640px; width: 100%; margin: 0 auto; }
@@ -265,21 +263,21 @@
 /* ---- Woche: the week, three rows and the chat sheet ---- */
 .tk-ellipsis { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tk-row-value:has(.tk-ellipsis) { min-width: 0; flex: 0 1 auto; margin-left: auto; }
-.tk-waiting { color: var(--tk-accent); }
+.tk-waiting { color: var(--accent); }
 .tk-oneline { margin: 0; }
-.tk-changes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; font-size: var(--fs-m); }
+.tk-changes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; font-size: var(--text-m); }
 .tk-histline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
 .tk-histline button.link { padding: var(--space-1) 0; }
 .tk-sheet .tk-chat { gap: var(--space-2); flex: 1; }
 .tk-pins { display: flex; flex-direction: column; gap: var(--space-2); max-height: 40vh; overflow-y: auto; }
 .tk-pin p { margin: 0; }
 .tk-pin { display: flex; flex-direction: column; gap: .3rem; padding: var(--space-2) .8rem; border-radius: var(--radius-m); border: 1px solid var(--accent); background: var(--card); }
-.tk-pin .tk-week { margin: 0; gap: 0; font-size: var(--fs-s); }
+.tk-pin .tk-week { margin: 0; gap: 0; font-size: var(--text-s); }
 .tk-pin .tk-week li { padding: .1rem var(--space-1); }
 .tk-pin .tk-nextchange { margin: 0; }
 .tk-chat-form { display: flex; gap: var(--space-2); align-items: flex-end; }
 .tk-chat-form textarea { flex: 1; min-width: 0; resize: none; field-sizing: content; min-height: 48px; max-height: 7rem; }
-.tk-screen button.tk-send { flex: none; width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: var(--radius-round); font-size: var(--fs-3xl); line-height: 1; }
+.tk-screen button.tk-send { flex: none; width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: var(--radius-round); font-size: var(--text-xl); line-height: 1; }
 .tk-sheet .tk-msg { max-width: 88%; }
 
 .tk-rowbtn:has(.tk-ellipsis) .tk-row-title { flex: none; white-space: nowrap; }
@@ -301,15 +299,15 @@
 .tk-live { gap: var(--space-2); }
 .tk-live-head { display: flex; align-items: center; gap: var(--space-2); }
 .tk-live-head .tk-title { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-.tk-live-head .tk-elapsed { flex: none; font-size: var(--fs-s); font-variant-numeric: tabular-nums; }
-.tk-screen button.tk-more { flex: none; width: 48px; min-height: 48px; padding: 0; text-decoration: none; font-size: 1.5rem; line-height: 1; }
+.tk-live-head .tk-elapsed { flex: none; font-size: var(--text-s); font-variant-numeric: tabular-nums; }
+.tk-screen button.tk-more { flex: none; width: 48px; min-height: 48px; padding: 0; text-decoration: none; font-size: var(--text-2xl); line-height: 1; }
 .tk-live .tk-ex { border-top: 1px solid var(--line); padding-top: .25rem; display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-live .tk-ex:first-of-type { border-top: 0; }
 .tk-live .tk-ex-head { align-items: center; gap: 0; }
-.tk-live .tk-ex-head h2 { padding: 0; flex: 1; min-width: 0; font-size: var(--fs-l); }
+.tk-live .tk-ex-head h2 { padding: 0; flex: 1; min-width: 0; font-size: var(--text-l); }
 .tk-live .tk-ex-head h2 .tk-rowbtn { min-height: 52px; }
 .tk-live .tk-ex-current .tk-ex-head .tk-row-title { font-weight: 700; }
-.tk-live .tk-ex-done:not(.tk-ex-open) .tk-row-title { color: var(--tk-muted); }
+.tk-live .tk-ex-done:not(.tk-ex-open) .tk-row-title { color: var(--muted); }
 .tk-live .tk-ex-body { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: .5rem; }
 .tk-live .tk-menu { padding: 0 0 var(--space-1); background: var(--card); border-radius: var(--radius-m); padding: var(--space-1) .8rem; }
 .tk-live .tk-menu .tk-rowitem:first-child { border-top: 0; }
@@ -321,7 +319,7 @@
 .tk-end button { width: 100%; }
 .tk-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
 .tk-rest { position: sticky; bottom: calc(var(--web-nav-h, 0px) + env(safe-area-inset-bottom, 0px) + .5rem); z-index: 4; display: flex; align-items: stretch; gap: var(--space-2); padding: var(--space-1); border-radius: 1rem; background: var(--card); border: 1px solid var(--good); color: var(--text); font-weight: 700; box-shadow: 0 .25rem 1rem var(--shadow-rest); }
-.tk-screen button.tk-rest-main { flex: 1; min-height: 52px; background: transparent; color: inherit; border: 0; font-size: 1.15rem; font-variant-numeric: tabular-nums; text-align: left; }
+.tk-screen button.tk-rest-main { flex: 1; min-height: 52px; background: transparent; color: inherit; border: 0; font-size: var(--text-l); font-variant-numeric: tabular-nums; text-align: left; }
 .tk-rest button.tk-skip { background: transparent; color: var(--good); border: 1px solid var(--good); min-height: 52px; min-width: 5rem; }
 .tk-summary { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-summary .tk-sub { margin: 0; }
@@ -334,13 +332,13 @@
 .tk-sheet .tk-form { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-stepper { display: flex; align-items: center; gap: 0; min-height: 48px; }
 .tk-stepper .tk-row-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.tk-sheet .tk-stepper button { flex: none; width: 44px; min-height: 44px; padding: 0; font-size: var(--fs-2xl); text-decoration: none; }
+.tk-sheet .tk-stepper button { flex: none; width: 44px; min-height: 44px; padding: 0; font-size: var(--text-xl); text-decoration: none; }
 .tk-stepcount { flex: none; min-width: 1.5rem; text-align: center; font-weight: 700; }
 .tk-textseg { display: flex; gap: var(--space-4); }
 .tk-screen .tk-textseg button { padding: var(--space-2) 0; min-height: 44px; text-decoration: none; border-bottom: 2px solid transparent; border-radius: 0; font-weight: 500; }
 .tk-screen .tk-textseg button[aria-pressed="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 700; }
 .tk-ex-name { display: block; font-weight: 600; }
-.tk-setline { display: block; font-size: var(--fs-m); }
+.tk-setline { display: block; font-size: var(--text-m); }
 .tk-end { margin-top: 1.5rem; }
 .tk-screen section.tk-ex { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-screen section.tk-ex .tk-head { margin-bottom: 0; }
@@ -350,7 +348,7 @@
 /* Laufen: today first, the rest behind rows and sheets */
 .tk-dayrow { display: flex; gap: var(--space-1); }
 .tk-screen .tk-dayrow button.tk-day { flex: 1; min-width: 0; padding: 0; }
-.tk-run .tk-today-line { font-size: var(--fs-l); }
+.tk-run .tk-today-line { font-size: var(--text-l); }
 .tk-run .tk-today-line + p, .tk-lastrun p, .tk-weekinfo p { margin: 0; }
 .tk-weekinfo, .tk-lastrun { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-feel { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding-top: .25rem; }
@@ -375,7 +373,7 @@
 .tk-group { display: flex; flex-direction: column; }
 .tk-screen button.link, .tk-screen button.danger-link, .tk-picker button.link, .tk-picker button.danger-link { min-height: 44px; display: inline-flex; align-items: center; justify-content: flex-start; }
 .tk-pagehead { display: flex; flex-direction: column; gap: .15rem; min-height: 2.5rem; justify-content: center; margin-bottom: .5rem; }
-.tk-subtitle { margin: 0; font-size: var(--fs-s); }
+.tk-subtitle { margin: 0; font-size: var(--text-s); }
 .tk-screen .tk-title { overflow-wrap: anywhere; }
 .tk-strip { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); width: 100%; min-height: 44px; padding: .4rem .9rem; border-radius: var(--radius-m); border: 1px solid var(--accent); background: var(--card); }
 .tk-screen button.tk-strip { background: var(--card); color: var(--text); font-weight: 600; text-align: left; border: 1px solid var(--accent); border-radius: var(--radius-m); padding: .4rem .9rem; }
@@ -383,7 +381,7 @@
 .tk-coach .tk-week li { padding: .4rem .6rem; }
 .tk-sheet-body .tk-scroll-pad { flex: none; height: 4.5rem; }
 .tk-sheet-note { margin: 0; }
-.tk-row-sub { display: block; font-size: var(--fs-2xs); margin-top: .1rem; }
+.tk-row-sub { display: block; font-size: var(--text-xs); margin-top: .1rem; }
 .tk-indent { margin-left: 1rem; border-left: 2px solid var(--line); padding-left: .75rem; }
 .tk-sheet-body { min-height: 0; }
 .tk-pins { max-height: none; overflow: visible; }
@@ -400,14 +398,14 @@
 
 /* ---- Package B: Kraft ---- */
 .tk-live { padding-bottom: calc(var(--web-nav-h, 0px) + env(safe-area-inset-bottom, 0px) + 5.5rem); }
-.tk-screen button.tk-hint { display: block; background: transparent; border: 0; min-height: 0; padding: .1rem 0; font-weight: 400; font-size: var(--fs-2xs); color: var(--muted); }
+.tk-screen button.tk-hint { display: block; background: transparent; border: 0; min-height: 0; padding: .1rem 0; font-weight: 400; font-size: var(--text-xs); color: var(--muted); }
 .tk-screen button.tk-end-link, .tk-end button.link { width: auto; align-self: flex-start; }
 .tk-apart { margin-top: 1rem; }
 .tk-plan-preview button.tk-studio-line { align-self: flex-start; padding-left: 0; text-decoration: none; }
 .tk-stepper { gap: var(--space-1); }
-.tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; font-size: var(--fs-3xl); opacity: .8; justify-content: center; }
+.tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; font-size: var(--text-xl); opacity: .8; justify-content: center; }
 .tk-set .tk-num { min-height: 48px; }
-.tk-live-head .tk-elapsed { font-size: var(--fs-m); }
+.tk-live-head .tk-elapsed { font-size: var(--text-m); }
 .tk-live .tk-ex-head .tk-row-title { flex: 1 1 50%; overflow-wrap: break-word; }
 .tk-live .tk-ex-head .tk-row-value { flex: 0 1 45%; max-width: none; }
 .tk-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
@@ -416,14 +414,14 @@
 .tk-hold, .tk-hold .tk-row-title { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .tk-reorder { list-style: none; margin: 0; padding: 0; }
 .tk-reorder.dragging { touch-action: none; user-select: none; -webkit-user-select: none; }
-.tk-reorder-block { background: var(--tk-card); border-bottom: 1px solid var(--tk-line); position: relative; transition: transform .15s ease; }
+.tk-reorder-block { background: var(--card); border-bottom: 1px solid var(--line); position: relative; transition: transform .15s ease; }
 .tk-reorder.dragging .tk-reorder-block.lifted { transition: none; z-index: 2; box-shadow: 0 6px 18px var(--shadow-lift); border-radius: 8px; }
-.tk-reorder-block.group { border-left: 3px solid var(--tk-accent); padding-left: .5rem; }
+.tk-reorder-block.group { border-left: 3px solid var(--accent); padding-left: .5rem; }
 .tk-reorder-row { display: flex; align-items: center; gap: var(--space-1); min-height: 52px; }
-.tk-reorder-grip { flex: none; width: 36px; text-align: center; color: var(--tk-muted); letter-spacing: -2px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; line-height: 52px; }
+.tk-reorder-grip { flex: none; width: 36px; text-align: center; color: var(--muted); letter-spacing: -2px; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; line-height: 52px; }
 .tk-reorder-title { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; user-select: none; -webkit-user-select: none; }
-.tk-reorder-mark { font-size: var(--fs-2xs); }
-.tk-screen button.tk-reorder-step, .tk-sheet button.tk-reorder-step { flex: none; width: 44px; min-height: 48px; padding: 0; font-size: var(--fs-2xl); text-decoration: none; }
+.tk-reorder-mark { font-size: var(--text-xs); }
+.tk-screen button.tk-reorder-step, .tk-sheet button.tk-reorder-step { flex: none; width: 44px; min-height: 48px; padding: 0; font-size: var(--text-xl); text-decoration: none; }
 
 /* Rad: the ride chart and the hours per week (milestone O). */
 .tk-ridechart { margin: var(--space-4) 0 0; }
@@ -431,12 +429,12 @@
 .tk-ridechart .tk-spark-box svg { flex: 1; min-width: 0; width: auto; }
 .tk-ridehead { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-ridehead p { margin: 0; }
-.tk-ridehead .tk-ridefacts { font-size: var(--fs-s); }
+.tk-ridehead .tk-ridefacts { font-size: var(--text-s); }
 .tk-chart-legend { margin: 0 0 var(--space-1); }
 .tk-chart-key-power { color: var(--text); }
-.tk-chart-key-hr { color: var(--tk-muted); }
+.tk-chart-key-hr { color: var(--muted); }
 .tk-chart-power { stroke: var(--text); stroke-linejoin: round; }
-.tk-chart-hr { stroke: var(--tk-muted); opacity: .6; stroke-linejoin: round; }
+.tk-chart-hr { stroke: var(--muted); opacity: .6; stroke-linejoin: round; }
 .tk-ridechart figcaption, .tk-hourdates { display: flex; justify-content: space-between; margin: var(--space-1) 0 0; }
 .tk-spark { display: block; margin: var(--space-3) 0 0; }
 .tk-spark figcaption { display: block; margin: 0 0 var(--space-1); }
@@ -445,33 +443,33 @@
 .tk-row-more a { color: inherit; text-decoration: underline; }
 .tk-spark-box { display: flex; align-items: stretch; gap: .4rem; }
 .tk-spark svg { display: block; flex: 1; min-width: 0; height: 3rem; background: transparent; border: 1px solid var(--line); border-radius: var(--radius-s); }
-.tk-spark-scale { display: flex; flex-direction: column; justify-content: space-between; text-align: right; min-width: 2.2rem; font-size: var(--fs-2xs); color: var(--muted); font-variant-numeric: tabular-nums; }
+.tk-spark-scale { display: flex; flex-direction: column; justify-content: space-between; text-align: right; min-width: 2.2rem; font-size: var(--text-xs); color: var(--muted); font-variant-numeric: tabular-nums; }
 .tk-spark-line { stroke: var(--muted); stroke-linejoin: round; stroke-linecap: round; }
 .tk-sources a::after { content: ' ↗'; white-space: pre; }
 .tk-health-foot { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .tk-health-foot button.link { padding: 0; min-height: 0; }
 .tk-verdicts button.link { padding: 0; min-height: 0; text-align: left; font-weight: inherit; text-decoration: none; color: inherit; }
 .tk-health-doctor { font-weight: 600; white-space: normal; }
-.tk-source-title { white-space: normal; font-size: var(--fs-s); }
+.tk-source-title { white-space: normal; font-size: var(--text-s); }
 .tk-hourbars { display: flex; align-items: flex-end; gap: 4px; height: 5rem; margin-top: .5rem; }
 .tk-hourbar { flex: 1; min-height: 3px; border-radius: 3px 3px 0 0; background: var(--accent); opacity: .85; }
 .tk-screen .card.tk-waiting-card { display: flex; flex-direction: row; align-items: center; justify-content: space-between; text-align: left; gap: var(--space-3); }
 .tk-waiting-card p { margin: 0; }
-.tk-week li b small { display: block; margin: 0; font-weight: 600; font-size: .75em; color: var(--tk-accent); }
+.tk-week li b small { display: block; margin: 0; font-weight: 600; font-size: .75em; color: var(--accent); }
 .tk-clip { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; white-space: normal; max-width: 12rem; }
 .tk-block { flex-basis: 100%; }
 .tk-sheet-body:has(.tk-chat) { -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 1rem); mask-image: linear-gradient(to bottom, transparent 0, black 1rem); }
 .tk-notes { margin-bottom: .5rem; }
-.tk-chat-form textarea:focus-visible { outline: none; border-color: var(--tk-accent); }
+.tk-chat-form textarea:focus-visible { outline: none; border-color: var(--accent); }
 
 /* Calmer strength screens (X4). */
-.tk-ex-sub { display: block; font-weight: 400; font-size: var(--fs-2xs); line-height: 1.2; }
-.tk-screen button.tk-rowbtn-main { font-weight: 800; color: var(--tk-accent); }
+.tk-ex-sub { display: block; font-weight: 400; font-size: var(--text-xs); line-height: 1.2; }
+.tk-screen button.tk-rowbtn-main { font-weight: 800; color: var(--accent); }
 .tk-plan-preview button.tk-studio-line { padding: var(--space-2) var(--space-4); text-decoration: none; }
 .tk-stepper { gap: var(--space-2); }
 .tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; }
 .tk-stepcount { min-width: 5rem; text-align: center; }
-.tk-pick-group { position: sticky; top: 0; z-index: 1; background: var(--tk-bg); }
+.tk-pick-group { position: sticky; top: 0; z-index: 1; background: var(--bg); }
 .tk-open .tk-links { margin-top: 0; }
 .tk-sheet-actions button:disabled { opacity: .6; }
 .tk-sheet .tk-rows .tk-rowitem > button.tk-rowbtn[aria-expanded="true"] { position: sticky; top: 0; z-index: 1; background: var(--bg); }
@@ -492,14 +490,14 @@
 
 /* ---- One look per kind (task 3) ---- */
 /* Steppers (− count +): one round outline button, in the routine editor and on the recipe. */
-.tk-screen button.tk-step-btn { flex: none; width: 44px; min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--muted); background: transparent; color: var(--text); font-size: var(--fs-2xl); line-height: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.tk-screen button.tk-step-btn { flex: none; width: 44px; min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--muted); background: transparent; color: var(--text); font-size: var(--text-xl); line-height: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 
 /* The sheet "Nächstes Training" (PlanSheet): the coach's words close together, the sets stepper and "Andere Übung" in one line. */
 .tk-plan-top { display: flex; flex-direction: column; gap: var(--space-1); }
 .tk-plan-top p { margin: 0; }
 .tk-plan-ex { padding-top: var(--space-2); border-top: 1px solid var(--line); }
 .tk-plan-steps { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
-.tk-screen .tk-plan-ex button.tk-del-ex { flex: none; align-self: center; width: 44px; min-width: 44px; min-height: 44px; padding: 0; justify-content: center; text-decoration: none; font-size: var(--fs-2xl); line-height: 1; }
+.tk-screen .tk-plan-ex button.tk-del-ex { flex: none; align-self: center; width: 44px; min-width: 44px; min-height: 44px; padding: 0; justify-content: center; text-decoration: none; font-size: var(--text-xl); line-height: 1; }
 
 /* ==== Redesign task 2 and 3: Woche, coach chat and Kraft (one block; the display face falls back to the UI face on the Mac) ==== */
 .tk-display, .tk-plan-preview h2, .tk-summary h2 { font-family: var(--font-display, inherit); font-weight: 400; letter-spacing: .03em; }
@@ -522,11 +520,11 @@
 /* Kraft: the next training and the open training lead with an accent edge, like the other lead cards. */
 .tk-screen .card.tk-plan-preview, .tk-screen .card.tk-open { border-top: 4px solid var(--accent); }
 .tk-screen .card.tk-summary { border-top: 4px solid var(--good); }
-.tk-plan-preview > p strong { font-size: var(--fs-xl); }
+.tk-plan-preview > p strong { font-size: var(--text-l); }
 /* The active exercise is one soft panel; finished ones step back. */
 .tk-live .tk-ex.tk-ex-current { background: var(--card); border-radius: var(--radius-card); border-left: 0; border-top: 0; padding: var(--space-2) var(--space-3); box-shadow: inset 0 0 0 1.5px var(--accent); }
 .tk-live .tk-ex.tk-ex-done:not(.tk-ex-open) { border-left: 0; box-shadow: inset 3px 0 0 var(--good); padding-left: var(--space-3); }
-.tk-live-head .tk-title { font-size: 1.35rem; }
+.tk-live-head .tk-title { font-size: var(--text-xl); }
 .tk-rest { box-shadow: 0 4px 14px var(--shadow-lift); }
 .tk-set.tk-done { border-radius: var(--radius-m); }
 .tk-plan-ex .tk-ex-head h2, .tk-plan-ex h2 { overflow-wrap: anywhere; }

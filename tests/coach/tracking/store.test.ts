@@ -136,12 +136,14 @@ describe('RecordStore', () => {
   });
 
   it('syncs the temp file to disk before the rename', () => {
+    vi.stubEnv('PANDAFIT_UNSAFE_NO_FSYNC', '0'); // durability is what this test checks
     const order: string[] = [];
     const fsync = fs.fsyncSync, rename = fs.renameSync;
     vi.spyOn(fs, 'fsyncSync').mockImplementation(fd => { order.push('fsync'); return fsync(fd); });
     vi.spyOn(fs, 'renameSync').mockImplementation((a, b) => { order.push('rename'); return rename(a, b); });
     new RecordStore({ dir }).put('a', rec('w1', 1));
-    expect(order).toEqual(['fsync', 'rename']);
+    // The folder is synced after the rename.
+    expect(order).toEqual(['fsync', 'rename', 'fsync']);
   });
 
   it('a file with a bad entry counts as broken and moves aside', () => {
@@ -166,8 +168,8 @@ describe('RecordStore', () => {
   });
 
   it('a transient read error does not move a good file aside', () => {
-    const s = new RecordStore({ dir });
-    s.put('a', rec('w1', 1));
+    new RecordStore({ dir }).put('a', rec('w1', 1));
+    const s = new RecordStore({ dir }); // fresh store: nothing cached
     const real = fs.readFileSync;
     vi.spyOn(fs, 'readFileSync').mockImplementation(((f: fs.PathOrFileDescriptor, o?: unknown) => {
       if (String(f).endsWith('a.json')) throw Object.assign(new Error('busy'), { code: 'EBUSY' });
@@ -189,3 +191,5 @@ describe('RecordStore', () => {
     expect(fs.readdirSync(dir).filter(f => f.startsWith('a.json.broken')).length).toBe(2);
   });
 });
+
+afterEach(() => { vi.unstubAllEnvs(); });

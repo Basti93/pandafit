@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'node:fs';
 import path from 'node:path';
 import type { BlePort, DeviceKind } from './device-port';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 type Spec = { services: string[]; notify: string; write?: string; status?: string; indicate?: string; handshake?: { char: string; bytes: Buffer } };
 const clickUuid = (n: number) => `0000000${n}19ca465186e5fa29dcdd09d1`;
@@ -26,10 +28,9 @@ const CONNECT_TIMEOUT_MS = 15_000;
 // The Click is usually asleep: search briefly so that it does not hold up trainer and strap.
 const CLICKER_SCAN_MS = 4000;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Real Bluetooth connection. Remembers the last used device UUID per device type,
- * because macOS returns UUIDs instead of addresses. Not yet tested on a real device (Plan Task 2).
+ * because macOS returns UUIDs instead of addresses.
  */
 export class NobleBlePort implements BlePort {
   private subs = new Map<DeviceKind, (b: Buffer) => void>();
@@ -101,10 +102,11 @@ export class NobleBlePort implements BlePort {
     } finally {
       clearTimeout(timer);
     }
+    this.known[kind] = peripheral.id;
+    // A failed save must not drop the connected device.
+    try { writeJsonAtomic(this.knownFile, this.known); } catch (e) { console.error('devices.json could not be written', e); }
     ready = true;
     this.peripherals.set(kind, peripheral);
-    this.known[kind] = peripheral.id;
-    fs.writeFileSync(this.knownFile, JSON.stringify(this.known));
   }
 
   private async setUp(kind: DeviceKind, spec: Spec, peripheral: any): Promise<void> {

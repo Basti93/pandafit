@@ -5,7 +5,8 @@ import { join } from 'node:path';
 const read = (p: string) => readFileSync(p, 'utf8');
 const WEB = 'src/web/web.css';
 const TRACKING = 'src/tracking/ui/tracking.css';
-const TOKENS = 'src/web/tokens.css';
+const MAC = 'src/ui/style.css';
+const TOKENS = 'src/design/tokens.css';
 
 function tsxFiles(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -20,10 +21,41 @@ function tsxFiles(dir: string, out: string[] = []): string[] {
 const LOCAL = new Set(['--slot', '--rc-hue']);
 
 describe('style tokens', () => {
-  it('has no literal colour in web.css or tracking.css', () => {
-    for (const f of [WEB, TRACKING]) {
+  it('has no literal colour in the Mac, web or tracking stylesheets', () => {
+    for (const f of [MAC, WEB, TRACKING]) {
       const css = read(f).replace(/\/\*[\s\S]*?\*\//g, '');
       expect(css.match(/#[0-9a-fA-F]{3,8}\b|\brgba?\(/g) ?? [], f).toEqual([]);
+    }
+  });
+
+  it('sizes text only with the type scale (display sizes from 2.5rem, viewport units and em are exempt)', () => {
+    const scale = [...read(TOKENS).matchAll(/--text-[a-z0-9]+\s*:/g)];
+    expect(scale.length).toBeGreaterThanOrEqual(6);
+    expect(scale.length).toBeLessThanOrEqual(7);
+    const bad: string[] = [];
+    const web = readdirSync('src/web').filter((n) => n.endsWith('.css')).map((n) => join('src/web', n));
+    for (const f of [MAC, TRACKING, ...web]) {
+      const css = read(f).replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const m of css.matchAll(/font-size:\s*([^;}]+)/g)) {
+        const v = m[1].trim();
+        if (/^var\(--text-/.test(v) || v === 'inherit' || /^(min|max|clamp)\(/.test(v) || /em$/.test(v) && !/rem$/.test(v)) continue;
+        const rem = /^([\d.]+)rem$/.exec(v);
+        if (rem && Number(rem[1]) >= 2.5) continue;
+        bad.push(`${f}: ${v}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('keeps no own --tk-* alias of a real token and no --high or --fs-* name', () => {
+    const css = [MAC, WEB, TRACKING, TOKENS].map(read).join('\n');
+    expect(css.match(/--tk-(bg|text|ink|field|card|line|muted|accent|good|warm)\s*:/g) ?? []).toEqual([]);
+    expect(css.match(/--high\b|--fs-/g) ?? []).toEqual([]);
+  });
+
+  it('keeps the Mac brand files equal to the web ones', () => {
+    for (const f of ['shojumaru.ttf', 'panda-still.svg']) {
+      expect(readFileSync(`src/ui/public/brand/${f}`).equals(readFileSync(`src/web/public/brand/${f}`)), f).toBe(true);
     }
   });
 
@@ -32,7 +64,7 @@ describe('style tokens', () => {
     const tk = [...read(TRACKING).matchAll(/(--tk-[a-z0-9-]+)\s*:/g)].map((m) => m[1]);
     const defined = new Set([...[...tokens.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]), ...tk, ...LOCAL]);
     const used = new Set<string>();
-    const sources = [read(WEB), read(TRACKING), ...tsxFiles('src/web').map(read), ...tsxFiles('src/tracking').map(read)];
+    const sources = [read(MAC), read(WEB), read(TRACKING), ...tsxFiles('src/web').map(read), ...tsxFiles('src/tracking').map(read)];
     for (const s of sources) for (const m of s.matchAll(/var\(\s*(--[a-z0-9-]+)/g)) used.add(m[1]);
     expect([...used].filter((n) => !defined.has(n))).toEqual([]);
   });

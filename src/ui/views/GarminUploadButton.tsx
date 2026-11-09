@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { activityName, REPO_DESCRIPTION, type RideUpload } from '../../coach/garmin-upload';
+import { activityName, REPO_DESCRIPTION, type RideUpload } from '../../shared/garmin-upload';
 import type { RideSummary } from '../../coach/metrics';
 
 const REASON: Record<string, string> = {

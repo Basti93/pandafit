@@ -530,7 +530,7 @@ describe('the AI decides whether a recipe is vegetarian', () => {
 
 describe('a failing AI', () => {
   it('counts a failed tagging batch, backs off, and does not try the next batch in the same scan', async () => {
-    let now = 1_000_000;
+    const now = 1_000_000;
     const s = new RecipeStore(tmp(), () => now);
     for (let n = 1; n <= 25; n++) await s.add({ source: 'collection', url: `https://rezepte.example/r${n}`, recipe: recipe(n) });
     let calls = 0;

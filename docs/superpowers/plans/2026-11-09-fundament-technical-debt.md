@@ -270,3 +270,5 @@
 - Hevy-/Garmin-Einstellungen am Mac nur noch in der Web-App (Produktfrage zu Q).
 - Container mit Build-Schritt statt `tsx`.
 - `deploy.sh` (lokal, nicht im Repo): Coach-Gesundheit abwarten, Coach-Restore-Probe, Image-Tags für Rollback.
+- Nach Absturz nicht rekonstruierbar (nicht geloggt): Zähler für hohe Herzfrequenz, Trittfrequenz und HR-Hold-Fenster (starten bei 0), Pausenzustand der Engine (Zähler für 0 W).
+- Wiederherstellung: Auto-/Hold-Ereignisse in der letzten Sekunde eines Schritts werden dem nächsten Schritt zugeordnet (Schrittindex im Event mitloggen).

@@ -1,19 +1,10 @@
-import type { RideMeta } from '../service/recorder';
+import type { RideMeta } from '../ride-format/read';
 import type { Sample } from '../shared/sample';
 import { stepFtpFraction, type Session, type Step } from '../shared/session';
 import { stepTargetZone, zoneOf } from '../shared/hr-zones';
 
-export type RideSummary = {
-  rideId: string; startedAtMs: number; status: 'finished' | 'aborted'; sessionId: string; ftpW: number; durationS: number;
-  avgPowerW: number | null; normalizedPowerW: number | null; intensityFactor: number | null; tss: number;
-  avgHrBpm: number | null; maxHrBpm: number | null; bestMinutePowerW: number | null; completedFraction: number;
-  sessionName?: string; suspectData?: boolean; intervalsPlanned?: number; intervalsDone?: number;
-  hrZoneMinutes?: number[]; hrTargetPct?: number; hrDriftPct?: number; hrRecoveryBpm?: number;
-  /** Best mean power per duration in seconds. */
-  powerCurve?: Record<string, number>;
-  /** Share of the ridden seconds within 10 % of the target. */
-  onTargetPct?: number;
-};
+import type { RideSummary } from '../shared/ride-summary';
+export type { RideSummary };
 
 const DAY_MS = 86_400_000;
 const mean = (xs: number[]): number | null => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
@@ -53,7 +44,7 @@ export const cleanSamples = (samples: Sample[]): { samples: Sample[]; removed: n
   const isSpike = (i: number): boolean => {
     const p = ranged[i].powerW;
     if (p === null || p < SPIKE_MIN_W) return false;
-    const around = ranged.slice(Math.max(0, i - SPIKE_WINDOW), i + SPIKE_WINDOW + 1).flatMap((s, j) => (s.powerW === null || s === ranged[i] ? [] : [s.powerW]));
+    const around = ranged.slice(Math.max(0, i - SPIKE_WINDOW), i + SPIKE_WINDOW + 1).flatMap((s) => (s.powerW === null || s === ranged[i] ? [] : [s.powerW]));
     return p > SPIKE_FACTOR * Math.max(median(around), 1);
   };
   const out = ranged.map((s) => ({ ...s }));

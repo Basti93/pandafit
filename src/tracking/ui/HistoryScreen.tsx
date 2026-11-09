@@ -1,3 +1,4 @@
+import { bodyOf } from '../../shared/record-bodies';
 import { useMemo, useState, useEffect } from 'react';
 import { dedupeSessions } from '../../shared/history';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
@@ -135,7 +136,7 @@ function Detail({ port, store, history, onBack, onDeleted, latest, next, inSheet
 /** `inSheet`: the sheet's head has "‹ Zurück", so the page has none of its own. */
 export function WorkoutDetail({ port, record, now, onBack, inSheet = false, level }: { port: TrackingPort; record: TrackedRecord; now: () => number; onBack: () => void; inSheet?: boolean; /** In a sheet: the open exercise lives with the sheet, so its "‹ Zurück" steps back one level. */ level?: [string | null, (id: string | null) => void] }) {
   const records = usePortRecords(port, 'workout').records;
-  const history = useMemo(() => dedupeSessions((records ?? []).map((r) => r.body as LoggedWorkout)), [records]);
+  const history = useMemo(() => dedupeSessions((records ?? []).map((r) => bodyOf('workout', r))), [records]);
   const statsRecords = usePortRecords(port, 'stats').records;
   const next = useMemo(() => {
     const r = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);

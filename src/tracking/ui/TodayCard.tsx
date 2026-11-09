@@ -6,7 +6,7 @@ import type { TrackingPort } from '../ports';
 import { TodayOnly } from './FrameControls';
 import { useTodayAdvice } from './frame-hooks';
 import { dateKeyOf, runView } from './run-view';
-import { Row, RowList, Sheet } from './kit';
+import { Sheet } from './kit';
 
 const RUN_KIND: Record<string, string> = { easy: 'locker', long: 'lang', test: 'Test' };
 /** One session: "Kraft, mittel". Two sessions of the same hardness: "Kraft + Rad locker", else each with its own. */

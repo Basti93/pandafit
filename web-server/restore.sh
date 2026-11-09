@@ -1,7 +1,7 @@
 #!/bin/sh
 # pandafit: puts backups of backup.sh and backup-coach.sh back into the volumes data (api) and coach.
 #   ./restore.sh ../backups/pandafit-<time>.db.gz [../backups/pandafit-coach-<time>.tar.gz]
-# On a new server: .env in place (Mac copy in ~/Backups/pandafit/secrets), `docker compose up -d`, then this script.
+# On a new server: .env in place (Mac copy in ~/.pandafit-secrets), `docker compose up -d`, then this script.
 # A volume with data (accounts) is only replaced with FORCE=1; it is copied first, stopped, into
 # ../backups/pre-restore-<time>-api.tar (database with -wal and -shm) and -coach.tar, and nothing is removed when a
 # copy fails. The containers run without capabilities: the copies leave as tar on stdout, written by the host. The coach keeps its home/ (the Claude login), which the backup leaves out.

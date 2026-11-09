@@ -1,8 +1,11 @@
 import { spawn } from 'node:child_process';
+import { createLogger } from '../../shared/node/log';
+import { guardChild } from '../child-guard';
 import { TokensUnopenable, type GarminTokens, type TokenCheckout } from '../secrets/garmin-tokens';
 
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
 const TIMEOUT_MS = 180_000;
+const log = createLogger('garmin-workouts');
 
 export type WorkoutOps = {
   delete: { workoutId: string; scheduleId: string | null }[];
@@ -79,19 +82,18 @@ export class GarminWorkouts {
     const checkin = (): void => { try { this.o.tokens.checkin(handle); } catch { /* the folder is wiped either way */ } };
     let child: ReturnType<typeof spawn>;
     try {
-      child = (this.o.spawnFn ?? spawn)(this.o.python, [this.o.script, '--tokens', handle.dir, ...args], { stdio: ['pipe', 'pipe', 'ignore'] });
-    } catch { checkin(); return false; }
+      child = (this.o.spawnFn ?? spawn)(this.o.python, [this.o.script, '--tokens', handle.dir, ...args], { stdio: ['pipe', 'pipe', 'pipe'] });
+    } catch (e) { log.error('workout helper did not start', e, { profileId: id }); checkin(); return false; }
     onStart();
     const run = { child, handle };
     this.running.set(id, run);
     let out = '';
     let ended = false;
-    const timer = setTimeout(() => { child.kill(); checkin(); }, TIMEOUT_MS);
-    timer.unref?.();
+    const guard = guardChild(child, TIMEOUT_MS, () => { log.warn('workout run timed out', { profileId: id }); checkin(); });
     const end = (fn: () => void): void => {
       if (ended) return;
       ended = true;
-      clearTimeout(timer);
+      guard.clear();
       checkin();
       if (this.running.get(id) === run) this.running.delete(id);
       fn();

@@ -1,0 +1,140 @@
+/* Design tokens shared by the web app and the Mac ride app: every colour (dark first, light below), type scale and a few sizes.
+   Colours are named by role. The Mac app always sets data-theme="dark" on <html>.
+   A token on :root without a light value carries "shared" on its line: it is the same in both schemes. */
+@font-face { font-family: 'Shojumaru'; src: url('/brand/shojumaru.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+:root {
+  color-scheme: dark light;
+
+  /* Surfaces, text and lines */
+  --bg: #1c2820;
+  --text: #f5ecd8;
+  --ink: #302417; /* shared */
+  --field: #17211a;
+  --card: #263629;
+  --line: #405044;
+  --field-line: #5c7160;
+  --muted: #b7c5ae;
+  --day: #cbd6c2;
+  --accent: #efab76; /* shared */
+  --accent-text: #efab76; /* apricot as text colour; darker in the light scheme */
+  --good: #b5cc8d; /* shared */
+  --good-text: #b5cc8d;
+  --danger: #e59585;
+  --low: #f2bd55; /* shared */
+
+  /* Chosen person pill (meal plan), picked row. --seg-on stays dark in sheets; --seg-on-screen is the meal screen's own light value. */
+  --seg-on: #354734; /* shared */
+  --seg-on-screen: #354734;
+  --pick: #354734;
+
+  /* Chips */
+  --chip-warm: #f2bd55;
+  --chip-fail: #f08a7a;
+  --chip-drop: #8cc4f0;
+
+  /* Meal plan: one colour per meal, one per person */
+  --slot-fruehstueck: #f2bd55;
+  --slot-mittag: #9ccb68;
+  --slot-abend: #7fb4e8;
+  --pc0: #e8964a; /* shared */
+  --pc1: #c9a0e8;
+  --pc2: #9ccb68;
+  --pc3: #7fb4e8;
+
+  /* Together: bar fill (the light value replaces the inline cell colour) */
+  --gm-fill: #b5cc8d;
+
+  /* Same in both schemes: switch knob, skip button, list separator, shadows, scrim */
+  --switch-knob: #f5ecd8; /* shared */
+  --switch-knob-on: #fff; /* shared */
+  --skip-bg: rgba(255, 255, 255, .3); /* shared */
+  --skip-line: rgba(31, 20, 8, .45); /* shared */
+  --run-sep: rgba(255, 255, 255, .08); /* shared */
+  --shadow-rest: rgba(0, 0, 0, .35); /* shared */
+  --shadow-lift: rgba(0, 0, 0, .28); /* shared */
+  --scrim: rgba(0, 0, 0, .55); /* shared */
+
+  /* Ride cockpit (Mac app): always dark */
+  /* raised: secondary buttons, picked menu item, tags */
+  --raised: #2d4538; /* shared */
+  --raised-hover: #2a4032; /* shared */
+  --on-chart: #fff; /* shared */
+  --on-chip: #111; /* shared */
+  --warn-bg: #a85a1a; /* shared */
+  --danger-bg: #a8321f; /* shared */
+  --info-bg: #2c5a4a; /* shared */
+  --notice-bg: #38301a; /* shared */
+  --notice-text: #f0d9a8; /* shared */
+  --dot-off: #6b7769; /* shared */
+  --heart: #ec7355; /* shared */
+  --blue: #7fb4e8; /* shared */
+  --purple: #c9a0e8; /* shared */
+  --route-down: #5f9ea0; /* shared */
+  --route-flat: #5b6f60; /* shared */
+  --scrim-soft: rgba(0, 0, 0, .55); /* shared */
+  --shadow: rgba(0, 0, 0, .4); /* shared */
+  --hover-wash: rgba(255, 255, 255, .04); /* shared */
+  --pass-summit-bg: rgba(23, 37, 28, .9); /* shared */
+  /* Fixed scales: heart rate zones and power zones keep their colour in both schemes (tests and the legend rely on it) */
+  --hrz1: #9aa3ad; --hrz2: #4a9fe0; --hrz3: #5fbf6a; --hrz4: #e8963c; --hrz5: #e5534b; /* shared */
+  --z1: #6f8272; --z2: #7fa864; --z3: #d9b44a; --z4: #e08a3c; --z5: #c9532f; /* shared */
+
+  /* Type: the display face is only for the wordmark, Panda's name and short headings; numbers and data keep the UI face. */
+  --font-ui: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Shojumaru', var(--font-ui);
+
+  /* Sizes */
+  --web-nav-h: 3.6rem;
+  --space-1: .25rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --radius-s: .5rem;
+  --radius-xs: .6rem;
+  --radius-m: .8rem;
+  --radius-card: 1.1rem;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+  /* Type scale. Larger display numbers (hero values, rides cockpit) are sized where they are used. */
+  --text-xs: .75rem;
+  --text-s: .9rem;
+  --text-m: 1rem;
+  --text-l: 1.15rem;
+  --text-xl: 1.3rem;
+  --text-2xl: 1.6rem;
+  --text-3xl: 2.2rem;
+}
+/* A choice in Profil sets data-theme on <html>; native controls follow it. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fbf8ef;
+    --text: #22372b;
+    --field: #ffffff;
+    --card: #f1ecd9;
+    --line: #d5d4bf;
+    --field-line: var(--line);
+    --muted: #536454;
+    --day: var(--muted);
+    --good-text: #34513b;
+    --accent-text: #8a4a17;
+    --danger: #a8372a;
+
+    --seg-on-screen: #e1e8d3;
+    --pick: #e1e8d3;
+
+    --chip-warm: #9a6a00;
+    --chip-fail: #b23a2a;
+    --chip-drop: #2a6aa0;
+
+    --slot-fruehstueck: #c98a12;
+    --slot-mittag: #4f8a2a;
+    --slot-abend: #2f78bf;
+    --pc1: #b98ad8;
+    --pc2: #8cc05a;
+    --pc3: #6aa6e0;
+
+    --gm-fill: #6fa043;
+  }
+}
