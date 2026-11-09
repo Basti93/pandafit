@@ -16,3 +16,10 @@ it('paints the bamboo as backgrounds of .web-main, scrolling with the content, w
   expect(rule).not.toMatch(/z-index|isolation/);
   expect(readFileSync('src/web/web.css', 'utf8')).not.toMatch(/\.web-main::(before|after)/);
 });
+it('draws every shape of the bamboo art as an element, so the leaves render', () => {
+  for (const f of ['tile', 'shoot']) for (const s of ['dark', 'light']) {
+    const svg = readFileSync(`src/web/public/brand/bamboo-${f}-${s}.svg`, 'utf8');
+    // Path data loose between tags is text, not a shape; the browser skips it silently.
+    expect(svg).not.toMatch(/>\s*M[\d.]/);
+  }
+});
