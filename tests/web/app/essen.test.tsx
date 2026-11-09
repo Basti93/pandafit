@@ -194,21 +194,39 @@ describe('Essen on the phone', () => {
   it('from Saturday the shopping list opens on next week when its plan is there, and the switch back works', async () => {
     const next = addWeeks(week, 1);
     const nextPlan: TrackedRecord = { ...mealPlan, id: `week-${next}`, body: { ...(mealPlan.body as object), week: next, meals: [{ day: 0, slot: 'abend', dish: { ...dish('Nudeln'), ingredients: [{ name: 'Nudeln', amount: 100, unit: 'g', section: 'Vorrat' }] }, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false }] } };
-    await boot({ account: 'anna', seed: [mealPlan, nextPlan], now: NOW + ((5 - today + 7) % 7) * DAY });
+    const a = await boot({ account: 'anna', seed: [mealPlan, nextPlan], now: NOW + ((5 - today + 7) % 7) * DAY });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Einkauf/ }));
     expect(screen.getByRole('button', { name: 'Nächste Woche' }).getAttribute('aria-pressed')).toBe('true');
     expect(await screen.findByText('Nudeln')).toBeTruthy();
+    // A tick on this page lands in the record of the week shown.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Nudeln gekauft' }));
+    await waitFor(async () => {
+      const s = await openIdb('anna', a.factory);
+      const rec = (await s.list('mealplan')).find((r) => r.id === `state-${next}`);
+      s.close();
+      expect((rec?.body as { items?: Record<string, { state: string }> } | undefined)?.items?.[itemKey('Nudeln', 'g')]?.state).toBe('gekauft');
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Diese Woche' }));
     expect(await screen.findByText('Skyr')).toBeTruthy();
     expect(screen.queryByText('Nudeln')).toBeNull();
+  });
+
+  it('Einkauf is a page with a back pill; Essen comes back', async () => {
+    await boot({ account: 'anna', seed: [mealPlan] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Einkauf/ }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Einkauf' })).toBeTruthy();
+    expect(screen.getByText('Die Liste reicht für die ganze Woche und für zwei Personen.')).toBeTruthy();
+    fireEvent.click(pill('Essen'));
+    expect(await screen.findByRole('region', { name: 'Essen' })).toBeTruthy();
   });
 
   it('the shopping list says for when and for whom, counts what is open, and keeps own items below the plan\'s', async () => {
     await boot({ account: 'anna', seed: [mealPlan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Einkauf.*(Dinge? offen|Alles ist erledigt)$/ }));
-    expect(screen.getByText(/für Mo–So, 2 Personen/)).toBeTruthy();
+    expect(screen.getByText('Die Liste reicht für die ganze Woche und für zwei Personen.')).toBeTruthy();
     // The field to add comes first; "Menge (optional)" says it may stay empty.
     const add = screen.getByLabelText('Etwas dazuschreiben');
     expect(screen.getByPlaceholderText('Menge (optional)')).toBeTruthy();

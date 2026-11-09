@@ -606,7 +606,7 @@ async function main() {
   });
   await step('essen-eigene-rezepte', async () => { await page.getByRole('group', { name: 'Filter' }).getByRole('button', { name: 'Von mir' }).click(); await page.waitForTimeout(500); await shot('essen-eigene-rezepte'); await page.keyboard.press('Escape'); });
   await step('essen-einkauf', async () => { await page.getByRole('button', { name: /^Einkauf/ }).click(); await shot('essen-einkauf'); });
-  await step('essen-einkauf-haben-wir', async () => { await page.locator('.pm-have').first().click(); await shot('essen-einkauf-haben-wir'); await page.locator('.pm-have').first().click(); });
+  await step('essen-einkauf-haben-wir', async () => { await page.getByRole('button', { name: 'Haben wir' }).first().click(); await shot('essen-einkauf-haben-wir'); await page.getByRole('button', { name: 'Doch kaufen' }).first().click(); });
   await step('essen-einkauf-eigenes', async () => {
     await page.getByLabel('Etwas dazuschreiben').fill('Kaffee');
     await page.getByLabel('Menge (optional)').fill('2 Pakete');
@@ -614,6 +614,7 @@ async function main() {
     await page.getByRole('checkbox', { name: 'Haferflocken gekauft' }).click().catch(() => {});
     await page.waitForTimeout(400);
     await shot('essen-einkauf-eigenes');
+    await page.getByRole('button', { name: 'Essen', exact: true }).and(page.locator('.tk-pill')).click();
   });
   // Ausdauer: Rad first (the default), then the switch to Laufen.
   await nav('Ausdauer');

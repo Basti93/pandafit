@@ -34,8 +34,7 @@ body { font-family: var(--font-text); padding: 0 env(safe-area-inset-right) env(
 .pm-ingredients li { padding: .35rem 0; border-top: 1px solid var(--line); }
 .pm-ingredients b { display: inline-block; min-width: 5rem; }
 .pm-steps { margin: var(--space-2) 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .4rem; line-height: 1.45; }
-.pm-group { display: flex; flex-direction: column; gap: var(--space-1); }
-.pm-group ul { list-style: none; margin: 0; padding: 0; }
+.pm-list { list-style: none; margin: 0; padding: 0; }
 .pm-item { border-top: 1px solid var(--line); }
 .pm-item:first-child { border-top: 0; }
 .pm-itemline { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: var(--space-2); min-height: 52px; }
@@ -173,9 +172,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 /* Profil: each group is a card, like the cards on Heute. */
 .tk-pgroup { background: var(--card); border-radius: var(--radius-card); padding: .25rem var(--space-4) var(--space-3); margin-top: var(--space-3); }
 .tk-pgroup > .tk-section { margin-top: var(--space-3); }
-/* Essen: the shopping groups are cards; the list items stay plain, with 44 px targets. */
-.pm-group { background: var(--card); border-radius: var(--radius-card); padding: var(--space-2) var(--space-4) var(--space-1); margin-top: var(--space-2); }
-.pm-group > .tk-section { margin-top: var(--space-1); }
 /* Login: the still Panda sits over the wordmark. */
 .web-login .web-login-panda { width: 7rem; height: auto; align-self: flex-start; }
 /* Ride companion: the figures stay big and dark on light; the pairs and the interval sit on cards. */
