@@ -107,23 +107,6 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .pm-source a, .pm-rowtitle small a { color: var(--muted); }
 .pm-asked { margin: 0; color: var(--muted); font-size: var(--text-s); }
 
-/* Gemeinsam: the page on Woche. Time and regularity only, the same look for everyone. */
-.tk-screen .gm-label { margin: 0; }
-.gm-bar { position: relative; height: .7rem; border-radius: var(--radius-pill); background: var(--bg); overflow: hidden; border: 1px solid var(--line); }
-.gm-bar i { display: block; height: 100%; background: var(--good); border-radius: var(--radius-pill); }
-.gm-bar-thin { height: .45rem; grid-column: 1 / -1; }
-.gm-stand { font-size: var(--text-xs); color: var(--muted); }
-.gm-list { list-style: none; padding: 0; display: grid; gap: 0; }
-.gm-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .2rem .6rem; align-items: baseline; padding: .45rem 0; border-top: 1px solid var(--line); }
-.gm-list li:first-child { border-top: 0; }
-.gm-list li span { color: var(--muted); font-size: var(--text-s); text-align: right; }
-.gm-rhythm { width: 100%; border-collapse: separate; border-spacing: 3px; table-layout: fixed; }
-.gm-rhythm th { width: 3.6rem; text-align: left; font-size: var(--text-s); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gm-rhythm td { padding: 0; }
-.gm-cell { aspect-ratio: 1; border-radius: .3rem; background: var(--bg); border: 1px solid var(--line); }
-@media (prefers-color-scheme: light) { .gm-bar i, .gm-cell[style] { background: var(--gm-fill) !important; } }
-.gm-stack li { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
-.gm-stack li span { text-align: left; }
 /* The profile sits at the top right instead of taking a tab. */
 .web-main { position: relative; overflow: clip; background: var(--bamboo-shoot) left bottom / 40px 240px no-repeat; min-height: 100dvh; box-sizing: border-box; }
 /* The bamboo grove is its own layer behind the cards. Where the browser has scroll-driven animations it lags behind the page
@@ -183,7 +166,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .pm-titleline { display: flex; align-items: center; gap: .6rem; min-width: 0; }
 .pm-thumb { display: flex; align-items: center; justify-content: center; font-size: var(--text-m); font-weight: 700; width: 40px; height: 40px; border-radius: var(--radius-xs); object-fit: cover; flex: none; background: var(--card); }
 .tk-screen button.pm-viewlink { align-self: flex-start; }
-.rc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .rc-list { list-style: none; margin: 0; padding: 0; }
 .rc-row { display: flex; align-items: center; gap: var(--space-1); border-top: 1px solid var(--line); }
 .rc-row:first-child { border-top: 0; }

@@ -120,7 +120,7 @@ export function RecipesSheet({ ctx, onClose, onAddLink }: { ctx: RecipeCtx; onCl
   const searchId = useId();
   return (
     <Sheet title="Rezepte" onClose={onClose} actions={onAddLink ? <button type="button" className="secondary" onClick={onAddLink}>+ Rezept per Link</button> : undefined}>
-      <label className="tk-field" htmlFor={searchId}><span className="rc-sr">Rezept suchen</span>
+      <label className="tk-field" htmlFor={searchId}><span className="tk-sr">Rezept suchen</span>
         <input id={searchId} type="search" aria-label="Rezept suchen" placeholder="Rezept oder Zutat suchen" maxLength={80} value={text} onChange={(e) => setText(e.target.value)} />
       </label>
       <div className="tk-chips" role="group" aria-label="Filter">

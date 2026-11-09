@@ -125,6 +125,8 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 - Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen; Dojo 2–5 stellen sie auf `MainCard` um.
 - Aus Dojo 1: Die Mac-Oberfläche (`src/ui`) sagt noch „Coach“, z. B. HevyCard „Kraft-Coach“. `training-policy/rules.ts` sagt intern „Coach“, erreicht aber weder Screen noch Prompt.
 - Aus Dojo 1: Im CSS steht teils font-weight 600; Zen Kaku hat nur 400/500/700, also zeigt der Browser 700. In Dojo 2 auf 500 oder 700 festlegen.
+- Aus Dojo 2: „Zurück“ im Chat, den man von Heute aus geöffnet hat, landet auf der Woche statt auf Heute (gehört zu Browser-Zurück, Entscheidung 10).
+- Aus Dojo 2: `BoBubble` mit `portrait="mini"` und `place` verkleinert die Szene; in Dojo 5 prüfen, sobald es einen Aufruf gibt.
 - `npm run dev:web`: Der Proxy-Präfix `/push` fängt auch das Modul `/push.ts` ab, ohne laufenden Server bleibt die Seite leer. Präfix enger fassen (`/push/`).
 
 - Anpassungen am nächsten Training liegen nur auf dem Gerät; eine Übernahme zwischen Geräten wäre ein eigener Record. Ein Vorschlag, der zwischen Anpassen und Start übernommen wird, fehlt im Entwurf.
