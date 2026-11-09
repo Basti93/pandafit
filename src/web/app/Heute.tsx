@@ -71,11 +71,12 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   // A draft of this plan on this device (see plan-draft): the strength part says so.
   const adjusted = !!p?.workout && readDraft(env.storage, account, planKeyOf({ atMs: p.atMs, workout: p.workout })) !== null;
   const exercises = p?.workout?.exercises.length ?? 0;
+  const gymLineText = p?.workout ? planGymLine(p.workout, catalog, excluded) : null;
   const gym: GymPart = {
     name: p?.workout?.name ?? null,
-    line: p?.workout ? planGymLine(p.workout, catalog, excluded) : null,
+    line: gymLineText,
     start: () => goTraining(),
-    view: exercises > 0 ? () => goTraining('plan') : undefined,
+    view: gymLineText !== null ? () => goTraining('plan') : undefined,
     notes: p && (
       <>
         {adjusted && <p className="muted">Angepasst</p>}

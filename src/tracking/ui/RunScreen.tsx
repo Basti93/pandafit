@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { feelAsked, RunFeelQuestion } from './RunFeel';
 import { ReviewList } from './RunLookBack';
+import { dayKicker } from './labels';
 import { BoBubble, Card, Kicker, MainCard, Row, RowCard, RowList, Sheet, StandCard, Switch } from './kit';
 import { BO_LINES } from './bo';
 import { useSportWeek } from './sport-week';
-import { dayMonthLongOfKey, shortDateOfKey, weekdayOfKey } from '../../shared/dates';
+import { shortDateOfKey, weekdayOfKey } from '../../shared/dates';
 import type { TrackedRecord } from '../../shared/records';
 import { manualRunId, paceText, runSendId, weekFp, type PlannedRun, type RunGarmin, type RunNumbers, type RunSendBody, type RunFeelBody, runFeelId, type RunWeekBody, type RunReviewBody, type ManualRunBody } from '../../shared/run';
 import type { TrackingPort } from '../ports';
@@ -199,7 +200,7 @@ function ManualForm({ plannedOn, now, onSave, onClose }: { plannedOn: (date: str
   };
   const missing = dur === null || dur <= 0 ? (dist === null || dist < 0 ? 'Strecke und Dauer fehlen' : 'Dauer fehlt') : dist === null || dist < 0 ? 'Strecke fehlt' : null;
   return (
-    <Sheet title="Lauf eintragen" onClose={onClose} actions={<button type="button" disabled={!ok} onClick={save}>Lauf speichern</button>}>
+    <Sheet title="Lauf eintragen" onClose={onClose} actions={<button type="button" className="primary" disabled={!ok} onClick={save}>Lauf speichern</button>}>
       <div className="tk-form">
         <label className="tk-field">{testDay ? 'Strecke in den 30 Minuten' : 'Strecke in km'}<input inputMode="decimal" autoFocus placeholder="z. B. 5,2" value={km} onChange={(e) => setKm(e.target.value)} /></label>
         <label className="tk-field">Dauer in Minuten<input inputMode="decimal" placeholder="z. B. 32" value={minutes} onChange={(e) => setMinutes(e.target.value)} /></label>
@@ -289,7 +290,7 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
           action={firstQuestions ? undefined : { label: 'Lauftage ändern', onClick: () => { setSavedNote(null); setSheet('settings'); } }} />
       )}
       {status.on && !paused && upcoming && (
-        <MainCard label={upcoming === today ? 'Heute' : 'Nächster Lauf'} kicker={upcoming === today ? 'Heute' : `${weekdayOfKey(upcoming.date)}, ${dayMonthLongOfKey(upcoming.date)}`}
+        <MainCard label={upcoming === today ? 'Heute' : 'Nächster Lauf'} kicker={dayKicker(upcoming.date, todayKey)}
           title={KIND[upcoming.kind]} text={runText(upcoming, todayKey)} primary={enter} />
       )}
       {status.on && !paused && !upcoming && !firstQuestions && (

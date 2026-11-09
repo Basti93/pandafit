@@ -40,10 +40,11 @@ export function weekCountText(c: { done: number; planned: number | null }): stri
   return c.done > 0 ? `${c.done} geschafft` : null;
 }
 
-const WORD = ['null', 'eine', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben'];
-/** "zwei" for 2; digits beyond seven. */
+const WORD = ['null', 'eine', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf'];
+/** "zwei" for 2; digits beyond twelve. */
 export const numberWord = (n: number): string => WORD[n] ?? String(n);
-const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+/** The first letter in capitals. */
+export const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * The week in three short sentences: what is done, what today is, what comes after.

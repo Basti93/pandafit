@@ -131,7 +131,7 @@
 .tk-switch { display: flex; align-items: center; gap: .7rem; min-height: 44px; }
 .tk-garmin { margin-top: .6rem; display: flex; flex-direction: column; gap: var(--space-2); }
 
-/* Done sets: a green row. Done exercises: green edge, a badge, the rest calmer. The current exercise: accent edge. */
+/* Done sets: a green row. */
 .tk-set.tk-done { background: color-mix(in srgb, var(--good) 22%, transparent); border-radius: .7rem; }
 .tk-done .tk-num { opacity: 1; text-decoration: none; color: var(--text); border-color: var(--good); }
 /* The statistics page. Sport colours come from the palette (accent and muted tones), told apart by the legend and by position. */
@@ -177,7 +177,6 @@
 .tk-prefs label { gap: var(--space-2); }
 /* The chat input stays at hand above the tab bar, like a messenger. */
 .tk-chat-input { position: sticky; bottom: calc(var(--web-nav-h, 0px) + env(safe-area-inset-bottom, 0px)); z-index: 3; background: var(--bg); padding: var(--space-2) 0; }
-/* The plan of the day before starting: what is coming, then one button. */
 
 /* The gym coach's outlook: the workouts after the next one, folded. */
 .tk-outlook { margin-top: 1rem; }
@@ -379,7 +378,7 @@
 .tk-set .tk-num { min-height: 48px; }
 .tk-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
 
-/* Reihenfolge: hold an exercise title, drag it in a compact list */
+/* Reihenfolge: drag an exercise in a compact list */
 .tk-reorder { list-style: none; margin: 0; padding: 0; }
 .tk-reorder.dragging { touch-action: none; user-select: none; -webkit-user-select: none; }
 .tk-reorder-block { background: var(--card); border-bottom: 1px solid var(--line); position: relative; transition: transform .15s ease; }
@@ -432,9 +431,6 @@
 .tk-pick-group { position: sticky; top: 0; z-index: 1; background: var(--bg); }
 .tk-sheet-actions button:disabled { opacity: .6; }
 .tk-sheet .tk-rows .tk-rowitem > button.tk-rowbtn[aria-expanded="true"] { position: sticky; top: 0; z-index: 1; background: var(--bg); }
-/* The bike card as one tap target: text left, "›" right. */
-.tk-cardtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.tk-screen .card button.tk-cardbtn { min-height: 0; padding: 0; align-items: center; }
 
 .tk-screen button.tk-info-btn { flex: none; align-self: center; width: 44px; min-height: 44px; padding: 0; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .tk-info-btn span { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border: 1.5px solid currentColor; border-radius: var(--radius-round); font: italic 700 .95rem/1 Georgia, serif; color: var(--muted); }
@@ -460,8 +456,6 @@
 .tk-sheet-head .tk-pandahead-mini { width: 3.4rem; }
 .tk-pin { border-radius: var(--radius-card); border-width: 1px; padding: var(--space-3) var(--space-4); }
 .tk-chat-form textarea { border-radius: var(--radius-pill); padding: .7rem var(--space-4); }
-/* Kraft: the next training and the open training lead with an accent edge, like the other lead cards. */
-/* The active exercise is one soft panel; finished ones step back. */
 .tk-set.tk-done { border-radius: var(--radius-m); }
 .tk-plan-ex .tk-ex-head h2, .tk-plan-ex h2 { overflow-wrap: anywhere; }
 @media (max-width: 360px) { .tk-sheet-head .tk-pandahead-mini { width: 2.8rem; } }

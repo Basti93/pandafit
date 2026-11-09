@@ -4,7 +4,7 @@ import type { TrackingPort } from '../ports';
 import type { ActivityKind } from '../../shared/activities';
 import type { Mark } from './kit/StandCard';
 import { useWeekDays } from './week-days';
-import { numberWord } from './week-path';
+import { cap, numberWord } from './week-path';
 
 export type SportKey = 'kraft' | 'rad' | 'lauf';
 export type SportWeek = { marks: Mark[]; done: number; onPlan: number; planned: number | null; next: string | null };
@@ -16,7 +16,6 @@ const NAMES: Record<SportKey, { none: string; one: string; many: string; today: 
 };
 const KIND: Record<SportKey, ActivityKind> = { kraft: 'kraft', rad: 'rad', lauf: 'lauf' };
 const PLAN_SPORT: Record<SportKey, Sport> = { kraft: 'gym', rad: 'bike', lauf: 'run' };
-const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** One sport's week: a dot per done day, then a dot per planned day from today on (today = now, later = open). Missed days do not show. */
 export function sportWeekOf({ done, planned, today }: { done: string[]; planned: string[] | null; today: string }): SportWeek {

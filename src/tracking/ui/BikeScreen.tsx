@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { BikeBlock, BikeBody, RideBody } from '../../shared/bike';
-import { dayMonthLongOfKey, dayMonthOfKey, shortDate, timeLabel, weekdayOfKey } from '../../shared/dates';
+import { dayMonthOfKey, shortDate, timeLabel, weekdayOfKey } from '../../shared/dates';
 import { HARDNESS_LABEL, nextPlanDate } from '../../shared/week-plan';
 import { dateKeyOf } from './run-view';
 import type { TrackingPort } from '../ports';
@@ -8,6 +8,7 @@ import { bikeOf, bikeTrendSentence, blockBand, blockWatts, ftpSentence, phaseTex
 import { usePortRecords } from './hooks';
 import { BO_LINES } from './bo';
 import { useSportWeek } from './sport-week';
+import { dayKicker } from './labels';
 import { Band, BoBubble, MainCard, Row, RowCard, RowList, Sheet, StandCard } from './kit';
 
 const W = 300, H = 90;
@@ -99,7 +100,7 @@ export function BikeScreen({ port, now }: { port: TrackingPort; now?: () => numb
   // The main card names its day: "Heute" or the weekday and date of the next bike day in the week plan.
   const todayKey = dateKeyOf(nowMs);
   const bikeDate = weekplans ? nextPlanDate(weekplans, todayKey, 'bike') : null;
-  const day = bikeDate === null ? null : bikeDate === todayKey ? 'Heute' : `${weekdayOfKey(bikeDate)}, ${dayMonthLongOfKey(bikeDate)}`;
+  const day = bikeDate === null ? null : dayKicker(bikeDate, todayKey);
   const last = rides[0];
   const hasBlocks = !!next && next.blocks.length > 0;
   return (

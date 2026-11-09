@@ -44,7 +44,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
         <>
           {lastTime && <p className="tk-maintext">{`Letztes Mal hast du ${lastTime} geschafft.`}</p>}
           {mates.length > 0 && <p className="tk-maintext">{`Im Wechsel mit ${mates.join(' und ')}.`}</p>}
-          {exerciseHasNoWeight(e) && <p className="tk-maintext">Gewicht nach Gefühl</p>}
+          {exerciseHasNoWeight(e) && <p className="tk-maintext">Das Gewicht wählst du nach Gefühl.</p>}
           <FocusSet key={e.sets[focus.index]!.rid} a={a} e={e} index={focus.index} barbell={equipment === 'barbell'} range={repRangeOf({ primaryMuscle: own?.primaryMuscle })} />
         </>
       ) : (

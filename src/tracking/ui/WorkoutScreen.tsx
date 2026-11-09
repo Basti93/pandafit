@@ -187,7 +187,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
     return (
       <div className="tk-screen">
         <p role="status" className="tk-note">Deine Trainings konnten gerade nicht gelesen werden. Es ist nichts verloren, versuch es gleich nochmal.</p>
-        <button type="button" onClick={workoutsQ.retry}>Nochmal versuchen</button>
+        <button type="button" className="secondary" onClick={workoutsQ.retry}>Nochmal versuchen</button>
       </div>
     );
   }

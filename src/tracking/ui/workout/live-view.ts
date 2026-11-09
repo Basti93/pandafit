@@ -1,6 +1,7 @@
 import type { TrackedExercise, TrackedWorkout } from '../../session';
 import type { Mark } from '../kit';
 import { setLabels } from '../setGrid';
+import { cap, numberWord } from '../week-path';
 
 /** One set as a small circle in the focus card: `short` is its chip ("A" for a warm-up), `index` its row in the set table. */
 export type SetMark = { rid: string; index: number; short: string; state: Mark };
@@ -87,14 +88,12 @@ export function progressOf(w: TrackedWorkout, focusRid: string | null): { index:
   return { index: at + 1, total: w.exercises.length, parts, doneTitles: w.exercises.filter(isDoneExercise).map((e) => e.title) };
 }
 
-const COUNT_WORD = ['Null', 'Eine', 'Zwei', 'Drei', 'Vier', 'Fünf', 'Sechs', 'Sieben', 'Acht', 'Neun', 'Zehn', 'Elf', 'Zwölf'];
-
 /** The done exercises as one sentence: one or two by name, from three on as a count in words. None: null. */
 export function doneSentence(titles: string[]): string | null {
   if (titles.length === 0) return null;
   if (titles.length === 1) return `${titles[0]} hast du schon geschafft.`;
   if (titles.length === 2) return `${titles[0]} und ${titles[1]} hast du schon geschafft.`;
-  return `${COUNT_WORD[titles.length] ?? titles.length} Übungen hast du schon geschafft.`;
+  return `${cap(numberWord(titles.length))} Übungen hast du schon geschafft.`;
 }
 
 /**

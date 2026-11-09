@@ -201,6 +201,16 @@ describe('web app', () => {
     expect(await screen.findByText(/Bo macht einen neuen/)).toBeTruthy();
   });
 
+  it('Heute offers no Ansehen when every exercise of the plan is ruled out', async () => {
+    const rule: TrackedRecord = { kind: 'rule', id: 'rule-x', updatedMs: 1, deleted: false, body: { kind: 'exclude', text: 'ohne', sport: 'gym', state: 'active', source: 'chat', atMs: 1, exerciseIds: ['x'] } };
+    await boot({ seed: [plan(NOW - 1000), rule] });
+    await screen.findByText('Beine A');
+    expect(screen.queryByRole('button', { name: 'Ansehen und anpassen' })).toBeNull();
+    cleanup();
+    await boot({ seed: [plan(NOW - 1000)] });
+    expect(await screen.findByRole('button', { name: 'Ansehen und anpassen' })).toBeTruthy();
+  });
+
   it('the plan sheet from Heute opens once; an adjusted plan says "Angepasst" on Heute', async () => {
     await boot({ seed: [plan(NOW - 2 * DAY)] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ansehen und anpassen' }));

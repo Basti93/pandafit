@@ -1,12 +1,11 @@
 import type { Trend } from '../progress';
-import { numberWord } from './week-path';
+import { cap, numberWord } from './week-path';
 
 /** The tile "Deine Routinen" in one sentence. */
 export function routinesSentence(n: number): string {
   if (n <= 0) return 'Leg feste Abläufe an, zum Beispiel für das Hotel.';
   if (n === 1) return 'Ein fester Ablauf liegt bereit.';
-  const w = numberWord(n);
-  return `${w.charAt(0).toUpperCase()}${w.slice(1)} feste Abläufe liegen bereit.`;
+  return `${cap(numberWord(n))} feste Abläufe liegen bereit.`;
 }
 
 /** The tile "Deine Übungen" in one sentence: how most of them move. */

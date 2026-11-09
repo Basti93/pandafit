@@ -683,12 +683,12 @@ test('the set table: headers, chips, one grid, a clear done box and last time as
   expect(screen.getByLabelText('Notiz zu Kniebeuge').tagName).toBe('TEXTAREA');
 });
 
-test('a plan without weights says "Gewicht nach Gefühl" once, under the title', async () => {
+test('a plan without weights says "Das Gewicht wählst du nach Gefühl." once, under the title', async () => {
   const plan: GymWorkout = { name: 'Plan', exercises: [{ templateId: 'pf-leg-press', title: 'Beinpresse', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal', weightKg: null, reps: 10 }, { type: 'normal', weightKg: null, reps: 10 }] }] };
   const { port } = fakePort();
   render(<WorkoutScreen port={port} plan={plan} {...ids} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Training starten' }));
-  expect(await screen.findAllByText('Gewicht nach Gefühl')).toHaveLength(1);
+  expect(await screen.findAllByText('Das Gewicht wählst du nach Gefühl.')).toHaveLength(1);
   expect((screen.getByLabelText('Gewicht Satz 1') as HTMLInputElement).placeholder).toBe('–');
 });
 
