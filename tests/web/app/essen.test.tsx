@@ -112,6 +112,17 @@ describe('Essen on the phone', () => {
       expect(within(list).queryByRole('button', { name: /Essensplan/ })).toBeNull(); // the Essen tab is the way in, no second one
     });
 
+    it('Essen heute shows the picture of each meal, not the icon', async () => {
+      await boot({ account: 'anna', seed: [withPlan([
+        { day: today, slot: 'fruehstueck', dish: dish('Skyr mit Beeren'), reuseOf: null, eaters: ['pa'], takeAlong: false },
+        { day: today, slot: 'mittag', dish: dish('Linsen-Bolognese'), reuseOf: null, eaters: ['pa'], takeAlong: false },
+        { day: today, slot: 'abend', dish: dish('Chili'), reuseOf: null, eaters: ['pa'], takeAlong: false },
+      ])] });
+      const list = await screen.findByRole('list', { name: 'Essen heute' }, { timeout: 4000 });
+      expect(list.querySelectorAll('svg.tk-meal use')).toHaveLength(3);
+      expect(list.querySelector('svg[data-icon="essen"]')).toBeNull();
+    });
+
     it('says rest and cook-ahead in words', async () => {
       const yesterday = (today + 6) % 7;
       await boot({ account: 'anna', seed: [withPlan([
