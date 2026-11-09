@@ -57,13 +57,13 @@ describe('Heute as a day page', () => {
     const page = coach.closest('.tk-daypage')!;
     expect(page.lastElementChild!.contains(tg)).toBe(true);
   });
-  it('"Frag Bo, deinen Coach" on Heute opens the real coach composer', async () => {
+  it('"Frag Bo, deinen Sensei" on Heute opens the real coach composer', async () => {
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW })]);
     const card = screen.getByLabelText('Satz vom Coach');
     expect(card.textContent).toContain('Bo');
-    expect(card.textContent).toContain('Dein Coach');
+    expect(card.textContent).toContain('Sensei');
     expect(card.querySelector('img')?.getAttribute('alt')).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Coach' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensei' }));
     expect(await screen.findByLabelText('Nachricht an den Coach')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 1, name: 'Heute' })).toBeNull();
     // The same chat sheet as the "Coach" row on Woche: one dialog named Coach that holds the composer.

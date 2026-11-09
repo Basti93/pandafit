@@ -9,16 +9,17 @@
 .tk-screen h2 { font-size: var(--text-m); margin: 0; }
 .tk-picker { font-family: var(--font-text); }
 .tk-picker h3 { font-size: var(--text-s); color: var(--muted); margin: .8rem 0 .4rem; text-transform: uppercase; letter-spacing: .05em; }
-.tk-screen .card { background: var(--card); border-radius: var(--radius-card); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-screen .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-screen .card.soft { background: var(--card-soft); }
 .tk-screen .card .card { background: none; border: 0; border-radius: 0; padding: 0; }
 .tk-row { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
 .tk-row .spacer { flex: 1; }
 .tk-screen button, .tk-picker button {
-  font: inherit; font-weight: 600; min-height: 44px; min-width: 44px; padding: var(--space-2) var(--space-4); border: 0; border-radius: var(--radius-pill);
-  background: var(--accent); color: var(--ink); cursor: pointer;
+  font: inherit; font-weight: 600; min-height: 50px; min-width: 44px; padding: var(--space-2) var(--space-4); border: 0; border-radius: var(--radius-button);
+  background: var(--accent); color: var(--ink); cursor: pointer; box-shadow: 0 6px 20px var(--glow);
 }
 .tk-screen button:disabled, .tk-picker button:disabled { opacity: .4; cursor: default; }
-.tk-screen button.secondary, .tk-picker button.secondary { background: transparent; color: var(--text); border: 1px solid var(--muted); }
+.tk-screen button.secondary, .tk-picker button.secondary { background: transparent; color: var(--text); border: 1.5px solid var(--line); box-shadow: none; }
 /* Calm UI kit (see kit/index.ts): buttons are primary (the default), secondary (outline), link (text) and danger-link (muted red text). */
 .tk-screen button.primary, .tk-picker button.primary { background: var(--accent); color: var(--ink); border: 0; }
 /* A text link lines up with the text around it: no side padding; its height still gives the 44 px target. */
@@ -530,3 +531,21 @@
 .tk-set.tk-done { border-radius: var(--radius-m); }
 .tk-plan-ex .tk-ex-head h2, .tk-plan-ex h2 { overflow-wrap: anywhere; }
 @media (max-width: 360px) { .tk-live .tk-ex.tk-ex-current { padding-inline: var(--space-2); } .tk-sheet-head .tk-pandahead-mini { width: 2.8rem; } }
+
+/* Dojo kit (see kit/Dojo.tsx): kicker, brush title, main card, Bo's bubble. */
+.tk-kicker { margin: 0; font-size: var(--text-s); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--kicker); }
+.tk-brush { display: flex; flex-direction: column; gap: var(--space-1); color: var(--brush); }
+.tk-screen .tk-brush h2, .tk-screen .tk-brush h3 { margin: 0; font-family: var(--font-display); font-weight: 400; text-transform: uppercase; line-height: 1.2; font-size: var(--text-xl); color: var(--text); }
+.tk-screen .tk-brush h3 { font-size: var(--text-l); }
+.tk-screen .card p.tk-maintext { color: var(--muted); }
+.tk-mainactions { display: flex; gap: var(--space-2); }
+.tk-mainactions > .primary { flex-grow: 1; }
+.tk-bo { display: flex; gap: var(--space-3); align-items: flex-start; }
+.tk-bo-portrait { flex: none; width: 6rem; border-radius: var(--radius-card); background: radial-gradient(circle at 50% 60%, var(--glow), transparent 70%); }
+.tk-bo.mini .tk-bo-portrait { width: 3.4rem; }
+.tk-bubble { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
+.tk-bubble-tail { position: absolute; left: -7px; top: 1.25rem; width: 12px; height: 12px; background: var(--card); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
+.tk-bubble-text { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.tk-bubble-text p { margin: 0; }
+.tk-bubble-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.tk-bo-name { font-size: var(--text-s); font-weight: 600; color: var(--kicker); }

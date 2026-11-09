@@ -1,6 +1,10 @@
 /**
  * The calm UI kit. Every screen builds from these few pieces; the CSS is the "Calm UI kit" block in ../tracking.css.
  *
+ * Dojo pieces (Dojo.tsx): Card (the one .card; `soft` for a quieter group), Kicker, BrushTitle, MainCard, Bubble, BoBubble.
+ *   MainCard is the only "Jetzt dran" card: every screen shows its main next thing through it, never a hand-built copy.
+ *   Bo speaks only through Bubble or BoBubble (name, role and ask text come from ../bo.ts). Icons come only through Icon.
+ *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Reserved for Dojo 2: RowCard, WeekPath.
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
  * Buttons (plain <button> classes), one look per role:
@@ -35,3 +39,4 @@ export { PageHead } from './PageHead';
 export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
 export { ConfirmLink } from './ConfirmLink';
+export { BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard } from './Dojo';

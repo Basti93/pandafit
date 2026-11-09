@@ -231,24 +231,17 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .web-wordmark { font-family: var(--font-display); font-size: var(--text-l); letter-spacing: .04em; color: var(--text); line-height: 1.2; }
 @media (max-width: 400px) { .web-top { padding-left: .6rem; } }
 /* Display face: the wordmark, Panda's name and short page titles only. Workout titles and anything with measures stay in the UI face. */
-.tk-pagehead .tk-title, .tk-daytitle .tk-title, .web-login .tk-title, .tk-pandaname { font-family: var(--font-display); font-weight: 400; letter-spacing: .03em; }
+.tk-pagehead .tk-title, .tk-daytitle .tk-title, .web-login .tk-title { font-family: var(--font-display); font-weight: 400; letter-spacing: .03em; }
 .tk-daytitle .tk-title { font-size: var(--text-xl); }
 
-/* Panda card on Heute: the still, the name, the coach sentence and one button to open the real chat. */
-.tk-screen .tk-coachline { display: grid; grid-template-columns: 6rem minmax(0, 1fr); column-gap: var(--space-3); row-gap: var(--space-2); align-items: start; }
+/* Bo on Heute: the portrait and the sentence in his bubble (kit/Dojo.tsx). */
 /* The portrait: the still picture fills the box; the canvas lies over it and fades in once it has drawn, then the still is hidden. */
 .tk-panda { position: relative; display: block; width: 100%; aspect-ratio: 198 / 164; }
-.tk-coachline > .tk-panda { grid-row: 1 / span 2; }
 .tk-pandastill { display: block; width: 100%; height: 100%; object-fit: contain; }
 .tk-pandacanvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
 .tk-panda[data-drawn='true'] .tk-pandacanvas { opacity: 1; transition: opacity .15s ease-out; }
 .tk-panda[data-drawn='true'] .tk-pandastill { visibility: hidden; }
 .tk-pandahead-mini { flex: none; width: 4.2rem; }
-.tk-pandahead { display: flex; flex-direction: column; min-width: 0; }
-.tk-pandaname { font-size: var(--text-l); line-height: 1.2; }
-.tk-pandarole {  font-size: var(--text-s); color: var(--muted); }
-.tk-coachline p.tk-coachtext { grid-column: 2; margin: 0; }
-.tk-coachline .tk-coachask { grid-column: 1 / -1; justify-self: start; }
 
 /* Wide screens: Heute in two columns. The DOM and phone order stay: open workout, coach, training, meals, mobility, body, together. */
 @media (min-width: 1024px) {
