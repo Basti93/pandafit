@@ -547,8 +547,32 @@
 .tk-bubble.right .tk-bubble-foot { text-align: right; }
 /* The one round icon button (kit RoundButton, BackButton): 44 px, card fill, thin line; `pill` adds a label. */
 .tk-screen button.tk-roundbtn { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--field-line); background: var(--card); color: var(--text); }
-.tk-screen button.tk-roundbtn.pill { width: auto; align-self: flex-start; padding: 0 var(--space-4) 0 .6rem; gap: var(--space-1); border-radius: var(--radius-pill); font-weight: 700; font-size: var(--text-s); }
-.tk-pagehead > .tk-roundbtn { margin-bottom: var(--space-2); }
+/* The one pill (kit PillButton, BackButton with a label): 44 px, transparent, thin line, quiet text, icon on the left. */
+.tk-screen button.tk-pill { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); flex: none; min-height: 44px; height: 44px; padding: 0 var(--space-3); border-radius: var(--radius-pill); border: 1px solid var(--field-line); background: transparent; color: var(--muted); font-weight: 500; font-size: var(--text-s); }
+.tk-pagehead > .tk-roundbtn, .tk-pagehead > .tk-pill { margin-bottom: var(--space-2); align-self: flex-start; }
+/* Layout only: pills side by side. */
+.tk-pills { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tk-pills > .tk-pill { flex: 1 1 0; min-width: 0; }
+/* The one switch between sub pages (kit Segments): one pill with segments. */
+.tk-seg { display: flex; background: var(--card); border-radius: var(--radius-pill); padding: 3px; margin-right: 3.4rem; }
+.tk-pagehead ~ .tk-seg { margin-right: 0; }
+.tk-screen .tk-seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); background: transparent; color: var(--muted); border: 0; min-height: 40px; padding: .3rem var(--space-2); box-shadow: none; }
+.tk-screen .tk-seg button[aria-pressed='true'] { background: var(--bg); color: var(--text); font-weight: 700; }
+/* The focus card of a running workout. */
+.tk-screen .card.focus { border-color: var(--accent); box-shadow: 0 0 24px var(--focus-glow); }
+/* The one state dot (kit MarkDot): done green with a check, now an accent ring, open a quiet ring. The week path dots extend it. */
+.tk-mark { position: relative; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 1.5rem; height: 1.5rem; padding: 0; border-radius: var(--radius-round); background: var(--bg); border: 2px solid var(--field-line); color: var(--muted); font-size: var(--text-xs); font-weight: 700; }
+.tk-mark.done { background: var(--good); border-color: var(--good); color: var(--ink); }
+.tk-mark.now { border-color: var(--accent); color: var(--text); }
+.tk-screen button.tk-mark { min-height: 0; }
+.tk-mark:is(button)::after { content: ''; position: absolute; inset: -10px; }
+.tk-stand { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.tk-stand-marks { display: flex; gap: var(--space-2); flex: none; }
+/* The one part bar (kit Band): parts as wide as their share, filled in the accent. */
+.tk-band { display: flex; align-items: flex-end; gap: 3px; height: 1rem; }
+.tk-band > span { display: block; min-width: 4px; height: 6px; border-radius: 3px; background: var(--field-line); overflow: hidden; }
+.tk-band > span.tall { height: 1rem; }
+.tk-band > span > span { display: block; height: 100%; background: var(--accent); }
 .tk-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--space-1); padding: .2rem .6rem; border-radius: var(--radius-pill); background: var(--good-wash); color: var(--good-text); font-size: var(--text-xs); font-weight: 700; }
 .tk-rowcard, .tk-screen button.tk-rowcard { display: flex; align-items: center; gap: var(--space-3); width: 100%; box-sizing: border-box; min-height: 44px; padding: var(--space-3); text-align: left; font: inherit; font-weight: 400; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-card); }
 .tk-rowcard.flat, .tk-screen button.tk-rowcard.flat { background: transparent; border-color: transparent; border-radius: 0; padding-inline: 0; }
@@ -581,7 +605,7 @@
 .tk-weekpath-dots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); }
 .tk-weekpath-dots li { display: flex; justify-content: center; position: relative; z-index: 1; }
 .tk-screen button.tk-pathdot, .tk-pathdot { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); min-width: 44px; min-height: 44px; padding: 0; background: transparent; border: 0; color: var(--muted); font: inherit; font-weight: 400; }
-.tk-pathdot-mark { box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; margin-top: calc(22px - .75rem); border-radius: var(--radius-round); background: var(--bg); border: 2px solid var(--field-line); color: var(--ink); }
+.tk-pathdot-mark { display: flex; margin-top: calc(22px - .75rem); color: var(--ink); }
 .tk-pathdot.rest .tk-pathdot-mark { border: 0; background: radial-gradient(circle, var(--dot-off) 0 .25rem, transparent calc(.25rem + 1px)); }
 .tk-pathdot.done .tk-pathdot-mark { background: var(--accent); border-color: var(--accent); }
 .tk-pathdot.today .tk-pathdot-mark { border-color: var(--kicker); box-shadow: 0 0 0 3px var(--today-glow); }

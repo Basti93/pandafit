@@ -5,8 +5,8 @@ import { Icon, type IconName } from './Icon';
 import { BO, BO_LINES } from '../bo';
 
 /** The one card. `soft` is the quieter fill for a group inside a page. */
-export function Card({ soft = false, label, children }: { soft?: boolean; label?: string; children: ReactNode }) {
-  return <section className={soft ? 'card soft' : 'card'} aria-label={label}>{children}</section>;
+export function Card({ soft = false, focus = false, label, children }: { soft?: boolean; focus?: boolean; label?: string; children: ReactNode }) {
+  return <section className={focus ? 'card focus' : soft ? 'card soft' : 'card'} aria-label={label}>{children}</section>;
 }
 
 /** The small amber line above a title. */
@@ -62,10 +62,15 @@ export function RoundButton({ icon, name, onClick }: { icon: IconName; name: str
   return <button type="button" className="tk-roundbtn" aria-label={name} onClick={onClick}><Icon name={icon} size={20} /></button>;
 }
 
-/** The one back button of a page: the round button with "Zurück" as its name, or a pill "‹ label". */
+/** The one pill: a quiet side action with an icon on the left (and the back button of a page with a label). `name` is the screen reader name when the visible label is short. */
+export function PillButton({ icon, label, name, onClick }: { icon: IconName; label: string; name?: string; onClick: () => void }) {
+  return <button type="button" className="tk-pill" aria-label={name} onClick={onClick}><Icon name={icon} size={18} />{label}</button>;
+}
+
+/** The one back button of a page: the round button with "Zurück" as its name, or a PillButton "‹ label". */
 export function BackButton({ label, onClick }: { label?: string; onClick: () => void }) {
   if (!label) return <RoundButton icon="zurueck" name="Zurück" onClick={onClick} />;
-  return <button type="button" className="tk-roundbtn pill" onClick={onClick}><Icon name="zurueck" size={20} />{label}</button>;
+  return <PillButton icon="zurueck" label={label} onClick={onClick} />;
 }
 
 /** Bo's two buttons, the same on every page: "Vorschlag ansehen" (the main one) and "Frag Bo, deinen Sensei" with the speech icon. */

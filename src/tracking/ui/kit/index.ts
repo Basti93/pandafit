@@ -6,7 +6,9 @@
  *   Role, ask and title come only from ../bo.ts; sentences may name Bo directly. Icons come only through Icon.
  *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Tag is the small green label with a check.
  *   RowCard (RowCard.tsx) is the only row card with an icon tile (DESIGN "Zeilenkarte"); Row stays the plain text row without icon (lists, settings). WordTile is the only word tile.
- *   RoundButton is the one round icon button; BackButton is the one back button of pages (RoundButton, or a pill with a label); Sheet `page` is for pages like the chat (BackButton instead of ×).
+ *   StandCard is the one orientation card "… · diese Woche" (Kraft, Rad, Laufen); Segments the one switch between sub pages; PillButton the one pill (quiet side action and back);
+ *   MarkDot the one state dot (done, now, open); Band the one part bar.
+ *   RoundButton is the one round icon button; BackButton is the one back button of pages (RoundButton, or a PillButton with a label); Sheet `page` is for pages like the chat (BackButton instead of ×).
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
  * Buttons (plain <button> classes), one look per role:
@@ -18,7 +20,7 @@
  *   Exception: the ride display (LiveRide) keeps 64 px outline buttons for use on the bike.
  * Other controls, one look each (CSS in ../tracking.css unless said):
  *   Chips (.tk-chips > button, aria-pressed)  every toggle choice: thin pill, chosen = accent ring and bold. Only tappable things are pills; a tag is muted text.
- *   Switch between sub pages (.tk-seg, web.css)  Kraft, Ausdauer, Essen Tage/Einkauf: one pill with segments.
+ *   Segments (kit)  Kraft, Ausdauer, Essen Tage/Einkauf, Darstellung: one pill with segments.
  *   Stepper (button.tk-step-btn)  − count +: a 44 px round outline button.
  *   Round icon buttons (day arrows, profile)  44 px, card fill, thin line.
  *   Callout (.tk-note)  card fill with a 4 px bar on the left, for a note or a warning; never a card inside a card.
@@ -41,10 +43,13 @@ export { PageHead } from './PageHead';
 export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
 export { ConfirmLink } from './ConfirmLink';
-export { AskBoButton, BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, RoundButton, SeeProposalButton, Tag } from './Dojo';
+export { AskBoButton, BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, PillButton, RoundButton, SeeProposalButton, Tag } from './Dojo';
 export { BoScene } from './BoScene';
 export type { BoPlace } from './BoScene';
 export { RowCard, WordTile } from './RowCard';
 export { WeekPath } from './WeekPath';
+export { Band, MarkDot, StandCard } from './StandCard';
+export type { Mark } from './StandCard';
+export { Segments } from './Segments';
 export { Icon } from './Icon';
 export type { IconName } from './Icon';

@@ -36,6 +36,7 @@
   --bubble-me: #3a3a2a; /* the user's own chat bubble */
   --bubble-me-line: #7a5a3e;
   --good-wash: rgba(156, 186, 114, .16); /* soft green fill of a tag */
+  --focus-glow: rgba(239, 171, 118, .14); /* glow of the focus card in a running workout */
   /* Bo's places (BoScene, brand/bo-*.svg): stems, nodes, leaves, woven wood */
   --scene-stem: #4f6b43;
   --scene-node: #8fae6e;
@@ -163,6 +164,7 @@
     --bubble-me: #f6e3cf;
     --bubble-me-line: #e0b48c;
     --good-wash: rgba(94, 130, 60, .14);
+    --focus-glow: rgba(224, 140, 80, .16);
     --scene-stem: #a3b58c;
     --scene-node: #c5d1ae;
     --scene-leaf: #9db57f;

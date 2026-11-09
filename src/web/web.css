@@ -120,14 +120,9 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 }
 .web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .55rem); right: max(calc(env(safe-area-inset-right) + 1rem), calc((100% - var(--content-max)) / 2 + 1rem)); width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--field-line); background: var(--card); color: var(--text); display: grid; place-items: center; cursor: pointer; }
 .web-profile[aria-current='page'] { color: var(--text); border-color: var(--accent); }
-/* Sub pages of a tab (Kraft, Ausdauer, Essen Tage/Einkauf): one pill with segments, not loose buttons. One look everywhere. */
-.tk-seg { display: flex; background: var(--card); border-radius: var(--radius-pill); padding: 3px; margin-right: 3.4rem; }
 /* One page head (Kraft, Ausdauer): the title on top, the switch below it at full width; the screen under it follows closely. */
-.tk-pagehead ~ .tk-seg { margin-right: 0; }
 .tk-screen.tk-headblock { padding-bottom: 0; }
 .tk-headblock .tk-pagehead { margin-bottom: 0; }
-.tk-screen .tk-seg button { flex: 1; background: transparent; color: var(--muted); border: 0; min-height: 40px; padding: .3rem var(--space-2); box-shadow: none; }
-.tk-screen .tk-seg button[aria-pressed='true'] { background: var(--bg); color: var(--text); font-weight: 700; }
 /* The live workout hides the round profile button, so its ⋯ sits at the edge. */
 /* A sheet covers everything: the round profile button steps aside while one is open. */
 /* The round profile button has the size and the edge of the day arrows: 44 px, on the page padding. */

@@ -26,7 +26,7 @@ describe('style tokens', () => {
   });
   it('defines the Dojo 2 tokens in both schemes', () => {
     const [dark, light] = read(TOKENS).split('@media (prefers-color-scheme: light)');
-    for (const t of ['--tile', '--today-glow', '--bubble-me', '--bubble-me-line', '--good-wash']) {
+    for (const t of ['--tile', '--today-glow', '--bubble-me', '--bubble-me-line', '--good-wash', '--focus-glow']) {
       expect(dark).toContain(`${t}:`);
       expect(light).toContain(`${t}:`);
     }
