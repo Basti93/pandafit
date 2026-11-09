@@ -22,8 +22,8 @@
 .tk-screen button.secondary, .tk-picker button.secondary { background: transparent; color: var(--text); border: 1.5px solid var(--line); }
 /* Calm UI kit (see kit/index.ts): buttons are primary (the default), secondary (outline), link (text) and danger-link (muted red text). */
 .tk-screen button.primary, .tk-picker button.primary { background: var(--accent); color: var(--ink); border: 0; }
-/* The filled main-button role only (primary or no class): 50 px high with the glow. No other variant gets either. */
-.tk-screen button.primary, .tk-screen button:not([class]), .tk-picker button.primary, .tk-picker button:not([class]) { min-height: 50px; box-shadow: 0 6px 20px var(--glow); }
+/* The filled main-button role only (class primary): 50 px high with the glow. No other button gets either. */
+.tk-screen button.primary, .tk-picker button.primary { min-height: 50px; box-shadow: 0 6px 20px var(--glow); }
 /* A text link lines up with the text around it: no side padding; its height still gives the 44 px target. */
 .tk-screen button.link, .tk-picker button.link, .tk-screen button.danger-link, .tk-picker button.danger-link { background: transparent; border: 0; border-radius: var(--radius-s); color: var(--muted); font-weight: 600; text-decoration: underline; text-underline-offset: .2em; padding: var(--space-2) 0; }
 .tk-screen button.danger-link, .tk-picker button.danger-link { color: var(--danger); font-weight: 500; }

@@ -120,8 +120,9 @@ describe('main button role', () => {
     const css = readFileSync(join(__dirname, '../../src/tracking/ui/tracking.css'), 'utf8');
     const glow = css.split('\n').filter((l) => l.includes('box-shadow: 0 6px 20px var(--glow)'));
     expect(glow).toHaveLength(1);
-    expect(glow[0]).toContain('button.primary');
-    expect(glow[0]).not.toMatch(/link|secondary|chips|day/);
+    const selectors = glow[0].slice(0, glow[0].indexOf('{')).split(',').map((x) => x.trim());
+    expect(selectors.length).toBeGreaterThan(0);
+    for (const sel of selectors) expect(sel).toMatch(/^\.tk-(screen|picker) button\.primary$/);
     expect(css).not.toMatch(/\.tk-screen button, \.tk-picker button \{[^}]*(glow|min-height: 50px)/);
   });
 });
