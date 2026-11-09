@@ -11,6 +11,8 @@ afterEach(() => localStorage.clear());
 const resume = async () => fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
 const focusOf = (title: string) => within(screen.getByRole('region', { name: title }));
 const sets = (m: Parameters<typeof bodyOf>[0], i: number) => bodyOf(m, 'workout:open1').exercises[i]!.sets;
+/** Longer than the double-tap guard: the next tap is a new tap. */
+const later = () => new Promise((r) => setTimeout(r, 750));
 const withExercises = (exercises: LoggedWorkout['exercises']): LoggedWorkout => ({ ...open2(), exercises });
 
 describe('the focus card', () => {
@@ -63,11 +65,13 @@ describe('the focus card', () => {
     expect(sets(map, 1)[0]!.doneMs).toBeNull();
     expect(await screen.findByRole('region', { name: 'Rudern' })).toBeTruthy();
     expect(focusOf('Rudern').getByText('Nächster Satz · 1 von 2')).toBeTruthy();
+    await later();
     doneNow(); // B1
     await waitFor(() => expect(sets(map, 1)[0]!.doneMs).toBe(100_000));
     expect(sets(map, 0)[1]!.doneMs).toBeNull();
     expect(await screen.findByRole('region', { name: 'Bankdrücken' })).toBeTruthy();
     expect(focusOf('Bankdrücken').getByText('Nächster Satz · 2 von 2')).toBeTruthy();
+    await later();
     doneNow(); // A2
     await waitFor(() => expect(sets(map, 0)[1]!.doneMs).toBe(100_000));
     expect(sets(map, 1)[1]!.doneMs).toBeNull(); // the partner stays open
@@ -83,6 +87,36 @@ describe('the focus card', () => {
     await waitFor(() => expect(sets(map, 0)[0]!.doneMs).toBe(100_000));
     await new Promise((r) => setTimeout(r, 120));
     expect(sets(map, 0).map((s) => s.doneMs)).toEqual([100_000, null]);
+  });
+
+  it('a double tap on Satz geschafft with a fast save confirms one set; a later tap confirms the next', async () => {
+    const { port, map } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    doneNow();
+    await new Promise((r) => setTimeout(r, 30)); // saved, and the card already shows set 2 in the same place
+    expect(focusOf('Bankdrücken').getByText('Nächster Satz · 2 von 2')).toBeTruthy();
+    doneNow();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(sets(map, 0).map((s) => s.doneMs)).toEqual([100_000, null]);
+    await later();
+    doneNow();
+    await waitFor(() => expect(sets(map, 0).map((s) => s.doneMs)).toEqual([100_000, 100_000]));
+  });
+
+  it('finishing an exercise picked under Danach moves the focus to the next open set', async () => {
+    const w = open2();
+    w.exercises[1]!.sets = [set(40, 10, 5000), set(40, 10, null)];
+    const { port, map } = fakePort([rec(w)]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    fireEvent.click(screen.getByRole('button', { name: /Rudern/ }));
+    expect(focusOf('Rudern').getByText('Nächster Satz · 2 von 2')).toBeTruthy();
+    doneNow();
+    await waitFor(() => expect(sets(map, 1)[1]!.doneMs).toBe(100_000));
+    expect(await screen.findByRole('region', { name: 'Bankdrücken' })).toBeTruthy();
+    expect(focusOf('Bankdrücken').getByText('Nächster Satz · 1 von 2')).toBeTruthy();
+    expect(screen.queryByText('Alle Sätze geschafft')).toBeNull();
   });
 
   it('a warm-up is circle A and comes first', async () => {
@@ -143,21 +177,24 @@ describe('the focus card', () => {
     await resume();
     const focus = focusOf('Bankdrücken');
     expect(focus.getByText('Alle Sätze geschafft')).toBeTruthy();
-    expect(focus.getByText('Du kannst einen Satz anhängen oder zur nächsten Übung gehen.')).toBeTruthy();
+    expect(focus.getByText('Du kannst einen Satz anhängen, eine Übung hinzufügen oder das Training beenden.')).toBeTruthy(); // nothing open anywhere
     expect(focus.queryByLabelText(/^Gewicht Satz/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Satz geschafft' })).toBeNull();
-    fireEvent.click(focus.getByRole('button', { name: 'Satz hinzufügen' }));
+    const add = focus.getByRole('button', { name: 'Satz hinzufügen' });
+    fireEvent.click(add); fireEvent.click(add); // a double tap adds one set
     await waitFor(() => expect(sets(map, 0)).toHaveLength(3));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(sets(map, 0)).toHaveLength(3);
     expect(await screen.findByText('Nächster Satz · 3 von 3')).toBeTruthy();
     cleanup();
     const empty = fakePort();
     render(<WorkoutScreen port={empty.port} {...ids} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Leeres Training starten' }));
     expect(await screen.findByText('Noch keine Übung im Training.')).toBeTruthy();
-    const add = screen.getAllByRole('button', { name: 'Übung hinzufügen' });
-    expect(add).toHaveLength(1);
-    expect(add[0]!.className).toContain('primary');
-    fireEvent.click(add[0]!);
+    const addEx = screen.getAllByRole('button', { name: 'Übung hinzufügen' });
+    expect(addEx).toHaveLength(1);
+    expect(addEx[0]!.className).toContain('primary');
+    fireEvent.click(addEx[0]!);
     expect(await screen.findByLabelText('Suchen')).toBeTruthy();
   });
 
@@ -194,6 +231,7 @@ describe('the focus card', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Schließen' }));
     fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz hinzufügen' }));
     await waitFor(() => expect(sets(map, 0)).toHaveLength(2));
+    await later();
     doneNow();
     await waitFor(() => expect(sets(map, 0)[1]!.doneMs).toBe(100_000));
     expect(screen.queryByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeNull();

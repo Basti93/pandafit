@@ -1,7 +1,7 @@
 import { repRangeOf } from '../../../shared/muscle-targets';
 import { resolveExercise } from '../../exercise-identity';
 import { plateLine } from '../../steps';
-import { confirmSet, editSet, lastValues, presetOf, removeSet, unconfirmSet } from '../../session';
+import { editSet, lastValues, presetOf, removeSet, unconfirmSet } from '../../session';
 import { EFFORT_LABEL } from '../EffortQuestion';
 import { SetHead, SetRow } from '../SetRow';
 import { lastTimeLine, setLabels, setTargetHint } from '../setGrid';
@@ -10,7 +10,7 @@ import type { ActiveWorkoutApi } from './useActiveWorkout';
 
 /** The set table of one exercise in a sheet: every set to fill in, tick or (in edit mode) remove. The same SetRow as everywhere. */
 export function SetsSheet({ a, rid }: { a: ActiveWorkoutApi; rid: string }) {
-  const { w, store, act, set, catalog, studios, studioHere, statsMuscles, history, now } = a;
+  const { w, store, act, set, catalog, studios, studioHere, statsMuscles, history, confirmShown } = a;
   const e = w.exercises.find((x) => x.rid === rid);
   if (!e) return null;
   const editing = a.ui.editing === e.rid;
@@ -33,10 +33,7 @@ export function SetsSheet({ a, rid }: { a: ActiveWorkoutApi; rid: string }) {
             plates={s.rid === plateRid ? plateLine(s.weightKg as number) : null}
             confirmedNow={() => confirmedNow(s.rid)}
             onEdit={(patch) => act((x) => editSet(x, e.rid, s.rid, patch))}
-            onToggle={() => {
-              if (s.doneMs === null) set({ thanked: null });
-              act((x) => (s.doneMs === null ? confirmSet(x, e.rid, s.rid, now(), catalog) : unconfirmSet(x, e.rid, s.rid)));
-            }}
+            onToggle={() => (s.doneMs === null ? confirmShown(e.rid, s.rid) : act((x) => unconfirmSet(x, e.rid, s.rid)))}
             onRemove={() => act((x) => removeSet(x, e.rid, s.rid))} />
         ))}
         {e.effort && e.effort !== 'skip' && <p className="muted tk-sub">Noch möglich: {EFFORT_LABEL[e.effort]}</p>}

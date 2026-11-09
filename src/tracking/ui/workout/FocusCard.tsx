@@ -4,7 +4,7 @@ import { exerciseImages, videoSearchUrl } from '../../media';
 import { resolveExercise } from '../../exercise-identity';
 import { describeExercise } from '../../similar';
 import { plateLine, stepHere } from '../../steps';
-import { addSet, confirmSet, editNotes, editSet, filled, formatDecimal, lastValues, presetOf, type TrackedExercise } from '../../session';
+import { addSet, editNotes, editSet, filled, formatDecimal, lastValues, presetOf, type TrackedExercise } from '../../session';
 import { ExerciseInfo, StepLine } from '../ExerciseInfo';
 import { MuscleIcon } from '../MuscleIcon';
 import { NotesField } from '../NotesField';
@@ -49,8 +49,10 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
         </>
       ) : (
         <>
-          <p className="tk-maintext">Du kannst einen Satz anhängen oder zur nächsten Übung gehen.</p>
-          <button type="button" className="secondary" onClick={() => act((x) => addSet(x, e.rid))}>Satz hinzufügen</button>
+          <p className="tk-maintext">{a.currentRid === null
+            ? 'Du kannst einen Satz anhängen, eine Übung hinzufügen oder das Training beenden.'
+            : 'Du kannst einen Satz anhängen oder zur nächsten Übung gehen.'}</p>
+          <button type="button" className="secondary" onClick={() => { if (a.tapOnce('add')) act((x) => addSet(x, e.rid)); }}>Satz hinzufügen</button>
         </>
       )}
       <div className="tk-lift-row">
@@ -81,7 +83,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
  * Keyed by the set: a draft and an unreadable entry belong to this one set; the next set starts fresh.
  */
 function FocusSet({ a, e, index, barbell, range }: { a: ActiveWorkoutApi; e: TrackedExercise; index: number; barbell: boolean; range?: { min: number; max: number } }) {
-  const { act, set, now, catalog } = a;
+  const { act, tapOnce, confirmShown } = a;
   const s = e.sets[index]!;
   const n = index + 1;
   const timed = !!e.timed;
@@ -92,11 +94,8 @@ function FocusSet({ a, e, index, barbell, range }: { a: ActiveWorkoutApi; e: Tra
   const kg = s.weightKg ?? shown.weightKg ?? null;
   const plates = barbell && !timed && kg !== null && kg > 0 ? plateLine(kg) : null;
   const edit = (patch: Parameters<typeof editSet>[3]) => act((x) => editSet(x, e.rid, s.rid, patch));
-  // Exactly this set, and only while it is still open in the newest state: a second tap during a slow save changes nothing.
-  const confirm = () => {
-    set({ thanked: null });
-    act((x) => (x.exercises.find((y) => y.rid === e.rid)?.sets.find((y) => y.rid === s.rid)?.doneMs === null ? confirmSet(x, e.rid, s.rid, now(), catalog) : x));
-  };
+  // Exactly this set (see confirmShown); a double tap never reaches the set that takes its place.
+  const confirm = () => { if (tapOnce('confirm')) confirmShown(e.rid, s.rid); };
   return (
     <>
       <div className="tk-lift-fields">

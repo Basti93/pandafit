@@ -139,8 +139,7 @@ test('a failing save shows a calm message, keeps the set, and the next action sa
   fireEvent.click(await screen.findByRole('button', { name: 'Satz geschafft' }));
   expect((await screen.findByRole('status')).textContent).toMatch(/nicht gespeichert/);
   state.failPuts = false;
-  expect(await screen.findByText('Nächster Satz · 2 von 2')).toBeTruthy(); // the focus shows the next set
-  doneNow();
+  fireEvent.click(within(await setsSheet(2)).getByRole('button', { name: 'Satz 2 erledigt' }));
   await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
   expect(bodyOf(map, 'workout:open1').exercises[0].sets.map((s) => s.doneMs)).toEqual([100_000, 100_000]);
 });

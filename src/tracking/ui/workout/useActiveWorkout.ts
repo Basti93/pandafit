@@ -5,7 +5,7 @@ import { readStats, STATS_ID } from '../../../shared/stats';
 import { loadStepOverrides } from '../../../shared/loads';
 import { knownStudios, studioStateOf } from '../../../shared/studio';
 import type { TrackingPort } from '../../ports';
-import { currentSet, restRemainingS, type FinishChoice, type TrackedWorkout } from '../../session';
+import { confirmSet, currentSet, restRemainingS, type FinishChoice, type TrackedWorkout } from '../../session';
 import { closeStore, releaseStore } from '../../registry';
 import { hereKey, stepChange } from '../../steps';
 import { useCatalog, useExcluded, usePortRecords, useStoreView, useTick, useWakeLock, type WorkoutStore } from '../hooks';
@@ -47,6 +47,8 @@ export function uiReducer(s: UiState, a: Action): UiState {
   }
 }
 
+/** Two taps of the same big button closer than this are one tap. */
+export const TAP_GUARD_MS = 700;
 export const FINISHED_MSG = 'Training gespeichert.';
 export const NOT_SAVED = 'Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.';
 
@@ -145,6 +147,32 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
 
   const act = useCallback((fn: (x: TrackedWorkout) => TrackedWorkout) => void store.apply(fn), [store]);
 
+  // A double tap on a big button lands on what the first tap just put in its place (the next set, a second new set).
+  // So a second tap of the same kind within a moment is ignored. Wall clock on purpose: the injected `now` may stand still.
+  const lastTap = useRef<Record<'confirm' | 'add', number>>({ confirm: -Infinity, add: -Infinity });
+  const tapOnce = useCallback((kind: 'confirm' | 'add'): boolean => {
+    const t = performance.now();
+    if (t - lastTap.current[kind] < TAP_GUARD_MS) return false;
+    lastTap.current[kind] = t;
+    return true;
+  }, []);
+
+  /**
+   * Confirms exactly this set, and only while it is still open in the newest state. When it was the last open set of its
+   * exercise, the focus moves on to the next open set of the workout (the same exercise when none is left).
+   */
+  const confirmShown = useCallback((exRid: string, setRid: string) => {
+    set({ thanked: null });
+    let finished = false;
+    act((x) => {
+      if (x.exercises.find((y) => y.rid === exRid)?.sets.find((y) => y.rid === setRid)?.doneMs !== null) return x;
+      const next = confirmSet(x, exRid, setRid, latest.current.now(), catalog);
+      finished = next.exercises.find((y) => y.rid === exRid)?.sets.every((y) => y.doneMs !== null) ?? false;
+      return next;
+    });
+    if (finished) set({ openRid: currentSet(store.current())?.ex ?? exRid });
+  }, [act, set, store, latest, catalog]);
+
   async function end(choice?: FinishChoice) {
     if (ending.current) return;
     ending.current = true; leaving.current = true;
@@ -183,7 +211,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const known = knownStudios([...history, w], studios.renames, studios.picks, studios.hidden);
 
   return {
-    port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice,
+    port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown,
     catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, remaining, currentRid, known, act, end, discard,
   };
 }
