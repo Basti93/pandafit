@@ -32,6 +32,15 @@ describe('style tokens', () => {
     }
   });
 
+  it('defines Bo\'s place tokens, light where they are not shared', () => {
+    const [dark, light] = read(TOKENS).split('@media (prefers-color-scheme: light)');
+    for (const t of ['--scene-stem', '--scene-node', '--scene-leaf', '--scene-wood', '--scene-wood-deep', '--scene-weave', '--scene-hollow']) {
+      expect(dark).toContain(`${t}:`);
+      expect(light).toContain(`${t}:`);
+    }
+    for (const t of ['--scene-lantern-line', '--scene-lantern-cap', '--scene-string']) expect(dark).toMatch(new RegExp(`${t}:[^;]+;\\s*/\\* shared \\*/`));
+  });
+
   it('has no literal colour in the Mac, web or tracking stylesheets', () => {
     for (const f of [MAC, WEB, TRACKING]) {
       const css = read(f).replace(/\/\*[\s\S]*?\*\//g, '');
