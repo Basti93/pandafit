@@ -36,4 +36,9 @@ describe('Bo scene', () => {
     for (const p of ['bike', 'run', 'yoga'] as const) expect(poseIn('nest', p)).toBe('greet');
     expect(poseIn('nest', null)).toBe('greet');
   });
+  it('gives Bo his warm light everywhere: the scene glow and every portrait without a scene use the one --bo-glow token', () => {
+    const css = readFileSync('src/tracking/ui/tracking.css', 'utf8');
+    expect(css).toMatch(/\.tk-scene-glow \{[^}]*background: var\(--bo-glow\)/);
+    expect(css).toMatch(/\.tk-bo-portrait:not\(:has\(\.tk-scene\)\), \.tk-pandahead-mini \{[^}]*background: var\(--bo-glow\)/);
+  });
 });
