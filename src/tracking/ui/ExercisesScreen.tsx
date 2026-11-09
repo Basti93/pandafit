@@ -29,7 +29,6 @@ export function ExercisesScreen({ port, now = Date.now, newId = () => crypto.ran
         {q.failed && <ReadFailed text="Deine Übungen konnten gerade nicht gelesen werden." retry={q.retry} />}
         {exercises.size > 0 && (
           <section aria-label="Deine Übungen">
-            <h2 className="tk-section">Deine Übungen</h2>
             <RowList label="Deine Übungen">
               {[...exercises.entries()].sort((a, b) => a[1].localeCompare(b[1], 'de')).map(([id, title]) => (
                 <Row key={id} title={title} value={trends.get(id)} onClick={() => setExercise(id)} />

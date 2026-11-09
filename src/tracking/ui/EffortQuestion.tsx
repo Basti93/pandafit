@@ -11,7 +11,7 @@ const switchOff = () => { try { localStorage.setItem(KEY, 'off'); } catch { /* p
 export function EffortQuestion({ title, onAnswer, onOff }: { title: string; onAnswer: (a: Effort | 'skip') => void; onOff: () => void }) {
   return (
     <div className="tk-effort" role="group" aria-label={`Wie viele hättest du bei ${title} noch geschafft?`}>
-      <p>Wie viele Wiederholungen hättest du im letzten Satz noch geschafft?</p>
+      <p>Wie viele Wiederholungen hättest du im letzten Satz bei {title} noch geschafft?</p>
       <div className="tk-row">
         {(Object.keys(EFFORT_LABEL) as Effort[]).map((k) => (
           <button key={k} type="button" className="secondary" onClick={() => onAnswer(k)}>{EFFORT_LABEL[k]}</button>

@@ -4,6 +4,7 @@ import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import { plateLine, stepChange } from '../../src/tracking/steps';
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
 import { fakePort } from './fake-port';
+import { setsSheet } from './live-helpers';
 
 afterEach(cleanup);
 
@@ -38,7 +39,8 @@ describe('plates in the workout', () => {
 
   test('a set without a weight is skipped for the next one with a weight', async () => {
     await running(wo('o', 1000, null, [ex('pf-squat', 'Kniebeuge', [s(null), s(60)])]));
-    expect(screen.getByText('Scheiben je Seite: 20')).toBeTruthy();
+    expect(screen.queryByText(/Scheiben je Seite/)).toBeNull(); // the focus set has no weight yet
+    expect(within(await setsSheet(1)).getByText('Scheiben je Seite: 20')).toBeTruthy(); // the table marks the next set with one
   });
 
   test('not for a machine or dumbbell', async () => {
@@ -49,9 +51,8 @@ describe('plates in the workout', () => {
 
 describe('the weight step line', () => {
   const info = async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung' }));
+    await screen.findByRole('note', { name: 'Anleitung Kniebeuge' });
   };
   const past = (n: number, kg: number[]) => wo(`p${n}`, 100 + n, 200 + n, [ex('pf-squat', 'Kniebeuge', kg.map((k) => s(k, 5)))]);
 
@@ -104,7 +105,7 @@ describe('studio line', () => {
   test('a typed new studio is saved on the started workout, reusing a known name by case', async () => {
     const f = fakePort([]);
     render(<WorkoutScreen port={f.port} {...ids} />);
-    await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ });
+    await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
     fireEvent.click(screen.getByRole('button', { name: /^Studio/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Neues Studio …' }));
     const input = await screen.findByLabelText('Name des neuen Studios');

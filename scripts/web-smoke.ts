@@ -68,12 +68,12 @@ try {
   await planSheet.getByLabel('Wiederholungen Satz 1').first().waitFor();
   await planSheet.getByRole('button', { name: 'Schließen' }).click();
   await planSheet.waitFor({ state: 'detached' });
-  await page.getByRole('button', { name: 'Ansehen und anpassen' }).waitFor();
+  await page.getByRole('button', { name: 'Ansehen', exact: true }).waitFor(); // Kraft says "Ansehen" (Heute: "Ansehen und anpassen")
   step('the next workout opens in its sheet and closes');
 
   await page.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true }).click();
-  // Start an empty workout: directly, or through the "Routine oder leeres Training" sheet when a plan or routines exist.
-  const anderes = page.getByRole('button', { name: 'Routine oder leeres Training' });
+  // Start an empty workout: directly, or through the "Anderes Training" sheet when a plan or routines exist.
+  const anderes = page.getByRole('button', { name: 'Anderes Training' });
   const empty = page.getByRole('button', { name: 'Leeres Training starten' });
   await empty.or(anderes).first().waitFor();
   if (await anderes.count() > 0 && await empty.count() === 0) await anderes.click();
@@ -87,7 +87,7 @@ try {
   await page.getByLabel('Gewicht Satz 1').blur();
   await page.getByLabel('Wiederholungen Satz 1').fill('8');
   await page.getByLabel('Wiederholungen Satz 1').blur();
-  await page.getByRole('button', { name: 'Satz 1 erledigt' }).click();
+  await page.getByRole('button', { name: 'Satz geschafft' }).click(); // the fields above are the big ones in the focus card
   await page.getByRole('button', { name: 'Training beenden', exact: true }).click();
   // Everything is confirmed, so the summary shows; an end sheet only appears when sets are open.
   const endSheet = page.getByRole('button', { name: 'Trotzdem als gemacht eintragen' });
@@ -95,11 +95,10 @@ try {
   await endSheet.or(summary).first().waitFor();
   if (await endSheet.count() > 0) await endSheet.click();
   await summary.getByRole('button', { name: 'Fertig' }).click();
-  const seg = (p: Page, label: string) => p.getByRole('group', { name: 'Kraft' }).getByRole('button', { name: label, exact: true });
   const nav = (p: Page) => p.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true });
   const seeWorkout = async (p: Page, timeout = 15_000) => {
     await nav(p).click();
-    await seg(p, 'Übungen').click();
+    await p.getByRole('button', { name: /Deine Übungen/ }).click();
     await p.getByRole('list', { name: 'Deine Übungen' }).getByText(pickedTitle, { exact: true }).waitFor({ timeout });
   };
   await seeWorkout(page);

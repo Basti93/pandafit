@@ -138,7 +138,7 @@ describe('web app', () => {
     const a = await boot({ offline: true, account: 'anna', seed: [plan(NOW - 1000)] });
     expect(await screen.findByText('Beine A')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Routine oder leeres Training' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Anderes Training' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leeres Training starten' }));
     await waitFor(async () => {
       const s = await openIdb('anna', a.factory);
@@ -166,6 +166,20 @@ describe('web app', () => {
     await waitFor(() => expect(screen.queryByRole('group', { name: 'Kraft' })).toBeNull()); // the Kraft sub-navigation is gone while a workout runs
   });
 
+  it('the tab bar and the profile button step aside while the workout is shown and come back after Verkleinern', async () => {
+    await boot({ account: 'anna', seed: [plan(NOW - 1000)] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
+    fireEvent.click(within(await screen.findByRole('region', { name: 'Nächstes Training' })).getByRole('button', { name: 'Training starten' }));
+    await screen.findByRole('button', { name: 'Satz geschafft' });
+    await waitFor(() => expect(screen.queryByRole('navigation', { name: 'Seiten' })).toBeNull());
+    expect(screen.queryByRole('button', { name: 'Profil' })).toBeNull();
+    expect(screen.queryByText('Pandafit')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Verkleinern, Training läuft weiter' }));
+    expect(await screen.findByRole('navigation', { name: 'Seiten' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Profil' })).toBeTruthy();
+    expect(within(await screen.findByRole('region', { name: 'Läuft noch' })).getByRole('button', { name: 'Weitermachen' })).toBeTruthy();
+  });
+
   it('an expired login keeps unsent data and asks to log in again', async () => {
     const a = await boot({ syncStatus: 401, seed: [plan(NOW - 1000)] });
     expect(await screen.findByText(/Bitte melde dich neu an/)).toBeTruthy();
@@ -187,6 +201,16 @@ describe('web app', () => {
     expect(await screen.findByText(/Bo macht einen neuen/)).toBeTruthy();
   });
 
+  it('Heute offers no Ansehen when every exercise of the plan is ruled out', async () => {
+    const rule: TrackedRecord = { kind: 'rule', id: 'rule-x', updatedMs: 1, deleted: false, body: { kind: 'exclude', text: 'ohne', sport: 'gym', state: 'active', source: 'chat', atMs: 1, exerciseIds: ['x'] } };
+    await boot({ seed: [plan(NOW - 1000), rule] });
+    await screen.findByText('Beine A');
+    expect(screen.queryByRole('button', { name: 'Ansehen und anpassen' })).toBeNull();
+    cleanup();
+    await boot({ seed: [plan(NOW - 1000)] });
+    expect(await screen.findByRole('button', { name: 'Ansehen und anpassen' })).toBeTruthy();
+  });
+
   it('the plan sheet from Heute opens once; an adjusted plan says "Angepasst" on Heute', async () => {
     await boot({ seed: [plan(NOW - 2 * DAY)] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ansehen und anpassen' }));
@@ -196,9 +220,10 @@ describe('web app', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Fertig' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nächstes Training' })).toBeNull());
     // Away to another Kraft page and back: the sheet does not open again by itself.
-    fireEvent.click(screen.getByRole('button', { name: 'Routinen', exact: true } as never));
-    fireEvent.click(await screen.findByRole('button', { name: 'Training', pressed: false }));
-    await screen.findByRole('button', { name: 'Beine A starten' });
+    fireEvent.click(screen.getByRole('button', { name: /Deine Routinen/ }));
+    await screen.findByRole('heading', { name: 'Deine Routinen' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Kraft' }).find((b) => b.className.includes('tk-pill'))!);
+    await screen.findByRole('button', { name: 'Training starten' });
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.queryByRole('dialog', { name: 'Nächstes Training' })).toBeNull();
     fireEvent.click(within(screen.getByRole('navigation')).getByRole('button', { name: 'Heute' }));
@@ -210,8 +235,8 @@ describe('web app', () => {
     expect(await screen.findByRole('button', { name: 'Woche planen' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
     expect(await screen.findByRole('button', { name: 'Leeres Training starten' })).toBeTruthy();
-    expect(screen.getByText('Oder leg unter Routinen einen Ablauf an.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^Studio/ }).textContent).toContain('noch keins');
+    expect(screen.getByText(/Bo hat gerade kein Training für dich geplant/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Studio/ }).textContent).toContain('Studio wählen');
   });
 
   it('a new account sees what Pandafit can plan, with the way to Profil; it goes once something is on', async () => {
@@ -498,7 +523,8 @@ describe('web app', () => {
     const note = await screen.findByLabelText('Notiz zu Kniebeuge');
     fireEvent.focus(note);
     fireEvent.change(note, { target: { value: 'Rechtes Knie ziept' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Verkleinern, Training läuft weiter' })); // the profile button is back once the workout is minimized
+    fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
     const confirm = screen.queryByRole('button', { name: 'Trotzdem abmelden' });
     if (confirm) fireEvent.click(confirm);

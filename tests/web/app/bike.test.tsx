@@ -32,7 +32,7 @@ describe('Rad on the phone', () => {
     await boot({ account: 'anna', seed: [bikeRec()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
     expect(await screen.findByRole('region', { name: 'Nächste Fahrt' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Ausdauer' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Ausdauer' }).className).toContain('tk-sr');
     expect(screen.queryByRole('group', { name: 'Ausdauer' })).toBeNull(); // no switch with Rad alone
   });
 
@@ -42,20 +42,22 @@ describe('Rad on the phone', () => {
     expect(screen.queryByRole('button', { name: 'Ausdauer' })).toBeNull();
   });
 
-  it('the next card names the session and the card opens the Ablauf with one row per block', async () => {
+  it('the next card names the session and Ablauf ansehen opens one row per block, watts only for the hard one', async () => {
     await boot({ account: 'anna', seed: [bikeRec()], startTab: 'rad' });
     const card = await screen.findByRole('region', { name: 'Nächste Fahrt' });
-    expect(card.textContent).toContain('Schwellen-Intervalle · 60 Min · hart');
-    expect(card.textContent).toContain('Die letzten Tage waren locker.');
-    fireEvent.click(screen.getByRole('button', { name: /Schwellen-Intervalle/ }));
+    expect(card.textContent).toContain('Schwellen-Intervalle');
+    expect(card.textContent).toContain('60 Minuten, hart');
+    expect(document.querySelector('.tk-bo')!.textContent).not.toContain('Die letzten Tage waren locker.'); // no bike day today
+    fireEvent.click(within(card).getByRole('button', { name: 'Ablauf ansehen' }));
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByText('10 Min locker')).toBeTruthy();
-    expect(within(sheet).getByText('3 × 8 Min bei 95 % (200 W), dazwischen 4 Min locker')).toBeTruthy();
+    expect(within(sheet).getByText('3 × 8 Min bei 95 %, dazwischen 4 Min locker')).toBeTruthy();
+    expect(sheet.textContent).toContain('etwa 200 W');
   });
 
   it('the last ride opens the ride sheet with the facts, the sentence and the chart', async () => {
     await boot({ account: 'anna', seed: [bikeRec(), rideRec('r1', 3 * DAY), rideRec('r0', 60 * DAY, 'Locker')], startTab: 'rad' });
-    fireEvent.click(await screen.findByRole('button', { name: /Grundlage/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Letzte Fahrt/ }));
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByText(/Alles geschafft, ruhig gefahren · Ø 150 W · Ø Puls 130/)).toBeTruthy();
     expect(within(sheet).getByText('Ruhig und gleichmäßig gefahren.')).toBeTruthy();
@@ -64,7 +66,7 @@ describe('Rad on the phone', () => {
 
   it('Entwicklung tells the FTP, the phase and the hours per week', async () => {
     await boot({ account: 'anna', seed: [bikeRec()], startTab: 'rad' });
-    fireEvent.click(await screen.findByRole('button', { name: /^Entwicklung/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Deine Entwicklung/ }));
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByText(/^FTP \(Dauerleistung\) 210 W, seit .* 10 W mehr$/)).toBeTruthy();
     expect(within(sheet).getByText('Phase Aufbau, noch 3 Wochen bis zur nächsten Phase')).toBeTruthy();
@@ -75,8 +77,10 @@ describe('Rad on the phone', () => {
     const a = await boot({ account: 'anna', seed: [bikeRec(), runStatus()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
     await screen.findByRole('region', { name: 'Nächste Fahrt' });
-    // One page head: the title, the switch below it, no second title for the chosen half.
-    expect(screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent)).toEqual(['Ausdauer']);
+    // The switch comes first, before the stand card; the only h1 is not visible.
+    const group = screen.getByRole('group', { name: 'Ausdauer' });
+    expect(group.compareDocumentPosition(screen.getByRole('region', { name: 'Rad · diese Woche' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 1 }).map((h) => h.className)).toEqual(['tk-sr']);
     fireEvent.click(within(screen.getByRole('group', { name: 'Ausdauer' })).getByRole('button', { name: 'Laufen' }));
     expect(await screen.findByRole('button', { name: 'Lauf eintragen' })).toBeTruthy();
     expect(a.storage.get('pandafit.ausdauer.anna')).toBe('laufen');

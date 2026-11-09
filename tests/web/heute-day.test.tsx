@@ -151,7 +151,7 @@ describe('Heute in the Dojo', () => {
     it('after a finished workout the card holds the mobility row', async () => {
       await boot([workout(NOW - 600_000), planWithMobility]);
       const card = await screen.findByRole('region', { name: 'Zum Abschluss' });
-      expect(card.textContent).toContain('20 Min lockeres Cardio');
+      expect(card.textContent).toContain('20 Minuten lockeres Cardio');
       expect(card.contains(await screen.findByRole('button', { name: /^Beweglichkeit/ }))).toBe(true);
       expect(card.textContent).not.toContain('Ein paar Minuten dehnen');
     });
@@ -165,7 +165,7 @@ describe('Heute in the Dojo', () => {
       await boot([workout(NOW - 600_000), rec('activities', 'activities', { type: 'activities', atMs: NOW, items })]);
       const card = await screen.findByRole('region', { name: 'Zum Abschluss' });
       expect(card.textContent).toContain('Heute reicht Dehnen.');
-      expect(card.textContent).not.toContain('20 Min lockeres Cardio');
+      expect(card.textContent).not.toContain('20 Minuten lockeres Cardio');
     });
     it('shows nothing without a finished workout, while one is open, or after three hours; the mobility row stays', async () => {
       await boot([planWithMobility]);

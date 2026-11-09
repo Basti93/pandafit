@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BoBubble, Bubble, Icon, MainCard, PageHead, RowCard, Sheet } from '../../src/tracking/ui/kit';
+import { BackButton, BoBubble, Band, Bubble, Card, Icon, MainCard, MarkDot, PageHead, PillButton, RowCard, Segments, Sheet, StandCard } from '../../src/tracking/ui/kit';
 import { BO } from '../../src/tracking/ui/bo';
 
 afterEach(cleanup);
@@ -27,7 +27,7 @@ describe('Dojo kit', () => {
     expect(document.querySelector('.tk-bubble-tail')).toBeNull();
   });
   it('draws every registered icon with currentColor only', () => {
-    for (const name of ['heute', 'woche', 'kraft', 'essen', 'ausdauer', 'profil', 'lauf', 'herz', 'spross', 'mond', 'ziel', 'stift', 'sprechen', 'senden', 'zurueck', 'haken', 'rueckblick', 'regeln', 'aenderung'] as const) {
+    for (const name of ['heute', 'woche', 'kraft', 'essen', 'ausdauer', 'profil', 'lauf', 'herz', 'spross', 'mond', 'ziel', 'stift', 'sprechen', 'senden', 'zurueck', 'haken', 'rueckblick', 'regeln', 'aenderung', 'studio', 'wechsel', 'mehr', 'info', 'pause', 'plus', 'verkleinern', 'routinen', 'uebungen', 'entwicklung'] as const) {
       const { container, unmount } = render(<Icon name={name} />);
       const svg = container.querySelector(`svg[data-icon="${name}"]`)!;
       expect(svg.getAttribute('aria-hidden')).toBe('true');
@@ -70,5 +70,38 @@ describe('Dojo kit', () => {
     const h1 = screen.getByRole('heading', { level: 1, name: 'Deine Woche' });
     expect(h1.closest('.tk-brush')).toBeTruthy();
     expect(screen.getByRole('button', { name: /Woche/ })).toBeTruthy();
+  });
+  it('a focus card has the accent line', () => {
+    render(<Card focus label="Bankdrücken"><p>x</p></Card>);
+    expect(screen.getByRole('region', { name: 'Bankdrücken' }).className).toBe('card focus');
+  });
+  it('a stand card says the week in words and keeps the count for screen readers', () => {
+    render(<StandCard kicker="Kraft · diese Woche" text="Ein Krafttraining hast du geschafft." marks={['done', 'now']} marksLabel="1 von 2 Krafttrainings" action={{ label: 'Lauftage ändern', onClick: () => {} }} />);
+    const card = screen.getByRole('region', { name: 'Kraft · diese Woche' });
+    expect(within(card).getByRole('img', { name: '1 von 2 Krafttrainings' })).toBeTruthy();
+    expect(card.textContent).not.toMatch(/\d/);
+    expect(within(card).getByRole('button', { name: 'Lauftage ändern' }).className).toBe('secondary');
+  });
+  it('segments switch with aria-pressed and an icon', () => {
+    const pick = vi.fn();
+    render(<Segments label="Ausdauer" value="rad" onChange={pick} options={[{ value: 'rad', label: 'Rad', icon: 'ausdauer' }, { value: 'laufen', label: 'Laufen', icon: 'lauf' }]} />);
+    const g = screen.getByRole('group', { name: 'Ausdauer' });
+    expect(within(g).getByRole('button', { name: 'Rad' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(within(g).getByRole('button', { name: 'Laufen' }));
+    expect(pick).toHaveBeenCalledWith('laufen');
+  });
+  it('a pill button carries its icon and an optional name; the back pill is the same pill', () => {
+    render(<><PillButton icon="studio" label="Nord" name="Studio Nord" onClick={() => {}} /><BackButton label="Woche" onClick={() => {}} /></>);
+    expect(screen.getByRole('button', { name: 'Studio Nord' }).querySelector('svg[data-icon="studio"]')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Woche' }).className).toBe('tk-pill');
+  });
+  it('a mark dot is a button only with onClick', () => {
+    render(<><MarkDot state="done" /><MarkDot state="now" short="2" name="Satz 2: dran" onClick={() => {}} /></>);
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Satz 2: dran' }).className).toBe('tk-mark now');
+  });
+  it('a band names itself only with a label', () => {
+    render(<Band label="Ablauf: locker, hart" parts={[{ grow: 10, fill: 0 }, { grow: 30, fill: 1, tall: true }]} />);
+    expect(screen.getByRole('img', { name: 'Ablauf: locker, hart' })).toBeTruthy();
   });
 });

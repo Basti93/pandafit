@@ -40,9 +40,11 @@ export function weekCountText(c: { done: number; planned: number | null }): stri
   return c.done > 0 ? `${c.done} geschafft` : null;
 }
 
-const WORD = ['null', 'eine', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben'];
-const word = (n: number): string => WORD[n] ?? String(n);
-const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+const WORD = ['null', 'eine', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf'];
+/** "zwei" for 2; digits beyond twelve. */
+export const numberWord = (n: number): string => WORD[n] ?? String(n);
+/** The first letter in capitals. */
+export const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * The week in three short sentences: what is done, what today is, what comes after.
@@ -52,13 +54,13 @@ export function weekSentence(rows: DayRow[], today: string, plan: PlanDay[]): st
   const done = rows.filter((r) => r.date <= today && r.done.length > 0).length;
   const starting = (new Date(`${today}T12:00:00`).getDay() + 6) % 7 <= 1 || !plan.some((d) => d.date < today && isTraining(d));
   const parts: string[] = [];
-  parts.push(done === 0 ? (starting ? 'Die Woche fängt gerade an.' : 'Diese Woche ist noch keine Einheit erledigt.') : done === 1 ? 'Eine Einheit hast du schon geschafft.' : `${cap(word(done))} Einheiten hast du schon geschafft.`);
+  parts.push(done === 0 ? (starting ? 'Die Woche fängt gerade an.' : 'Diese Woche ist noch keine Einheit erledigt.') : done === 1 ? 'Eine Einheit hast du schon geschafft.' : `${cap(numberWord(done))} Einheiten hast du schon geschafft.`);
   const todayPlan = rows.find((r) => r.date === today)?.plan ?? null;
   if (isTraining(todayPlan)) parts.push(`Heute ist ${planDayLabel(todayPlan)} dran.`);
   else if (isRest(todayPlan)) parts.push('Heute ist Ruhetag.');
   const later = rows.filter((r) => r.date > today && isTraining(r.plan)).length;
   if (later === 1) parts.push('Danach kommt noch eine Einheit.');
-  else if (later > 1) parts.push(`Danach kommen noch ${word(later)} Einheiten.`);
+  else if (later > 1) parts.push(`Danach kommen noch ${numberWord(later)} Einheiten.`);
   return parts.join(' ');
 }
 

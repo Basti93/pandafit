@@ -1,6 +1,7 @@
 /** The one icon registry. Stroke icons, 24 px grid, currentColor only. Later milestones add names here and nowhere else. */
 export type IconName = 'heute' | 'woche' | 'kraft' | 'essen' | 'ausdauer' | 'profil'
-  | 'lauf' | 'herz' | 'spross' | 'mond' | 'ziel' | 'stift' | 'sprechen' | 'senden' | 'zurueck' | 'haken' | 'rueckblick' | 'regeln' | 'aenderung';
+  | 'lauf' | 'herz' | 'spross' | 'mond' | 'ziel' | 'stift' | 'sprechen' | 'senden' | 'zurueck' | 'haken' | 'rueckblick' | 'regeln' | 'aenderung'
+  | 'studio' | 'wechsel' | 'mehr' | 'info' | 'pause' | 'plus' | 'verkleinern' | 'routinen' | 'uebungen' | 'entwicklung';
 
 const SCROLL = <><path d="M8 6 H25 Q27 6 27 8 V24 Q27 26 25 26 H10" /><path d="M8 6 Q5 6 5 9 V11 H11 V9 Q11 6 8 6 Z" /><path d="M10 26 Q7 26 7 23 V21 H13 V23 Q13 26 10 26 Z" /></>;
 
@@ -23,6 +24,16 @@ const PATHS: Record<IconName, React.ReactNode> = {
   haken: <path d="M5 12.5 L10 17 L19 7" strokeWidth="3" />,
   rueckblick: <g transform="scale(.75)" strokeWidth="2.667">{SCROLL}<path d="M14 12 H23 M14 16 H21 M14 20 H19" /></g>,
   regeln: <g transform="scale(.75)" strokeWidth="2.667"><path d="M7 5 H22 Q25 5 25 8 V27 L19 23 L13 27 V8" /><path d="M7 5 Q4 5 4 8 V11 H13" /><path d="M16 11 Q19 9 21 12 Q19 16 16 11 Z" /></g>,
+  studio: <><path d="M3 10 L12 4 L21 10" /><path d="M5 10 V20 H19 V10" /><rect x="8" y="13" width="2.4" height="4" rx="1" /><rect x="13.6" y="13" width="2.4" height="4" rx="1" /><path d="M10.4 15 H13.6" /></>,
+  wechsel: <><path d="M4 7 H16 M13 4 L16 7 L13 10" /><path d="M20 17 H8 M11 14 L8 17 L11 20" /></>,
+  mehr: <g fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></g>,
+  info: <><path d="M4 5 Q8 3.5 12 6 Q16 3.5 20 5 V19 Q16 17.5 12 20 Q8 17.5 4 19 Z" /><path d="M12 6 V20" /></>,
+  pause: <><path d="M9 6 V18" strokeWidth="3" /><path d="M15 6 V18" strokeWidth="3" /></>,
+  plus: <path d="M12 5 V19 M5 12 H19" strokeWidth="2.2" />,
+  verkleinern: <path d="M6 9 L12 15 L18 9" strokeWidth="2.2" />,
+  routinen: <><rect x="5" y="4" width="14" height="17" rx="3" /><rect x="9" y="2" width="6" height="4" rx="2" /><path d="M9 11 H15 M9 14.5 H15 M9 18 H12.5" /></>,
+  uebungen: <><path d="M3 20 Q8 19 10 14 Q12 10 15 9 Q18 8 21 4" /><path d="M15 9 Q12.5 6 13.5 3 Q16 5.5 15 9 Z M10 14 Q6 13 5 10 Q9 10 10 14 Z" /></>,
+  entwicklung: <><path d="M5 20 V16 M11 20 V12 M17 20 V14" strokeWidth="3" /><path d="M4 10 Q9 5 13 7 Q16.5 4.5 20 2.5" /><path d="M17.5 2.5 H20 V5" /></>,
   aenderung: <g transform="scale(.75)" strokeWidth="2.667">{SCROLL}<path d="M14 13 L16 15 L20 10" /><path d="M14 20 H21" /></g>,
 };
 

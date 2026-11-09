@@ -9,7 +9,7 @@ import {
 import { weekRangeOfKey } from '../shared/dates';
 import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
-import { ConfirmLink, PageHead, Row, RowCard, RowList, Sheet } from '../tracking/ui/kit';
+import { ConfirmLink, PageHead, Row, RowCard, RowList, Segments, Sheet } from '../tracking/ui/kit';
 import { placements, RecipesSheet, RecipeView, type RecipeCtx } from './RecipesScreen';
 
 export type Week = { plan: MealPlan; state: MealState };
@@ -358,10 +358,7 @@ export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; no
           {weeks.map((w) => <button key={w.plan.week} type="button" className="link" aria-pressed={w === week} onClick={() => pick(w)}>{w.plan.week === current ? 'Diese Woche' : 'Nächste Woche'}</button>)}
         </div>
       )}
-      <div className="tk-seg" role="group" aria-label="Ansicht">
-        <button type="button" aria-pressed={tab === 'tage'} onClick={() => setTab('tage')}>Tage</button>
-        <button type="button" aria-pressed={tab === 'einkauf'} onClick={() => setTab('einkauf')}>Einkauf{openCount > 0 ? ` · ${openCount} offen` : ''}</button>
-      </div>
+      <Segments label="Ansicht" value={tab} onChange={setTab} options={[{ value: 'tage', label: 'Tage' }, { value: 'einkauf', label: `Einkauf${openCount > 0 ? ` · ${openCount} offen` : ''}` }]} />
       {tab === 'tage' ? (
         <>
           <div className="pm-days" role="tablist" aria-label="Tag">

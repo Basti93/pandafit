@@ -411,7 +411,8 @@ async function main() {
   /** A step that may fail without stopping the rest: the screen is then listed as not reached. */
   const step = async (name: string, f: () => Promise<void>) => { try { await f(); } catch (e) { missed.push(name); console.log(`MISSED ${name}: ${(e as Error).message.split('\n')[0]}`); } };
   const nav = (label: string) => page.getByRole('navigation').getByRole('button', { name: label, exact: true }).click().then(() => page.waitForTimeout(400));
-  const seg = (label: string) => page.getByRole('group', { name: 'Kraft' }).getByRole('button', { name: label, exact: true }).click().then(() => page.waitForTimeout(400));
+  // Kraft: Routinen and Übungen are tiles on the start page ("Deine Routinen", "Deine Übungen").
+  const seg = async (label: string) => { const back = page.locator('.tk-pagehead .tk-pill'); if (await back.count()) await back.click(); await page.getByRole('button', { name: new RegExp(`Deine ${label}`) }).click(); await page.waitForTimeout(400); };
   /** A clean start on a tab: reload (a dialog may still be open from the step before), then go there. */
   const fresh = async (tab: string) => { await page.reload(); await page.getByRole('navigation').getByRole('button', { name: tab, exact: true }).waitFor(); await page.waitForTimeout(1200); await nav(tab); };
   const closeDialog = () => page.getByRole('button', { name: 'Schließen' }).first().click({ timeout: 1500 }).catch(() => {});
@@ -535,9 +536,9 @@ async function main() {
   await fresh('Kraft');
   await shot('kraft-training-start');
   await step('kraft-studio', async () => { await page.getByRole('button', { name: /^Studio/ }).click({ timeout: 1000 }); await shot('kraft-training-start-studio'); await closeDialog(); });
-  await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Routine oder leeres Training' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
+  await step('kraft-anderes', async () => { await page.getByRole('button', { name: 'Anderes Training' }).click({ timeout: 1000 }); await shot('kraft-training-start-anderes'); await closeDialog(); });
   await step('kraft-plan', async () => {
-    await page.getByRole('button', { name: 'Ansehen und anpassen' }).click({ timeout: 1000 });
+    await page.getByRole('button', { name: 'Ansehen', exact: true }).click({ timeout: 1000 });
     const sheet = page.getByRole('dialog', { name: 'Nächstes Training' });
     await sheet.getByLabel('Wiederholungen Satz 1').first().waitFor();
     await page.waitForTimeout(300);
@@ -545,9 +546,9 @@ async function main() {
     const reps = sheet.getByLabel('Wiederholungen Satz 1').first();
     await reps.fill('8'); await reps.blur();
     await sheet.getByRole('button', { name: 'Fertig' }).click();
-    await page.getByText('Angepasst').waitFor();
+    await page.getByText('Du hast den Plan angepasst.').waitFor();
     await shot('kraft-plan-angepasst');
-    await page.getByRole('button', { name: 'Änderungen verwerfen' }).click();
+    await page.getByRole('button', { name: 'Zurücksetzen' }).click();
   });
   await seg('Routinen');
   await shot('kraft-routinen');
@@ -619,15 +620,15 @@ async function main() {
   await page.waitForTimeout(500);
   await shot('rad');
   await step('rad-aufbau', async () => { await page.getByRole('button', { name: /Ablauf ansehen/ }).click(); await shot('rad-aufbau'); await closeDialog(); });
-  await step('rad-fahrt', async () => { await page.getByRole('button', { name: /Grundlage|Locker|Schwellen/ }).first().click(); await shot('rad-fahrt'); await closeDialog(); });
-  await step('rad-entwicklung', async () => { await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('rad-entwicklung'); await closeDialog(); });
+  await step('rad-fahrt', async () => { await page.getByRole('button', { name: /Letzte Fahrt/ }).first().click(); await shot('rad-fahrt'); await closeDialog(); });
+  await step('rad-entwicklung', async () => { await page.getByRole('button', { name: /Deine Entwicklung/ }).click(); await shot('rad-entwicklung'); await closeDialog(); });
   const enduranceSeg = (label: string) => page.getByRole('group', { name: 'Ausdauer' }).getByRole('button', { name: label, exact: true }).click().then(() => page.waitForTimeout(400));
   await enduranceSeg('Laufen');
   await shot('ausdauer-umschalter');
   await shot('laufen');
   await step('laufen-eintragen', async () => { await page.getByRole('button', { name: 'Lauf eintragen' }).click(); await shot('laufen-lauf-eintragen'); await page.getByRole('button', { name: /^Mehr/ }).click(); await shot('laufen-lauf-eintragen-mehr'); await page.keyboard.press('Escape'); });
-  await step('laufen-entwicklung', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('laufen-entwicklung'); await page.keyboard.press('Escape'); });
-  await step('laufen-einstellungen', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /^Lauftage/ }).click(); await shot('laufen-lauftage-aendern'); await page.keyboard.press('Escape'); });
+  await step('laufen-entwicklung', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: /Deine Entwicklung/ }).click(); await shot('laufen-entwicklung'); await page.keyboard.press('Escape'); });
+  await step('laufen-einstellungen', async () => { await fresh('Ausdauer'); await enduranceSeg('Laufen'); await page.getByRole('button', { name: 'Lauftage ändern' }).click(); await shot('laufen-lauftage-aendern'); await page.keyboard.press('Escape'); });
   await nav('Woche');
   await page.waitForTimeout(500);
   await step('rueckblick', async () => { await page.getByRole('region', { name: 'Rückblick' }).scrollIntoViewIfNeeded(); await shot('woche-rueckblick'); });

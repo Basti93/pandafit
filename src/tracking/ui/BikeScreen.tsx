@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import type { BikeBody, RideBody } from '../../shared/bike';
-import { dayMonthOfKey, shortDate, timeLabel } from '../../shared/dates';
+import type { BikeBlock, BikeBody, RideBody } from '../../shared/bike';
+import { dayMonthOfKey, shortDate, timeLabel, weekdayOfKey } from '../../shared/dates';
 import { HARDNESS_LABEL, nextPlanDate } from '../../shared/week-plan';
-import { shortDateOfKey } from '../../shared/dates';
 import { dateKeyOf } from './run-view';
 import type { TrackingPort } from '../ports';
-import { bikeOf, ftpSentence, minText, phaseText, rideFacts, rideName, rideTitle, rideValue, ridesOf, type BikeRide } from './bike-view';
+import { bikeOf, bikeTrendSentence, blockBand, blockWatts, ftpSentence, phaseText, rideFacts, rideName, rideValue, ridesOf, type BikeRide } from './bike-view';
 import { usePortRecords } from './hooks';
-import { Row, RowList, Sheet } from './kit';
+import { BO_LINES } from './bo';
+import { useSportWeek } from './sport-week';
+import { dayKicker } from './labels';
+import { Band, BoBubble, MainCard, Row, RowCard, RowList, Sheet, StandCard } from './kit';
 
 const W = 300, H = 90;
 
@@ -55,13 +57,10 @@ export function RideSheet({ ride, onClose }: { ride: BikeRide; onClose: () => vo
   );
 }
 
-/** "3 × 8 Min bei 95 %" becomes "… bei 95 % (195 W)": the percent alone says nothing without the FTP. */
-export const withWatts = (label: string, ftpW: number): string => label.replace(/bei (\d+) %/g, (_, p: string) => `bei ${p} % (${Math.round((ftpW * Number(p)) / 100)} W)`);
-
-function PlanSheet({ blocks, name, ftpW, onClose }: { blocks: { label: string }[]; name: string; ftpW: number | null; onClose: () => void }) {
+function PlanSheet({ blocks, name, ftpW, onClose }: { blocks: BikeBlock[]; name: string; ftpW: number | null; onClose: () => void }) {
   return (
     <Sheet title={name} size="small" onClose={onClose}>
-      <RowList label="Ablauf">{blocks.map((b, i) => <Row key={i} title={ftpW ? withWatts(b.label, ftpW) : b.label} />)}</RowList>
+      <RowList label="Ablauf">{blocks.map((b, i) => <Row key={i} title={b.label} value={blockWatts(b, ftpW) ?? undefined} />)}</RowList>
     </Sheet>
   );
 }
@@ -88,47 +87,35 @@ function DevelopmentSheet({ bike, onClose }: { bike: BikeBody; onClose: () => vo
   );
 }
 
-/** The bike on the phone: read only. What is planned next, the last ride, the development. */
+/** The bike on the phone: read only. The week stand, what is planned next, the development, the last ride. */
 export function BikeScreen({ port, now }: { port: TrackingPort; now?: () => number }) {
   const bike = bikeOf(usePortRecords(port, 'bike').records);
   const rides = ridesOf(usePortRecords(port, 'ride').records);
   const [sheet, setSheet] = useState<'plan' | 'development' | null>(null);
   const [ride, setRide] = useState<BikeRide | null>(null);
   const weekplans = usePortRecords(port, 'weekplan').records;
+  const nowMs = now ? now() : Date.now();
+  const week = useSportWeek(port, nowMs, 'rad');
   const next = bike?.next ?? null;
-  // The session always names its day: "Heute" or the date of the next bike day in the week plan.
-  const todayKey = now ? dateKeyOf(now()) : null;
-  const bikeDate = todayKey && weekplans ? nextPlanDate(weekplans, todayKey, 'bike') : null;
-  const day = bikeDate === null ? null : bikeDate === todayKey ? 'Heute' : shortDateOfKey(bikeDate);
+  // The main card names its day: "Heute" or the weekday and date of the next bike day in the week plan.
+  const todayKey = dateKeyOf(nowMs);
+  const bikeDate = weekplans ? nextPlanDate(weekplans, todayKey, 'bike') : null;
+  const day = bikeDate === null ? null : dayKicker(bikeDate, todayKey);
   const last = rides[0];
+  const hasBlocks = !!next && next.blocks.length > 0;
   return (
-    <div className="tk-screen tk-bike">
-      {next ? (
-        <section className="card" aria-label="Nächste Fahrt">
-          {(() => {
-            const text = (
-              <span className="tk-cardtext">
-                <span className="muted">{day ? `${day} · ` : ''}Fahren am Mac</span>
-                <span className="tk-today-line"><b>{next.name}</b> · {minText(next.minutes)} · {HARDNESS_LABEL[next.hardness]}</span>
-                {next.reason && <span className="muted tk-clamp">{next.reason}</span>}
-              </span>
-            );
-            // The card opens the sequence of the session (the "Ablauf") when there is one.
-            return next.blocks.length > 0
-              ? <button type="button" className="tk-rowbtn tk-cardbtn" aria-label={`${next.name}, Ablauf ansehen`} onClick={() => setSheet('plan')}>{text}<span className="tk-chevron" aria-hidden="true">›</span></button>
-              : text;
-          })()}
-        </section>
-      ) : <p className="muted">Noch keine Fahrt geplant.</p>}
-      <RowList>
-        {bike && <Row title="Entwicklung" onClick={() => setSheet('development')} />}
-      </RowList>
-      {last && (
-        <section aria-label="Letzte Fahrt">
-          <h3 className="tk-section">Letzte Fahrt</h3>
-          <RowList><Row title={rideTitle(last.body)} value={rideValue(last.body)} onClick={() => setRide(last)} /></RowList>
-        </section>
+    <div className="tk-screen">
+      {week.loaded && <StandCard kicker="Rad · diese Woche" text={week.text} marks={week.marks} marksLabel={week.label} />}
+      {next && (
+        <MainCard kicker={day ?? 'Nächste Fahrt'} title={next.name} label="Nächste Fahrt"
+          text={`${Math.round(next.minutes)} Minuten, ${HARDNESS_LABEL[next.hardness]}. Du fährst sie in der Mac-App.`}
+          middle={hasBlocks ? <Band label={`Ablauf: ${next.blocks.map((b) => b.label).join(', ')}`} parts={blockBand(next.blocks)} /> : undefined}
+          primary={hasBlocks ? { label: 'Ablauf ansehen', onClick: () => setSheet('plan') } : undefined} />
       )}
+      {/* The reason is written for today: on another day Bo says the calm general line. */}
+      {next && <BoBubble portrait="mini">{day === 'Heute' && next.reason ? next.reason : BO_LINES.weekCalm}</BoBubble>}
+      {bike && <RowCard icon="entwicklung" kicker="Deine Entwicklung" title={bikeTrendSentence(bike) ?? 'Entwicklung ansehen'} onClick={() => setSheet('development')} />}
+      {last && <RowCard icon="ausdauer" kicker={`Letzte Fahrt · ${weekdayOfKey(dateKeyOf(last.body.startedAtMs))}`} title={`${rideName(last.body)}, ${Math.round(last.body.durationS / 60)} Minuten`} onClick={() => setRide(last)} />}
       {sheet === 'plan' && next && <PlanSheet name={next.name} blocks={next.blocks} ftpW={bike?.ftpW ?? null} onClose={() => setSheet(null)} />}
       {sheet === 'development' && bike && <DevelopmentSheet bike={bike} onClose={() => setSheet(null)} />}
       {ride && <RideSheet ride={ride} onClose={() => setRide(null)} />}

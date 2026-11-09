@@ -1,6 +1,5 @@
 import { bodyOf } from '../../shared/record-bodies';
 import { useMemo, useState } from 'react';
-import { gymMinutes } from '../../shared/duration';
 import { dayMonthLongOfKey, localDayKey, timeLabel, weekdayOfKey } from '../../shared/dates';
 import { addDays, planFor } from '../../shared/week-plan';
 import { bikeOf } from '../../tracking/ui';
@@ -9,13 +8,13 @@ import { DaySheet } from '../../tracking/ui/DaySheet';
 import { useOpenProposals } from '../../tracking/ui/proposals';
 import { useWeekDays } from '../../tracking/ui/week-days';
 import { SPORT_ICON } from '../../tracking/ui/week-path';
-import { planDayLabel } from '../../tracking/ui/plan-text';
+import { planDayLabel, planGymLine } from '../../tracking/ui/plan-text';
 import { MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
 import { complaintsOpenIn, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
 import { mergedActivities } from '../../tracking/ui/done-days';
 import { MobilityOffer } from '../../tracking/ui/MobilityOffer';
-import { usePortRecords } from '../../tracking/ui/hooks';
+import { useCatalog, useExcluded, usePortRecords } from '../../tracking/ui/hooks';
 import { useApp } from '../AppContext';
 import { planKeyOf, readDraft } from '../../tracking/plan-draft';
 import { mobilityToShow, planIsStale, readPlan } from '../logic';
@@ -44,6 +43,8 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   const plan = (plans ?? []).find((r) => r.id === 'current');
   const p = readPlan(plan);
   const now = env.now();
+  const catalog = useCatalog(port);
+  const excluded = useExcluded(port);
   const dayKey = localDayKey(now);
   const week = useWeekDays(port, now);
   const session = useMemo(() => mobilityToShow(plan, mobility ?? [], now), [plan, mobility, now]);
@@ -70,11 +71,12 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   // A draft of this plan on this device (see plan-draft): the strength part says so.
   const adjusted = !!p?.workout && readDraft(env.storage, account, planKeyOf({ atMs: p.atMs, workout: p.workout })) !== null;
   const exercises = p?.workout?.exercises.length ?? 0;
+  const gymLineText = p?.workout ? planGymLine(p.workout, catalog, excluded) : null;
   const gym: GymPart = {
     name: p?.workout?.name ?? null,
-    line: p?.workout && exercises > 0 ? `Krafttraining, etwa ${gymMinutes(p.workout)} Minuten, ${exercises} ${exercises === 1 ? 'Übung' : 'Übungen'}` : null,
+    line: gymLineText,
     start: () => goTraining(),
-    view: exercises > 0 ? () => goTraining('plan') : undefined,
+    view: gymLineText !== null ? () => goTraining('plan') : undefined,
     notes: p && (
       <>
         {adjusted && <p className="muted">Angepasst</p>}

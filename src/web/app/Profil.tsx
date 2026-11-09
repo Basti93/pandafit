@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PageHead, Row, RowList } from '../../tracking/ui/kit';
+import { PageHead, Row, RowList, Segments } from '../../tracking/ui/kit';
 import { CoachPrefs } from '../../tracking/ui/CoachPrefs';
 import { timeLabel } from '../../shared/dates';
 import { bikeOf, hasBike as bikeVisible, ridesOf, RunSettingsCard } from '../../tracking/ui';
@@ -50,11 +50,7 @@ export function Profil({ now, status, onLogout, push, link, storage }: { link: C
         {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
       </ProfileGroup>
       <ProfileGroup title="Darstellung">
-        <div className="tk-seg" role="group" aria-label="Darstellung">
-          {([['light', 'Hell'], ['dark', 'Dunkel'], ['system', 'System']] as const).map(([t, label]) => (
-            <button key={t} type="button" aria-pressed={theme === t} onClick={() => pickTheme(t)}>{label}</button>
-          ))}
-        </div>
+        <Segments label="Darstellung" value={theme} onChange={pickTheme} options={[{ value: 'light', label: 'Hell' }, { value: 'dark', label: 'Dunkel' }, { value: 'system', label: 'System' }]} />
         <p className="muted">Mit „System“ folgt Pandafit der Einstellung deines Geräts. Die Wahl gilt nur auf diesem Gerät.</p>
       </ProfileGroup>
       {confirming ? (
