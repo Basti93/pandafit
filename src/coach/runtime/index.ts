@@ -1,14 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import type { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createLogger } from '../../shared/node/log';
 import type { Profile } from '../../shared/profiles';
-import type { CoachClientMessage, CoachServerMessage, CoachStateMessage } from '../protocol';
+import type { CoachStateMessage } from '../protocol';
 import { suggestProfile } from '../../shared/garmin-profile';
 import { Coach } from '../coach';
-import { readRide } from '../../ride-format/read';
-import { cleanSamples } from '../metrics';
 import { GarminLink } from '../garmin';
 import { GarminDb } from '../garmin-db';
 import { readinessFrom, restingHrRaised, type GarminCoachData } from '../readiness';
@@ -17,8 +14,6 @@ import { HevyLinks } from '../hevy';
 import { canUpload } from '../garmin-upload';
 import { activityName, REPO_DESCRIPTION } from '../../shared/garmin-upload';
 import { GarminUploader } from '../garmin-uploader';
-import type { Together } from '../together';
-import type { CoachState } from '../state';
 import { mergeCatalog } from '../../shared/catalog';
 import { EXERCISES } from '../../shared/exercises';
 import { FEDB_EXERCISES } from '../../shared/fedb';
@@ -28,129 +23,41 @@ import type { StrengthHealth } from '../strength';
 import { HevyRoutines } from '../gym/hevy-routines';
 import { gymPublic } from '../gym/public';
 import { RecordStore } from '../tracking/store';
-import { goalOfProfile, personalHint } from '../tracking/personal';
+import { goalOfProfile } from '../tracking/personal';
 import { personalKeyOf } from '../../shared/personal';
-import { handleRecords } from '../tracking/records-api';
-import { errorKind } from '../error-kind';
 import { MobilityCoach, muscleOf } from '../mobility/mobility';
 import { GarminWorkouts } from '../run/garmin-workouts';
 import { RunCoach } from '../run/run-coach';
-import { dateKey, dayRatings, type DayInput, type DayRating } from '../day-load';
+import { dateKey, dayRatings, type DayRating } from '../day-load';
 import { allTraining } from '../all-training';
-import { activitiesHint, activityData, allActivities, ActivitySeen, doneByDate } from '../activity-feed';
+import { activitiesHint, allActivities, ActivitySeen, doneByDate } from '../activity-feed';
 import { manualRuns } from '../run/runs';
-import { CoachTasks, type CoachId, type GivenTask, type TaskFrom } from '../coach-tasks';
+import { CoachTasks, type GivenTask, type TaskFrom } from '../coach-tasks';
 import { statsContent } from '../stats/stats-content';
-import { exportStats } from '../tracking/stats-export';
-import { exportBike, radForChat } from '../tracking/bike-export';
-import { daysOf, weeksOf } from '../health/aggregate';
-import { findingsOf } from '../health/findings';
-import { CoachTexts, HealthCoachText } from '../health/coach-text';
-import { exportHealth } from '../health/health-export';
-import { DayCoachText, DayTexts, type DayInput as DayTextInput } from '../day-text';
-import { doneToday, exportDayText } from '../day-text-export';
-import { activityItems, exportActivities, kindOf } from '../activities-export';
-import { mirrorExercises } from '../tracking/mirror-exercises';
+import { radForChat } from '../tracking/bike-export';
 import { ChatCoach } from '../chat/chat-coach';
 import { planHint, type TodayContext } from '../chat/plan-hint';
-import { frameOfProfile, gymLegsKeyOf, gymPlanDateOf, gymPlanDayNoLegs } from '../tracking/frame';
+import { frameOfProfile, gymPlanDateOf, gymPlanDayNoLegs } from '../tracking/frame';
 import { longTermHint } from '../chat/long-term';
-import { PlanSeen, adviceKey, weekPlanKey } from '../chat/plan-seen';
-import { duePrompts, SentPrompts } from '../chat/prompts';
-import { addDays, mondayOf, planFor, planOfWeek, type Sport } from '../../shared/week-plan';
+import { weekPlanKey } from '../chat/plan-seen';
+import { addDays, planFor, type Sport } from '../../shared/week-plan';
 import { runView } from '../../tracking/ui/run-view';
 import { newestNotes, type ChangeNote } from '../../shared/change-notes';
-import { readStats, STATS_ID, type NextStep, type PublishedAdvice, type StatsBody } from '../../shared/stats';
-import type { HealthBody } from '../../shared/health';
+import { type NextStep, type PublishedAdvice, type StatsBody } from '../../shared/stats';
 import { todayAdvice } from '../../shared/today';
-import type { RecordLinks } from '../tracking/link';
 import { AccountSync } from '../tracking/mac-sync';
-import { exportTogether } from '../tracking/together-export';
 import { mergedHealth, mergedStrength } from '../tracking/strength-source';
-import { MealCoach, usualTrainingDays, type MealsView } from '../meals/meal-coach';
-import type { SecretCodec } from '../secrets/secret-box';
-import { plainTokens, type GarminTokens } from '../secrets/garmin-tokens';
-import type { MailConfig } from '../mail-client';
-import { WeeklyMailer, type WeeklyMailBase } from '../weekly-mail';
-import { contactOfProfile } from '../tracking/contact';
-import { statsView, weekMinutes, weekSessions } from '../../tracking/stats';
-import { chatThread } from '../../shared/chat';
-import { openProposals } from '../../tracking/ui/chat-open';
-
-export type RuntimeOptions = {
-  /** Holds `rides/`, `coach/`, `garmin/`, `hevy/` and `accounts/`. */
-  root: string;
-  profiles: () => Profile[];
-  /** False while a ride is open: no Claude, Hevy or Garmin run then. */
-  noOpenRide: () => boolean;
-  /** False pauses the runs a scan starts (planning, debrief, gym, meals, Hevy, Garmin). A message still gets its answer. Default: always. */
-  scheduled?: () => boolean;
-  /** True while a heavy run (Claude) is going: the Hevy and Garmin syncs wait. Default: never. */
-  heavyBusy?: () => boolean;
-  ask: (input: { prompt: string; systemPrompt: string; schema: object }) => Promise<unknown>;
-  python: string;
-  /** Folder with `bridge.py`, `garmin_sync.py`, `garmin_upload.py` and `garmin_workout.py`. */
-  garminScripts: string;
-  links: RecordLinks;
-  /**
-   * 'own': a meal plan in `coach/meals`, ticked here. A getter: a shared meal plan, ticked by its owner, asked on every use;
-   * while it gives null, meal messages are ignored and the view has `meals: null`. null: no meal plan.
-   */
-  meals: 'own' | (() => MealCoach | null) | null;
-  together: () => Together;
-  /**
-   * False for a profile coached by the server (moved): here only its records sync and, while the meal plan is local, its
-   * meals. No planning, no debrief, no Hevy, Garmin or gym runs and no answer to its coach messages. Default: always.
-   */
-  coachHere?: (profileId: string) => boolean;
-  /** False once the meal plan is the server's: the own meal plan is not ticked here any more. Default: always. */
-  mealsHere?: () => boolean;
-  nowMs?: () => number;
-  /** How long a finished ride waits for feedback before planning anyway. */
-  waitMs?: number;
-  /** For tests: Garmin runs and Hevy requests. */
-  spawnFn?: typeof spawn;
-  fetchFn?: typeof fetch;
-  /** How the Hevy key is stored per profile. Default: plain, as on the Mac. */
-  hevyCodec?: (profileId: string) => SecretCodec;
-  /** Where the Garmin login lives. Default: plain in `<root>/garmin/tokens/<id>`, as on the Mac. */
-  garminTokens?: GarminTokens;
-  /** The mail service for the weekly overview. null or missing: no mail. */
-  mail?: MailConfig | null;
-};
-
-export type CoachRuntime = {
-  /** `atMs`: when a change applied late (queued while offline) was made. Without it the change is made now. */
-  handle(m: CoachClientMessage, reply: (m: CoachServerMessage) => void, atMs?: number): void;
-  view(profileId: string): CoachStateMessage | null;
-  scan(): void;
-  /** The files of a ride were replaced: its summary is made again from the new files. */
-  rideReplaced(profileId: string, rideId: string): void;
-  /** profileId: that profile's records changed. null: anything else changed. A view is worth sending again either way. */
-  onChange(fn: (profileId: string | null) => void): () => void;
-  /** Tells the listeners that the profile's records changed, e.g. when a shared meal plan wrote them outside this runtime. */
-  notify(profileId: string): void;
-  coachState(profileId: string): CoachState | null;
-  /** The meal plan as this runtime shows it to a profile, also to one coached by the server. */
-  mealsView(profileId: string): MealsView | null;
-  /** The together page as this runtime computes it. */
-  together(): Together;
-  profileIds(): string[];
-  /** Weekdays (Monday 0) the profile usually trains on, from rides and workouts. For a meal plan shared by several runtimes. */
-  trainingDays(profileId: string): number[];
-  records: RecordStore;
-  accountSync: AccountSync;
-};
+import { MealCoach, usualTrainingDays } from '../meals/meal-coach';
+import { plainTokens } from '../secrets/garmin-tokens';
+import { createHandle } from './handlers';
+import { createScan } from './scan';
+import { STATS_EVERY_MS, type RuntimeCtx } from './ctx';
+import type { RuntimeOptions, CoachRuntime } from './types';
+export type { RuntimeOptions, CoachRuntime } from './types';
 
 const log = createLogger('runtime');
-const RETRY_MS = 30 * 60_000;
 const GARMIN_CACHE_MS = 5 * 60_000;
 const GARMIN_DAYS = 60;
-/** A mobility session done without its own length counts this many minutes. */
-const STATS_EVERY_MS = 5 * 60_000;
-/** The health record reads 52 weeks of Garmin days. */
-const HEALTH_DAYS_BACK = 370;
-const READ_ONLY = new Set<string>(['subscribe', 'records-list', 'ride-detail', 'gym-preview']);
 
 /** One coach for the profiles of one data root: the Mac's own, or one account's on the server. */
 export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
@@ -307,25 +214,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     try { changes = content ? newestNotes([...coach.changeNotes(id), ...gym.changeNotes(id), ...run.changeNotes(id)]) : []; } catch { /* the rest of the stats still go out */ }
     return content ? { ...content, ...(advice ? { advice } : {}), ...(next.length > 0 ? { next } : {}), ...(changes.length > 0 ? { changes } : {}) } : content;
   };
-  // A newly taken week plan makes the bike and gym coach plan again (the run coach sees it in its own key).
-  const planSeen = new PlanSeen(path.join(coachDir, 'chat', 'plan-seen.json'));
-  // A change of the person's rules or goal makes the coaches plan again, like a new week plan. No records: no key, no replan.
-  const personalSeen = new PlanSeen(path.join(coachDir, 'chat', 'personal-seen.json'));
-  const taskSeen = new PlanSeen(path.join(coachDir, 'chat', 'task-seen.json'));
   const personalKey = (id: string): string => personalKeyOf(records.all(id, 'rule'), records.all(id, 'goal'), records.all(id, 'frame'), dateKey(nowMs()), records.all(id, 'change'));
-  // Today's advice changing (a new day, tired legs, a raised pulse) makes the coaches plan again, at most about once a day. The first sighting only counts.
-  const adviceSeen = new PlanSeen(path.join(coachDir, 'chat', 'advice-seen.json'));
-  // The week conversation and the evening suggestion, only when the rider switched them on.
-  const sentPrompts = new SentPrompts(path.join(coachDir, 'chat', 'prompts-sent.json'));
-  /** The week conversation is tried at most this often while it fails. */
-  const WEEK_RETRY_MS = 30 * 60_000;
-  const weekTried = new Map<string, number>();
-  const detailOf = (id: string, sport: string): string | null => {
-    if (sport === 'gym') return gym.state(id).next?.workout.name ?? null;
-    if (sport === 'bike') return coach.state(id).next?.session.name ?? null;
-    if (sport === 'run') { const r = runView(records.all(id, 'run'), nowMs() + 86_400_000).week?.runs.find((x) => x.date === dateKey(nowMs() + 86_400_000)); return r ? `${r.minutes} Minuten` : null; }
-    return null;
-  };
   // The coach chat: answers the rider's messages of the profiles coached here, never with a ride open.
   const chat = new ChatCoach({
     store: records, ask, nowMs, newId: () => randomUUID(), catalog: catalogOf,
@@ -373,61 +262,8 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
   const activityHintOf = (id: string): string => { try { return activitiesHint(activitiesOf(id), nowMs()); } catch { return ''; } };
   // New activities, planned or not, make every coach plan again (the run coach sees it in its own key).
   const activitySeen = new ActivitySeen(path.join(coachDir, 'chat', 'activities-seen.json'));
-  /** New activities waiting for the chat's look at this week's plan. Only in memory: a restart skips one look. */
-  const weekReviews = new Map<string, object[]>();
   /** When each profile's stats were last made: at most every five minutes, or at once on a new date. */
   const statsMade = new Map<string, { atMs: number; date: string }>();
-  /** The health record's content per profile, made at most every five minutes (or on a new date); the cached copy is returned in between. */
-  const healthMade = new Map<string, { atMs: number; date: string; body: Omit<HealthBody, 'atMs' | 'coachText'> | null }>();
-  const healthContent = (id: string): Omit<HealthBody, 'atMs' | 'coachText'> | null => {
-    const now = nowMs();
-    const last = healthMade.get(id);
-    if (last && now - last.atMs < STATS_EVERY_MS && now >= last.atMs && last.date === dateKey(now)) return last.body;
-    let body: Omit<HealthBody, 'atMs' | 'coachText'> | null = null;
-    try {
-      const data = garminData(id);
-      const days = data ? new GarminDb(path.join(garminDir, 'data', id, 'garmin.db')).days(new Date(now - HEALTH_DAYS_BACK * 86_400_000).toISOString().slice(0, 10)) : [];
-      if (data && days.length) {
-        const weeks = weeksOf(days, gym.history(id), now);
-        body = { type: 'health', today: readinessFrom(data, coach.state(id).summaries, now), findings: findingsOf(days, weeks, { birthDate: data.body?.birthDate ?? null }, now), weeks, days: daysOf(days, now) };
-      }
-    } catch { body = null; }
-    healthMade.set(id, { atMs: now, date: dateKey(now), body });
-    return body;
-  };
-  const healthTexts = new CoachTexts(path.join(coachDir, 'health', 'texts.json'));
-  const healthText = new HealthCoachText({ texts: healthTexts, nowMs, ask });
-  const exportHealthNow = (profileIds: string[]): string[] =>
-    exportHealth({ store: records, profileIds, coachHere, noOpenRide, nowMs: nowMs(), content: healthContent, coachText: (id) => healthTexts.get(id) });
-  const dayTexts = new DayTexts(path.join(coachDir, 'day', 'texts.json'));
-  const dayText = new DayCoachText({ texts: dayTexts, nowMs, ask });
-  const exportDayTextNow = (profileIds: string[]): string[] =>
-    exportDayText({ store: records, profileIds, coachHere, noOpenRide, nowMs: nowMs(), entry: (id) => dayTexts.get(id) });
-  /** What the day sentence is made from: today's finished trainings, the last four weeks, the week plan, motives, the health note and open complaints. */
-  /** Reading every activity on each scan is costly: the day sentence looks at most once a minute per profile. */
-  const DAY_LOOK_EVERY_MS = 60_000;
-  const dayLooked = new Map<string, number>();
-  const dayInputOf = (id: string, now: number): DayTextInput => {
-    const date = dateKey(now);
-    const sessions = activitiesOf(id);
-    const complaints = (coach.state(id).complaints ?? []).filter((c) => c.status !== 'over');
-    const findings = healthContent(id)?.findings ?? [];
-    const plan = records.all(id, 'weekplan');
-    const week = planOfWeek(plan, mondayOf(date))?.days.map((d) => ({ datum: d.date, sport: d.sport, haerte: d.hardness })) ?? null;
-    const heute = planFor(plan, date);
-    const since = now - 28 * 86_400_000;
-    const data = {
-      aktivitaeten: sessions.filter((a) => a.startMs >= since && a.startMs <= now).sort((a, b) => a.startMs - b.startMs)
-        .map((a) => ({ tag: dateKey(a.startMs), art: kindOf(a), titel: a.title, minuten: Math.round(a.minutes) })),
-      woche: week, planHeute: heute ? { sport: heute.sport, haerte: heute.hardness } : null,
-      beweggruende: (coach.state(id).motives ?? []).map((m) => m.text),
-      gesundheit: healthTexts.get(id)?.text ?? null,
-      beschwerden: complaints.map((c) => c.text),
-    };
-    return { date, done: doneToday(sessions, now), data, caution: complaints.length > 0 || findings.some((f) => f.tone === 'arzt') };
-  };
-  /** Without any data the web shows the saying; no AI call is spent on it. */
-  const dayHasData = (i: DayTextInput): boolean => i.done.length > 0 || Object.values(i.data).some((v) => (Array.isArray(v) ? v.length > 0 : v !== null));
   const statsDue = (id: string): Omit<StatsBody, 'atMs'> | null => {
     const now = nowMs();
     const last = statsMade.get(id);
@@ -551,243 +387,15 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     if (ride && canUpload(s, rideId) && uploader.upload(profileId, rideId, activityName(ride), ride.startedAtMs, repoLink ? REPO_DESCRIPTION : undefined)) coach.markUpload(profileId, rideId, { status: 'uploading' });
   };
 
-  const handleGym = (m: CoachClientMessage, send: (msg: CoachServerMessage) => void): void => {
-    if (m.type === 'gym-forget') { gym.forget(m.profileId); publish(); return; }
-    if (m.type === 'gym-start') { gym.start(m.profileId); publish(); return; }
-    if (!('profileId' in m) || !gym.enabled(m.profileId)) {
-      if (m.type === 'gym-preview') send({ type: 'gym-preview', preview: null });
-      if (m.type === 'gym-confirm') send({ type: 'gym-confirm-result', result: 'failed' });
-      return;
-    }
-    // Hevy is only read or written with no ride open.
-    if (m.type === 'gym-preview') {
-      if (!noOpenRide()) { send({ type: 'gym-preview', preview: null }); return; }
-      void gym.preview(m.profileId).catch(() => null).then((preview) => send({ type: 'gym-preview', preview }));
-      return;
-    }
-    if (m.type === 'gym-confirm') {
-      if (!noOpenRide()) { send({ type: 'gym-confirm-result', result: 'failed' }); return; }
-      void gym.confirm(m.profileId, m.name).catch((): 'failed' => 'failed').then((result) => { send({ type: 'gym-confirm-result', result }); publish(); });
-      return;
-    }
-    if (m.type === 'gym-adjust') gym.adjust(m.profileId, m.how);
-    if (m.type === 'gym-note') gym.note(m.profileId, m.text);
-    if (m.type === 'gym-answer') gym.answer(m.profileId, m.question, m.text);
-    if (m.type === 'gym-skip-question') gym.skipQuestion(m.profileId, m.question);
-    publish();
-  };
-
-  /** Settings, ticks and who eats are local writes and fine with a ride open. Planning and swapping wait for no ride (the coach checks). */
-  const handleMeals = (m: CoachClientMessage, atMs: number | undefined): void => {
-    const meals = mealsNow();
-    if (!meals) return;
-    const sync = () => publish();
-    if (m.type === 'meals-settings') meals.setSettings(m.profileId, m.settings);
-    if (m.type === 'meals-eater') meals.setEater(m.profileId, m.week, m.meal, m.person, m.on === true, atMs);
-    if (m.type === 'meals-item') meals.setItem(m.profileId, m.week, m.item, m.state, atMs);
-    if (m.type === 'meals-replan') { void meals.replan(m.profileId, m.week).catch((e) => log.error('meals replan', e)).finally(sync); }
-    if (m.type === 'meals-swap') { void meals.swap(m.profileId, m.week, m.meal, m.ai === true).catch((e) => log.error('meals swap', e)).finally(sync); }
-    if (m.type === 'meals-chat') { void meals.chat(m.profileId, m.week, m.text).catch((e) => log.error('meals chat', e)).finally(sync); }
-    sync();
-  };
-
-  const handle = (m: CoachClientMessage, reply: (msg: CoachServerMessage) => void, atMs?: number): void => {
-    const send = (msg: CoachServerMessage) => { try { reply(msg); } catch { /* connection gone */ } };
-    try {
-      // The server coach handles a profile update and a queued change itself, before they reach a runtime.
-      if (m.type === 'queued' || m.type === 'profile-update') return;
-      // Records check the profile themselves and always answer the request.
-      if (m.type === 'records-put' || m.type === 'records-list') {
-        if (m.type === 'records-put' && known(m.profileId)) accountSync.touch(m.profileId);
-        // A finished workout plans the gym here only for a profile coached here; the server plans for a moved one.
-        const recordsGym = { start: (id: string) => { if (coachHere(id)) gym.start(id); }, workoutFinished: (id: string) => { if (coachHere(id)) gym.workoutFinished(id); } };
-        const out = handleRecords({ store: records, gym: recordsGym, profiles: () => profiles().map((p) => p.id) }, m);
-        send(out.reply);
-        if (out.changed) {
-          notifyRecords(out.changed);
-          publish();
-        }
-        return;
-      }
-      // Only this runtime's profiles: a message for any other changes nothing here. A request still gets its empty answer.
-      if (typeof m.profileId !== 'string' || !known(m.profileId)) {
-        if (m.type === 'gym-preview') send({ type: 'gym-preview', preview: null });
-        if (m.type === 'gym-confirm') send({ type: 'gym-confirm-result', result: 'failed' });
-        return;
-      }
-      // The password is only passed on to the server once, never stored, logged or sent back.
-      if (m.type === 'account-link') { void accountSync.link(m.profileId, m.url, m.name, m.password).catch((e) => log.error('account link', e)).finally(publish); publish(); return; }
-      if (m.type === 'account-unlink') { accountSync.unlink(m.profileId); publish(); return; }
-      // The server coaches a moved profile; only its meals stay here while the meal plan is local.
-      if (!coachHere(m.profileId) && !m.type.startsWith('meals-')) {
-        if (m.type === 'gym-preview') send({ type: 'gym-preview', preview: null });
-        if (m.type === 'gym-confirm') send({ type: 'gym-confirm-result', result: 'failed' });
-        return;
-      }
-      if (!READ_ONLY.has(m.type)) accountSync.touch(m.profileId);
-      // Login credentials are only passed on, never stored or sent back.
-      // The key is only passed on and stored privately, never sent back.
-      if (m.type === 'hevy-connect') { void hevy.connect(m.profileId, m.key).catch((e) => log.error('hevy connect', e)).finally(publish); publish(); return; }
-      if (m.type === 'hevy-disconnect') { hevy.disconnect(m.profileId); publish(); return; }
-      if (m.type === 'garmin-login') { garmin.login(m.profileId, m.email, m.password); return; }
-      if (m.type === 'garmin-mfa') { garmin.mfa(m.profileId, m.code); return; }
-      // The profile's sync and upload stop first and keep nothing, so no token of the old login comes back.
-      if (m.type === 'garmin-disconnect') { garminSync.stop(m.profileId); uploader.stop(m.profileId); workouts.stop(m.profileId); garmin.disconnect(m.profileId); try { coach.garminDisconnected(m.profileId); } catch { /* unknown profile */ } publish(); return; }
-      if (m.type.startsWith('gym-')) { handleGym(m, send); return; }
-      if (m.type.startsWith('meals-')) { handleMeals(m, atMs); return; }
-      // Local writes only, also with a ride open: no AI, no Hevy, no Garmin.
-      if (m.type === 'mobility-done') { mobility.markDone(m.profileId, m.sessionId); publish(); return; }
-      if (m.type === 'mobility-feel') { mobility.feel(m.profileId, m.text); publish(); return; }
-      coach.scanRides(coached());
-      if (m.type === 'subscribe') { const v = view(m.profileId); if (v) send(v); }
-      if (m.type === 'feedback') { coach.feedback(m.profileId, m.rideId, m.rating); if (noOpenRide()) refresh(m.profileId); }
-      if (m.type === 'skip-feedback') { coach.skipFeedback(m.profileId); if (noOpenRide()) refresh(m.profileId); }
-      if (m.type === 'note') { coach.note(m.profileId, m.text); if (noOpenRide()) refresh(m.profileId); }
-      if (m.type === 'complaint-update') { coach.updateComplaint(m.profileId, m.id, m.status, atMs); if (noOpenRide()) refresh(m.profileId); }
-      if (m.type === 'answer-question') { coach.answerQuestion(m.profileId, m.questionId, m.text); if (noOpenRide()) refresh(m.profileId); }
-      if (m.type === 'skip-question') coach.skipQuestion(m.profileId);
-      if (m.type === 'debrief-seen') coach.debriefSeen(m.profileId);
-      if (m.type === 'garmin-upload-settings') coach.setUploadMode(m.profileId, m.mode === 'off' ? 'off' : 'ask');
-      if (m.type === 'garmin-upload') startUpload(m.profileId, m.rideId, m.repoLink === true);
-      if (m.type === 'debrief-answer') { coach.answerDebrief(m.profileId, m.rideId, m.question, m.text); if (noOpenRide()) refresh(m.profileId); }
-      if (m.type === 'debrief-skip-question') coach.skipDebriefQuestion(m.profileId, m.rideId, m.question);
-      if (m.type === 'remove-motive') { coach.removeMotive(m.profileId, m.atMs); if (noOpenRide()) refresh(m.profileId); }
-      if (m.type === 'set-ftp' && m.ftpW >= 50) { coach.setFtp(m.profileId, m.ftpW); if (noOpenRide()) refresh(m.profileId); }
-      if (m.type === 'adjust') coach.adjustNext(m.profileId, m.how);
-      if (m.type === 'skip-ramp') coach.skipRamp(m.profileId);
-      if (m.type === 'ride-detail') {
-        const detail = coach.rideDetail(m.profileId, m.rideId);
-        if (detail) send({ type: 'ride-detail', detail });
-      }
-      if (m.type === 'word-result') coach.wordResult(m.profileId, m.nl, m.knew);
-      if (m.type === 'pass-select') coach.passSelect(m.profileId, m.passId);
-      if (m.type === 'pass-progress') coach.passProgress(m.profileId, m.passId, m.distanceM);
-      if (m.type === 'pass-summit') coach.passSummit(m.profileId, m.passId);
-      publish();
-    } catch { /* ignore invalid message */ }
-  };
-
-  // The weekly overview by email: Sunday evening, only with an address and the switch on. Never disturbs the coaches.
-  const weeklyMailer = opts.mail ? new WeeklyMailer({ mail: opts.mail, file: path.join(coachDir, 'chat', 'mail-sent.json'), nowMs, ...(opts.fetchFn ? { fetchFn: opts.fetchFn } : {}) }) : null;
-  const weeklyMailOf = (id: string) => (): WeeklyMailBase => {
-    const now = nowMs();
-    const monday = addDays(mondayOf(dateKey(now)), 7);
-    const rec = records.all(id, 'stats').find((x) => x.id === STATS_ID && !x.deleted);
-    const stats = rec ? readStats(rec.body) : null;
-    const week = statsView(stats, [], now).thisWeek;
-    return {
-      profileName: profiles().find((p) => p.id === id)?.name ?? '',
-      monday,
-      lastWeek: { sessions: weekSessions(stats, week), minutes: weekMinutes(week) },
-      nextWeek: planOfWeek(records.all(id, 'weekplan'), monday)?.days ?? null,
-      notes: stats?.changes ?? [],
-      openProposals: openProposals(chatThread(records.all(id, 'chat')), records.all(id, 'weekplan'), records.all(id, 'change'), records.all(id, 'rule'), mondayOf(dateKey(now))).length,
-    };
-  };
-
-  const scan = (): void => {
-    try {
-      const all = profiles();
-      // Coach runs only for the profiles coached here; records sync for all.
-      const list = all.filter((p) => coachHere(p.id));
-      coach.scanRides(list);
-      const free = noOpenRide();
-      // Scan-driven runs only: a message still gets its answer when they pause.
-      const runs = free && scheduled();
-      const now = nowMs();
-      for (const p of list) {
-        const s = coach.state(p.id);
-        if (runs && !coach.isThinking(p.id)) void coach.ensureDebrief(p.id).catch((e) => log.error('coach debrief', e)).finally(publish);
-        if (!runs || !s.dirty || coach.isThinking(p.id)) continue;
-        const waited = now - (s.dirtySinceMs ?? now) >= waitMs;
-        if (s.awaitingFeedback && !waited) continue;
-        if (s.lastError && s.lastAttemptMs && now - s.lastAttemptMs < RETRY_MS) continue;
-        refresh(p.id);
-      }
-      // Separate safeguard: Hevy must never disturb the coach run or a ride, and waits while a heavy run goes.
-      const syncs = runs && !heavyBusy();
-      if (syncs) void hevy.tick(list.map((p) => p.id), noOpenRide).catch((e) => log.error('hevy tick', e)).finally(publish);
-      // Separate safeguard: the gym coach must never disturb the bike coach or a ride, and runs with no ride open only.
-      // Unknown exercise titles are then classified once; the answer is stored and applied by code, never by AI later. Written to this profile, the mirror copies it.
-      if (runs) for (const p of list) { try { void gym.tick(p.id).catch((e) => log.error('gym tick', e)).then(() => exerciseMapper.run(p.id)).then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('gym tick (step 2)', e)).finally(publish); } catch { /* try again on the next run */ } }
-      // Separate safeguard: the run coach must never disturb a ride or the other coaches, and plans with no ride open only.
-      if (runs) for (const p of list) { try { void run.tick(p.id).catch((e) => log.error('run tick', e)).finally(publish); } catch { /* try again on the next run */ } }
-      // Separate safeguard: the meal plan must never disturb a ride or the coach. It plans only with no ride open.
-      // A shared meal plan is ticked by its owner.
-      if (ownCoach && scheduled() && mealsHere()) void ownCoach.tick().catch((e) => log.error('own coach tick', e)).finally(publish);
-      // One exercise catalog for every profile on this store: mirrored on every scan (cheap, idempotent, the first scan covers the start). Touches no workout.
-      if (free) mealsChanged(mirrorExercises(records, all.map((p) => p.id)));
-      // The together page for linked accounts: written only when it changes, never with a ride open. Never throws.
-      if (free) mealsChanged(exportTogether({ store: records, profileIds: list.map((p) => p.id), linked: (id) => opts.links.status(id).state === 'linked', noOpenRide, nowMs: now, together: opts.together }));
-      for (const p of list) { try { if (planSeen.changed(p.id, weekPlanKey(records.all(p.id, 'weekplan')))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
-      for (const p of list) { try { if (personalSeen.changed(p.id, personalKey(p.id))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
-      // A task of the rider or a removal of any task (also from another Mac) makes the bike and gym coach plan again, like a rule change.
-      for (const p of list) { try { if (taskSeen.changed(p.id, `${tasks.version(p.id, 'bike')}|${tasks.version(p.id, 'gym')}`, true)) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
-      for (const p of list) { try { if ((adviceKey(adviceOf(p.id)) !== '' && adviceSeen.changed(p.id, `${adviceKey(adviceOf(p.id))}|g${gymLegsKeyOf(records, p.id, dateKey(nowMs()), gymDoneDates(p.id))}`, true))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
-      // Never with a ride open (a ride becomes an activity only once it is closed), and only while coaches may plan.
-      if (runs) for (const p of list) {
-        try {
-          const fresh = activitySeen.check(p.id, activitiesOf(p.id), now);
-          if (fresh.length === 0) continue;
-          coach.activityAdded(p.id); gym.activityAdded(p.id);
-          weekReviews.set(p.id, [...(weekReviews.get(p.id) ?? []), ...fresh.map(activityData)]);
-        } catch { /* next scan */ }
-      }
-      // The accepted week plan is never changed: the chat proposes the updated week, the rider takes it or keeps the old one.
-      if (runs) for (const [id, acts] of weekReviews) {
-        if (!list.some((p) => p.id === id)) { weekReviews.delete(id); continue; }
-        void chat.reviewWeek(id, acts).then((r) => { if (r === 'done' && weekReviews.get(id) === acts) weekReviews.delete(id); if (r === 'done') mealsChanged([id]); }).catch((e) => log.error('chat week review', e)).finally(publish);
-      }
-      if (free && scheduled()) for (const p of list) {
-        try {
-          const due = duePrompts({ id: p.id, records: { prefs: records.all(p.id, 'coachprefs'), weekplan: records.all(p.id, 'weekplan') }, nowMs: now, sent: sentPrompts, detail: (s) => detailOf(p.id, s) });
-          if (due.evening) { chat.say(p.id, due.evening); mealsChanged([p.id]); }
-          if (due.week && now - (weekTried.get(p.id) ?? 0) >= WEEK_RETRY_MS) {
-            weekTried.set(p.id, now);
-            const monday = mondayOf(dateKey(now));
-            void chat.openWeek(p.id).then((wrote) => { if (wrote) { sentPrompts.mark(p.id, 'week', monday); mealsChanged([p.id]); } }).catch((e) => log.error('chat open week', e)).finally(publish);
-          }
-        } catch { /* next scan */ }
-      }
-      // Chat answers: a message gets its answer even while scheduled runs pause. Never with a ride open.
-      if (free) for (const p of list) { try { void chat.tick(p.id).then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('chat tick', e)).finally(publish); } catch { /* next scan */ } }
-      // Separate safeguard: a mail problem never reaches the coach loop; the mailer catches and logs once.
-      if (weeklyMailer) for (const p of list) { try { void weeklyMailer.tick(p.id, contactOfProfile(records, p.id), weeklyMailOf(p.id)).catch((e) => log.error('weekly mail tick', e)); } catch { /* next scan */ } }
-      // The stats record for every profile coached here, linked or not: written only when it changes, never with a ride open. Never throws.
-      if (free) mealsChanged(exportStats({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: statsDue }));
-      // The health record and the weekly note on it: only on change and once per week, never with a ride open. Never throws.
-      if (free) {
-        mealsChanged(exportHealthNow(list.map((p) => p.id)));
-        for (const p of list) { try { const body = healthContent(p.id); if (body) void healthText.tick(p.id, body).then((wrote) => { if (wrote) mealsChanged(exportHealthNow([p.id])); }).catch((e) => log.error('health text tick', e)); } catch { /* next scan */ } }
-      }
-      // The coach sentence of the day, renewed after each finished training: only on change, at most four AI calls a day, never with a ride open or in quiet hours (`scheduled()`). Never throws.
-      if (free) {
-        mealsChanged(exportDayTextNow(list.map((p) => p.id)));
-        if (scheduled()) for (const p of list) { try { if (!coachHere(p.id)) continue; const last = dayLooked.get(p.id); if (last !== undefined && now - last < DAY_LOOK_EVERY_MS && now >= last) continue; dayLooked.set(p.id, now); const input = dayInputOf(p.id, now); if (dayHasData(input)) void dayText.tick(p.id, input).then((wrote) => { if (wrote) mealsChanged(exportDayTextNow([p.id])); }).catch((e) => log.error('day look', e)); } catch { /* next scan */ } }
-      }
-      // All recent activities from every source for the web, only on change, never with a ride open. Never throws.
-      if (free) mealsChanged(exportActivities({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: (id) => { try { return activityItems(activitiesOf(id), garminData(id)?.activities ?? []); } catch { return null; } } }));
-      // A one-off task is done once its sport has a session after it. Never throws.
-      if (free) for (const p of list) {
-        try {
-          const sessions = activitiesOf(p.id).flatMap((a) => { const k = kindOf(a); const sport: CoachId | null = k === 'kraft' ? 'gym' : k === 'rad' ? 'bike' : k === 'lauf' ? 'run' : null; return sport ? [{ sport, startMs: a.startMs }] : []; });
-          tasks.settle(p.id, sessions, now);
-        } catch { /* next scan */ }
-      }
-      // The bike plan and the counted rides for the web, only on change, never with a ride open. Never throws.
-      if (free) mealsChanged(exportBike({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, state: (id) => { try { return coach.state(id); } catch { return null; } }, samples: (rideId) => cleanSamples(readRide(dir, rideId).samples).samples }));
-      // Separate safeguard: the account sync must never disturb a ride or the coach, and is not awaited here.
-      for (const p of all) { try { void accountSync.tick(p.id).finally(publish); } catch { /* try again on the next run */ } }
-      // Separate safeguard: the fetch must never disturb the coach run.
-      if (scheduled() && !heavyBusy()) for (const p of list) { try { garminSync.tick(p.id); } catch { /* try again on the next run */ } }
-      publish();
-    } catch (e) {
-      console.error('Coach-Lauf fehlgeschlagen', errorKind(e));
-    }
+  const ctx: RuntimeCtx = {
+    opts, profiles, noOpenRide, scheduled, heavyBusy, mealsHere, nowMs, waitMs, ask, dir, coachDir, garminDir,
+    known, coachHere, coached, publish, notifyRecords, mealsChanged, refresh,
+    records, coach, gym, run, mobility, chat, tasks, exerciseMapper, hevy, garmin, garminSync, uploader, workouts, accountSync,
+    ownCoach, mealsNow, activitySeen, view, startUpload, garminData, activitiesOf, adviceOf, gymDoneDates, personalKey, statsDue,
   };
 
   return {
-    handle, view, scan,
+    handle: createHandle(ctx), view, scan: createScan(ctx),
     rideReplaced: (profileId, rideId) => {
       try {
         if (!coachHere(profileId)) return;
