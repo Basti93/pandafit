@@ -4,7 +4,8 @@ import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-libra
 import { afterEach, describe, expect, it } from 'vitest';
 import { openIdb } from '../../../src/web/idbStore';
 import type { LiveSocket } from '../../../src/web/live';
-import { boot } from './helpers';
+import type { TrackedRecord } from '../../../src/shared/records';
+import { boot, NOW } from './helpers';
 
 afterEach(cleanup);
 
@@ -42,6 +43,7 @@ describe('Profil', () => {
     }
     expect(document.body.textContent).not.toContain('Gesundheit');
     expect(screen.getByRole('button', { name: 'Abmelden' }).className).toContain('secondary');
+    // The Hell/Dunkel/System buttons (.tk-seg) are kit buttons styled by their group, so they carry no class of their own.
     expect([...document.querySelectorAll('.tk-screen button:not([class])')].filter((b) => !b.closest('.tk-seg')).map((b) => b.textContent)).toEqual([]);
   });
 
@@ -60,6 +62,14 @@ describe('Profil', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Hell' }));
     expect(screen.getByRole('button', { name: 'Hell' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('with a ride the bike sentence says Rad fährst du am Mac.', async () => {
+    const ride = { kind: 'ride', id: 'r1', updatedMs: NOW - 1000, deleted: false, body: { type: 'ride', startedAtMs: NOW - 1000, sessionName: 'Grundlage', durationS: 3000, hardness: 'easy', avgPowerW: 150, normalizedPowerW: 160, avgHrBpm: 130, maxHrBpm: 150, tss: 40, completedFraction: 1, debrief: 'Ruhig gefahren.', curve: [] } } as TrackedRecord;
+    await boot({ account: 'anna', seed: [ride] });
+    await openProfil();
+    expect(await screen.findByText('Rad fährst du am Mac.')).toBeTruthy();
+    expect(screen.queryByText('Rad geht mit der ersten Fahrt am Mac los.')).toBeNull();
   });
 
   it('Wann sich der Sensai meldet is a row that opens the timing in a sheet', async () => {

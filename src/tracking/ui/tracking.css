@@ -359,7 +359,8 @@
 .tk-pins { max-height: none; overflow: visible; }
 .tk-week li { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); column-gap: .25rem; }
 .tk-pin .tk-week li { grid-template-columns: 5.4rem minmax(0, 1fr); }
-/* Profile groups: a thin line only between groups, none between the rows of one group. */
+/* A nested group inside a sheet needs no indent. */
+.tk-sheet .tk-indent { margin-left: 0; border-left: 0; padding-left: 0; }
 .tk-pagehead { gap: .2rem; }
 .tk-pagehead .tk-title { line-height: 1.25; }
 .tk-pagehead .tk-subtitle { line-height: 1.3; }
