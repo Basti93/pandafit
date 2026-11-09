@@ -1,42 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#25412f"/>
-      <stop offset="1" stop-color="#12201a"/>
-    </linearGradient>
-  </defs>
   <!-- macOS-Raster: 824 von 1024, der Rand bleibt frei. -->
-  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
-  <g transform="translate(0 40)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="312" cy="628" r="132" stroke="#f6eedd" stroke-width="36"/>
-    <circle cx="712" cy="628" r="132" stroke="#f6eedd" stroke-width="36"/>
-    <path d="M312 628 L424 424 L620 424 L470 628 Z" stroke="#e8964a" stroke-width="40"/>
-    <path d="M424 424 L470 628 M620 424 L712 628" stroke="#e8964a" stroke-width="40"/>
-    <path d="M388 376 L462 376" stroke="#f6eedd" stroke-width="40"/>
-    <path d="M620 424 L596 352 L672 340" stroke="#f6eedd" stroke-width="40"/>
-  </g>
-  <circle cx="470" cy="668" r="30" fill="#f6eedd"/>
-  <!-- Selbst gezeichnet: Panda auf dem Sattel, Maus am Lenker. -->
-  <g>
-    <circle cx="350" cy="222" r="42" fill="#17201c"/>
-    <circle cx="500" cy="222" r="42" fill="#17201c"/>
-    <ellipse cx="425" cy="296" rx="112" ry="100" fill="#f7f5ef"/>
-    <ellipse cx="381" cy="290" rx="31" ry="38" fill="#17201c" transform="rotate(18 381 290)"/>
-    <ellipse cx="469" cy="290" rx="31" ry="38" fill="#17201c" transform="rotate(-18 469 290)"/>
-    <circle cx="385" cy="284" r="11" fill="#f7f5ef"/>
-    <circle cx="465" cy="284" r="11" fill="#f7f5ef"/>
-    <ellipse cx="425" cy="334" rx="17" ry="12" fill="#17201c"/>
-    <path d="M405 356 Q425 372 445 356" fill="none" stroke="#17201c" stroke-width="7" stroke-linecap="round"/>
-  </g>
-  <g>
-    <circle cx="622" cy="244" r="44" fill="#a9a7b0"/>
-    <circle cx="622" cy="244" r="26" fill="#eeb6b8"/>
-    <circle cx="730" cy="244" r="44" fill="#a9a7b0"/>
-    <circle cx="730" cy="244" r="26" fill="#eeb6b8"/>
-    <ellipse cx="676" cy="306" rx="72" ry="66" fill="#c9c7cf"/>
-    <circle cx="650" cy="296" r="11" fill="#17201c"/>
-    <circle cx="702" cy="296" r="11" fill="#17201c"/>
-    <circle cx="676" cy="326" r="11" fill="#e98a8f"/>
-    <path d="M652 326 L606 316 M652 336 L606 342 M700 326 L746 316 M700 336 L746 342" stroke="#f6eedd" stroke-width="5" stroke-linecap="round"/>
-  </g>
+  <defs><clipPath id="mac"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath></defs>
+  <g clip-path="url(#mac)"><g transform="translate(100 100) scale(.8047)">
+<!-- bo-logo -->
+<defs><clipPath id="bo-face"><ellipse cx="512" cy="560" rx="330" ry="300"/></clipPath></defs>
+<g id="bo-logo"><rect width="1024" height="1024" fill="#25412f"/><circle cx="300" cy="290" r="110" fill="#17201c"/><circle cx="724" cy="290" r="110" fill="#17201c"/><ellipse cx="512" cy="560" rx="330" ry="300" fill="#f7f1e3"/><path clip-path="url(#bo-face)" d="M172 474 Q512 344 852 474 L852 559 Q512 429 172 559 Z" fill="#efab76"/><ellipse cx="400" cy="600" rx="72" ry="88" transform="rotate(25 400 600)" fill="#17201c"/><ellipse cx="624" cy="600" rx="72" ry="88" transform="rotate(-25 624 600)" fill="#17201c"/><circle cx="408" cy="592" r="24" fill="#f7f1e3"/><circle cx="616" cy="592" r="24" fill="#f7f1e3"/><ellipse cx="512" cy="700" rx="34" ry="24" fill="#17201c"/><path d="M472 742 Q512 770 552 742" stroke="#17201c" stroke-width="16" fill="none" stroke-linecap="round"/><path d="M766 584 C766 584 722 640 722 668 A44 44 0 0 0 810 668 C810 640 766 584 766 584 Z" fill="#6fc3e0"/></g>
+<!-- /bo-logo -->
+  </g></g>
 </svg>

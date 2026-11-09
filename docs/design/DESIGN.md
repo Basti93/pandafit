@@ -94,3 +94,4 @@ Die Tokens stehen in `src/design/tokens.css`. Dunkel ist der Normalfall. Hell (�
 
 - App-Logo: **Bos Gesicht mit Fitness-Stirnband und Schweißtropfen**, flach, auf dunkelgrünem Grund, wenige Farben; ein Bild für alle Größen bis 16 px. Verworfen sind Ensō, Bambusnest, Panda und Maus, Monogramm sowie die Teetrinker-Entwürfe A, B und C (zu kompliziert).
 - Gewählt: Entwurf D mit Schweißtropfen (`moodboard/logo.html`).
+- Dateien: `resources/icon.svg` ist das Mac-Icon (macOS-Raster, Rand frei; daraus `icon.png` und `icon.icns` mit `npx electron scripts/icon/render.cjs`). `src/web/public/icons/icon.svg` ist randlos und dient als Handy-Icon (maskable), SVG-Favicon und Quelle der PNGs (`scripts/web-icons.sh`). Beide teilen den Block `bo-logo`. `npm run app` übernimmt das Dock-Icon erst bei der nächsten Installation.
