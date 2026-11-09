@@ -20,7 +20,7 @@ describe('Dojo kit', () => {
   it('lets Bo speak in a bubble, with or without his portrait', () => {
     const { rerender } = render(<BoBubble actions={<button type="button">{BO.ask}</button>}>Heute kommt das dritte Training.</BoBubble>);
     expect(document.querySelector('.tk-bubble')?.textContent).toContain('Heute kommt das dritte Training.');
-    expect(screen.getByRole('button', { name: 'Frag Bo, deinen Sensei' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Frag Bo, deinen Sensai' })).toBeTruthy();
     expect(document.querySelector('.tk-panda')).not.toBeNull();
     rerender(<BoBubble portrait="none">Nur die Blase.</BoBubble>);
     expect(document.querySelector('.tk-panda')).toBeNull();
@@ -60,7 +60,7 @@ describe('Dojo kit', () => {
     expect(document.querySelector('.tk-bubble')!.textContent).toContain('14:05');
     cleanup();
     const close = vi.fn();
-    render(<Sheet page title="Bo, dein Sensei" onClose={close}><p>x</p></Sheet>);
+    render(<Sheet page title="Bo, dein Sensai" onClose={close}><p>x</p></Sheet>);
     expect(screen.queryByRole('button', { name: 'Schließen' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
     expect(close).toHaveBeenCalled();

@@ -10,9 +10,9 @@ Die Bilder dazu: `docs/design/moodboard/*.html` im Browser öffnen (abgenommene 
 - Ruhig und leicht. Keine Gamification (keine Punkte, Streaks, Abzeichen), keine Zahlenflut. Lieber ein klarer Satz als fünf Kennzahlen.
 - Design und UX gehören zusammen: Jeder Screen beantwortet oben in einer Karte **Wo bin ich, was ist erledigt, was kommt als Nächstes.** Pro Screen **eine** Hauptaktion. Seltenes liegt hinter einem ruhigen Knopf oder in einem Sheet, bleibt aber erreichbar.
 
-## Bo, dein Sensei
+## Bo, dein Sensai
 
-- Bo ist ein Panda mit Stirnband und Teetasse. Er heißt in der Oberfläche **Sensei**, nie „Coach“. Der Einstieg heißt „Frag Bo, deinen Sensei“.
+- Bo ist ein Panda mit Stirnband und Teetasse. Er heißt in der Oberfläche **Sensai**, nie „Coach“. Der Einstieg heißt „Frag Bo, deinen Sensai“.
 - Bo ist warm und unterstützt immer zu 100 %. Er ist ein bisschen tollpatschig und vergisst auch mal etwas, weiß aber, dass genau das das Leben ausmacht. Ein eigener kleiner Patzer kommt **selten** vor, höchstens in einem von vielen Sätzen.
 - Bo spricht nur in **Sprechblasen** (Karte mit kleinem Dreieck zu Bo), nie als loser Text.
 - Bo sitzt auf Heute in seinem **Bambusnest**: gebogene Halme als Laube, geflochtene Schale, Laterne an einem Halm.
@@ -22,7 +22,7 @@ Die Bilder dazu: `docs/design/moodboard/*.html` im Browser öffnen (abgenommene 
 | Pose | Wann | Ort |
 |---|---|---|
 | greet | Heute ohne Tagesplan | Bambusnest |
-| listen | Gespräch mit dem Sensei | Laternen, niedriger Tisch, Tee |
+| listen | Gespräch mit dem Sensai | Laternen, niedriger Tisch, Tee |
 | breathe | Pause, Atmen, Ende einer Einheit | Am Wasser unter dem Mond |
 | flex | Krafttag | Dojo, kleine Hantel, Arnold-Comicporträt an der Wand |
 | bike | Radtag | Hügel, Bambus, Mond |

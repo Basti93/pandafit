@@ -231,7 +231,7 @@ test('without a plan: seven calm dots, no count, and Bo offers Woche planen', as
   expect(screen.queryByText(/von \d+ geschafft/)).toBeNull();
   expect(screen.queryByRole('region', { name: 'Tage' })).toBeNull();
   fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
-  expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensei' })).toBeTruthy();
+  expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensai' })).toBeTruthy();
 });
 
 test('Rückblick, Was Bo beachtet and Nächste Woche open their sheets from quiet rows', async () => {
@@ -267,7 +267,7 @@ test('Escape in the proposal sheet closes only that sheet: the chat and its comp
   notify();
   await screen.findByRole('button', { name: /^Bo hat noch/ });
   expect(screen.queryByRole('dialog', { name: /^Vorschl(ag|äge)$/ })).toBeNull();
-  expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensei' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
+  expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensai' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
   expect(records(map, 'weekplan')).toHaveLength(0); // looking is not taking
 });
 

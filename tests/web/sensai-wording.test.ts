@@ -19,7 +19,11 @@ const VISIBLE = /(?:>[^<>{}]*\bCoach(?:es)?\b[^<>{}]*<)|(?:(['"`])(?:(?!\1)[\s\S
 const hits = (paths: string[]) =>
   paths.flatMap((f) => [...read(f).replace(/^\s*import .*$/gm, '').matchAll(VISIBLE)].map((m) => `${f}: ${m[0].slice(0, 80)}`));
 
-describe('Sensei wording', () => {
+describe('Sensai wording', () => {
+  it('spells Sensai with "ai" everywhere, never Sensei', () => {
+    const all = [...files('src', ['.ts', '.tsx', '.css', '.html']), ...files('web-server', ['.ts'])];
+    expect(all.filter((f) => /sensei/i.test(read(f)))).toEqual([]);
+  });
   it('never calls Bo a coach in the web app', () => {
     expect(hits([...files('src/web', ['.ts', '.tsx']), ...files('src/tracking/ui', ['.ts', '.tsx'])])).toEqual([]);
   });

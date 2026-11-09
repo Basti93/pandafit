@@ -74,7 +74,7 @@ export function BackButton({ label, onClick }: { label?: string; onClick: () => 
   return <PillButton icon="zurueck" label={label} onClick={onClick} />;
 }
 
-/** Bo's two buttons, the same on every page: "Vorschlag ansehen" (the main one) and "Frag Bo, deinen Sensei" with the speech icon. */
+/** Bo's two buttons, the same on every page: "Vorschlag ansehen" (the main one) and "Frag Bo, deinen Sensai" with the speech icon. */
 export function SeeProposalButton({ onClick }: { onClick: () => void }) {
   return <button type="button" className="primary" onClick={onClick}>{BO_LINES.seeProposal}</button>;
 }

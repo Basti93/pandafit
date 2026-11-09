@@ -104,7 +104,7 @@ describe('Heute in the Dojo', () => {
   it('a waiting proposal turns Bo’s bubble into Vorschlag ansehen, which opens the chat', async () => {
     await boot([riderMsg, coachMsgWithProposal]);
     fireEvent.click(await screen.findByRole('button', { name: 'Vorschlag ansehen' }));
-    expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensei' })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensai' })).toBeTruthy();
   });
   it('without a plan the one card offers to plan', async () => {
     await boot([]);
@@ -125,15 +125,15 @@ describe('Heute in the Dojo', () => {
     await screen.findByText('Schön, dass du dran bist.');
     expect(screen.queryByRole('button', { name: /Gemeinsam/ })).toBeNull();
   });
-  it('"Frag Bo, deinen Sensei" on Heute opens the real coach composer', async () => {
+  it('"Frag Bo, deinen Sensai" on Heute opens the real coach composer', async () => {
     await boot([daytext]);
     const card = screen.getByLabelText('Satz von Bo');
-    expect(card.textContent).not.toContain('Sensei ·');
+    expect(card.textContent).not.toContain('Sensai ·');
     expect(card.querySelector('img')?.getAttribute('alt')).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensei' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensai' }));
     expect(await screen.findByLabelText('Nachricht an Bo')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 1, name: 'Heute' })).toBeNull();
-    expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensei' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
+    expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensai' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
   });
   it('a daytext of yesterday shows a saying', async () => {
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-03', text: 'Gestriger Satz.', atMs: NOW - DAY })]);
@@ -186,8 +186,8 @@ describe('Heute in the Dojo', () => {
 describe('Zurück aus dem Chat von Heute', () => {
   it('closing the chat opened from Heute lands on Heute, not on Woche', async () => {
     await boot([]);
-    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensei' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Bo, dein Sensei' });
+    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensai' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Bo, dein Sensai' });
     fireEvent.click(within(dialog).getByRole('button', { name: /Zurück|Schließen/ }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 1, name: 'Deine Woche' })).toBeNull();
