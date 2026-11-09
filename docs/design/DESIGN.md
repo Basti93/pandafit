@@ -92,4 +92,5 @@ Die Tokens stehen in `src/design/tokens.css`. Dunkel ist der Normalfall. Hell (�
 
 ## Logo
 
-- Neues App-Logo: **Bo als Teetrinker** (Kopf und Tasse, warmer Lichtschein, dunkelgrüner Grund). Die Entwürfe Ensō, Bambusnest, Panda und Maus, Monogramm sind verworfen.
+- App-Logo: **Bos Gesicht mit Fitness-Stirnband und Schweißtropfen**, flach, auf dunkelgrünem Grund, wenige Farben; ein Bild für alle Größen bis 16 px. Verworfen sind Ensō, Bambusnest, Panda und Maus, Monogramm sowie die Teetrinker-Entwürfe A, B und C (zu kompliziert).
+- Gewählt: Entwurf D mit Schweißtropfen (`moodboard/logo.html`).
