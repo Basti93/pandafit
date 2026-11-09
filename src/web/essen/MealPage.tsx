@@ -6,7 +6,7 @@ import type { MealData } from '../MealsScreen';
 import { RecipeView } from '../RecipesScreen';
 import { EssenPage } from './EssenPage';
 import { MealImage } from './MealImage';
-import { askedSentence, mealPageKicker, mealSentence, type MealAt } from './meals-view';
+import { askedSentence, mealPageKicker, NOBODY_EATS, mealSentence, type MealAt } from './meals-view';
 import { EatersButton, IngredientsCard, StepsCard } from './RecipeParts';
 
 /** One meal of the plan as a page: picture, when and what, who eats, ingredients and steps. */
@@ -37,7 +37,9 @@ export function MealPage({ data, at, me, backLabel, onBack }: { data: MealData; 
           <Card><p>Das ist schon gekocht. Pack es einfach ein.</p></Card>
         ) : (
           <>
-            {cook.total > 0 && <IngredientsCard portions={cook.total} ingredients={dish.ingredients} side={dish.side} />}
+            {cook.total > 0
+              ? <IngredientsCard portions={cook.total} ingredients={dish.ingredients} side={dish.side} />
+              : <Card label="Zutaten"><Kicker>Zutaten</Kicker><p>{NOBODY_EATS}</p></Card>}
             <StepsCard steps={dish.steps} />
           </>
         )}

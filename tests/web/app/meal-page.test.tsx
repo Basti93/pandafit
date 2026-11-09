@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
 import { dayIndex, weekOf } from '../../../src/shared/meals';
+import { EatersButton } from '../../../src/web/essen/RecipeParts';
+import type { Week } from '../../../src/web/essen/meals-view';
+import type { Meal } from '../../../src/shared/meals';
 import { NOW, json, boot, openMeal, pill } from './helpers';
 
 afterEach(cleanup);
@@ -101,6 +104,26 @@ describe('the meal page', () => {
     fireEvent.click(pill('Essen'));
     await openMeal('Nudeln');
     expect((await screen.findByRole('region', { name: 'Nudeln' })).textContent).toContain('Auf Wunsch von Lena.');
+  });
+
+  it('a meal nobody eats says so in the ingredients card', async () => {
+    const plan = planWith([
+      { day: today, slot: 'abend', dish: dish('Nudeln'), reuseOf: null, eaters: [], takeAlong: false },
+    ]);
+    await boot({ account: 'anna', seed: [plan] });
+    await goEssen();
+    await openMeal('Nudeln');
+    const card = await screen.findByRole('region', { name: 'Zutaten' });
+    expect(card.textContent).toContain('Diesmal isst niemand mit.');
+    expect(screen.getByRole('region', { name: "So geht's" })).toBeTruthy();
+  });
+
+  it('a day that is over shows who ate as a sentence, not a button', () => {
+    const meal = { day: 0, slot: 'abend', dish: dish('X'), reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false } as unknown as Meal;
+    const w = { plan: { ...(planWith([]).body as object), meals: [meal] }, state: { items: {}, eaters: {} } } as unknown as Week;
+    const r = render(<EatersButton week={w} meal={meal} past onEater={() => {}} />);
+    expect(r.container.textContent).toBe('Max und Lena essen mit');
+    expect(r.queryByRole('button')).toBeNull();
   });
 
   it('from Heute a meal opens the Essen page, and its back pill leads to Heute', async () => {

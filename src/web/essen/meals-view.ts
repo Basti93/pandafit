@@ -119,6 +119,8 @@ export function mealPageKicker(week: Week, meal: Meal, nowMs: number): string {
 
 // ---- A meal in words ----
 
+export const NOBODY_EATS = 'Diesmal isst niemand mit. Darum gibt es keine Mengen.';
+
 const keepsText = (days: number): string => (days === 1 ? 'einen Tag' : `${numberWord(days)} Tage`);
 const minutesText = (n: number): string => (n === 1 ? 'In 1 Minute' : `In ${n} Minuten`);
 /** The days of the meals that eat the rest of `meal`, once each, in week order. */

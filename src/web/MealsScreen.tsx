@@ -230,7 +230,7 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
   const data = useMealData(port, now, fetchFn);
   const { records, weeks, change: changeWeek, recipeCtx } = data;
   const [page, setPage] = useState<Page>(() => (entry ? { name: 'meal', at: entry, from: 'heute' } : { name: 'start' }));
-  useEffect(() => { if (entry) { setPage({ name: 'meal', at: entry, from: 'heute' }); onEntryDone?.(); } }, [entry, onEntryDone]);
+  useEffect(() => { if (entry) onEntryDone?.(); }, [entry, onEntryDone]);
   const t = now();
   const current = weekOf(t);
   const today = dayIndex(t);
