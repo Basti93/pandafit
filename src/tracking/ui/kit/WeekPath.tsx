@@ -17,19 +17,19 @@ export function WeekPath({ days, kicker, count, onPick }: { days: PathDay[]; kic
       </div>
       <div className="tk-weekpath-track">
         <span className="tk-weekpath-line" aria-hidden="true"><span style={{ width: `${fill * 100}%` }} /></span>
-      <ol className="tk-weekpath-dots" aria-label="Wochenweg">
-        {days.map((d) => {
-          const word = d.state === 'today' && d.done ? 'heute, erledigt' : STATE_WORD[d.state];
-          return (
-            <li key={d.date}>
-              <button type="button" className={`tk-pathdot ${d.state}${d.done ? ' done' : ''}`} aria-label={`${weekdayOfKey(d.date)}, ${word}`} onClick={() => onPick?.(d.date)}>
-                <span className="tk-pathdot-mark" aria-hidden="true">{d.state === 'done' || d.done ? <Icon name="haken" size={14} /> : null}</span>
-                <span className="tk-pathdot-name" aria-hidden="true">{d.short}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
+        <ol className="tk-weekpath-dots" aria-label="Wochenweg">
+          {days.map((d) => {
+            const word = d.state === 'today' && d.done ? 'heute, erledigt' : STATE_WORD[d.state];
+            return (
+              <li key={d.date}>
+                <button type="button" className={`tk-pathdot ${d.state}${d.done ? ' done' : ''}`} aria-label={`${weekdayOfKey(d.date)}, ${word}`} onClick={() => onPick?.(d.date)}>
+                  <span className="tk-pathdot-mark" aria-hidden="true">{d.state === 'done' || d.done ? <Icon name="haken" size={14} /> : null}</span>
+                  <span className="tk-pathdot-name" aria-hidden="true">{d.short}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </div>
   );

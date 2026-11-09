@@ -2,9 +2,9 @@ import { bodyOf } from '../../shared/record-bodies';
 import type { ActivityItem } from '../../shared/activities';
 import { dayMonthLongOfKey, localDayKey, weekdayOfKey } from '../../shared/dates';
 import { addDays, hasSport, planFor } from '../../shared/week-plan';
-import { readPlan } from '../../web/logic';
+import { readPlan } from '../../shared/plan-body';
 import type { TrackingPort } from '../ports';
-import { activitiesOn, activityText, mergedActivities } from './done-days';
+import { activitiesOn, activityText, doneDays, mergedActivities } from './done-days';
 import { usePortRecords } from './hooks';
 import { Sheet } from './kit';
 import { planDayLabel, runText } from './plan-text';
@@ -23,7 +23,8 @@ export function DaySheet({ port, date, now, onClose }: { port: TrackingPort; dat
   const past = date <= today;
   const future = date >= today;
 
-  const items = activitiesOn(mergedActivities(activities, workouts), date);
+  const merged = mergedActivities(activities, workouts);
+  const items = activitiesOn(merged, date);
   const doneMobility = (mobility ?? []).some((r) => !r.deleted && typeof (r.body as { doneMs?: unknown } | null)?.doneMs === 'number' && localDayKey((r.body as { doneMs: number }).doneMs) === date);
   const exercises = (a: ActivityItem): string[] => {
     if (a.kind !== 'kraft' || !a.ref) return [];
@@ -32,10 +33,15 @@ export function DaySheet({ port, date, now, onClose }: { port: TrackingPort; dat
   };
   const doneAny = (items?.length ?? 0) > 0 || doneMobility;
 
-  const plan = future ? planFor(weekplans ?? [], date) : null;
+  // Today shows only the open parts of the plan: a finished strength day does not show the strength plan again.
+  const planOn = (d: string) => {
+    const raw = planFor(weekplans ?? [], d);
+    return raw && d === today ? doneDays([d], today, [raw], merged)[0]!.plan : raw;
+  };
+  const plan = future ? planOn(date) : null;
   const runs = future ? (runView(runRecords ?? [], nowMs).week?.runs ?? []).filter((r) => r.date === date) : [];
   // The strength plan of the plan record belongs to the first strength day from today on.
-  const firstGym = future ? Array.from({ length: 14 }, (_, i) => addDays(today, i)).find((d) => { const p = planFor(weekplans ?? [], d); return p !== null && hasSport(p, 'gym'); }) : undefined;
+  const firstGym = future ? Array.from({ length: 14 }, (_, i) => addDays(today, i)).find((d) => { const p = planOn(d); return p !== null && hasSport(p, 'gym'); }) : undefined;
   const gym = firstGym === date && plan ? readPlan((plans ?? []).find((r) => r.id === 'current'))?.workout ?? null : null;
 
   return (

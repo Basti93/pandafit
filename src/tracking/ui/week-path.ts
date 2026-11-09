@@ -32,7 +32,7 @@ export function weekCount(rows: DayRow[], planDays: PlanDay[] | null): { done: n
 
 /** "2 von 5 geschafft"; without a plan "2 geschafft"; without a plan and nothing done: null. */
 export function weekCountText(c: { done: number; planned: number | null }): string | null {
-  if (c.planned !== null) return `${c.done} von ${c.planned} geschafft`;
+  if (c.planned !== null && c.done <= c.planned) return `${c.done} von ${c.planned} geschafft`;
   return c.done > 0 ? `${c.done} geschafft` : null;
 }
 

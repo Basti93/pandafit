@@ -31,6 +31,7 @@ describe('the week path', () => {
   it('counts done days against the planned training days', () => {
     expect(weekCountText({ done: 2, planned: 5 })).toBe('2 von 5 geschafft');
     expect(weekCountText({ done: 2, planned: null })).toBe('2 geschafft');
+    expect(weekCountText({ done: 3, planned: 2 })).toBe('3 geschafft');
     expect(weekCount([row(MO, { done: ['Kraft'] }), row(DI, {})], [gym, bike, rest])).toEqual({ done: 1, planned: 2 });
   });
   it('says the week in whole sentences', () => {

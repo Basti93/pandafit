@@ -51,3 +51,14 @@ describe('DaySheet', () => {
     await waitFor(() => expect(empty.textContent).toContain('Für diesen Tag ist noch nichts geplant.'));
   });
 });
+
+describe('DaySheet today', () => {
+  it('shows only the open parts of today, not a plan that is already done', async () => {
+    const strength = { key: 'kraft-1', kind: 'kraft', title: 'Pull', sport: 'strength', startMs: new Date(2026, 10, 4, 9).getTime(), minutes: 40, distanceM: null, avgHr: null, ref: null };
+    const plan = weekplan(['rest', 'rest', 'gym']);
+    const sheet = show([plan, activities([strength]), rec('plan', 'current', { workout: { name: 'Pull', exercises: [{ templateId: 'a', title: 'Latzug', restS: null, supersetId: null, notes: '', sets: [] }] }, atMs: NOW })], '2026-11-04');
+    await waitFor(() => expect(sheet.textContent).toContain('Kraft Pull'));
+    expect(sheet.textContent).not.toContain('Kraft, mittel');
+    expect(sheet.textContent).not.toContain('Latzug');
+  });
+});

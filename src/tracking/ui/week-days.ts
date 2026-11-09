@@ -9,6 +9,7 @@ import { runView } from './run-view';
 
 /**
  * The one source of the week: Heute (the week path) and Woche (the list) read the same rows.
+ * `loaded` is true once the week plans, the activities and the workouts are read: before that the rows would only look empty.
  * Monday to today in Spontan mode or without a plan, else the whole week; every activity counts once.
  */
 export function useWeekDays(port: TrackingPort, nowMs: number): {
@@ -33,5 +34,5 @@ export function useWeekDays(port: TrackingPort, nowMs: number): {
   const rowDates = current && !spontaneous ? dates : dates.filter((d) => d <= today);
   const merged = mergedActivities(activityRecords, workoutRecords, true);
   const rows = doneDays(rowDates, today, spontaneous ? null : current?.days ?? null, merged);
-  return { today, monday, dates, rows, current, next, runs, spontaneous, loaded: plans !== null, frame };
+  return { today, monday, dates, rows, current, next, runs, spontaneous, loaded: plans !== null && activityRecords !== null && workoutRecords !== null, frame };
 }
