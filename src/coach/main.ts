@@ -200,7 +200,7 @@ wss.on('connection', (socket) => {
   socket.on('message', (raw) => {
     try {
       const m = parseCoachClientMessage(JSON.parse(String(raw)));
-      if (!m) return;
+      if (!m) { try { socket.send(JSON.stringify({ type: 'error', message: 'Ungültige Nachricht.' } satisfies CoachServerMessage)); } catch { /* connection gone */ } return; }
       if (m.type === 'subscribe') subs.set(socket, m.profileId);
       router.handle(m, (msg) => {
         if (msg.type === 'coach-state') { sendView(socket, msg); return; }

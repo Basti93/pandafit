@@ -79,6 +79,16 @@ test('without feedback the plan still updates after the waiting time', async () 
   await until(() => sub.last()?.state?.next?.source === 'claude');
   sub.ws.close();
 }, 20000);
+test('an invalid message is answered with an error message', async () => {
+  const root = temp(); seed(root);
+  const c = await startCoach(root, fakeClaude());
+  const sub = await subscribe(c.port);
+  const got: any[] = [];
+  sub.ws.on('message', (m) => got.push(JSON.parse(String(m))));
+  sub.ws.send('{"type":"nonsense"}');
+  await until(() => got.some((m) => m.type === 'error' && typeof m.message === 'string'));
+  sub.ws.close();
+}, 20000);
 test('hanging claude does not block state requests', async () => {
   const root = temp(); seed(root);
   const c = await startCoach(root, fakeClaude('sleep 30'), { BIKE_COACH_WAIT_MS: '0' });
