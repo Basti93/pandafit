@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { vi } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
@@ -46,4 +46,16 @@ export async function boot(o: Opts = {}) {
     persist, ua: o.ua ?? 'Mozilla/5.0 Android', standalone: o.standalone ?? false, onWorkoutOpen, startTab: o.startTab, onOpenTab: o.onOpenTab, openLive: o.openLive,
   }} />);
   return { ...ui, factory, storage, calls, persist, onWorkoutOpen };
+}
+
+/** The pill (back button of a page): pill and tab both carry names like "Essen" or "Heute". */
+export function pill(name: string): HTMLElement {
+  const found = screen.getAllByRole('button', { name }).find((b) => b.className === 'tk-pill');
+  if (!found) throw new Error(`no pill named ${name}`);
+  return found;
+}
+
+/** Taps the meal row with this title on the Essen start page. */
+export async function openMeal(title: string): Promise<void> {
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(title) }));
 }

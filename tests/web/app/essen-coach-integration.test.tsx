@@ -59,7 +59,7 @@ describe('Essen on the phone with the coach on the Mac', () => {
     expect(screen.queryByText('Bo antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     fireEvent.click(screen.getByRole('button', { name: /Nudeln mit Tomatensoße und Linsen/ }));
-    expect(screen.getByText('auf Wunsch von Lena')).toBeTruthy();
+    expect(await screen.findByText('Auf Wunsch von Lena.')).toBeTruthy();
     expect(store.all('pa').some((r) => r.id.startsWith('chat-'))).toBe(false);
   });
 

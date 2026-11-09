@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
 import { dayIndex, weekOf } from '../../../src/shared/meals';
-import { NOW, json, boot } from './helpers';
+import { NOW, json, boot, openMeal } from './helpers';
 
 afterEach(cleanup);
 
@@ -175,28 +175,27 @@ describe('Rezepte on the phone', () => {
     expect(await screen.findByText('Das passt nicht zu den Angaben der Esser dieser Mahlzeit.')).toBeTruthy();
   });
 
-  it('a meal of a real recipe has a small picture and opens the recipe from its row', async () => {
+  it('a meal of a real recipe shows its photo, falls back to the drawing when it fails, and leads to the whole recipe', async () => {
     await boot({ account: 'anna', seed: [mealPlan], recipes: route([]) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    await screen.findByRole('heading', { name: 'Heute' });
-    const thumbs = [...document.querySelectorAll('img.pm-thumb')] as HTMLImageElement[];
-    expect(thumbs.map((t) => t.getAttribute('src'))).toEqual([`/coach/recipes/${RID(1)}/image`]);
-    fireEvent.error(thumbs[0]!);
-    expect(document.querySelectorAll('img.pm-thumb')).toHaveLength(0);
-    fireEvent.click(screen.getByRole('button', { name: /Erfundener Linsentopf/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Rezept ansehen ›' }));
+    await openMeal('Erfundener Linsentopf');
+    const head = await screen.findByRole('region', { name: 'Erfundener Linsentopf' });
+    const img = head.querySelector('img.tk-meal.big') as HTMLImageElement;
+    expect(img.getAttribute('src')).toBe(`/coach/recipes/${RID(1)}/image`);
+    fireEvent.error(img);
+    expect(head.querySelector('img')).toBeNull();
+    expect(head.querySelector('use')!.getAttribute('href')).toBe('/brand/meals.svg#mittag');
+    const whole = screen.getByRole('button', { name: 'Ganzes Rezept ansehen' });
+    expect(whole.className).toBe('secondary');
+    fireEvent.click(whole);
     expect(await screen.findByText('Linsen kochen.')).toBeTruthy();
-    // A dish without a recipe has neither picture nor link.
-    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
-    fireEvent.click(screen.getByRole('button', { name: /Skyr mit Beeren/ }));
-    expect(screen.queryByRole('button', { name: 'Rezept ansehen ›' })).toBeNull();
   });
 
   it('a recipe that cannot be opened says so calmly', async () => {
     await boot({ account: 'anna', seed: [mealPlan], recipes: () => json(404, {}) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: /Erfundener Linsentopf/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Rezept ansehen ›' }));
+    await openMeal('Erfundener Linsentopf');
+    fireEvent.click(await screen.findByRole('button', { name: 'Ganzes Rezept ansehen' }));
     expect(await screen.findByText('Dieses Rezept ist gerade nicht zu öffnen.')).toBeTruthy();
   });
 });

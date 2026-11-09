@@ -19,6 +19,7 @@ import { useApp } from '../AppContext';
 import { planKeyOf, readDraft } from '../../tracking/plan-draft';
 import { mobilityToShow, planIsStale, readPlan } from '../logic';
 import { DayMeals } from '../MealsScreen';
+import type { MealAt } from '../essen/meals-view';
 import { CoachLine } from '../today/CoachLine';
 import { dayClip } from '../../tracking/ui/panda-day';
 import { dayLine } from '../../shared/day-text';
@@ -31,7 +32,7 @@ export const sinceText = (ms: number, now: number): string => {
   return `${new Date(ms).toLocaleDateString('de-DE', { weekday: 'short' })}, ${timeLabel(ms)}`;
 };
 
-export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
+export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, meals, planning }: { goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; goMeal?: (at: MealAt) => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
   const { port, env, account } = useApp();
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
@@ -114,7 +115,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
             text="Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit Bo."
             primary={{ label: 'Woche planen', onClick: goCoach }} secondary={{ label: 'Im Profil auswählen', onClick: goProfile }} more={mobilityRow} />
         ) : <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} extra={mobilityRow} />}
-      {meals && <DayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
+      {meals && goMeal && <DayMeals port={port} now={env.now} onOpen={goMeal} />}
       {tomorrowPlan && <RowCard icon={SPORT_ICON[tomorrowPlan.sport]} kicker="Morgen" title={planDayLabel(tomorrowPlan)} onClick={() => setSheetDate(tomorrow)} />}
       {sheetDate && <DaySheet port={port} date={sheetDate} now={env.now} spontaneous={week.spontaneous} onClose={() => setSheetDate(null)} />}
     </div>

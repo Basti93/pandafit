@@ -1,19 +1,22 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { nextUpdatedMs } from '../tracking/ui/run-view';
 import type { TrackedRecord } from '../shared/records';
 import {
-  changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealState, recipeAmount,
-  shoppingList, sideText, SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf, withEater, withItem,
-  type ItemState, type LinkRequest, type Meal, type MealChat, type MealPlan, type MealState, type ShopItem,
+  changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, mealKey, readMealState,
+  shoppingList, sideText, SLOT_LABEL, SLOTS, stateRecordId, weekOf, withItem,
+  type ItemState, type LinkRequest, type Meal, type MealChat, type MealState, type ShopItem,
 } from '../shared/meals';
 import { weekRangeOfKey } from '../shared/dates';
 import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { ConfirmLink, PageHead, Row, RowCard, RowList, Segments, Sheet } from '../tracking/ui/kit';
-import { listAnd, mealDayOf, mealWeeks, type Week } from './essen/meals-view';
-import { placements, RecipesSheet, RecipeView, type RecipeCtx } from './RecipesScreen';
+import { listAnd, mealDayOf, mealWeeks, type MealAt, type Week } from './essen/meals-view';
+import { MealPage } from './essen/MealPage';
+import { placements, RecipesSheet, type RecipeCtx } from './RecipesScreen';
 
 export type { Week };
+export type MealData = ReturnType<typeof useMealData>;
+type Page = { name: 'start' } | { name: 'meal'; at: MealAt; from: 'essen' | 'heute' };
 export { mealDayOf, mealWeeks };
 
 /** This person's messages to the coach about the plan, oldest first. */
@@ -82,70 +85,17 @@ function ChatSheet({ chat, onSend, onClose }: { chat: MealChat[]; onSend: (text:
 }
 
 export const short = (k: string) => { const [d, s] = k.split('-'); return `${DAY_SHORT[Number(d)]}${s === 'mittag' ? '' : ` ${SLOT_LABEL[s as keyof typeof SLOT_LABEL]}`}`; };
-const color = (plan: MealPlan, id: string) => Math.max(0, plan.people.findIndex((p) => p.id === id)) % 4;
 const NEXT: Record<ItemState, ItemState> = { offen: 'gekauft', gekauft: 'offen', da: 'offen' };
 
-/** One meal as a row; opened, it shows the recipe, the protein and who eats. A deviation from the plan shows under the title. */
-/** A small picture of the recipe behind a dish; nothing at all when it has none. */
-/** The dish's picture; nothing at all when the recipe has none (no empty coloured square). */
-export function MealThumb({ recipeId }: { recipeId?: string; title?: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!recipeId || failed) return null;
-  return <img className="pm-thumb" src={`/coach/recipes/${recipeId}/image`} alt="" loading="lazy" onError={() => setFailed(true)} />;
-}
-
-/** What a meal shows opened, in Essen under its row and on Heute in a sheet: recipe, how long it keeps, who eats. */
-export function MealDetail({ week, meal, onEater, onView, me, readOnly }: { week: Week; meal: Meal; onEater: (person: string, on: boolean) => void; onView: (recipeId: string) => void; me?: string; /** A day that is over: who eats is shown, not changed. */ readOnly?: boolean }) {
-  const k = mealKey(meal.day, meal.slot);
-  const eaters = eatersOf(week.plan, week.state, k);
-  const reuses = week.plan.meals.filter((m) => m.reuseOf === k);
-  const cook = cookPortions(week.plan, week.state, k);
-  const extras = [meal.takeAlong ? 'zum Mitnehmen' : meal.slot === 'abend' ? 'kleine Portion' : '', meal.reuseOf ? `Rest von ${short(meal.reuseOf)}: nur einpacken` : '', reuses.length > 0 ? `reicht für ${reuses.map((r) => short(mealKey(r.day, r.slot))).join(', ')}` : ''].filter(Boolean);
-  // The reader comes first among those who eat.
-  const isMe = (p: { name: string }) => !!me && p.name.trim().toLowerCase() === me.trim().toLowerCase();
-  const people = [...week.plan.people].sort((x, y) => Number(isMe(y)) - Number(isMe(x)));
-  const askedBy = meal.askedBy ? week.plan.people.find((p) => p.id === meal.askedBy) : undefined;
-  return (
-    <>
-      {meal.dish.recipeId && <button type="button" className="secondary pm-viewlink" onClick={() => onView(meal.dish.recipeId!)}>Rezept ansehen ›</button>}
-      {!meal.reuseOf && cook.total > 0 && (
-        <>
-          <h3 className="tk-section">Rezept für {cook.total} {cook.total === 1 ? 'Portion' : 'Portionen'}</h3>
-          <ul className="pm-ingredients">{meal.dish.ingredients.map((i, n) => <li key={n}><b>{recipeAmount(i, cook.total)}</b> {i.name}</li>)}</ul>
-        </>
-      )}
-      {meal.dish.side && <p className="pm-side"><b>dazu:</b> {sideText(meal.dish.side)} <span className="muted">(je Portion)</span></p>}
-      <ol className="pm-steps">{meal.dish.steps.map((s, n) => <li key={n}>{s}</li>)}</ol>
-      <p className="muted pm-meta">{[SLOT_TIME[meal.slot], `${meal.dish.minutes} Min`, meal.dish.keepsDays === 0 ? 'am besten frisch' : `hält sich ${meal.dish.keepsDays} ${meal.dish.keepsDays === 1 ? 'Tag' : 'Tage'}`].join(' · ')}</p>
-      {extras.length > 0 && <p className="muted pm-meta">{extras.join(' · ')}</p>}
-      {!meal.dish.recipeId && meal.dish.source === 'rezept' && meal.dish.sourceUrl && <p className="muted pm-meta pm-source"><a href={meal.dish.sourceUrl} target="_blank" rel="noopener noreferrer">Originalrezept ↗</a></p>}
-      {askedBy && <p className="pm-asked">auf Wunsch von {askedBy.name}</p>}
-      {readOnly ? <p className="muted pm-meta">Isst mit: {people.filter((p) => eaters.includes(p.id)).map((p) => p.name).join(', ') || 'niemand'}</p> : <div className="tk-row pm-people" role="group" aria-label="Wer isst mit">
-        <span className="muted">Isst mit:</span>
-        {people.map((p) => {
-          const on = eaters.includes(p.id);
-          return (
-            <button key={p.id} type="button" className={`pm-person${on ? ' on' : ''}`} aria-pressed={on} aria-label={`${p.name} isst ${on ? 'mit' : 'nicht mit'}`} onClick={() => onEater(p.id, !on)}>
-              <span className={`pm-avatar pc${color(week.plan, p.id)}`} aria-hidden="true">{initialOf(p)}</span>{p.name}{on && <span aria-hidden="true"> ✓</span>}
-            </button>
-          );
-        })}
-      </div>}
-    </>
-  );
-}
-
-function MealRow({ week, meal, open, onToggle, onEater, onView, me }: { me?: string; week: Week; meal: Meal; open: boolean; onToggle: () => void; onEater: (person: string, on: boolean) => void; onView: (recipeId: string) => void }) {
-  const k = mealKey(meal.day, meal.slot);
-  const eaters = eatersOf(week.plan, week.state, k);
+/** One meal as a row; a tap opens its page. A deviation from the plan shows under the title. */
+function MealRow({ week, meal, onOpen }: { week: Week; meal: Meal; onOpen: () => void }) {
+  const eaters = eatersOf(week.plan, week.state, mealKey(meal.day, meal.slot));
   const away = week.plan.people.filter((p) => !eaters.includes(p.id));
   const note = eaters.length === 0 ? 'Niemand isst mit' : away.length > 0 ? `${listAnd(away.map((p) => p.name))} ${away.length > 1 ? 'essen' : 'isst'} nicht mit` : null;
   return (
     <Row
-      title={<span className="pm-titleline"><MealThumb recipeId={meal.dish.recipeId} title={meal.dish.title} /><span><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{meal.dish.side && <small className="pm-sidehint">dazu: {sideText(meal.dish.side)}</small>}{note && <small className="pm-dev">{note}</small>}</span></span>}
-      value={meal.reuseOf ? 'Rest' : `${meal.dish.minutes} Min`} expanded={open} onClick={onToggle}>
-      <MealDetail week={week} meal={meal} onEater={onEater} onView={onView} me={me} />
-    </Row>
+      title={<span><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{meal.dish.side && <small className="pm-sidehint">dazu: {sideText(meal.dish.side)}</small>}{note && <small className="pm-dev">{note}</small>}</span>}
+      value={meal.reuseOf ? 'Rest' : `${meal.dish.minutes} Min`} onClick={onOpen} />
   );
 }
 
@@ -244,19 +194,15 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
   return { records, weeks, change, favs, recipeCtx };
 }
 
-/** The meals of today on Heute, calm: a row card per slot, a quiet line for what is cooked today for later (the Essen tab is the way into the plan and into other days). */
-export function DayMeals({ port, now, fetchFn, account }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string }) {
-  const { records, change, recipeCtx } = useMealData(port, now, fetchFn);
-  const [openKey, setOpenKey] = useState<string | null>(null);
-  const [viewId, setViewId] = useState<string | null>(null);
-  const at = now();
-  const found = useMemo(() => mealDayOf(records, at), [records, at]);
+/** The meals of today on Heute, calm: a row card per slot, a quiet line for what is cooked today for later. A tap opens the meal page in Essen. Reads only; writes go through useMealData. */
+export function DayMeals({ port, now, onOpen }: { port: WebPort; now: () => number; onOpen: (at: MealAt) => void }) {
+  const records = usePortRecords(port, 'mealplan').records;
+  const found = useMemo(() => mealDayOf(records, now()), [records, now]);
   const heading = 'Essen heute';
   const week = found?.week;
   const today = found?.day ?? 0;
   const meals = week ? SLOTS.flatMap((slot) => week.plan.meals.filter((m) => m.day === today && m.slot === slot)) : [];
   if (!week || meals.length === 0) return null;
-  const open = meals.find((m) => mealKey(m.day, m.slot) === openKey);
   const label = (m: Meal) => {
     if (!m.reuseOf) return undefined; // the time it takes belongs in the plan, not on Heute
     const from = Number(m.reuseOf.split('-')[0]);
@@ -270,24 +216,21 @@ export function DayMeals({ port, now, fetchFn, account }: { port: WebPort; now: 
       <div className="tk-rowcards" role="list" aria-label={heading}>
         {meals.map((m) => (
           <div role="listitem" key={m.slot}>
-            <RowCard icon="essen" kicker={SLOT_LABEL[m.slot]} title={m.dish.side ? `${m.dish.title} + ${m.dish.side.name}` : m.dish.title} sub={label(m)} onClick={() => setOpenKey(mealKey(m.day, m.slot))} />
+            <RowCard icon="essen" kicker={SLOT_LABEL[m.slot]} title={m.dish.side ? `${m.dish.title} + ${m.dish.side.name}` : m.dish.title} sub={label(m)} onClick={() => onOpen({ week: week.plan.week, meal: mealKey(m.day, m.slot) })} />
           </div>
         ))}
       </div>
       {ahead.length > 0 && <p className="muted">Heute vorkochen: {ahead.map((m) => m.dish.title).join(', ')}</p>}
-      {open && (
-        <Sheet title={open.dish.title} onClose={() => setOpenKey(null)}>
-          <MealDetail week={week} meal={open} onEater={(person, on) => void change(week.plan.week, (s, atMs) => withEater(s, mealKey(open.day, open.slot), person, on, atMs))} onView={setViewId} me={account} />
-        </Sheet>
-      )}
-      {viewId && <RecipeView ctx={recipeCtx} id={viewId} onClose={() => setViewId(null)} />}
     </section>
   );
 }
 
 /** The meal plan on the phone: one day at a time with a day picker, and the shopping list. Ticks and who eats go back to the Mac. */
-export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string }) {
-  const { records, weeks, change: changeWeek, recipeCtx } = useMealData(port, now, fetchFn);
+export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, onHeute }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string; /** Heute asked for a meal: the page opens on it, once. */ entry?: MealAt | null; onEntryDone?: () => void; onHeute?: () => void }) {
+  const data = useMealData(port, now, fetchFn);
+  const { records, weeks, change: changeWeek, recipeCtx } = data;
+  const [page, setPage] = useState<Page>(() => (entry ? { name: 'meal', at: entry, from: 'heute' } : { name: 'start' }));
+  useEffect(() => { if (entry) { setPage({ name: 'meal', at: entry, from: 'heute' }); onEntryDone?.(); } }, [entry, onEntryDone]);
   const t = now();
   const current = weekOf(t);
   const today = dayIndex(t);
@@ -299,13 +242,15 @@ export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; no
   const [dayPick, setDay] = useState<number | null>(null);
   const day = dayPick ?? (isCurrent ? today : 0);
   const [tab, setTab] = useState<'tage' | 'einkauf'>('tage');
-  const [openMeal, setOpenMeal] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [recipesOpen, setRecipesOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [viewId, setViewId] = useState<string | null>(null);
   const chat = useMemo(() => mealChats(records), [records]);
   const requests = useMemo(() => linkRequests(records), [records]);
+  if (page.name === 'meal') {
+    const from = page.from;
+    return <MealPage data={data} at={page.at} me={account} backLabel={from === 'heute' ? 'Heute' : 'Essen'} onBack={() => { if (from === 'heute') onHeute?.(); else setPage({ name: 'start' }); }} />;
+  }
   if (!week) return <div className="tk-screen"><PageHead title="Essen" /><p className="muted">Noch kein Essensplan. Er kommt am Samstagmorgen für die nächste Woche.</p></div>;
 
   const change = (f: (s: MealState, at: number) => MealState) => changeWeek(week.plan.week, f);
@@ -328,7 +273,7 @@ export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; no
   };
   const list = shoppingList(week.plan, week.state);
   const openCount = list.open + list.own.filter((o) => o.state === 'offen').length;
-  const pick = (w: Week) => { setWeekKey(w.plan.week); setDay(w.plan.week === current ? today : 0); setOpenMeal(null); };
+  const pick = (w: Week) => { setWeekKey(w.plan.week); setDay(w.plan.week === current ? today : 0); };
   return (
     <div className="tk-screen pm">
       <PageHead title="Essen" subtitle={`${isCurrent ? 'Diese Woche' : 'Nächste Woche'}, ${weekRangeOfKey(week.plan.week)}`} />
@@ -342,7 +287,7 @@ export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; no
         <>
           <div className="pm-days" role="tablist" aria-label="Tag">
             {DAY_SHORT.map((d, i) => (
-              <button key={d} type="button" role="tab" aria-selected={i === day} className={`${isCurrent && i === today ? 'today' : ''}${isCurrent && i < today ? ' past' : ''}`} onClick={() => { setDay(i); setOpenMeal(null); }}>
+              <button key={d} type="button" role="tab" aria-selected={i === day} className={`${isCurrent && i === today ? 'today' : ''}${isCurrent && i < today ? ' past' : ''}`} onClick={() => { setDay(i); }}>
                 <b>{d}</b><span>{dayDate(week.plan.week, i).split('.')[0]}</span>
               </button>
             ))}
@@ -353,7 +298,7 @@ export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; no
               const m = week.plan.meals.find((x) => x.day === day && x.slot === slot);
               if (!m) return <Row key={slot} title={SLOT_LABEL[slot]} value="Frei" />;
               const k = mealKey(m.day, m.slot);
-              return <MealRow key={slot} week={week} meal={m} open={openMeal === k} onToggle={() => setOpenMeal(openMeal === k ? null : k)} onEater={(person, on) => void change((s, at) => withEater(s, k, person, on, at))} onView={setViewId} me={account} />;
+              return <MealRow key={slot} week={week} meal={m} onOpen={() => setPage({ name: 'meal', at: { week: week.plan.week, meal: k }, from: 'essen' })} />;
             })}
           </RowList>
           {chatOpen && <ChatSheet chat={chat} onSend={say} onClose={() => setChatOpen(false)} />}
@@ -363,7 +308,6 @@ export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; no
           </RowList>
           {recipesOpen && <RecipesSheet ctx={{ ...recipeCtx, deleteOwn: (id) => void deleteRecipe(id) }} onAddLink={() => setAddOpen(true)} onClose={() => setRecipesOpen(false)} />}
           {addOpen && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setAddOpen(false)} />}
-          {viewId && <RecipeView ctx={recipeCtx} id={viewId} onClose={() => setViewId(null)} />}
         </>
       ) : <Shopping key={week.plan.week} week={week} onSet={(item, state) => void change((s, at) => withItem(s, item, state, at))} onOwn={(f) => void change(f)} />}
     </div>

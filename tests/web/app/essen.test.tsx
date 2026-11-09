@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
 import { addWeeks, dayIndex, itemKey, weekOf } from '../../../src/shared/meals';
-import { MealDetail, type Week } from '../../../src/web/MealsScreen';
 import type { LiveSocket } from '../../../src/web/live';
-import { NOW, DAY, json, boot } from './helpers';
+import { NOW, DAY, json, boot, openMeal, pill } from './helpers';
 
 afterEach(cleanup);
 
@@ -106,9 +105,9 @@ describe('Essen on the phone', () => {
       expect(rows.some((r) => r.includes('Tomatensuppe'))).toBe(false);
       expect(screen.queryByText(/Heute vorkochen/)).toBeNull();
       fireEvent.click(within(list).getByRole('button', { name: /Linsen-Bolognese/ }));
-      expect(await screen.findByRole('dialog')).toBeTruthy();
+      expect(await screen.findByRole('region', { name: 'Linsen-Bolognese' })).toBeTruthy();
+      expect(screen.queryByRole('dialog')).toBeNull();
       expect(screen.getByText('Verrühren.')).toBeTruthy();
-      fireEvent.keyDown(document, { key: 'Escape' });
       expect(within(list).queryByRole('button', { name: /Essensplan/ })).toBeNull(); // the Essen tab is the way in, no second one
     });
 
@@ -129,18 +128,14 @@ describe('Essen on the phone', () => {
     const a = await boot({ account: 'anna', seed: [mealPlan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     expect(await screen.findByRole('heading', { name: 'Heute' })).toBeTruthy();
-    // A meal is one row; the people and the recipe show when it is opened, one row at a time.
-    const row = screen.getByRole('button', { name: /Skyr mit Beeren/ });
-    expect(row.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByRole('button', { name: 'Lena isst mit' })).toBeNull();
-    fireEvent.click(row);
-    fireEvent.click(screen.getByRole('button', { name: /Linsen-Bolognese/ }));
-    expect(screen.getByRole('button', { name: /Skyr mit Beeren/ }).getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(screen.getByRole('button', { name: /Skyr mit Beeren/ }));
+    // A meal is one row; a tap opens its page, where Wer isst mit sits.
+    await openMeal('Skyr mit Beeren');
     expect(screen.getByText('Verrühren.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Max und Lena essen mit/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Lena isst mit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    fireEvent.click(pill('Essen'));
     // Only a deviation shows on the closed row.
-    fireEvent.click(screen.getByRole('button', { name: /Skyr mit Beeren/ }));
     expect(await screen.findByText('Lena isst nicht mit')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /^Einkauf/ }));
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Skyr gekauft' }));
@@ -209,16 +204,6 @@ describe('Essen on the phone', () => {
     expect(screen.queryByText('Nudeln')).toBeNull();
   });
 
-  it('the reader\'s own chip comes first, whatever the case; no match leaves the order', () => {
-    const w = { plan: { ...(mealPlan.body as object), people: [{ id: 'pa', name: 'Max' }, { id: 'pb', name: 'Lena' }], meals: [{ day: 0, slot: 'mittag', dish: dish('X'), reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false }], trainingDays: [] }, state: { items: {}, eaters: {} } } as unknown as Week;
-    const meal = (w.plan as { meals: Week['plan']['meals'] }).meals[0]!;
-    const order = (me?: string) => { const r = render(<MealDetail week={w} meal={meal} onEater={() => {}} onView={() => {}} me={me} />); const names = [...r.container.querySelectorAll('.pm-person')].map((b) => b.textContent!.replace(/[^A-Za-z]/g, '').replace(/^[ML]/, '')); r.unmount(); return names; };
-    expect(order('lena')).toEqual(['Lena', 'Max']);
-    expect(order(' Lena ')).toEqual(['Lena', 'Max']);
-    expect(order('nobody')).toEqual(['Max', 'Lena']);
-    expect(order(undefined)).toEqual(['Max', 'Lena']);
-  });
-
   it('the shopping list says for when and for whom, counts what is open, and keeps own items below the plan\'s', async () => {
     await boot({ account: 'anna', seed: [mealPlan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
@@ -243,16 +228,19 @@ describe('Essen on the phone', () => {
     ] } };
     await boot({ account: 'anna', seed: [plan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: /Skyr mit Beeren/ }));
+    await openMeal('Skyr mit Beeren');
     expect(screen.queryByText('vom Coach')).toBeNull();
     expect(screen.queryByText(/nach Rezept/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /Linsen-Bolognese/ }));
-    const link = screen.getByRole('link', { name: 'Originalrezept ↗' });
+    expect(screen.queryByRole('link', { name: 'Originalrezept öffnen' })).toBeNull();
+    fireEvent.click(pill('Essen'));
+    await openMeal('Linsen-Bolognese');
+    const link = screen.getByRole('link', { name: 'Originalrezept öffnen' });
     expect(link.getAttribute('href')).toBe('https://rezepte.example/linsen');
     expect(link.getAttribute('rel')).toContain('noopener');
     // A link that is not https is never shown; the dish falls back to the list.
-    fireEvent.click(screen.getByRole('button', { name: /Tomatensuppe/ }));
-    expect(screen.queryAllByRole('link', { name: 'Originalrezept ↗' })).toHaveLength(0);
+    fireEvent.click(pill('Essen'));
+    await openMeal('Tomatensuppe');
+    expect(screen.queryAllByRole('link', { name: 'Originalrezept öffnen' })).toHaveLength(0);
   });
 
   it('adds a recipe by link as a record, shows the coach\'s answer, lists own recipes and deletes one', async () => {
