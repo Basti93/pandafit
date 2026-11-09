@@ -78,7 +78,7 @@ export class RecordStore {
   put(profileId: string, r: TrackedRecord, seenMs?: number): PutResult & { copies: TrackedRecord[] } {
     const copies: TrackedRecord[] = [];
     const [result] = this.write(profileId, [r], { from: 'local', seenMs }, copies);
-    return { ...result!, copies };
+    return { ...result!, copies: copies.map((c) => structuredClone(c)) };
   }
 
   /**
@@ -88,13 +88,15 @@ export class RecordStore {
   putMany(profileId: string, records: TrackedRecord[], from: 'remote' | 'import' = 'import'): TrackedRecord[] {
     const copies: TrackedRecord[] = [];
     this.write(profileId, records, { from }, copies);
-    return copies;
+    return copies.map((c) => structuredClone(c));
   }
 
   private write(profileId: string, records: TrackedRecord[], origin: WriteOrigin, copies: TrackedRecord[]): PutResult[] {
     const data = this.load(profileId);
+    // Kept as copies: the caller may change its objects after the write, the cache must not change with them.
+    const own = records.map((r) => structuredClone(r));
     // The cached object is mutated in place: if this throws before the save, drop it.
-    try { return this.apply(profileId, data, records, origin, copies); } catch (e) { this.cache.delete(profileId); throw e; }
+    try { return this.apply(profileId, data, own, origin, copies); } catch (e) { this.cache.delete(profileId); throw e; }
   }
 
   private apply(profileId: string, data: FileData, records: TrackedRecord[], origin: WriteOrigin, copies: TrackedRecord[]): PutResult[] {
@@ -135,13 +137,14 @@ export class RecordStore {
     } catch (e) { this.cache.delete(profileId); throw e; }
   }
 
+  // Records leave the store as copies: the parsed file is cached, and callers (e.g. the meal plan) change what they get.
   all(profileId: string, kind?: RecordKind): TrackedRecord[] {
-    return Object.values(this.load(profileId).entries).map(e => e.record).filter(r => !kind || r.kind === kind);
+    return Object.values(this.load(profileId).entries).map(e => e.record).filter(r => !kind || r.kind === kind).map((r) => structuredClone(r));
   }
 
   changedSince(profileId: string, cursor: number): { records: TrackedRecord[]; cursor: number } {
     const data = this.load(profileId);
-    const records = Object.values(data.entries).filter(e => e.seq > cursor).sort((a, b) => a.seq - b.seq).map(e => e.record);
+    const records = Object.values(data.entries).filter(e => e.seq > cursor).sort((a, b) => a.seq - b.seq).map(e => structuredClone(e.record));
     return { records, cursor: data.seq };
   }
 

@@ -44,3 +44,21 @@ describe('RecordStore cache', () => {
     expect(s.all('a')).toEqual([]);
   });
 });
+
+test('changing a returned record does not change the store', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'store-copy-'));
+  const store = new RecordStore({ dir });
+  store.put('p', { kind: 'mealplan', id: 'm', updatedMs: 1, deleted: false, body: { meals: [{ eaters: ['a'] }] } });
+  const [r] = store.all('p', 'mealplan');
+  (r!.body as { meals: { eaters: string[] }[] }).meals[0]!.eaters = [];
+  expect(store.all('p', 'mealplan')[0]!.body).toEqual({ meals: [{ eaters: ['a'] }] });
+});
+
+test('changing a written object afterwards does not change the store', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'store-copy-'));
+  const store = new RecordStore({ dir });
+  const r: TrackedRecord = { kind: 'workout', id: 'w', updatedMs: 1, deleted: false, body: { n: 'a' } };
+  store.put('p', r);
+  (r.body as { n: string }).n = 'changed';
+  expect(store.all('p', 'workout')[0]!.body).toEqual({ n: 'a' });
+});
