@@ -32,18 +32,17 @@ test('the planning and time rows in the goal sheet write the frame, stamped abov
 test('spontaneous mode shows the advice instead of the week', async () => {
   const { port } = fakePort([plan(['gym', 'bike', 'run']), frameRecord({ mode: 'spontaneous', minutes: null }, 1)]);
   render(<CoachScreen port={port} {...env} />);
-  expect(await screen.findByRole('heading', { name: /^Heute: .*, (weil |als ruhiger Einstieg)/ })).toBeTruthy();
-  expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
+  expect(await screen.findByText(/^Heute: .*, (weil |als ruhiger Einstieg)/)).toBeTruthy();
+  expect(screen.queryByRole('region', { name: 'Tage' })).toBeNull();
 });
 
 test('spontaneous mode lists Monday to today without any plan', async () => {
   const { port } = fakePort([plan(['gym', 'bike', 'run', 'gym', 'bike']), frameRecord({ mode: 'spontaneous', minutes: null }, 1)]);
   render(<CoachScreen port={port} {...env} />);
-  const week = await screen.findByRole('list', { name: 'Diese Woche' });
-  const items = within(week).getAllByRole('listitem');
-  expect(items.map((li) => li.textContent)).toEqual(['Montag–', 'Dienstag–', 'MittwochHeute']);
-  expect(items).toHaveLength(3);
-  expect(week.textContent).not.toMatch(/Kraft|Rad|Laufen/);
+  const week = await screen.findByRole('region', { name: 'Diese Woche' });
+  const path = within(week).getByRole('list', { name: 'Wochenweg' });
+  expect(within(path).getAllByRole('listitem')).toHaveLength(7);
+  expect(screen.queryByRole('region', { name: 'Tage' })).toBeNull(); // nothing done, no plan shown
 });
 
 test('"Heute nur" writes frame.today for today only', async () => {

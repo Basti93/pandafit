@@ -39,6 +39,15 @@ export function goalSummary(goal: { strength: Strength; focus: readonly string[]
   return [STRENGTH_LABEL[goal.strength], ...(goal.focus.length ? [focusLabel(goal.focus)] : [])].join(' · ');
 }
 
+const GOAL_SENTENCE: Record<Strength, string> = { muscle: 'Du baust Muskeln auf', strength: 'Du wirst stärker', fitness: 'Du bleibst fit' };
+
+/** The goal as a sentence for Woche: "Du baust Muskeln auf, vor allem Rücken und Schultern." */
+export function goalSentence(goal: { strength: Strength; focus: readonly string[] }): string {
+  const groups = focusLabel(goal.focus).split(', ').filter(Boolean);
+  const named = groups.length > 1 ? `${groups.slice(0, -1).join(', ')} und ${groups[groups.length - 1]}` : groups[0];
+  return `${GOAL_SENTENCE[goal.strength]}${named ? `, vor allem ${named}` : ''}.`;
+}
+
 /** The rules the person keeps and what was passed on to the coaches and is still open. Proposed and declined rules and goal proposals stay out. */
 export function useRuleList(port: TrackingPort, nowMs: number) {
   const rules = rulesOf(usePortRecords(port, 'rule').all ?? []).filter((r) => (r.state === 'active' || r.state === 'paused') && r.kind !== 'goal');

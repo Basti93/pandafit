@@ -1,5 +1,6 @@
-import type { TrackedRecord } from '../shared/records';
-import { readTogether, TOGETHER_ID, type TogetherBody, type TogetherPerson } from '../shared/together';
+import type { TrackedRecord } from '../../shared/records';
+import { PageHead } from './kit';
+import { readTogether, TOGETHER_ID, type TogetherBody, type TogetherPerson } from '../../shared/together';
 
 const WEEK_MS = 7 * 86_400_000;
 const LONG = { day: 'numeric', month: 'long', year: 'numeric' } as const;
@@ -24,36 +25,13 @@ const PeakBar = ({ t }: { t: TogetherBody }) => (
   <div className="gm-bar" role="img" aria-label={`${t.peak.done} von ${t.peak.total} Höhenmetern`}><i style={{ width: `${pct(t)}%` }} /></div>
 );
 
-/** Compact, on Heute: this week for both, the latest rides, the mountain. The whole card opens the page. */
-export function TogetherCard({ t, now, onOpen }: { t: TogetherBody; now: number; onOpen: () => void }) {
-  return (
-    <button type="button" className="card gm-card" aria-label={`Gemeinsam: ${weekTitle(t, now)}, ${t.peak.name}. Öffnen`} onClick={onOpen}>
-      <span className="gm-head"><b>Gemeinsam</b><span aria-hidden="true">›</span></span>
-      <span className="tk-section gm-label">{weekTitle(t, now)}</span>
-      <span className="gm-people">
-        {ordered(t).map((p) => (
-          <span key={p.profileId} className="gm-person"><b>{p.name}</b><span>{p.ridesThisWeek === 0 ? 'noch frei' : `${rides(p.ridesThisWeek)}, ${p.minutesThisWeek} Min`}</span></span>
-        ))}
-      </span>
-      {t.recent.length > 0 && (
-        <span className="gm-recent">
-          {t.recent.slice(0, 2).map((r, i) => <span key={i}>{shortDate(r.startedAtMs)}: {r.name}, {r.sessionName ?? 'Fahrt'}, {r.minutes} Min</span>)}
-        </span>
-      )}
-      <span className="gm-peak">Auf dem Weg zum <b>{t.peak.name}</b>: {t.peak.done} von {t.peak.total} Hm</span>
-      <PeakBar t={t} />
-      <span className="gm-stand">{standText(t.atMs)}</span>
-    </button>
-  );
-}
-
 /** The Mac's together page for the phone: the same sections, one column. Only time and regularity, no watts. */
 export function TogetherPage({ t, now, onBack }: { t: TogetherBody; now: number; onBack: () => void }) {
   const people = ordered(t);
   const max = Math.max(30, ...people.flatMap((p) => p.weeks));
   return (
     <div className="tk-screen gm">
-      <div className="tk-row"><h1 className="tk-title">Gemeinsam</h1><span className="spacer" /><button type="button" className="link" onClick={onBack}>Zurück</button></div>
+      <PageHead title="Gemeinsam" back={{ label: 'Woche', onClick: onBack }} />
       <p className="muted gm-stand">{standText(t.atMs)}{isThisWeek(t, now) ? '' : '. Neue Zahlen kommen, sobald der Mac wieder an ist.'}</p>
       <section className="card">
         <h2>Euer Berg</h2>

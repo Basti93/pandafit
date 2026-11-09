@@ -25,7 +25,7 @@ const healthRec = (b: HealthBody): TrackedRecord => ({ kind: 'health', id: HEALT
 async function showWeek(seed: TrackedRecord[]) {
   const { port } = fakePort(seed);
   render(<CoachScreen port={port} now={() => NOW} newId={() => 'x'} />);
-  await screen.findByRole('heading', { level: 1, name: 'Woche' });
+  await screen.findByRole('heading', { level: 1, name: 'Deine Woche' });
   await new Promise((r) => setTimeout(r, 20));
 }
 

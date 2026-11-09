@@ -44,7 +44,8 @@ const openDetails = () => { fireEvent.click(screen.getByRole('button', { name: '
 
 test('Rückblick is the verdicts and rows; the week sentence, muscles and numbers wait behind them', async () => {
   const { container } = await show([statsRec(statsBody(days)), ...workouts]);
-  expect(screen.getByRole('heading', { name: 'Rückblick' })).toBeTruthy();
+  expect(screen.getByRole('region', { name: 'Rückblick' })).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: 'Rückblick' })).toBeNull(); // the sheet title is the heading
   expect(screen.getByRole('button', { name: 'Verlauf' })).toBeTruthy();
   expect(screen.getByRole('button', { name: /^Muskeln/ })).toBeTruthy();
   expect(screen.queryByText(/^\d+ Einheiten?, /)).toBeNull();
@@ -106,7 +107,7 @@ test('without anything to look back on, Rückblick is only the Verlauf row', asy
   const { port } = fakePort([{ ...statsRec(statsBody([])), body: { type: 'nope' } }, open]);
   const onHistory = vi.fn();
   render(<LookBack port={port} now={now} latest="Kraft Pull" onHistory={onHistory} />);
-  await screen.findByRole('heading', { name: 'Rückblick' });
+  await screen.findByRole('region', { name: 'Rückblick' });
   await new Promise((r) => setTimeout(r, 20));
   const rows = within(screen.getByRole('list', { name: 'Rückblick' })).getAllByRole('button');
   expect(rows.map((b) => b.textContent)).toEqual(['VerlaufKraft Pull›']);

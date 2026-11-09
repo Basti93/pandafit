@@ -159,7 +159,6 @@ export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort;
   const gaps = [...gapGroups(v)].length;
   return (
     <section className="tk-lookback" aria-label="Rückblick">
-      <h2 className="tk-section">Rückblick</h2>
       {failed && <ReadFailed text="Der Rückblick konnte gerade nicht gelesen werden. Es ist nichts verloren." retry={retry} />}
       {any && v.verdicts.length > 0 && <ul className="tk-verdicts">{v.verdicts.map((t) => <li key={t}>{verdictText(t)}</li>)}</ul>}
       <RowList label="Rückblick">

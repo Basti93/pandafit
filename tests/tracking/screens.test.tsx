@@ -853,25 +853,6 @@ describe('next time, in the history of the latest workout', () => {
   });
 });
 
-describe('Zuletzt geändert on the week page', () => {
-  const at = (day: number) => new Date(2026, 10, day, 12).getTime();
-  const note = (i: number, over: object = {}) => ({ atMs: at(i), coach: 'gym', text: `Bankdrücken ${i}`, reason: 'weil du alle Wiederholungen geschafft hast', ...over });
-  const stats = (changes: object[]): TrackedRecord => ({ kind: 'stats', id: 'stats', updatedMs: 1, deleted: false, body: { type: 'stats', atMs: 1, goal: null, days: [], muscles: {}, changes } });
-  it('the newest change is the second line of the Coach row, with its reason', async () => {
-    const { port } = fakePort([stats([1, 2, 3].map((i) => note(i)))]);
-    render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
-    const line = await screen.findByText(/Zuletzt geändert: Bankdrücken 3/);
-    expect(line.closest('button')!.textContent).toMatch(/^Bo/);
-    expect(line.textContent).toContain(', weil du');
-  });
-  it('without notes the Coach row has no such line', async () => {
-    const { port } = fakePort([stats([])]);
-    render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
-    await screen.findByText('Woche');
-    expect(screen.queryByText(/Zuletzt geändert/)).toBeNull();
-  });
-});
-
 // ---- Milestone L, task 5: picker, routines, history ----
 test('the picker offers the last used exercises first, and groups open one at a time', async () => {
   const { port } = fakePort([rec(finished())]);
@@ -923,11 +904,10 @@ describe('Zuletzt geändert in the chat', () => {
   const at = (day: number) => new Date(2026, 10, day, 12).getTime();
   const note = (i: number) => ({ atMs: at(i), coach: 'gym', text: `Bankdrücken ${i}`, reason: `Grund ${i}` });
   const stats: TrackedRecord = { kind: 'stats', id: 'stats', updatedMs: 1, deleted: false, body: { type: 'stats', atMs: 1, goal: null, days: [], muscles: {}, changes: [1, 2, 3, 4, 5, 6, 7].map(note) } };
-  it('the Coach row shows the reason; the chat opens the newest 5 with date, text and reason', async () => {
+  it('the chat opens the newest 5 with date, text and reason', async () => {
     const { port } = fakePort([stats]);
     render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
-    expect((await screen.findByText(/Zuletzt geändert: Bankdrücken 7/)).textContent).toContain(', Grund 7');
-    fireEvent.click(screen.getByRole('button', { name: /^Bo/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Frag Bo/ }));
     fireEvent.click(await screen.findByRole('button', { name: /^Zuletzt geändert/ }));
     const lines = within(screen.getByRole('list', { name: 'Zuletzt geändert' })).getAllByRole('listitem');
     expect(lines).toHaveLength(5);

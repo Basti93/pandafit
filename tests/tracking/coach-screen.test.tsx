@@ -16,27 +16,41 @@ const coachMsg: TrackedRecord = { kind: 'chat', id: 'c1', updatedMs: 2, deleted:
 const riderMsg: TrackedRecord = { kind: 'chat', id: 'r1', updatedMs: 1, deleted: false, body: { role: 'rider', text: 'Freitag Studio', atMs: NOW - 1000 } };
 const records = (m: Map<string, TrackedRecord>, kind: string) => [...m.values()].filter((r) => r.kind === kind);
 
-test('Woche shows the week and the rows Mein Ziel, Regeln and Coach; the old forms are not on the page', async () => {
-  const { port } = fakePort([riderMsg, coachMsg, { kind: 'weekplan', id: '2026-11-02', updatedMs: 1, deleted: false, body: { ...proposal, fromMessage: 'c1', acceptedMs: 1 } }]);
+const takenPlan: TrackedRecord = { kind: 'weekplan', id: '2026-11-02', updatedMs: 1, deleted: false, body: {
+  weekStart: '2026-11-02', fromMessage: 'c1', acceptedMs: 1,
+  days: weekDates('2026-11-02').map((date, i) => ({ date, sport: i === 0 || i === 4 ? 'gym' : 'rest', hardness: 'moderate', fixed: i === 4 })) } };
+const doneMonday: TrackedRecord = { kind: 'workout', id: 'w1', updatedMs: 1, deleted: false, body: { id: 'w1', title: 'Oberkörper', startMs: new Date(2026, 10, 2, 18).getTime(), endMs: new Date(2026, 10, 2, 19).getTime(), source: 'pandafit', exercises: [] } };
+
+test('Woche shows the week card, the days as Erledigt, Heute, Kommt noch, and the goal in one sentence', async () => {
+  const { port } = fakePort([takenPlan, doneMonday]);
   render(<CoachScreen port={port} {...env} />);
-  expect(await screen.findByRole('list', { name: 'Wochenplan diese Woche' })).toBeTruthy();
-  for (const name of [/^Ziel und Planung/, /^Was Bo beachtet/, /^Bo/]) expect(screen.getByRole('button', { name })).toBeTruthy();
-  expect(screen.getByRole('button', { name: /^Ziel und Planung/ }).textContent).toContain('Muskeln aufbauen');
-  expect(screen.getByRole('button', { name: /^Was Bo beachtet/ }).textContent).toContain('nichts');
+  const week = await screen.findByRole('region', { name: 'Diese Woche' });
+  expect(within(week).getByRole('list', { name: 'Wochenweg' })).toBeTruthy();
+  expect(week.textContent).toContain('Dein Ziel:');
+  expect(week.textContent).toContain('Du baust Muskeln auf.');
+  const days = await screen.findByRole('region', { name: 'Tage' });
+  for (const t of ['Erledigt', 'Heute', 'Kommt noch']) expect(days.textContent).toContain(t);
+  expect(days.textContent).not.toMatch(/fest eingeplant|Puls bis/); // the details come in the day sheet
   expect(screen.queryByLabelText('Nachricht an Bo')).toBeNull();
   expect(screen.queryByLabelText('Neue Regel')).toBeNull();
-  expect(screen.queryByLabelText('Planung')).toBeNull();
 });
 
-test('the Coach row previews the last message and shows no second "waiting" while the card does', async () => {
-  const { port } = fakePort([riderMsg, { ...coachMsg, body: { ...(coachMsg.body as object), proposal: undefined, text: 'Alles klar.' } }]);
+test('a day row opens the day sheet with the details', async () => {
+  const { port } = fakePort([takenPlan, doneMonday]);
   render(<CoachScreen port={port} {...env} />);
-  expect((await screen.findByRole('button', { name: /^Bo/ })).textContent).toContain('Alles klar.');
-  cleanup();
-  const waiting = fakePort([riderMsg, coachMsg]);
-  render(<CoachScreen port={waiting.port} {...env} />);
-  expect((await screen.findByRole('button', { name: /^Bo/ })).textContent).not.toContain('Ein Vorschlag wartet auf dich');
-  expect(screen.getAllByText('Ein Vorschlag wartet auf dich')).toHaveLength(1);
+  const days = await screen.findByRole('region', { name: 'Tage' });
+  expect(screen.queryByText('Dieser Tag ist fest eingeplant.')).toBeNull();
+  fireEvent.click(within(days).getByRole('button', { name: /^Fr/ }));
+  const sheet = await screen.findByRole('dialog');
+  expect(within(sheet).getByText('Dieser Tag ist fest eingeplant.')).toBeTruthy();
+});
+
+test('the pencil opens Ziel und Planung, and an unchosen goal is called a suggestion', async () => {
+  const { port } = fakePort();
+  render(<CoachScreen port={port} {...env} />);
+  expect((await screen.findByRole('region', { name: 'Diese Woche' })).textContent).toContain('Das ist ein Vorschlag.');
+  fireEvent.click(screen.getByRole('button', { name: 'Ziel und Planung' }));
+  expect(await screen.findByRole('dialog', { name: 'Ziel und Planung' })).toBeTruthy();
 });
 
 test('the chat opens as a page with the input in it, and closes on Zurück and on Escape', async () => {
@@ -133,7 +147,7 @@ test('an old proposal that was never answered is a line in the history, not a pi
 test('sends a message and shows that the coach is thinking', async () => {
   const { port, map } = fakePort();
   render(<CoachScreen port={port} {...env} />);
-  expect(await screen.findByText(/Es gibt noch keinen Wochenplan/)).toBeTruthy();
+  expect(await screen.findByText('Für diese Woche gibt es noch keinen Plan.')).toBeTruthy();
   await openChat();
   fireEvent.change(screen.getByLabelText('Nachricht an Bo'), { target: { value: '  3× Rad bitte ' } });
   fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
@@ -152,7 +166,7 @@ test('taking a proposal writes the week plan and shows it; then it cannot be tak
   expect(records(map, 'chat').some((r) => (r.body as { takes?: string }).takes === 'c1')).toBe(true);
   expect(await screen.findByText(/Du hast den Wochenplan ab .* übernommen\./)).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Übernehmen' })).toBeNull();
-  expect(screen.getByRole('list', { name: 'Wochenplan diese Woche' }).textContent).toContain('Kraft · mittel');
+  expect((await screen.findByRole('region', { name: 'Tage' })).textContent).toContain('Kraft, mittel');
   expect(screen.queryByRole('status')).toBeNull();
 });
 
@@ -167,48 +181,57 @@ test('declining writes a decline and changes no plan', async () => {
   expect(await screen.findByText(/Du hast den Wochenplan ab .* abgelehnt\./)).toBeTruthy();
 });
 
-test('the run coach runs sit on their days in the week, and are listed alone without a week plan', async () => {
+test('the run coach runs are listed under Kommt noch without a week plan, and sit on their day with a plan', async () => {
   const { runFp } = await import('../../src/shared/run');
-  const run = { date: '2026-11-04', kind: 'easy' as const, minutes: 35, hrCap: 150, counts: 'Zeit zählt.', note: null };
+  const run = { date: '2026-11-05', kind: 'easy' as const, minutes: 35, hrCap: 150, counts: 'Zeit zählt.', note: null };
   const runWeek: TrackedRecord = { kind: 'run', id: 'week-2026-11-02', updatedMs: 1, deleted: false, body: {
     type: 'week', week: '2026-11-02', announce: true, atMs: 1, phase: 1, source: 'rules', reason: 'Ruhig.', note: null, runs: [{ ...run, fp: runFp(run), done: null }], garmin: null } };
   const { port } = fakePort([runWeek]);
   render(<CoachScreen port={port} {...env} />);
-  expect((await screen.findByRole('list', { name: 'Läufe diese Woche' })).textContent).toContain('Laufen · 35 Min · locker · Puls bis 150');
+  expect((await screen.findByRole('region', { name: 'Tage' })).textContent).toContain('Laufen · 35 Min · locker');
   cleanup();
-  const plan: TrackedRecord = { kind: 'weekplan', id: '2026-11-02', updatedMs: 1, deleted: false, body: { ...proposal, fromMessage: 'c1', acceptedMs: 1 } };
+  const plan: TrackedRecord = { ...takenPlan, body: { ...(takenPlan.body as object), days: weekDates('2026-11-02').map((date, i) => ({ date, sport: i === 3 ? 'run' : 'rest', hardness: 'moderate', fixed: false })) } };
   const two = fakePort([runWeek, plan]);
   render(<CoachScreen port={two.port} {...env} />);
-  const wed = (await screen.findByRole('list', { name: 'Wochenplan diese Woche' })).querySelectorAll('li')[2]!;
-  expect(wed.textContent).toContain('Laufen · 35 Min · locker'); expect(wed.textContent?.match(/Laufen/g)).toHaveLength(1);
+  const days = await screen.findByRole('region', { name: 'Tage' });
+  expect(days.textContent).toContain('Laufen · 35 Min · locker');
+  expect(days.textContent?.match(/Laufen/g)).toHaveLength(1);
 });
 
-test('the coach writes by itself only when switched on here; the settings are saved as a record', async () => {
-  const { port, map } = fakePort();
-  render(<CoachScreen port={port} {...env} />);
-  const evening = await screen.findByRole('switch', { name: /Am Vorabend sagen/ }) as HTMLInputElement;
-  expect(evening.checked).toBe(false);
-  fireEvent.click(evening);
-  await waitFor(() => expect(records(map, 'coachprefs')[0]?.body).toEqual({ week: { on: false, day: 6, hour: 18 }, evening: { on: true, hour: 19 } }));
-  expect(await screen.findByRole('button', { name: /Uhrzeit am Vorabend/ })).toBeTruthy();
-});
-
-test('without a week plan: one "Woche planen" button, no empty day list, no second Coach row; the goal is a suggestion', async () => {
-  const { port } = fakePort();
-  render(<CoachScreen port={port} {...env} />);
-  expect(await screen.findByRole('button', { name: 'Woche planen' })).toBeTruthy();
-  expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
-  expect(screen.queryByRole('button', { name: /^Bo/ })).toBeNull();
-  expect(screen.getByRole('button', { name: /^Ziel und Planung/ }).textContent).toContain('Vorschlag: Muskeln aufbauen');
-  await openChat();
-});
-
-test('a waiting proposal gets a card under the week with Ansehen, which opens the chat', async () => {
+test('a waiting proposal: Bo says so and Vorschlag ansehen opens the proposals sheet with Übernehmen', async () => {
   const { port } = fakePort([riderMsg, coachMsg]);
   render(<CoachScreen port={port} {...env} />);
-  const card = await screen.findByRole('region', { name: 'Ein Vorschlag wartet auf dich' });
-  fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Vorschlag ansehen' }));
+  const sheet = await screen.findByRole('dialog', { name: 'Vorschlag' });
+  expect(within(sheet).getByRole('button', { name: 'Übernehmen' })).toBeTruthy();
+});
+
+test('without a plan: seven calm dots, no count, and Bo offers Woche planen', async () => {
+  const { port } = fakePort();
+  render(<CoachScreen port={port} {...env} />);
+  const week = await screen.findByRole('region', { name: 'Diese Woche' });
+  expect(await within(week).findByRole('list', { name: 'Wochenweg' })).toBeTruthy();
+  expect(week.textContent).toContain('Für diese Woche gibt es noch keinen Plan.');
+  expect(screen.queryByText(/von \d+ geschafft/)).toBeNull();
+  expect(screen.queryByRole('region', { name: 'Tage' })).toBeNull();
+  fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
   expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensei' })).toBeTruthy();
+});
+
+test('Rückblick, Was Bo beachtet and Nächste Woche open their sheets from quiet rows', async () => {
+  const nextPlan: TrackedRecord = { ...takenPlan, id: '2026-11-09', body: { ...(takenPlan.body as object), weekStart: '2026-11-09', days: weekDates('2026-11-09').map((date, i) => ({ date, sport: i === 1 ? 'gym' : 'rest', hardness: 'moderate', fixed: false })) } };
+  const { port } = fakePort([takenPlan, nextPlan]);
+  render(<CoachScreen port={port} {...env} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Rückblick' }));
+  expect(await screen.findByRole('dialog', { name: 'Rückblick' })).toBeTruthy();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  fireEvent.click(screen.getByRole('button', { name: 'Was Bo beachtet' }));
+  expect(await screen.findByRole('dialog', { name: 'Was Bo beachtet' })).toBeTruthy();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  fireEvent.click(screen.getByRole('button', { name: 'Nächste Woche' }));
+  expect(within(await screen.findByRole('dialog', { name: 'Nächste Woche' })).getByRole('list', { name: 'Wochenplan nächste Woche' })).toBeTruthy();
 });
 
 test('Escape in the proposal sheet closes only that sheet: the chat and its composer stay open and no plan changes', async () => {

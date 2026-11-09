@@ -51,66 +51,69 @@ async function boot(seed: TrackedRecord[]) {
 
 const NO_RANKING = /legt .*vor|Gleichstand|freut sich|Serie|Streak|vorne|mehr als|weniger als|Platz|schon wieder|endlich|noch nicht/i;
 
+async function openTogether() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Gemeinsam' }));
+  return (await screen.findByRole('heading', { level: 1, name: 'Gemeinsam' })).closest('.tk-screen') as HTMLElement;
+}
+
 describe('Gemeinsam on the phone', () => {
-  it('Heute shows a compact card from the record: this week for both, the latest rides, the mountain, the data date', async () => {
+  it('Gemeinsam is a quiet tile on Woche, not a card on Heute; the page shows both people, the latest rides, the mountain, the data date', async () => {
     await boot([rec(body())]);
-    const card = await screen.findByRole('button', { name: /Gemeinsam/ });
-    const c = within(card);
+    expect(screen.queryByRole('button', { name: /Gemeinsam/ })).toBeNull(); // Heute
+    expect(screen.getByRole('navigation').querySelectorAll('button')).toHaveLength(3); // Heute, Woche, Kraft: never a tab for this
+    const page = await openTogether();
+    const c = within(page);
     expect(c.getByText('Diese Woche')).toBeTruthy();
     // The own person first, then the other; no order by numbers.
-    expect(card.textContent).toMatch(/Lena.*1 Fahrt.*40 Min.*Max.*2 Fahrten.*75 Min/s);
-    expect(c.getByText(/Grundlage locker/)).toBeTruthy();
-    expect(c.getByText(/Mont Ventoux/)).toBeTruthy();
+    expect(page.textContent).toMatch(/Lena.*1 Fahrt, 40 Min.*Max.*2 Fahrten, 75 Min/s);
+    expect(c.getAllByText(/Grundlage locker/).length).toBeGreaterThan(0);
+    expect(c.getAllByText(/Mont Ventoux/).length).toBeGreaterThan(0);
     expect(c.getByText(/Stand: Mittwoch, 4\. November/)).toBeTruthy();
-    expect(card.textContent).not.toMatch(NO_RANKING);
-    // Gemeinsam sits last on Heute, after the plan.
-    expect(card.compareDocumentPosition(screen.getAllByRole("button", { name: "Woche planen" })[0]!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
-    expect(screen.getByRole('navigation').querySelectorAll('button')).toHaveLength(3); // Heute, Woche, Kraft: Essen only with a meal plan; never a tab for this
+    expect(page.textContent).not.toMatch(NO_RANKING);
   });
 
-  it('tapping opens the full page with the Mac page sections, and Zurück returns to Heute', async () => {
+  it('the page has the Mac page sections, and the button "Woche" leads back to Woche', async () => {
     await boot([rec(body())]);
-    fireEvent.click(await screen.findByRole('button', { name: /Gemeinsam/ }));
-    expect(await screen.findByRole('heading', { name: 'Gemeinsam' })).toBeTruthy();
+    const page = await openTogether();
     for (const h of ['Euer Berg', 'Unterwegs am Berg', 'Bezwungene Berge', 'Euer Gipfelbuch', 'Die letzten 12 Wochen', 'Zuletzt gefahren']) expect(screen.getByRole('heading', { name: h })).toBeTruthy();
     expect(screen.getByText(/1250 von 1600 Höhenmetern/)).toBeTruthy();
     expect(screen.getByText('Col du Galibier')).toBeTruthy();
     expect(screen.getByText(/gemeinsam erreicht am/)).toBeTruthy();
     expect(screen.getByText(/Max, 40 %/)).toBeTruthy();
-    expect(screen.getByText(/Stand: Mittwoch, 4\. November/)).toBeTruthy();
-    const page = screen.getByRole('heading', { name: 'Gemeinsam' }).closest('.tk-screen')!;
     expect(page.textContent).not.toMatch(NO_RANKING);
     expect(page.textContent).not.toMatch(/Watt|FTP|Puls/);
-    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
+    fireEvent.click(within(page).getByRole('button', { name: 'Woche' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Deine Woche' })).toBeTruthy();
   });
 
   it('an old snapshot says so: last week is not shown as this week', async () => {
     await boot([rec(body({ week: MONDAY - 7 * DAY, atMs: NOW - 8 * DAY }))]);
-    const card = await screen.findByRole('button', { name: /Gemeinsam/ });
-    expect(within(card).queryByText('Diese Woche')).toBeNull();
-    expect(within(card).getByText(/Woche vom 26\. Okt/)).toBeTruthy();
-    expect(within(card).getByText(/Stand: Dienstag, 27\. Oktober/)).toBeTruthy();
+    const page = within(await openTogether());
+    expect(page.queryByText('Diese Woche')).toBeNull();
+    expect(page.getByText(/Woche vom 26\. Okt/)).toBeTruthy();
+    expect(page.getByText(/Stand: Dienstag, 27\. Oktober/)).toBeTruthy();
   });
 
   it('an account without a household partner still sees its own part', async () => {
     const own = body({ people: [body().people[1]], recent: [body().recent[0]], climbing: [], climbed: [], summits: [] });
     await boot([rec(own)]);
-    const card = await screen.findByRole('button', { name: /Gemeinsam/ });
-    expect(card.textContent).toMatch(/Lena.*1 Fahrt.*40 Min/s);
-    expect(card.textContent).not.toMatch(/Max/);
-    fireEvent.click(card);
+    const page = await openTogether();
+    expect(page.textContent).toMatch(/Lena.*1 Fahrt.*40 Min/s);
+    expect(page.textContent).not.toMatch(/Max/);
     expect(await screen.findByRole('heading', { name: 'Zuletzt gefahren' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Euer Gipfelbuch' })).toBeNull();
   });
 
-  it('no record, a deleted one or a broken one: Heute is as before', async () => {
+  it('no record, a deleted one or a broken one: there is no Gemeinsam tile', async () => {
     await boot([{ ...rec(body()), body: { people: 'kaputt' } }]);
-    await screen.findAllByRole('button', { name: 'Woche planen' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    await screen.findByRole('button', { name: 'Rückblick' });
     expect(screen.queryByRole('button', { name: /Gemeinsam/ })).toBeNull();
     cleanup();
     await boot([]);
-    await screen.findAllByRole('button', { name: 'Woche planen' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
+    await screen.findByRole('button', { name: 'Rückblick' });
     expect(screen.queryByRole('button', { name: /Gemeinsam/ })).toBeNull();
   });
 });

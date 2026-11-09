@@ -108,7 +108,7 @@ describe('Heute in the Dojo', () => {
     expect(within(card).getByRole('button', { name: 'Im Profil auswählen' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Vorschlag ansehen' })).toBeNull();
   });
-  it('shows Gemeinsam last', async () => {
+  it('shows no Gemeinsam: it lives on Woche', async () => {
     const weeks = [...Array(11).fill(0), 40];
     const together = {
       week: Date.UTC(2026, 10, 2), atMs: NOW - 3_600_000, you: 'anna',
@@ -116,10 +116,8 @@ describe('Heute in the Dojo', () => {
       recent: [], metres: 2350, lastRideMetres: 400, peak: { name: 'Mont Ventoux', done: 1250, total: 1600, next: 'Stilfser Joch' }, summits: [], climbed: [], climbing: [],
     };
     await boot([daytext, weekplanWithGymToday, planRecord, rec('together', 'current', together)]);
-    const coach = await screen.findByText('Schön, dass du dran bist.');
-    const tg = await screen.findByRole('button', { name: /Gemeinsam/ });
-    expect(before(coach, tg)).toBe(true);
-    expect(coach.closest('.tk-heute')!.lastElementChild!.contains(tg)).toBe(true);
+    await screen.findByText('Schön, dass du dran bist.');
+    expect(screen.queryByRole('button', { name: /Gemeinsam/ })).toBeNull();
   });
   it('"Frag Bo, deinen Sensei" on Heute opens the real coach composer', async () => {
     await boot([daytext]);

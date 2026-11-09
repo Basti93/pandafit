@@ -1,9 +1,9 @@
+import { BO } from '../../src/shared/bo';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
-/** The Woche page has a row "Coach" that opens the chat sheet; without a week plan the button "Woche planen" does. */
+/** Bo's bubble on the Woche page has the button "Frag Bo, deinen Sensei"; it opens the chat. */
 export async function openChat(): Promise<HTMLElement> {
-  const row = await screen.findAllByRole('button', { name: /^(Bo|Woche planen)/ });
-  fireEvent.click(row.find((b) => b.textContent?.startsWith("Bo")) ?? row[0]!);
+  fireEvent.click(await screen.findByRole('button', { name: BO.ask }));
   return screen.findByRole('dialog', { name: 'Bo, dein Sensei' });
 }
 

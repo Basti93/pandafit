@@ -385,7 +385,7 @@ describe('web app', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
     await waitFor(() => expect(storage.get('pandafit.account')).toBe('ben'));
     // The shell rebuilds after the login: open the chat until Ben's record shows there.
-    await waitFor(() => { fireEvent.click(screen.getByRole('button', { name: 'Woche' })); fireEvent.click(screen.getByRole('button', { name: /^Bo/ })); expect(screen.getByText('Nur Ben')).toBeTruthy(); });
+    await waitFor(() => { fireEvent.click(screen.getByRole('button', { name: 'Woche' })); fireEvent.click(screen.getByRole('button', { name: /^Frag Bo/ })); expect(screen.getByText('Nur Ben')).toBeTruthy(); });
     expect(posts.filter((p) => p.user === 'ben' && p.ids.includes('a-only'))).toEqual([]);
     const a = await openIdb('anna', factory);
     expect((await a.list('chat')).map((r) => r.id)).toEqual(['a-only']);

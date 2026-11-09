@@ -20,7 +20,6 @@ import { useApp } from '../AppContext';
 import { planKeyOf, readDraft } from '../../tracking/plan-draft';
 import { mobilityToShow, planIsStale, readPlan } from '../logic';
 import { DayMeals } from '../MealsScreen';
-import { TogetherCard, TogetherPage, togetherOf } from '../TogetherScreen';
 import { CoachLine } from '../today/CoachLine';
 import { dayClip } from '../../tracking/ui/panda-day';
 import { dayLine } from '../../shared/day-text';
@@ -40,9 +39,6 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   const weekplans = usePortRecords(port, 'weekplan').records;
   const runs = usePortRecords(port, 'run').records;
   const bikePlan = bikeOf(usePortRecords(port, 'bike').records)?.next ?? null;
-  // Only when the Mac sent one for this account: without a link Heute stays as it was.
-  const together = togetherOf(usePortRecords(port, 'together').records);
-  const [showTogether, setShowTogether] = useState(false);
   const [sheetDate, setSheetDate] = useState<string | null>(null);
   const daytexts = usePortRecords(port, 'daytext').records;
   const plan = (plans ?? []).find((r) => r.id === 'current');
@@ -99,7 +95,6 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   // Nothing planned and nothing switched on: the one card offers to plan.
   const setup = !open && weekplans !== null && plans !== null && !today && !planning && !p;
 
-  if (together && showTogether) return <TogetherPage t={together} now={now} onBack={() => setShowTogether(false)} />;
   return (
     <div className="tk-screen tk-heute">
       <header className="tk-datehead">
@@ -121,7 +116,6 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
         ) : <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} extra={mobilityRow} />}
       {meals && <DayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
       {tomorrowPlan && <RowCard icon={SPORT_ICON[tomorrowPlan.sport]} kicker="Morgen" title={planDayLabel(tomorrowPlan)} onClick={() => setSheetDate(tomorrow)} />}
-      {together && <TogetherCard t={together} now={now} onOpen={() => setShowTogether(true)} />}
       {sheetDate && <DaySheet port={port} date={sheetDate} now={env.now} onClose={() => setSheetDate(null)} />}
     </div>
   );
