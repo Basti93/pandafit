@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createLogger } from '../shared/node/log';
-import { guardChild } from './child-guard';
+import { guardChild, pythonErrorClass } from './child-guard';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { GarminSyncInfo } from './protocol';
@@ -147,7 +147,7 @@ export class GarminSync {
       if (ended) return;
       ended = true;
       guard.clear();
-      if (code !== 0 && !this.running.get(id)?.stopped) log.warn('sync helper failed', { profileId: id, code, stderr: guard.stderr().slice(-300) });
+      if (code !== 0 && !this.running.get(id)?.stopped) log.warn('sync helper failed', { profileId: id, code, timedOut: guard.timedOut(), pyError: pythonErrorClass(guard.stderr()) });
       checkin();
       if (this.running.get(id) === run) this.running.delete(id);
       if (run.stopped) { this.opts.onUpdate(); return; }

@@ -4,14 +4,14 @@ const KILL_GRACE_MS = 5000;
 type ChildLike = { kill(signal?: NodeJS.Signals | number): boolean; on(ev: 'close', fn: () => void): unknown; stderr?: NodeJS.ReadableStream | null };
 
 /**
- * Timeout guard for a helper process: SIGTERM at the limit, SIGKILL after 5 s if it is still there. Collects stderr (at most 64 KiB).
+ * Timeout guard for a helper process: SIGTERM at the limit, SIGKILL after 5 s if it is still there. Collects the last 64 KiB of stderr.
  * `onTimeout` runs once at the limit. Call `clear()` when the process is done by other means.
  */
 export const guardChild = (child: ChildLike, timeoutMs: number, onTimeout?: () => void): { stderr(): string; clear(): void; timedOut(): boolean } => {
   let err = '';
   let timedOut = false;
   let killTimer: ReturnType<typeof setTimeout> | undefined;
-  child.stderr?.on('data', (b: Buffer) => { if (err.length < STDERR_MAX) err = (err + String(b)).slice(0, STDERR_MAX); });
+  child.stderr?.on('data', (b: Buffer) => { err = (err + String(b)).slice(-STDERR_MAX); });
   const timer = setTimeout(() => {
     timedOut = true;
     try { child.kill('SIGTERM'); } catch { /* already gone */ }
@@ -23,4 +23,10 @@ export const guardChild = (child: ChildLike, timeoutMs: number, onTimeout?: () =
   const clear = (): void => { clearTimeout(timer); if (killTimer) { clearTimeout(killTimer); killTimer = undefined; } };
   child.on('close', clear);
   return { stderr: () => err, clear, timedOut: () => timedOut };
+};
+
+/** The class name of the last Python exception in a stderr tail. Never the message: it can hold tokens or account data. */
+export const pythonErrorClass = (stderr: string): string | null => {
+  const all = [...stderr.slice(-4096).matchAll(/^(\w+(?:\.\w+)*(?:Error|Exception)):/gm)];
+  return all.at(-1)?.[1] ?? null;
 };

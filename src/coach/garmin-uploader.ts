@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createLogger } from '../shared/node/log';
-import { guardChild } from './child-guard';
+import { guardChild, pythonErrorClass } from './child-guard';
 import path from 'node:path';
 import { plainTokens, TokensUnopenable, type GarminTokens, type TokenCheckout } from './secrets/garmin-tokens';
 
@@ -58,20 +58,21 @@ export class GarminUploader {
     this.running.set(profileId, run);
     let out = '';
     let ended = false;
+    let exitCode: number | null = null;
     // A run that hangs loses its tokens folder at once, not only when it finally exits.
     const guard = guardChild(child, TIMEOUT_MS, () => { log.warn('upload timed out', { profileId }); checkin(); });
     const end = (result: UploadResult): void => {
       if (ended) return;
       ended = true;
       guard.clear();
-      if (result.status !== 'uploaded') log.warn('upload failed', { profileId, rideId, stderr: guard.stderr().slice(-300) });
+      if (result.status !== 'uploaded') log.warn('upload failed', { profileId, rideId, code: exitCode, timedOut: guard.timedOut(), pyError: pythonErrorClass(guard.stderr()) });
       checkin();
       if (this.running.get(profileId) === run) this.running.delete(profileId);
       this.opts.onResult(profileId, rideId, result);
     };
     child.stdout?.on('data', (b: Buffer) => { out += String(b); });
     child.on('error', () => end(FAILED));
-    child.on('close', () => end(parse(out)));
+    child.on('close', (code) => { exitCode = code; end(parse(out)); });
     return true;
   }
 
