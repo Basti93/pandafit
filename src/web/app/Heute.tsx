@@ -24,8 +24,6 @@ import { BodyCard } from '../today/BodyCard';
 import { shiftDay, swipeIgnored, swipeStep, type DayOffset } from '../today/day-nav';
 import { dayLine } from '../../shared/day-text';
 import { healthOf } from '../../tracking/ui/health-view';
-import { Training } from './Training';
-import { Profil } from './Profil';
 
 /** "14:05", or with the day when it was not today. */
 /** "14:44" today, "gestern 13:34" the day before, "Sa., 13:34" earlier: an old open workout shows as old. */

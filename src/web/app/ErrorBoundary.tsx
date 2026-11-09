@@ -1,5 +1,4 @@
 import { Component, type ReactNode } from 'react';
-import { Training } from './Training';
 
 /** A broken page never leaves a white screen: a calm message, and the way to the workout stays open. */
 export class ErrorBoundary extends Component<{ children: ReactNode; onTraining: () => void }, { failed: boolean }> {

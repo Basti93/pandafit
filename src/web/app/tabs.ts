@@ -1,6 +1,4 @@
 import { Env } from './env';
-import { Heute } from './Heute';
-import { Ausdauer } from './Ausdauer';
 
 export type Tab = 'heute' | 'coach' | 'training' | 'essen' | 'ausdauer' | 'profil';
 // At most five tabs in a fixed order: the look back (Rückblick) is on Woche, the profile is the round button at the top right.

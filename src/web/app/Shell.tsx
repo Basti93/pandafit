@@ -21,7 +21,6 @@ import { usePush, PushCard } from './Push';
 import { Tab, TABS, readMealsOn, saveMealsOn, NO_LINK, COACH_ASK_MS, noSub, visibleTabs, saveEndurance, tabFor } from './tabs';
 import { Ausdauer } from './Ausdauer';
 import { Profil } from './Profil';
-import { App } from './Boot';
 
 export function Shell({ account, env, port, onLogout, onRelogin }: { account: string; env: Env; port: WebPort; onLogout: () => void; onRelogin: (name: string) => void }) {
   // "Weitermachen" on Heute opens the open workout itself, once; "Ansehen und anpassen" opens the sheet "Nächstes Training", once; every other way into Kraft shows the start screen.

@@ -4,7 +4,6 @@ import { useApp } from '../AppContext';
 import type { PushEnv, SubJson } from '../push';
 import { UpdatesSwitch } from '../ContactSettings';
 import { Env, post, get } from './env';
-import { Profil } from './Profil';
 
 export const pushKey = (account: string) => `pandafit.push.${account}`;
 export const cardKey = (account: string) => `pandafit.pushCard.${account}`;

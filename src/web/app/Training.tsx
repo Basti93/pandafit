@@ -5,7 +5,6 @@ import { ExercisesScreen, RoutinesScreen, WorkoutScreen } from '../../tracking/u
 import { usePortRecords } from '../../tracking/ui/hooks';
 import { useApp } from '../AppContext';
 import { planDateText, readPlan } from '../logic';
-import { Heute } from './Heute';
 
 export function Training({ entry, onEntryDone, onDone }: { entry: 'resume' | 'plan' | null; /** The plan sheet asked for by Heute has opened: the request is used up. */ onEntryDone: () => void; onDone: () => void }) {
   const { port, env, account } = useApp();

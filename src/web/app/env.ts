@@ -2,7 +2,6 @@ import { apiFetch, jsonInit } from '../../tracking/ui/data/api';
 import type { OpenState } from '../register';
 import type { PushEnv } from '../push';
 import { type LiveSocket } from '../live';
-import { Training } from './Training';
 
 export type Env = {
   fetchFn: typeof fetch;
