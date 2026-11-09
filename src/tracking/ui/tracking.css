@@ -360,10 +360,6 @@
 .tk-week li { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); column-gap: .25rem; }
 .tk-pin .tk-week li { grid-template-columns: 5.4rem minmax(0, 1fr); }
 /* Profile groups: a thin line only between groups, none between the rows of one group. */
-.tk-pgroup { border-top: 1px solid var(--line); margin-top: .75rem; display: flex; flex-direction: column; }
-.tk-pgroup .tk-switchrow, .tk-pgroup .tk-rowitem, .tk-screen .tk-pgroup button.tk-choice { border-top: 0; }
-.tk-pgroup > .tk-section { margin: var(--space-3) 0 var(--space-1); }
-.tk-pgroup > p.muted { margin: var(--space-1) 0 var(--space-2); }
 .tk-pagehead { gap: .2rem; }
 .tk-pagehead .tk-title { line-height: 1.25; }
 .tk-pagehead .tk-subtitle { line-height: 1.3; }

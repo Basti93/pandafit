@@ -61,6 +61,7 @@ describe('push notifications on the phone', () => {
     const a = await boot({ push });
     await doLogin();
     expect(card()).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Einschalten' }).className).toBe('primary');
     fireEvent.click(screen.getByRole('button', { name: 'Einschalten' }));
     await waitFor(() => expect(a.calls.some((c) => c.url === '/push/subscribe')).toBe(true));
     expect(push.requestPermission).toHaveBeenCalledTimes(1);

@@ -24,7 +24,7 @@ const coachState = (over: Record<string, unknown> = {}) => ({ type: 'coach-state
 const setup = async (status: { profileId: string | null; moved: boolean } | null = { profileId: 'p1', moved: true }) => {
   const ws = new FakeSocket();
   const link = new CoachLink({ open: () => ws, status: async () => status });
-  render(<ConnectionSettings link={link} plan={null} />);
+  render(<ConnectionSettings link={link} plan={null} hasBike={false} />);
   await flush();
   return { ws, link };
 };
@@ -81,19 +81,21 @@ describe('ConnectionSettings on the web Profil', () => {
     act(() => ws.say(coachState({ gym: { state: {} }, meals: { settings: meals(true) } })));
     // Once on, it is a plain line, not a switch that looks broken.
     expect(screen.queryByRole('switch', { name: 'Krafttraining planen' })).toBeNull();
-    expect(screen.getByText('Krafttraining · wird geplant')).toBeTruthy();
+    expect(screen.getByText('Dein Krafttraining wird immer geplant. Rad geht mit der ersten Fahrt am Mac los.')).toBeTruthy();
     fireEvent.click(screen.getByText('Essen anpassen'));
     fireEvent.change(screen.getByLabelText('Abneigungen'), { target: { value: 'Pilze, Oliven' } });
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(ws.sent.at(-1)).toMatchObject({ type: 'meals-settings', settings: { on: true, dislikes: ['Pilze', 'Oliven'] } });
   });
 
-  it('shows how big the recipe collection is: before and after it is used for planning', async () => {
+  it('shows how big the recipe collection is inside Essen anpassen: before and after it is used for planning', async () => {
     const { ws } = await setup();
     act(() => { ws.onopen?.(); ws.say(coachState({ meals: { settings: meals(false), recipes: { collection: 734, unlock: 1000 } } })); });
-    // Only with the meal plan on.
-    expect(screen.queryByText(/Rezeptsammlung/)).toBeNull();
+    // Only with the meal plan on, and only in the sheet.
+    expect(screen.queryByText('Essen anpassen')).toBeNull();
     act(() => ws.say(coachState({ meals: { settings: meals(true), recipes: { collection: 734, unlock: 1000 } } })));
+    expect(screen.queryByText(/Rezeptsammlung/)).toBeNull();
+    fireEvent.click(screen.getByText('Essen anpassen'));
     expect(screen.getByText('Rezeptsammlung: 734 von 1.000')).toBeTruthy();
     act(() => ws.say(coachState({ meals: { settings: meals(true), recipes: { collection: 1512, unlock: 1000 } } })));
     expect(screen.getByText('Rezeptsammlung: 1.512 Rezepte')).toBeTruthy();

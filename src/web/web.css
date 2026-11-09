@@ -154,9 +154,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 /* Visible keyboard focus on every control, in the accent colour. */
 .web-main :is(button, a, summary, [role='tab'], [role='checkbox'], [role='switch']):focus-visible,
 .web-live-strip:focus-visible, .web-nav button:focus-visible, .tk-sheet :is(button, a, summary):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-/* Profil: each group is a card, like the cards on Heute. */
-.tk-pgroup { background: var(--card); border-radius: var(--radius-card); padding: .25rem var(--space-4) var(--space-3); margin-top: var(--space-3); }
-.tk-pgroup > .tk-section { margin-top: var(--space-3); }
 /* Login: the still Panda sits over the wordmark. */
 .web-login .web-login-panda { width: 7rem; height: auto; align-self: flex-start; }
 /* Ride companion: the figures stay big and dark on light; the pairs and the interval sit on cards. */
@@ -169,6 +166,5 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
   .pm-addline { grid-template-columns: 1fr; }
   .live-big { font-size: 5rem; }
   .live-pair b { font-size: var(--text-3xl); }
-  .tk-pgroup { padding-left: var(--space-3); padding-right: var(--space-3); }
 }
 @media (max-width: 340px) { .web-nav button { letter-spacing: -.01em; } }
