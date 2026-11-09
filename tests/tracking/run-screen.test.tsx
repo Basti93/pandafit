@@ -89,14 +89,43 @@ test('the questions write answers and weekdays in one settings record', async ()
   expect(map.get('run:settings')!.updatedMs).toBeGreaterThan(1);
 });
 
-test('a planned run shows what counts today', async () => {
+test('a planned run shows minutes and pulse cap; only a test run adds what counts', async () => {
   const { port } = fakePort([rec('status', statusBody()), rec(`week-${WEEK}`, weekBody())]);
   render(<RunScreen port={port} {...ids} />);
   const today = await screen.findByRole('region', { name: 'Heute' });
-  expect(within(today).getByText(/Heute zählt die Zeit, nicht das Tempo\./)).toBeTruthy();
-  expect(within(today).getByText(/30 Minuten, Puls bis 150/)).toBeTruthy();
+  expect(within(today).getByText('30 Minuten, Puls bis 150.')).toBeTruthy();
+  expect(today.textContent).not.toContain('Heute zählt die Zeit');
   expect(screen.getByRole('region', { name: 'Laufen · diese Woche' })).toBeTruthy();
   expect(document.querySelector('.tk-bo')!.textContent).toContain('Ruhiger Start in die Woche.');
+  cleanup();
+  const t = fakePort([rec('status', statusBody()), rec(`week-${WEEK}`, weekBody([planned({ kind: 'test', counts: 'Heute zählt die Strecke in den 30 Minuten.' })]))]);
+  render(<RunScreen port={t.port} {...ids} />);
+  expect((await screen.findByRole('region', { name: 'Heute' })).textContent).toContain('Heute zählt die Strecke in den 30 Minuten.');
+});
+
+test('on another day a test run says the weekday instead of Heute', async () => {
+  const { port } = fakePort([rec('status', statusBody()), rec(`week-${WEEK}`, weekBody([planned({ date: '2026-11-06', kind: 'test', counts: 'Heute zählt die Strecke in den 30 Minuten.' })]))]);
+  render(<RunScreen port={port} {...ids} />);
+  const main = await screen.findByRole('region', { name: 'Nächster Lauf' });
+  expect(main.textContent).not.toContain('Heute zählt');
+  expect(main.textContent).toContain('Am Freitag zählt die Strecke in den 30 Minuten.');
+});
+
+test('during the first questions there is no Freier Lauf card and only one primary button', async () => {
+  const { port } = fakePort([rec('status', statusBody({ needsAnswers: true })), rec('settings', { type: 'settings', on: true, weekdays: null, answers: null })]);
+  render(<RunScreen port={port} {...ids} />);
+  await screen.findByRole('button', { name: 'Speichern' });
+  expect(screen.queryByText(/kein Lauf mehr geplant/)).toBeNull();
+  expect(document.querySelectorAll('button.primary')).toHaveLength(1);
+});
+
+test('with no run ahead Bo says the calm week line, not the week reason', async () => {
+  const { port } = fakePort([rec('status', statusBody()), rec(`week-${WEEK}`, weekBody([planned({ date: '2026-11-03' })]))]);
+  render(<RunScreen port={port} {...ids} />);
+  await screen.findByRole('heading', { name: 'Freier Lauf' });
+  const bo = document.querySelector('.tk-bo')!.textContent!;
+  expect(bo).toContain('Wenn du an der Woche etwas ändern willst');
+  expect(bo).not.toContain('Ruhiger Start');
 });
 
 test('Laufen shows the week stand with Lauftage ändern, the next run as the main card with Lauf eintragen, and Bo says the week', async () => {

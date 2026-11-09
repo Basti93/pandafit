@@ -21,8 +21,11 @@ const PAUSE = 'Laufen pausiert, solange die Beschwerde offen ist. Sobald sie vor
 const GENTLE = 'Wir planen gerade sanft.';
 const FAILED = 'Das Senden hat gerade nicht geklappt. Du kannst es später noch einmal versuchen.';
 
-/** "{minutes} Minuten, Puls bis {cap}." and what counts, in whole sentences. */
-const runText = (r: PlannedRun): string => `${r.minutes} Minuten${r.hrCap !== null ? `, Puls bis ${r.hrCap}` : ''}.${r.kind !== 'long' && r.counts ? ` ${r.counts}` : ''}`;
+/** "{minutes} Minuten, Puls bis {cap}." In whole sentences; only a test run adds what counts, and "Heute" there becomes the weekday on another day. */
+const runText = (r: PlannedRun, todayKey: string): string => {
+  const counts = r.kind !== 'test' || !r.counts ? '' : r.date === todayKey ? r.counts : r.counts.replace(/(^|\. )Heute /g, `$1Am ${weekdayOfKey(r.date)} `);
+  return `${r.minutes} Minuten${r.hrCap !== null ? `, Puls bis ${r.hrCap}` : ''}.${counts ? ` ${counts}` : ''}`;
+};
 
 /** "Di und Sa", "Di, Do und Sa". */
 const dayList = (days: number[]): string => { const n = days.map((d) => DAY_SHORT[d]!); return n.length < 2 ? n.join('') : `${n.slice(0, -1).join(', ')} und ${n.at(-1)}`; };
@@ -264,7 +267,7 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
   const card = status.card;
   const enter = { label: 'Lauf eintragen', onClick: sheetEntry };
   const showGarmin = status.on && !paused && !!week && week.runs.length > 0 && status.garmin && !!week.garmin;
-  const bo = week && !paused && week.runs.length > 0 ? [week.reason, upcoming?.hrCap == null ? week.note : null].filter((t): t is string => !!t) : [];
+  const bo = week && !paused && upcoming && week.runs.length > 0 ? [week.reason, upcoming?.hrCap == null ? week.note : null].filter((t): t is string => !!t) : [];
 
   return (
     <div className="tk-screen tk-run">
@@ -287,9 +290,9 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
       )}
       {status.on && !paused && upcoming && (
         <MainCard label={upcoming === today ? 'Heute' : 'Nächster Lauf'} kicker={upcoming === today ? 'Heute' : `${weekdayOfKey(upcoming.date)}, ${dayMonthLongOfKey(upcoming.date)}`}
-          title={KIND[upcoming.kind]} text={runText(upcoming)} primary={enter} />
+          title={KIND[upcoming.kind]} text={runText(upcoming, todayKey)} primary={enter} />
       )}
-      {status.on && !paused && !upcoming && (
+      {status.on && !paused && !upcoming && !firstQuestions && (
         <MainCard kicker="Laufen" title="Freier Lauf" text="Für diese Woche ist kein Lauf mehr geplant. Trag einen Lauf ein, wenn du gelaufen bist." primary={enter} />
       )}
       {status.on && !paused && week && week.runs.length > 0 && <BoBubble portrait="mini">{bo.length > 0 ? bo.join(' ') : BO_LINES.weekCalm}</BoBubble>}
@@ -298,7 +301,7 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
       {status.on && card && feelAsked(card, answeredFeels, now()) && (
         <Card label="Letzter Lauf">
           <Kicker>{`Letzter Lauf · ${weekdayOfKey(card.date)}`}</Kicker>
-          <p className="tk-maintext"><b>{card.result}</b></p>
+          <p><b>{card.result}</b></p>
           <p className="muted">{card.sentence}</p>
           <RunFeelQuestion
             onAnswer={(feel) => {

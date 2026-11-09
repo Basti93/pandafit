@@ -322,7 +322,7 @@
 .tk-screen .tk-title + p.muted { margin-top: -.5rem; }
 .tk-row-more > p { margin: 0; }
 
-/* Laufen: today first, the rest behind rows and sheets */
+/* Laufen: the day buttons of the questions */
 .tk-dayrow { display: flex; gap: var(--space-1); }
 .tk-screen .tk-dayrow button.tk-day { flex: 1; min-width: 0; padding: 0; }
 .tk-feel { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding-top: .25rem; }
