@@ -26,10 +26,12 @@ export function OpenCard({ rec, primary, onResume, onEnd, onDiscard }: { rec: Tr
     <>
       <RowCard icon="kraft" kicker="Läuft noch" title={w.title} sub={`Gestartet ${dateLabel(w.startMs)}`} onClick={() => setOpen(true)} />
       {open && (
-        <Sheet size="small" title={`${w.title} läuft noch`} onClose={() => setOpen(false)}>
+        <Sheet size="small" title={`${w.title} läuft noch`} onClose={() => setOpen(false)}
+          actions={<>
+            <button type="button" className="primary" onClick={onResume}>{`Weitermachen${sfx}`}</button>
+            <button type="button" className="secondary" onClick={onEnd}>{`Training beenden${sfx}`}</button>
+          </>}>
           <p className="muted">{text}</p>
-          <button type="button" className="primary" onClick={onResume}>{`Weitermachen${sfx}`}</button>
-          <button type="button" className="secondary" onClick={onEnd}>{`Training beenden${sfx}`}</button>
           <ConfirmLink label={`Training verwerfen${sfx}`} question={QUESTION} onConfirm={() => void onDiscard().then(() => setOpen(false))} />
         </Sheet>
       )}

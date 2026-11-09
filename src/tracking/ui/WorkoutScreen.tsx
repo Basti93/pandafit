@@ -12,7 +12,7 @@ import { complaintsOpenIn } from './finisher';
 import { planFor } from '../../shared/week-plan';
 
 import type { TrackingPort } from '../ports';
-import { startEmpty, isExcludedExercise, type TrackedWorkout } from '../session';
+import { startEmpty, type TrackedWorkout } from '../session';
 import { acquireStore } from '../registry';
 import { createWorkoutStore } from '../store';
 
@@ -21,7 +21,7 @@ import { finishedWorkouts, useCatalog, useExcluded, usePortRecords, type Workout
 import { SyncNote } from './SyncNote';
 import { StudioSheet } from './StudioSheet';
 import { BoBubble, MainCard, PillButton, Row, RowList, Sheet } from './kit';
-import { gymLine } from './plan-text';
+import { planGymLine } from './plan-text';
 import { WorkoutSummary, pendingSummary, setPendingSummary } from './WorkoutSummary';
 import { defaultStudio, knownStudios, resolveStudio, studioStateOf } from '../../shared/studio';
 import { hideStudio, rememberStudio, removeStudio, renameStudio } from '../studios';
@@ -213,6 +213,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
   }
 
   const routines = routinesQ.records ?? [];
+  const boText = planMeta?.reason || planMeta?.note;
   const studioKnown = knownStudios(logged, studios.renames, studios.picks, studios.hidden);
   return (
     <div className="tk-screen">
@@ -223,7 +224,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
       {!summary && (
         <>
           {plan ? (
-            <MainCard kicker="Nächstes Training" title={plan.name} text={gymLine({ exercises: (draft?.exercises ?? plan.exercises.filter((e) => !isExcludedExercise(e, catalog, excluded))).map((e) => ({ ...e, restS: e.restS ?? null })) }, catalog)}
+            <MainCard kicker="Nächstes Training" title={plan.name} text={planGymLine(draft ?? plan, catalog, excluded)}
               primary={{ label: 'Training starten', onClick: () => void startNext(plan) }} secondary={{ label: 'Ansehen', onClick: () => void lookAt(plan) }}
               more={(draft || dropped) && (
                 draft
@@ -238,7 +239,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
             <PillButton icon="studio" label={studio ?? 'Studio wählen'} name={`Studio ${studio ?? 'wählen'}`} onClick={() => setStudioOpen(true)} />
             {(plan || routines.length > 0) && <PillButton icon="wechsel" label="Anderes Training" onClick={() => setOthers(true)} />}
           </div>
-          {plan && (planMeta?.reason ?? planMeta?.note) && <BoBubble portrait="mini">{planMeta?.reason ?? planMeta?.note}</BoBubble>}
+          {plan && boText && <BoBubble portrait="mini">{boText}</BoBubble>}
         </>
       )}
       {studioOpen && (

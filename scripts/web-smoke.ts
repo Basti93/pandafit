@@ -68,7 +68,7 @@ try {
   await planSheet.getByLabel('Wiederholungen Satz 1').first().waitFor();
   await planSheet.getByRole('button', { name: 'Schließen' }).click();
   await planSheet.waitFor({ state: 'detached' });
-  await page.getByRole('button', { name: 'Ansehen und anpassen' }).waitFor();
+  await page.getByRole('button', { name: 'Ansehen', exact: true }).waitFor(); // Kraft says "Ansehen" (Heute: "Ansehen und anpassen")
   step('the next workout opens in its sheet and closes');
 
   await page.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true }).click();

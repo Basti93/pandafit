@@ -8,13 +8,13 @@ import { DaySheet } from '../../tracking/ui/DaySheet';
 import { useOpenProposals } from '../../tracking/ui/proposals';
 import { useWeekDays } from '../../tracking/ui/week-days';
 import { SPORT_ICON } from '../../tracking/ui/week-path';
-import { gymLine, planDayLabel } from '../../tracking/ui/plan-text';
+import { planDayLabel, planGymLine } from '../../tracking/ui/plan-text';
 import { MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
 import { complaintsOpenIn, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
 import { mergedActivities } from '../../tracking/ui/done-days';
 import { MobilityOffer } from '../../tracking/ui/MobilityOffer';
-import { usePortRecords } from '../../tracking/ui/hooks';
+import { useCatalog, useExcluded, usePortRecords } from '../../tracking/ui/hooks';
 import { useApp } from '../AppContext';
 import { planKeyOf, readDraft } from '../../tracking/plan-draft';
 import { mobilityToShow, planIsStale, readPlan } from '../logic';
@@ -43,6 +43,8 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   const plan = (plans ?? []).find((r) => r.id === 'current');
   const p = readPlan(plan);
   const now = env.now();
+  const catalog = useCatalog(port);
+  const excluded = useExcluded(port);
   const dayKey = localDayKey(now);
   const week = useWeekDays(port, now);
   const session = useMemo(() => mobilityToShow(plan, mobility ?? [], now), [plan, mobility, now]);
@@ -71,7 +73,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   const exercises = p?.workout?.exercises.length ?? 0;
   const gym: GymPart = {
     name: p?.workout?.name ?? null,
-    line: p?.workout ? gymLine(p.workout) : null,
+    line: p?.workout ? planGymLine(p.workout, catalog, excluded) : null,
     start: () => goTraining(),
     view: exercises > 0 ? () => goTraining('plan') : undefined,
     notes: p && (

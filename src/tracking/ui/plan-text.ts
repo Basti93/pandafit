@@ -2,6 +2,7 @@ import { HARDNESS_LABEL, SPORT_LABEL, dayLabel, dayParts, minutesText, type Plan
 import type { PlannedRun } from '../../shared/run';
 import { gymMinutes, type TimedWorkout } from '../../shared/duration';
 import type { Exercise } from '../../shared/exercises';
+import { isExcludedExercise } from '../session';
 
 const RUN_KIND: Record<string, string> = { easy: 'locker', long: 'lang', test: 'Test' };
 
@@ -25,6 +26,11 @@ export const planDayLabel = (d: PlanDay) => {
   if (d.also.hardness === d.hardness) return `${SPORT_LABEL[d.sport]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.hardness]}`;
   return `${SPORT_LABEL[d.sport]} ${HARDNESS_LABEL[d.hardness]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.also.hardness]}`;
 };
+
+/** `gymLine` of a plan as it would start: exercises the rules rule out are not counted. Heute and Kraft both call this, so the count is the same. */
+export function planGymLine(w: { exercises: readonly { templateId?: string; exerciseId?: string; title?: string; restS?: number | null; supersetId?: number | null; sets: readonly { type?: string; reps?: number | null; repRange?: { start: number; end: number } }[] }[] }, catalog: Exercise[], excluded: ReadonlySet<string>): string | null {
+  return gymLine({ exercises: w.exercises.filter((e) => !isExcludedExercise({ templateId: e.templateId ?? e.exerciseId ?? '', title: e.title ?? '' }, catalog, excluded)).map((e) => ({ ...e, restS: e.restS ?? null })) }, catalog);
+}
 
 /** The strength plan in one line: "Krafttraining, etwa 45 Minuten, 6 Übungen". Without exercises: null. Heute and Kraft both use it. */
 export function gymLine(w: TimedWorkout, catalog?: readonly Exercise[]): string | null {

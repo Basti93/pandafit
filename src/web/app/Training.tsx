@@ -32,8 +32,7 @@ export function Training({ entry, onEntryDone, onDone }: { entry: 'resume' | 'pl
   const [routine, setRoutine] = useState<GymWorkout | null>(null);
   const plan = readPlan((plans ?? []).find((r) => r.id === 'current'));
   const week = useSportWeek(port, env.now(), 'kraft');
-  const now = env.now();
-  const trends = useMemo(() => liftTrends(dedupeSessions((workouts ?? []).map((r) => bodyOf('workout', r))), now), [workouts, now]);
+  const trends = useMemo(() => liftTrends(dedupeSessions((workouts ?? []).map((r) => bodyOf('workout', r))), env.now()), [workouts, env]);
   const routineCount = (routineRecords ?? []).filter((r) => !r.deleted).length;
   const back = () => setPage('start');
   if (page === 'routines') {
@@ -55,7 +54,7 @@ export function Training({ entry, onEntryDone, onDone }: { entry: 'resume' | 'pl
           {week.loaded && <StandCard kicker="Kraft · diese Woche" text={week.text} marks={week.marks} marksLabel={week.label} />}
         </div>
       )}
-      <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={entry === 'resume'} onActive={setRunning} onDone={onDone} plan={routine ? null : plan?.workout ?? null} routine={routine}
+      <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={entry === 'resume'} onActive={setRunning} onDone={onDone} plan={plan?.workout ?? null} routine={routine}
         planMeta={plan ? { atMs: plan.atMs, dateText: planDateText(plan.atMs), reason: plan.reason, note: plan.note, outlook: plan.outlook } : null} account={account} storage={env.storage} openPlan={entry === 'plan'} onOpened={onEntryDone} now={env.now} newId={env.newId} />
       {!running && (
         <div className="tk-screen tk-tiles">

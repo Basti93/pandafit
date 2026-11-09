@@ -2,6 +2,7 @@
 import 'fake-indexeddb/auto';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { ruleRecord } from '../../src/shared/personal';
 import type { GymWorkout } from '../../src/shared/gym/types';
 import type { TrackedRecord } from '../../src/shared/records';
 import { planKeyOf, readDraft, writeDraft, type DraftStorage } from '../../src/tracking/plan-draft';
@@ -126,6 +127,39 @@ describe('Kraft start', () => {
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByRole('button', { name: /^Weitermachen Beine / })).toBeTruthy();
     expect(within(sheet).getByRole('button', { name: /^Training beenden Beine / })).toBeTruthy();
+  });
+});
+
+describe('plan and routine', () => {
+  it('after a routine workout is discarded Kraft shows the plan again', async () => {
+    await boot({ account: 'anna', seed: [planRec(NOW - 1000), routine('r1', 'Hotel')] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Deine Routinen/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Hotel/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Training starten' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Mehr zum Training' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Training verwerfen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ja' }));
+    expect(await screen.findByRole('region', { name: 'Nächstes Training' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Freies Training' })).toBeNull();
+  });
+
+  it('Heute and Kraft count the same exercises when a rule rules one out', async () => {
+    const base = planRec(NOW - 1000);
+    const w = (base.body as { workout: GymWorkout }).workout;
+    const two = { ...base, body: { ...(base.body as object), workout: { ...w, exercises: [w.exercises[0]!, { ...w.exercises[0]!, templateId: 'pf-deadlift', title: 'Kreuzheben' }] } } } as TrackedRecord;
+    const rule = ruleRecord('r1', { kind: 'exclude', text: 'Ohne Kreuzheben', sport: 'gym', exerciseIds: ['pf-deadlift'] }, 'active', 'person', NOW - 1000);
+    const { mondayOf, weekDates } = await import('../../src/shared/week-plan');
+    const { dateKey } = await import('../../src/shared/day-rating');
+    const monday = mondayOf(dateKey(NOW));
+    const week = { kind: 'weekplan', id: monday, updatedMs: 1, deleted: false, body: { weekStart: monday, fromMessage: 'm', acceptedMs: 1, days: weekDates(monday).map((date) => ({ date, sport: 'gym', hardness: 'moderate', fixed: false })) } } as TrackedRecord;
+    await boot({ account: 'anna', seed: [two, rule, week] });
+    const heute = await screen.findByText(/^Krafttraining, etwa \d+ Minuten, \d Übungen?$/);
+    fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
+    const main = await screen.findByRole('region', { name: 'Nächstes Training' });
+    const kraft = within(main).getByText(/^Krafttraining, etwa/).textContent;
+    expect(heute.textContent).toContain('1 Übung');
+    expect(kraft).toBe(heute.textContent);
   });
 });
 
