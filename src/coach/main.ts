@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { localClientAllowed } from '../service/ws-server';
+import { localClientAllowed } from '../shared/node/ws-guard';
 import { coachPort, requireLocalToken, servicePort } from '../shared/node/local-token';
 import { findOpenRides } from '../ride-format/recovery';
 import type { Profile } from '../shared/profiles';

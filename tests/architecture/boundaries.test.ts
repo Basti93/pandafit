@@ -73,12 +73,6 @@ const rules: Rule[] = [
 
 // Known violations with a reason. Goal: empty.
 const exceptions: { rule: string; from: string; reason: string }[] = [
-  { rule: 'coach does not import service, ui, web, main', from: 'src/coach/coach.ts', reason: 'to move (task 8)' },
-  { rule: 'coach does not import service, ui, web, main', from: 'src/coach/main.ts', reason: 'to move (task 8)' },
-  { rule: 'coach does not import service, ui, web, main', from: 'src/coach/metrics.ts', reason: 'to move (task 8)' },
-  { rule: 'coach does not import service, ui, web, main', from: 'src/coach/remote/ride-restore.ts', reason: 'to move (task 8)' },
-  { rule: 'coach does not import service, ui, web, main', from: 'src/coach/runtime.ts', reason: 'to move (task 8)' },
-  { rule: 'coach does not import service, ui, web, main', from: 'src/coach/server/ride-store.ts', reason: 'to move (task 8)' },
   { rule: 'shared imports only shared and ride-format', from: 'src/shared/changes.ts', reason: 'to move (task 8)' },
   { rule: 'shared imports only shared and ride-format', from: 'src/shared/coach-protocol.ts', reason: 'to move (task 8)' },
   { rule: 'shared imports only shared and ride-format', from: 'src/shared/protocol.ts', reason: 'to move (task 8)' },
@@ -105,9 +99,10 @@ describe('architecture boundaries', () => {
   }
 
   it('exceptions list has no stale entries', () => {
-    for (const x of exceptions) {
+    const stale = exceptions.filter((x) => {
       const rule = rules.find((r) => r.name === x.rule)!;
-      expect(edges.some((e) => e.from === x.from && rule.violates(e)), `${x.rule} | ${x.from}`).toBe(true);
-    }
+      return !edges.some((e) => e.from === x.from && rule.violates(e));
+    });
+    expect(stale.map((x) => `${x.rule} | ${x.from}`)).toEqual([]);
   });
 });
