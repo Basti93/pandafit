@@ -72,7 +72,8 @@ Die Tokens stehen in `src/design/tokens.css`. Dunkel ist der Normalfall. Hell (�
 
 - Rechts eine kräftige, vom Rand angeschnittene Gruppe mit Tiefe (hintere Halme blasser), links nur ein schlanker Trieb, der vom unteren Ende wächst. Nie symmetrisch eingequetscht.
 - Der Bambus scrollt mit dem Inhalt und wächst über die ganze Länge: nahtlose Kachel `docs/design/assets/bamboo-tile-{dark,light}.svg` (390 × 900, wiederholt nach unten), Trieb `bamboo-shoot-{dark,light}.svg` am Seitenende.
-- Er liegt hinter allem und macht nichts unleserlich (Deckung 9–24 %).
+- Parallax: Die Halmgruppe läuft beim Scrollen langsamer mit als die Karten (`BAMBOO_DRIFT` in `src/web/parallax.ts`, CSS-Variable `--bamboo-drift`). Der Trieb am Seitenende bleibt fest. Bei „weniger Bewegung“ im System scrollt der Bambus einfach mit.
+- Er liegt hinter allem und macht nichts unleserlich (Deckung 9–24 %, hell bis 45 %).
 
 ## Texte
 

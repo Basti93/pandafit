@@ -3,11 +3,14 @@ import { App, type Env } from './App';
 import type { LiveSocket } from './live';
 import { browserPush, closeRestNotices } from './push';
 import { setupServiceWorker, type OpenState } from './register';
+import { startBambooParallax } from './parallax';
 import { applyTheme, readTheme } from './theme';
 import './web.css';
 
 // The look chosen in Profil, before the first paint.
 applyTheme(readTheme(localStorage));
+// The background bamboo moves slower than the page.
+startBambooParallax();
 
 let workoutOpen: OpenState = 'unknown'; // blocks an update until the app has looked at its data
 let sw: { check(): void } | null = null;
