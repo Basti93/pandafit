@@ -15,6 +15,7 @@
   --kicker: #f2bd55;
   --brush: #f2bd55;
   --glow: rgba(239, 171, 118, .38);
+  --bo-glow: radial-gradient(circle at 50% 60%, var(--glow), transparent 68%); /* shared: the warm light behind Bo, so his dark fur reads on dark ground */
   --bamboo-tile: url('/brand/bamboo-tile-dark.svg');
   --bamboo-shoot: url('/brand/bamboo-shoot-dark.svg');
   --bamboo-parallax: .35; /* share of the scroll the bamboo grove lags behind the page; 0 = scrolls along */
