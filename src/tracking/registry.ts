@@ -10,6 +10,15 @@ const stores = (port: TrackingPort): Map<string, Store> => {
   if (!m) { m = new Map(); byPort.set(port, m); }
   return m;
 };
+const listeners = new WeakMap<TrackingPort, Set<() => void>>();
+/** Tells readers of `openStoreCount` that the count changed. Deferred, because stores are acquired while a screen renders. */
+const changed = (port: TrackingPort): void => { queueMicrotask(() => listeners.get(port)?.forEach((f) => f())); };
+export function subscribeStores(port: TrackingPort, fn: () => void): () => void {
+  let set = listeners.get(port);
+  if (!set) { set = new Set(); listeners.set(port, set); }
+  set.add(fn);
+  return () => { set.delete(fn); };
+}
 const idOf = (s: TrackedWorkout | TrackedRecord): string => s.id;
 
 /**
@@ -25,6 +34,7 @@ export function acquireStore(port: TrackingPort, source: TrackedWorkout | Tracke
   }
   const s = createWorkoutStore(port, source, now);
   map.set(idOf(source), s);
+  changed(port);
   return s;
 }
 
@@ -32,6 +42,7 @@ function forget(port: TrackingPort, store: Store): void {
   const map = stores(port);
   for (const [k, v] of map) if (v === store) map.delete(k);
   store.dispose();
+  changed(port);
 }
 
 /**

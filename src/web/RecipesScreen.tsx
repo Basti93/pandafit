@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { apiFetch } from '../tracking/ui/data/api';
 import {
   DAY_SHORT, dayDate, dayIndex, eatersOf, mealKey, placeAnswer, readPlaceRequest, recipeAmount, SLOT_LABEL, SLOTS, weekOf, type Meal, type MealPlan, type MealState,
   type PlaceRequest, type RecipeDetail, type RecipePage, type RecipeSummary, type Slot,
@@ -37,7 +38,7 @@ const readDetail = (x: unknown): RecipeDetail | null => {
 };
 async function getJson(fetchFn: typeof fetch, path: string): Promise<unknown> {
   try {
-    const res = await fetchFn(path, { credentials: 'same-origin', redirect: 'error', signal: AbortSignal.timeout(15_000) });
+    const res = await apiFetch(fetchFn, path);
     return res.ok ? await res.json() : null;
   } catch { return null; }
 }

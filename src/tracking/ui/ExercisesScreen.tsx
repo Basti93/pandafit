@@ -1,3 +1,4 @@
+import { bodyOf } from '../../shared/record-bodies';
 import { useMemo, useState } from 'react';
 import { dedupeSessions } from '../../shared/history';
 import type { LoggedWorkout } from '../../shared/records';
@@ -7,6 +8,7 @@ import { CatalogScreen } from './CatalogScreen';
 import { Development, doneExercises } from './HistoryScreen';
 import { usePortRecords } from './hooks';
 import { Row, RowList } from './kit';
+import { ReadFailed } from './ReadFailed';
 import { SyncNote } from './SyncNote';
 
 /**
@@ -16,7 +18,7 @@ import { SyncNote } from './SyncNote';
 export function ExercisesScreen({ port, now = Date.now, newId = () => crypto.randomUUID() }: { port: TrackingPort; now?: () => number; newId?: () => string }) {
   const q = usePortRecords(port, 'workout');
   const records = q.records;
-  const history = useMemo(() => dedupeSessions((records ?? []).map((r) => r.body as LoggedWorkout)), [records]);
+  const history = useMemo(() => dedupeSessions((records ?? []).map((r) => bodyOf('workout', r))), [records]);
   const [exercise, setExercise] = useState<string | null>(null);
   const exercises = doneExercises(history);
   const trends = useMemo(() => liftTrends(history, now()), [history, now]);
@@ -25,7 +27,7 @@ export function ExercisesScreen({ port, now = Date.now, newId = () => crypto.ran
     <>
       <div className="tk-screen">
         <SyncNote port={port} />
-        {q.failed && <p role="status" className="tk-note">Deine Übungen konnten gerade nicht gelesen werden. <button type="button" onClick={q.retry}>Nochmal versuchen</button></p>}
+        {q.failed && <ReadFailed text="Deine Übungen konnten gerade nicht gelesen werden." retry={q.retry} />}
         {exercises.size > 0 && (
           <section aria-label="Deine Übungen">
             <h2 className="tk-section">Deine Übungen</h2>

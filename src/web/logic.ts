@@ -1,3 +1,4 @@
+import { bodyOf } from '../shared/record-bodies';
 import type { TrackedRecord } from '../shared/records';
 import { readOutlook, type GymOutlook } from '../shared/gym-outlook';
 
@@ -46,7 +47,7 @@ export function mobilityToShow(plan: TrackedRecord | undefined, mobility: Tracke
 
 export function openComplaints(records: TrackedRecord[]): (Complaint & { id: string })[] {
   return records.filter((r) => !r.deleted && isObj(r.body) && typeof r.body.text === 'string' && typeof r.body.status === 'string' && r.body.status !== 'over')
-    .map((r) => ({ id: r.id, ...(r.body as Complaint) })).sort((a, b) => b.atMs - a.atMs);
+    .map((r) => ({ id: r.id, ...bodyOf('complaint', r) })).sort((a, b) => b.atMs - a.atMs);
 }
 
 export const isIphoneBrowser = (ua: string): boolean => /iPhone|iPad|iPod/.test(ua);

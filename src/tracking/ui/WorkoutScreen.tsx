@@ -1,3 +1,4 @@
+import { bodyOf } from '../../shared/record-bodies';
 import { restOf, restChoices } from '../../shared/rest';
 import { needsWarmup, warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -103,7 +104,11 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
   const toggleInfo = (rid: string) => setInfo((s) => { const n = new Set(s); if (!n.delete(rid)) n.add(rid); return n; });
   const ending = useRef(false);
   const leaving = useRef(false);
-  const remote = usePortRecords(port, 'workout').all;
+  const remoteQ = usePortRecords(port, 'workout');
+  const remote = remoteQ.all;
+  // A list shared with other screens may be older than this workout's first save: only an answer read after the mount counts.
+  const mountList = useRef(remote);
+  useEffect(() => { remoteQ.reload(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const catalog = useCatalog(port);
   const excluded = useExcluded(port);
   const statsRecords = usePortRecords(port, 'stats').records;
@@ -148,10 +153,10 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
 
   // Unsaved work on this device always wins. Only a clean store steps aside for what happened elsewhere.
   useEffect(() => {
-    if (!remote || leaving.current) return;
+    if (!remote || remote === mountList.current || leaving.current) return;
     const rec = remote.find((r) => r.id === w.id);
     if (rec && rec.updatedMs <= store.updatedMs()) return; // ours, or older
-    const copyNote = () => (remote.some((r) => !r.deleted && (r.body as LoggedWorkout).keptCopyOf === w.id) ? ' Die Fassung mit mehr Sätzen liegt als Kopie im Verlauf.' : '');
+    const copyNote = () => (remote.some((r) => !r.deleted && bodyOf('workout', r).keptCopyOf === w.id) ? ' Die Fassung mit mehr Sätzen liegt als Kopie im Verlauf.' : '');
     const stepAside = (leave: string, stay: string) => {
       store.flushDrafts(); // a note still being typed counts as unsaved work
       if (store.dirty()) { if (rec) store.reload(rec); setNotice(stay); return; }
@@ -163,7 +168,7 @@ function ActiveWorkout({ port, store, history, now, newId, autoEnd, startNotice,
       stepAside(`Dieses Training wurde auf einem anderen Gerät gelöscht. Die Ansicht wurde neu geladen.${copyNote()}`, 'Dieses Training wurde auf einem anderen Gerät gelöscht. Deine Änderungen hier bleiben offen und werden weitergeschrieben.');
     } else if (rec.deleted) {
       stepAside(`Dieses Training wurde auf einem anderen Gerät gelöscht. Die Ansicht wurde neu geladen.${copyNote()}`, 'Dieses Training wurde auf einem anderen Gerät gelöscht. Deine Änderungen hier bleiben offen und werden weitergeschrieben.');
-    } else if ((rec.body as LoggedWorkout).endMs !== null) {
+    } else if (bodyOf('workout', rec).endMs !== null) {
       stepAside('Dieses Training wurde auf einem anderen Gerät beendet. Die Ansicht wurde neu geladen.', 'Dieses Training wurde auf einem anderen Gerät beendet. Deine ungespeicherten Änderungen hier bleiben offen und werden weitergeschrieben.');
     } else {
       store.reload(rec);
@@ -405,7 +410,7 @@ export function planLine(e: GymWorkout['exercises'][number]): string {
 /** Marks the taken changes the finished workouts list as used (see markUsed), reading the workouts afresh. */
 async function markUsedNow(port: TrackingPort, now: () => number): Promise<void> {
   let all: LoggedWorkout[] = [];
-  try { all = (await port.list('workout')).filter((r) => !r.deleted).map((r) => r.body as LoggedWorkout); } catch { return; /* the next start marks them */ }
+  try { all = (await port.list('workout')).filter((r) => !r.deleted).map((r) => bodyOf('workout', r)); } catch { return; /* the next start marks them */ }
   await markUsed(port, all.filter((x) => x.endMs !== null), now());
 }
 
@@ -424,7 +429,7 @@ export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now
   // The workouts on their own: a failed load step or change read never empties the history the weights come from.
   try { records = await port.list('workout'); } catch { /* start without the history */ }
   const live = records.filter((r) => !r.deleted);
-  const all = live.map((r) => r.body as LoggedWorkout);
+  const all = live.map((r) => bodyOf('workout', r));
   const history = finishedWorkouts(live);
   let noLegs = false, alsoNote: string | null = null;
   try {
@@ -442,7 +447,7 @@ export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now
 }
 
 function OpenCard({ rec, primary, onResume, onEnd, onDiscard }: { rec: TrackedRecord; primary: boolean; onResume: () => void; onEnd: () => void; onDiscard: () => Promise<void> }) {
-  const w = rec.body as LoggedWorkout;
+  const w = bodyOf('workout', rec);
   const [asking, setAsking] = useState(false);
   const [more, setMore] = useState(false);
   const sfx = primary ? '' : ` ${w.title} ${dateLabel(w.startMs)}`;
@@ -499,7 +504,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
   const starting = useRef(false);
   const started = useRef<GymWorkout | null>(null);
   const history = finishedWorkouts(workouts);
-  const openRecs = (workouts ?? []).filter((r) => (r.body as LoggedWorkout).endMs === null).sort((a, b) => (b.body as LoggedWorkout).startMs - (a.body as LoggedWorkout).startMs);
+  const openRecs = (workouts ?? []).filter((r) => bodyOf('workout', r).endMs === null).sort((a, b) => bodyOf('workout', b).startMs - bodyOf('workout', a).startMs);
 
   const [chosen, setChosen] = useState<string | undefined>(undefined);
   const [studioOpen, setStudioOpen] = useState(false);
@@ -512,7 +517,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
     resumed.current = true;
     setStore({ s: acquireStore(port, openRecs[0]!, now), autoEnd: false });
   }, [resume, workouts]); // eslint-disable-line react-hooks/exhaustive-deps
-  const logged = (workouts ?? []).filter((r) => !r.deleted).map((r) => r.body as LoggedWorkout);
+  const logged = (workouts ?? []).filter((r) => !r.deleted).map((r) => bodyOf('workout', r));
   const studioRecords = usePortRecords(port, 'studio').records;
   const studios = useMemo(() => studioStateOf(studioRecords ?? []), [studioRecords]);
   const studio = chosen ?? defaultStudio(logged, studios.renames, studios.picks);
@@ -689,7 +694,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
         <Sheet size="small" title="Routine oder leeres Training" onClose={() => setOthers(false)}>
           <ul className="tk-rows">
             {routines.map((r) => {
-              const body = r.body as GymWorkout;
+              const body = bodyOf('routine', r);
               return <li key={r.id} className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { setOthers(false); void startPlan(body); }}><span className="tk-row-title">{body.name} starten</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>;
             })}
             <li className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { setOthers(false); void begin(startEmpty(now(), newId())); }}><span className="tk-row-title">Leeres Training starten</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>

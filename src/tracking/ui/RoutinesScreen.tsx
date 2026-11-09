@@ -1,4 +1,6 @@
+import { bodyOf } from '../../shared/record-bodies';
 import { useRef, useState } from 'react';
+import { ReadFailed } from './ReadFailed';
 import type { GymExercise, GymWorkout } from '../../shared/gym/types';
 import type { TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
@@ -72,7 +74,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
       );
     }
     if (!openRecord) return null;
-    const body = openRecord.body as GymWorkout;
+    const body = bodyOf('routine', openRecord);
     return (
       <Sheet title={body.name} onClose={closeAll}
         actions={<>
@@ -89,12 +91,12 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
 
   return (
     <div className="tk-screen">
-      {q.failed && <p role="status" className="tk-note">Deine Routinen konnten gerade nicht gelesen werden. <button type="button" onClick={q.retry}>Nochmal versuchen</button></p>}
+      {q.failed && <ReadFailed text="Deine Routinen konnten gerade nicht gelesen werden." retry={q.retry} />}
       {records !== null && records.length === 0 && <p className="muted">Noch keine Routine. Leg eine an, dann startest du sie mit einem Tipp.</p>}
       {(records ?? []).length > 0 && (
         <RowList label="Routinen">
           {(records ?? []).map((r) => {
-            const body = r.body as GymWorkout;
+            const body = bodyOf('routine', r);
             return <Row key={r.id} title={body.name} value={count(body)} onClick={() => setOpen(r.id)} />;
           })}
         </RowList>

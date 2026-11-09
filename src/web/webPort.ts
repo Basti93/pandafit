@@ -1,5 +1,6 @@
 import { RECORD_KINDS, type RecordKind, type TrackedRecord } from '../shared/records';
 import type { TrackingPort } from '../tracking/ports';
+import { apiFetch } from '../tracking/ui/data/api';
 import { syncRecords } from '../tracking/sync';
 import type { IdbStore } from './idbStore';
 import type { PushEnv } from './push';
@@ -57,13 +58,13 @@ export function createWebPort(o: {
   let mismatched = false;
   let soon: ReturnType<typeof setTimeout> | null = null;
   const statusSubs = new Set<() => void>();
-  const setStatus = (s: typeof status) => { if (s !== status) { status = s; statusSubs.forEach((f) => f()); } };
+  const syncSubs = new Set<() => void>();
+  const syncChanged = () => syncSubs.forEach((f) => { try { f(); } catch { /* one listener must not stop the rest */ } });
+  const offStore = store.subscribe(syncChanged); // counts change with writes and acknowledgements
+  const setStatus = (s: typeof status) => { if (s !== status) { status = s; statusSubs.forEach((f) => f()); syncChanged(); } };
 
   const call = async (method: 'GET' | 'POST', path: string, body?: unknown, timeoutMs = TIMEOUT_MS): Promise<unknown> => {
-    const res = await fetchFn(path, {
-      method, credentials: 'same-origin', redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
-      ...(body === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
-    });
+    const res = await apiFetch(fetchFn, path, { method, timeoutMs, ...(body === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }) });
     if (res.status === 401) throw new Unauthorized();
     if (!res.ok) throw new Error(`server answered ${res.status}`);
     return res.json();
@@ -105,6 +106,7 @@ export function createWebPort(o: {
       });
       lastOkMs = now();
       setStatus('ok');
+      syncChanged();
       return 'ok';
     } catch (e) {
       if (e instanceof Stopped) return 'login';
@@ -157,6 +159,8 @@ export function createWebPort(o: {
     },
     async idle() { while (writes > 0) await new Promise((res) => setTimeout(res, 5)); },
     subscribe: (fn) => store.subscribe(fn),
+    subscribeKind: (kind, fn) => store.subscribeKind(kind, fn),
+    subscribeSync(fn) { syncSubs.add(fn); return () => { syncSubs.delete(fn); }; },
     syncState: () => { const c = store.counts(); return { pending: c.pending, lastOkMs, refused: c.refused }; },
     sync,
     status: () => status,
@@ -167,6 +171,7 @@ export function createWebPort(o: {
     markLogin() { setStatus('login'); },
     dispose() {
       disposed = true;
+      offStore();
       store.close();
       if (soon) clearTimeout(soon);
       clearInterval(timer);

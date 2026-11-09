@@ -1,8 +1,9 @@
+import { bodyOf } from '../shared/record-bodies';
 import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { LoggedWorkout } from '../shared/records';
 import type { GymWorkout } from '../shared/gym/types';
 import { durationNote } from '../shared/duration';
-import { openStoreCount } from '../tracking/registry';
+import { openStoreCount, subscribeStores } from '../tracking/registry';
 import { PageHead, Row, RowList, Switch } from '../tracking/ui/kit';
 import { CoachPrefs } from '../tracking/ui/CoachPrefs';
 import { localDayKey, shortDate, timeLabel } from '../shared/dates';
@@ -15,7 +16,11 @@ import { Finisher } from '../tracking/ui/FinisherCard';
 import { complaintsOpenIn, finisherOf, latestFinishedStrength } from '../tracking/ui/finisher';
 import { mergedActivities } from '../tracking/ui/done-days';
 import { MobilityOffer } from '../tracking/ui/MobilityOffer';
-import { usePortRecords } from '../tracking/ui/hooks';
+import { usePortRecords, useSyncState } from '../tracking/ui/hooks';
+import { apiFetch, jsonInit } from '../tracking/ui/data/api';
+import { AppContext } from './AppContext';
+import { useApp } from './AppContext';
+import { RecordsProvider } from '../tracking/ui/data/RecordsProvider';
 import { openIdb } from './idbStore';
 import { planKeyOf, readDraft } from '../tracking/plan-draft';
 import { mobilityToShow, planDateText, planIsStale, readPlan, shouldShowInstallHint } from './logic';
@@ -74,11 +79,8 @@ const STORAGE_FAILED = 'Der Speicher auf diesem Gerät antwortet gerade nicht. D
 const loggedOut = (res: Response): boolean => res.ok || res.status === 401;
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-const post = (env: Env, path: string, body?: unknown, timeoutMs = LOGIN_TIMEOUT_MS) => env.fetchFn(path, {
-  method: 'POST', credentials: 'same-origin', redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
-  headers: { 'content-type': 'application/json' }, body: JSON.stringify(body ?? {}),
-});
-const get = (env: Env, path: string, timeoutMs = ME_TIMEOUT_MS) => env.fetchFn(path, { credentials: 'same-origin', redirect: 'error', signal: AbortSignal.timeout(timeoutMs) });
+const post = (env: Env, path: string, body?: unknown, timeoutMs = LOGIN_TIMEOUT_MS) => apiFetch(env.fetchFn, path, jsonInit('POST', body ?? {}, timeoutMs));
+const get = (env: Env, path: string, timeoutMs = ME_TIMEOUT_MS) => apiFetch(env.fetchFn, path, { timeoutMs });
 
 function LoginForm({ env, onDone, note, before, failed }: { env: Env; onDone: (name: string) => void; note?: string; before?: () => Promise<void>; failed?: () => void }) {
   const [name, setName] = useState('');
@@ -142,7 +144,8 @@ export const sinceText = (ms: number, now: number): string => {
 /** The time one calendar day before or after, at the same clock time. */
 const shiftMs = (ms: number, days: number): number => { const d = new Date(ms); d.setDate(d.getDate() + days); return d.getTime(); };
 
-function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { port: WebPort; env: Env; account: string; goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
+function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
+  const { port, env, account } = useApp();
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
   const weekplans = usePortRecords(port, 'weekplan').records;
@@ -168,7 +171,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   // A workout still open (here or on another device) is the next thing to do: the newest one.
   const workouts = usePortRecords(port, 'workout').records;
   const activities = usePortRecords(port, 'activities').records;
-  const open = (workouts ?? []).filter((r) => (r.body as LoggedWorkout).endMs === null).sort((x, y) => (y.body as LoggedWorkout).startMs - (x.body as LoggedWorkout).startMs)[0];
+  const open = (workouts ?? []).filter((r) => bodyOf('workout', r).endMs === null).sort((x, y) => bodyOf('workout', y).startMs - bodyOf('workout', x).startMs)[0];
 
   const complaints = usePortRecords(port, 'complaint').records;
   const finished = latestFinishedStrength(workouts, now);
@@ -226,7 +229,7 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
       {offset === 0 && <>
       {open && (
         <section className="card" aria-label="Training läuft noch">
-          <h2>{(open.body as LoggedWorkout).title} läuft seit {sinceText((open.body as LoggedWorkout).startMs, now)}</h2>
+          <h2>{bodyOf('workout', open).title} läuft seit {sinceText(bodyOf('workout', open).startMs, now)}</h2>
           <button type="button" onClick={() => goTraining('resume')}>Weitermachen</button>
         </section>
       )}
@@ -261,7 +264,8 @@ function Heute({ port, env, account, goTraining, goRun, goBike, goCoach, goProfi
   );
 }
 
-function Training({ port, env, account, entry, onEntryDone, onDone }: { port: WebPort; env: Env; account: string; entry: 'resume' | 'plan' | null; /** The plan sheet asked for by Heute has opened: the request is used up. */ onEntryDone: () => void; onDone: () => void }) {
+function Training({ entry, onEntryDone, onDone }: { entry: 'resume' | 'plan' | null; /** The plan sheet asked for by Heute has opened: the request is used up. */ onEntryDone: () => void; onDone: () => void }) {
+  const { port, env, account } = useApp();
   const [running, setRunning] = useState(false);
   const plans = usePortRecords(port, 'plan').records;
   const [screen, setScreen] = useState<'workout' | 'routines' | 'exercises'>('workout');
@@ -368,7 +372,8 @@ function PushCard({ push }: { push: PushState }) {
   );
 }
 
-function PushSettings({ push, port, now }: { push: PushState; port: WebPort; now: () => number }) {
+function PushSettings({ push, now }: { push: PushState; now: () => number }) {
+  const { port } = useApp();
   const p = push.env;
   const granted = p.support === 'ok' && p.permission() === 'granted';
   return (
@@ -415,7 +420,8 @@ const saveEndurance = (env: Env, account: string, v: Endurance): void => { try {
 const tabFor = (t: string | null | undefined): Tab | null => (t === 'essen' || t === 'coach' ? t : t === 'laufen' || t === 'rad' || t === 'ausdauer' ? 'ausdauer' : null);
 
 /** Ausdauer: Rad and Laufen in one tab. The switch shows only when both exist and remembers the last choice. */
-function Ausdauer({ port, env, account, hasRun, hasBike }: { port: WebPort; env: Env; account: string; hasRun: boolean; hasBike: boolean }) {
+function Ausdauer({ hasRun, hasBike }: { hasRun: boolean; hasBike: boolean }) {
+  const { port, env, account } = useApp();
   const stored = readEndurance(env, account);
   const [kind, setKind] = useState<Endurance>(stored ?? (hasBike ? 'rad' : 'laufen'));
   const shown: Endurance = kind === 'rad' && !hasBike ? 'laufen' : kind === 'laufen' && !hasRun ? 'rad' : kind;
@@ -448,13 +454,13 @@ const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; last
 };
 
 /** The account on this device, a few switches, the coach's timing, and the way out. Rows, not cards. */
-function Profil({ account, port, now, status, onLogout, push, link, storage }: { link: CoachLink | null; account: string; port: WebPort; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null; storage: Env['storage'] }) {
+function Profil({ now, status, onLogout, push, link, storage }: { link: CoachLink | null; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null; storage: Env['storage'] }) {
+  const { port, account } = useApp();
   const [confirming, setConfirming] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => readTheme(storage));
   const pickTheme = (t: Theme) => { saveTheme(storage, t); setTheme(t); };
-  usePortRecords(port, 'workout'); // re-renders when the port changes
   const hasBike = bikeVisible(bikeOf(usePortRecords(port, 'bike').records), ridesOf(usePortRecords(port, 'ride').records));
-  const c = port.syncState();
+  const c = useSyncState(port);
   const tryLogout = () => { if (c.pending > 0 || (c.refused ?? 0) > 0) setConfirming(true); else onLogout(); };
   const sync = syncText(status, c);
   const quiet = sync.startsWith('Alles gesichert');
@@ -471,7 +477,7 @@ function Profil({ account, port, now, status, onLogout, push, link, storage }: {
       </>} />
       <ProfileGroup title="Nachrichten">
         <ContactSettings port={port} now={now} />
-        {push && <PushSettings push={push} port={port} now={now} />}
+        {push && <PushSettings push={push} now={now} />}
         {/* The coach's timing is about notifications: it shows under them once they are on (always where the shell has no push at all). */}
         {(!push || push.on) && <CoachPrefs port={port} now={now} nested />}
       </ProfileGroup>
@@ -525,6 +531,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
   const [, tick] = useState(0);
   const status = useSyncExternalStore(port.onStatus, port.status);
   const workouts = usePortRecords(port, 'workout').records;
+  const openStores = useSyncExternalStore((cb) => subscribeStores(port, cb), () => openStoreCount(port));
   // Essen only when the Mac sent a plan for this account: the meal plan is off by default.
   const mealRecords = usePortRecords(port, 'mealplan').records;
   const linkSnap = useSyncExternalStore(link?.subscribe ?? noSub, link?.snapshot ?? (() => NO_LINK));
@@ -558,7 +565,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
 
   // Open on this device: a recent open record, or a store this session has opened or still has unsaved. Unknown until the first read.
   const state: OpenState = workouts === null ? 'unknown'
-    : openStoreCount(port) > 0 || workouts.some((r) => (r.body as LoggedWorkout).endMs === null && env.now() - r.updatedMs < OPEN_MAX_AGE_MS) ? 'open' : 'none';
+    : openStores > 0 || workouts.some((r) => bodyOf('workout', r).endMs === null && env.now() - r.updatedMs < OPEN_MAX_AGE_MS) ? 'open' : 'none';
   const lastState = useRef<OpenState | null>(null);
   useEffect(() => { if (lastState.current !== state) { lastState.current = state; env.onWorkoutOpen?.(state); } });
   useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
@@ -585,7 +592,7 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
 
   return (
     <>
-      <main className="web-main" onClick={() => setTimeout(() => tick((n) => n + 1), 50)}>
+      <main className="web-main">
         <div className="web-top"><span className="web-wordmark">Pandafit</span></div>
         <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => setTab('profil')}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
@@ -603,12 +610,12 @@ function Shell({ account, env, port, onLogout, onRelogin }: { account: string; e
         {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
-          {tab === 'heute' && <Heute port={port} env={env} account={account} goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
-          {tab === 'training' && <Training port={port} env={env} account={account} entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} />}
+          {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
+          {tab === 'training' && <Training entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} />}
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
-          {tab === 'ausdauer' && hasEndurance && <Ausdauer port={port} env={env} account={account} hasRun={hasRun} hasBike={hasBike} />}
+          {tab === 'ausdauer' && hasEndurance && <Ausdauer hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} showPrefs={false} openChat={chatOnOpen} />}
-          {tab === 'profil' && <Profil link={link} account={account} port={port} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}
+          {tab === 'profil' && <Profil link={link} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}
         </ErrorBoundary>
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
@@ -703,5 +710,11 @@ export function App({ env }: { env: Env }) {
   if (phase.kind === 'storagefail') return <main className="web-main tk-screen"><p role="status" className="tk-note">{STORAGE_FAILED}</p><button type="button" onClick={() => void boot()}>Nochmal versuchen</button></main>;
   if (phase.kind === 'offline') return <main className="web-main tk-screen"><p role="status" className="tk-note">Keine Verbindung. Zum ersten Anmelden braucht Pandafit kurz Internet.</p><button type="button" onClick={() => void boot()}>Nochmal versuchen</button></main>;
   if (phase.kind === 'login' || !port) return <main className="web-main"><LoginForm env={env} onDone={(n) => void afterLogin(n)} /></main>;
-  return <Shell key={port.account} account={port.account} env={env} port={port.port} onLogout={() => void logout()} onRelogin={(n) => void afterLogin(n)} />;
+  return <Session key={port.account} account={port.account} env={env} port={port.port} onLogout={() => void logout()} onRelogin={(n) => void afterLogin(n)} />;
+}
+
+/** The signed-in session: one records cache and one app context for everything below. */
+function Session({ account, env, port, onLogout, onRelogin }: { account: string; env: Env; port: WebPort; onLogout: () => void; onRelogin: (name: string) => void }) {
+  const value = useMemo(() => ({ port, env, account, fetchFn: env.fetchFn }), [port, env, account]);
+  return <AppContext.Provider value={value}><RecordsProvider port={port}><Shell account={account} env={env} port={port} onLogout={onLogout} onRelogin={onRelogin} /></RecordsProvider></AppContext.Provider>;
 }

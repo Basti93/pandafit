@@ -1,3 +1,4 @@
+import { bodyOf } from '../../shared/record-bodies';
 import { ACTIVITIES_ID, readActivities, type ActivityItem, type ActivityKind } from '../../shared/activities';
 import { localDayKey } from '../../shared/dates';
 import { dedupeSessions, onePerSession } from '../../shared/history';
@@ -13,7 +14,7 @@ export function mergedActivities(activities: TrackedRecord[] | null, workouts: T
   const record = (activities ?? []).find((r) => r.id === ACTIVITIES_ID && !r.deleted);
   const server = record ? readActivities(record.body) : null;
   const deleted = new Set((workouts ?? []).filter((r) => r.deleted).map((r) => r.id));
-  const alive = (workouts ?? []).filter((r) => !r.deleted).map((r) => ({ ...(r.body as LoggedWorkout), id: r.id }));
+  const alive = (workouts ?? []).filter((r) => !r.deleted).map((r) => ({ ...bodyOf('workout', r), id: r.id }));
   const local = (countOnce ? onePerSession(dedupeSessions(alive)) : dedupeSessions(alive)).map((w): ActivityItem => ({
     key: `kraft-${w.id}`, kind: 'kraft', title: w.title || null, sport: 'strength', startMs: w.startMs,
     minutes: Math.max(0, ((w.endMs ?? w.startMs) - w.startMs) / 60000), distanceM: null, avgHr: null, ref: w.id,

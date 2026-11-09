@@ -165,6 +165,9 @@ export function createCoachTrackingPort(o: {
       return { kept: true, updatedMs: r.updatedMs };
     },
     subscribe(fn) { subs.add(fn); return () => { subs.delete(fn); }; },
+    // This port cannot tell which kind changed: every kind subscriber hears every change.
+    subscribeKind(_kind, fn) { subs.add(fn); return () => { subs.delete(fn); }; },
+    subscribeSync(fn) { subs.add(fn); return () => { subs.delete(fn); }; },
     syncState: () => ({ pending: readQueue().length + (inflight > 0 && readQueue().length === 0 ? inflight : 0), lastOkMs, refused: readList(refusedKey).length }),
     handle(m) {
       if (m.type === 'records-changed') { if (m.profileId === profileId) notify(); return; }
