@@ -31,8 +31,9 @@ describe('Bo scene', () => {
   it('gives each pose its own place, and every place its own pose first', () => {
     expect([placeOf('greet'), placeOf('flex'), placeOf('bike'), placeOf('run'), placeOf(null)]).toEqual(['nest', 'dojo', 'huegel', 'wald', 'nest']);
     for (const p of PLACES) expect(placeOf(PLACE_POSES[p][0]), p).toBe(p);
-    // yoga has no place until Dojo 5 Task 5 adds the mat; it stays out of this check until then.
-    for (const g of STILL_POSES.filter((g) => g !== 'yoga')) expect(PLACE_POSES[placeOf(g)], g).toContain(g);
+    expect([placeOf('yoga'), placeOf('read'), placeOf('knit')]).toEqual(['matte', 'buecher', 'kissen']);
+    expect(PLACES).toHaveLength(7);
+    for (const g of STILL_POSES) expect(PLACE_POSES[placeOf(g)], g).toContain(g);
     expect(poseIn('huegel', 'greet')).toBe('bike');
     expect(poseIn('nest', 'bike')).toBe('greet');
   });

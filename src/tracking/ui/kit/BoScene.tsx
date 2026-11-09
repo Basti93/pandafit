@@ -6,9 +6,9 @@ import type { PandaGesture } from '../panda-canvas';
  * A place is a name in `BoPlace`, a row in `PLACE_POSES` and a file `brand/bo-{place}.svg` with the symbols `back` and `front`, coloured only through tokens.
  * `children` may be the still picture or the moving `PandaPortrait`.
  */
-export type BoPlace = 'nest' | 'dojo' | 'huegel' | 'wald';
+export type BoPlace = 'nest' | 'dojo' | 'huegel' | 'wald' | 'matte' | 'buecher' | 'kissen';
 
-export const PLACES: readonly BoPlace[] = ['nest', 'dojo', 'huegel', 'wald'];
+export const PLACES: readonly BoPlace[] = ['nest', 'dojo', 'huegel', 'wald', 'matte', 'buecher', 'kissen'];
 
 /**
  * The poses that fit each place; the first is the place's own pose and the stand-in when another does not fit.
@@ -20,6 +20,9 @@ export const PLACE_POSES: Record<BoPlace, readonly PandaGesture[]> = {
   dojo: ['flex', 'greet', 'nod', 'listen', 'breathe'],
   huegel: ['bike'],
   wald: ['run'],
+  matte: ['yoga'],
+  buecher: ['read'],
+  kissen: ['knit'],
 };
 
 /** The pose Bo takes in a place: the wanted one if it fits there, otherwise the place's own pose. */

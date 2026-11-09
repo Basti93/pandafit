@@ -62,6 +62,17 @@
   --scene-paper: #d9cfbf; /* shared */
   --scene-skin: #d08a5a; /* shared */
   --scene-frame: #6b4226; /* shared */
+  --scene-mat: #8a7a46;
+  --scene-smoke: #b7c5ae;
+  --scene-book-1: #8a4524; /* shared */
+  --scene-book-2: #e8c37a; /* shared */
+  --scene-book-3: #5f7f4a; /* shared */
+  --scene-wool-1: #c0392b; /* shared */
+  --scene-wool-3: #7fa25c; /* shared */
+  --scene-cushion: #8e3b2a; /* shared */
+  --scene-cushion-top: #c0563b; /* shared */
+  --scene-seam: #e8964a; /* shared */
+  --scene-shelf: #8a6a3a; /* shared */
   --danger: #e59585;
   --low: #f2bd55; /* shared */
 
@@ -187,6 +198,8 @@
     --scene-floor-line: #cdbb91;
     --scene-wall: #dfe3d2;
     --scene-path: #c9b98c;
+    --scene-mat: #c9b077;
+    --scene-smoke: #9aa58c;
     --danger: #a8372a;
 
     --pick: #e1e8d3;
