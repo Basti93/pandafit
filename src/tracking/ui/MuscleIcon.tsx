@@ -42,16 +42,16 @@ export function MuscleIcon({ group, size = 22 }: { group: MuscleGroup | null; si
   const rect = (x: number, w: number, y: number, h: number, region: MuscleGroup | null, key: string) => {
     const on = region !== null && region === shown;
     return <rect key={key} x={x} y={y} width={w} height={h} rx={Math.min(w, h) / 2.4} data-region={region ?? undefined}
-      fill={on ? 'var(--tk-accent)' : 'var(--tk-text)'} fillOpacity={on ? 1 : 0.4} />;
+      fill={on ? 'var(--accent)' : 'var(--text)'} fillOpacity={on ? 1 : 0.4} />;
   };
   return (
     <svg className="tk-muscle-icon" role="img" aria-label={group === null ? 'Muskel unbekannt' : MUSCLE_TARGETS[group].label} width={size} height={size} viewBox="0 0 24 24">
-      <circle cx={12} cy={2.6} r={1.9} fill="var(--tk-text)" fillOpacity={0.4} />
+      <circle cx={12} cy={2.6} r={1.9} fill="var(--text)" fillOpacity={0.4} />
       {parts.flatMap(([x, y, w, h, region, pair], i) => [
         rect(x, w, y, h, region, `${i}`),
         ...(pair ? [rect(24 - x - w, w, y, h, region, `${i}m`)] : []),
       ])}
-      {group === null && <text className="tk-muscle-unknown" x={12} y={11.6} textAnchor="middle" fontSize={8} fontWeight={700} fill="var(--tk-text)">?</text>}
+      {group === null && <text className="tk-muscle-unknown" x={12} y={11.6} textAnchor="middle" fontSize={8} fontWeight={700} fill="var(--text)">?</text>}
     </svg>
   );
 }

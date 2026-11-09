@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import { resolve } from 'node:path';
+import { themeChoice } from './src/web/theme-css';
 
 export default defineConfig({
   main: {
@@ -9,9 +10,10 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/ui',
-    // The web app's static files, for the exercise pictures the shared tracking screens show.
-    publicDir: resolve('src/web/public'),
+    // Only the brand font and the panda picture; the exercise pictures stay in the web app. A test keeps the copies equal to src/web/public/brand.
+    publicDir: resolve('src/ui/public'),
     plugins: [react()],
+    css: { postcss: { plugins: [themeChoice()] } },
     build: { rollupOptions: { input: resolve('src/ui/index.html') } },
   },
 });

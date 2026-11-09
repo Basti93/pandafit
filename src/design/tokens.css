@@ -1,4 +1,5 @@
-/* Design tokens of the web app: every colour (dark first, light below) and a few sizes. Colours are named by role.
+/* Design tokens shared by the web app and the Mac ride app: every colour (dark first, light below), type scale and a few sizes.
+   Colours are named by role. The Mac app always sets data-theme="dark" on <html>.
    A token on :root without a light value carries "shared" on its line: it is the same in both schemes. */
 @font-face { font-family: 'Shojumaru'; src: url('/brand/shojumaru.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
 :root {
@@ -53,6 +54,31 @@
   --shadow-lift: rgba(0, 0, 0, .28); /* shared */
   --scrim: rgba(0, 0, 0, .55); /* shared */
 
+  /* Ride cockpit (Mac app): always dark */
+  /* raised: secondary buttons, picked menu item, tags */
+  --raised: #2d4538; /* shared */
+  --raised-hover: #2a4032; /* shared */
+  --on-chart: #fff; /* shared */
+  --on-chip: #111; /* shared */
+  --warn-bg: #a85a1a; /* shared */
+  --danger-bg: #a8321f; /* shared */
+  --info-bg: #2c5a4a; /* shared */
+  --notice-bg: #38301a; /* shared */
+  --notice-text: #f0d9a8; /* shared */
+  --dot-off: #6b7769; /* shared */
+  --heart: #ec7355; /* shared */
+  --blue: #7fb4e8; /* shared */
+  --purple: #c9a0e8; /* shared */
+  --route-down: #5f9ea0; /* shared */
+  --route-flat: #5b6f60; /* shared */
+  --scrim-soft: rgba(0, 0, 0, .55); /* shared */
+  --shadow: rgba(0, 0, 0, .4); /* shared */
+  --hover-wash: rgba(255, 255, 255, .04); /* shared */
+  --pass-summit-bg: rgba(23, 37, 28, .9); /* shared */
+  /* Fixed scales: heart rate zones and power zones keep their colour in both schemes (tests and the legend rely on it) */
+  --hrz1: #9aa3ad; --hrz2: #4a9fe0; --hrz3: #5fbf6a; --hrz4: #e8963c; --hrz5: #e5534b; /* shared */
+  --z1: #6f8272; --z2: #7fa864; --z3: #d9b44a; --z4: #e08a3c; --z5: #c9532f; /* shared */
+
   /* Type: the display face is only for the wordmark, Panda's name and short headings; numbers and data keep the UI face. */
   --font-ui: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: 'Shojumaru', var(--font-ui);
@@ -69,14 +95,14 @@
   --radius-card: 1.1rem;
   --radius-pill: 999px;
   --radius-round: 50%;
-  --fs-2xs: .8rem;
-  --fs-xs: .85rem;
-  --fs-s: .9rem;
-  --fs-m: .95rem;
-  --fs-l: 1.1rem;
-  --fs-xl: 1.2rem;
-  --fs-2xl: 1.3rem;
-  --fs-3xl: 1.4rem;
+  /* Type scale. Larger display numbers (hero values, rides cockpit) are sized where they are used. */
+  --text-xs: .75rem;
+  --text-s: .9rem;
+  --text-m: 1rem;
+  --text-l: 1.15rem;
+  --text-xl: 1.3rem;
+  --text-2xl: 1.6rem;
+  --text-3xl: 2.2rem;
 }
 /* A choice in Profil sets data-theme on <html>; native controls follow it. */
 :root[data-theme="light"] { color-scheme: light; }

@@ -24,7 +24,7 @@
     "test:web-smoke": "npm run build:web && tsx scripts/web-smoke.ts",
     "dev:web": "vite --config vite.web.config.ts",
     "media:fedb": "tsx scripts/fedb-media.ts",
-    "app": "(test -d src/web/public/exercises/fedb || npm run media:fedb || true) && electron-vite build && electron-builder --mac dir && bash scripts/install-app.sh"
+    "app": "electron-vite build && electron-builder --mac dir && bash scripts/install-app.sh"
   },
   "dependencies": {
     "@garmin/fitsdk": "^21.218.0",
