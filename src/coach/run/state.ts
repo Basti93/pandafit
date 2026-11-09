@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { ClaudeErrorKind } from '../claude-client';
 import type { PaceCache } from './garmin-runs';
 import { readKeyedNotes, type KeyedNote } from '../../shared/change-notes';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 /** A disposable cache per profile (Ruling 3): the records are the truth, so a lost file only costs a recomputation. */
 export type RunCache = {
@@ -49,6 +50,5 @@ export const loadRunCache = (dir: string, profileId: string): RunCache => {
 export const saveRunCache = (dir: string, cache: RunCache): void => {
   fs.mkdirSync(dir, { recursive: true });
   const f = file(dir, cache.profileId);
-  fs.writeFileSync(`${f}.tmp`, JSON.stringify(cache));
-  fs.renameSync(`${f}.tmp`, f);
+  writeJsonAtomic(f, cache);
 };

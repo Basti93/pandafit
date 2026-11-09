@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { RECORD_KINDS_SIGNATURE } from '../../shared/records';
 import type { SyncCursors } from '../../tracking/sync';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
 const TIMEOUT_MS = 15_000;
@@ -61,9 +62,7 @@ export class AccountLinks {
     fs.mkdirSync(this.opts.dir, { recursive: true, mode: 0o700 });
     const f = this.file(profileId);
     const data: Stored = { url, name: name.trim(), token };
-    fs.writeFileSync(`${f}.tmp`, JSON.stringify(data), { mode: 0o600 });
-    fs.chmodSync(`${f}.tmp`, 0o600);
-    fs.renameSync(`${f}.tmp`, f);
+    writeJsonAtomic(f, data, { mode: 0o600 });
     // A new account starts from the beginning: the old cursors belong to the old server data.
     fs.rmSync(`${f}.cursors`, { force: true });
     this.rejected.delete(profileId);
@@ -105,7 +104,7 @@ export class AccountLinks {
           };
         } catch { return { sent: 0, received: 0 }; }
       },
-      set: async (c) => { fs.writeFileSync(`${f}.tmp`, JSON.stringify({ ...c, kinds: RECORD_KINDS_SIGNATURE })); fs.renameSync(`${f}.tmp`, f); },
+      set: async (c) => { writeJsonAtomic(f, { ...c, kinds: RECORD_KINDS_SIGNATURE }); },
     };
   }
 }

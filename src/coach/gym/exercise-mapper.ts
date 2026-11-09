@@ -9,6 +9,7 @@ import { resolveExercise } from '../../tracking/exercise-identity';
 import { EQUIPMENT, MUSCLES, TYPES } from '../../tracking/ui/labels';
 import type { RecordStore } from '../tracking/store';
 import { buildMapperPrompt, mapperAnswerSchema, mapperItemSchema, mapperJsonSchema, MAPPER_SYSTEM_PROMPT, type MapperItem } from './exercise-mapper-prompt';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 const DAY_MS = 86_400_000;
 const WINDOW_DAYS = 180;
@@ -40,8 +41,7 @@ function loadState(dir: string): MapperState {
 function saveState(dir: string, s: MapperState): void {
   fs.mkdirSync(dir, { recursive: true });
   const f = stateFile(dir);
-  fs.writeFileSync(`${f}.tmp`, JSON.stringify(s));
-  fs.renameSync(`${f}.tmp`, f);
+  writeJsonAtomic(f, s);
 }
 
 const words = (s: string): Set<string> => new Set(s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3));

@@ -7,6 +7,7 @@ import { finished } from 'node:stream/promises';
 import { parseProfile, type Profile } from '../../shared/profiles';
 import { RIDE_ID, readRideFiles, rideHash } from '../ride-upload-format';
 import { sealedCodec } from '../secrets/secret-box';
+import { writeFileAtomic } from '../../shared/node/atomic-write';
 
 export type MigrationItem = 'coach-state' | 'gym-state' | 'garmin-db' | 'garmin-sync-meta' | 'hevy-workouts' | 'hevy-templates' | 'hevy-key' | 'garmin-tokens';
 export type Manifest = { profile: Profile; rides: { rideId: string; sha256: string }[]; items: { name: MigrationItem; sha256: string; bytes: number }[] };
@@ -97,12 +98,7 @@ const fsyncDir = (dir: string): void => {
   const fd = fs.openSync(dir, 'r');
   try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
 };
-const writeSynced = (file: string, data: string | Buffer): void => {
-  const tmp = `${file}.${randomBytes(6).toString('hex')}.tmp`;
-  const fd = fs.openSync(tmp, 'w', 0o600);
-  try { fs.writeFileSync(fd, data); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-  fs.renameSync(tmp, file);
-};
+const writeSynced = (file: string, data: string | Buffer): void => writeFileAtomic(file, data, { mode: 0o600 });
 /** A copy under a temp name, renamed in one step: the target is either the old file or the whole new one. */
 const copySynced = (from: string, to: string): void => {
   fs.mkdirSync(path.dirname(to), { recursive: true, mode: 0o700 });

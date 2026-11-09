@@ -10,6 +10,7 @@ import type { RideSummary } from './metrics';
 import { RAMP_ID } from './guardrails';
 import type { Complaint, Motive } from './motivation';
 import { ruleBasedSession } from './rules';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 /** Shorter rides are test rides or false starts and do not count as training (our own choice). */
 export const MIN_COUNTED_S = 300;
@@ -87,8 +88,7 @@ export const saveState = (dir: string, state: CoachState, dropLegacy = false): v
   fs.mkdirSync(dir, { recursive: true });
   const f = file(dir, state.profileId);
   const keep = dropLegacy ? undefined : legacyField(f);
-  fs.writeFileSync(`${f}.tmp`, JSON.stringify(keep === undefined ? state : { ...state, rules: keep }));
-  fs.renameSync(`${f}.tmp`, f);
+  writeJsonAtomic(f, keep === undefined ? state : { ...state, rules: keep });
 };
 
 /** The free-text rules older versions kept in the state file (moved to `rule` records, see tracking/personal). */

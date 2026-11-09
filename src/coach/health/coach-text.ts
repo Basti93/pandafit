@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { dateKey } from '../../shared/day-rating';
 import { COACH_TEXT_MAX, type HealthBody, type HealthFinding } from '../../shared/health';
 import { mondayOf } from '../../shared/week-plan';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 export type CoachText = NonNullable<HealthBody['coachText']>;
 
@@ -74,7 +75,7 @@ export class CoachTexts {
     this.save(d);
   }
   private save(d: Record<string, CoachText>): void {
-    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(d)); fs.renameSync(tmp, this.file); } catch { /* written again at worst once more */ }
+    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); writeJsonAtomic(this.file, d); } catch { /* written again at worst once more */ }
   }
   set(profileId: string, t: CoachText): void {
     const d = this.load();

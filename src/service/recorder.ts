@@ -1,9 +1,10 @@
 import nodeFs from 'node:fs';
 import path from 'node:path';
 import type { RideEvent, Sample } from '../shared/sample';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 export type RideStatus = 'open' | 'finished' | 'aborted' | 'discarded';
-export type RideMeta = { rideId: string; profileId: string; sessionId: string; startedAtMs: number; status: RideStatus };
+export type RideMeta = { rideId: string; profileId: string; sessionId: string; startedAtMs: number; status: RideStatus; formatVersion?: number };
 type Fs = typeof nodeFs;
 
 const parseLines = <T>(file: string): T[] => {
@@ -41,8 +42,9 @@ export class RideRecorder {
 
   static create(dir: string, meta: RideMeta, fs: Fs = nodeFs): RideRecorder {
     nodeFs.mkdirSync(path.join(dir, meta.rideId), { recursive: true });
-    const rec = new RideRecorder(dir, meta, fs);
-    rec.writeMeta(meta);
+    const versioned = { ...meta, formatVersion: 1 };
+    const rec = new RideRecorder(dir, versioned, fs);
+    rec.writeMeta(versioned);
     return rec;
   }
 
@@ -100,9 +102,7 @@ export class RideRecorder {
   }
 
   private writeMeta(meta: RideMeta): void {
-    const target = path.join(this.rideDir, 'meta.json');
-    this.fs.writeFileSync(`${target}.tmp`, JSON.stringify(meta));
-    nodeFs.renameSync(`${target}.tmp`, target);
+    writeJsonAtomic(path.join(this.rideDir, 'meta.json'), meta, { fs: this.fs });
   }
 }
 

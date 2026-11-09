@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
 
@@ -19,8 +20,7 @@ export const markMoved = (coachDir: string, profileId: string, info: { atMs: num
   const dir = remoteDir(coachDir, profileId);
   fs.mkdirSync(dir, { recursive: true });
   const f = marker(coachDir, profileId);
-  fs.writeFileSync(`${f}.tmp`, JSON.stringify(info));
-  fs.renameSync(`${f}.tmp`, f);
+  writeJsonAtomic(f, info);
 };
 
 /**
@@ -44,8 +44,7 @@ export const mealsMoved = (coachDir: string): boolean => fs.existsSync(mealsMark
 export const markMealsMoved = (coachDir: string, atMs: number): void => {
   const f = mealsMarker(coachDir);
   fs.mkdirSync(path.dirname(f), { recursive: true });
-  fs.writeFileSync(`${f}.tmp`, JSON.stringify({ atMs }));
-  fs.renameSync(`${f}.tmp`, f);
+  writeJsonAtomic(f, { atMs });
 };
 
 /** The local meal file: `<coachDir>/meals/household.json`. */
@@ -84,6 +83,5 @@ export const recordDrift = (coachDir: string, profileId: string, items: string[]
   if (!SAFE_ID.test(profileId)) return;
   const f = driftFile(coachDir, profileId);
   fs.mkdirSync(path.dirname(f), { recursive: true });
-  fs.writeFileSync(`${f}.tmp`, JSON.stringify({ atMs, items }));
-  fs.renameSync(`${f}.tmp`, f);
+  writeJsonAtomic(f, { atMs, items });
 };

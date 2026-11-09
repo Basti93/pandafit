@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { CoachHome } from '../../shared/coach-protocol';
 import { remoteDir } from './home';
 import type { MigrateResult } from './migrate';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 type Problem = Extract<CoachHome, { where: 'moving' }>['problem'];
 
@@ -50,8 +51,7 @@ export class MoveBackoff {
     try {
       if (!s) { fs.rmSync(f, { force: true }); return; }
       fs.mkdirSync(path.dirname(f), { recursive: true });
-      fs.writeFileSync(`${f}.tmp`, JSON.stringify(s));
-      fs.renameSync(`${f}.tmp`, f);
+      writeJsonAtomic(f, s);
     } catch { /* kept in memory; written with the next change */ }
   }
 

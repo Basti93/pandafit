@@ -7,6 +7,7 @@ import type { LiveMessage } from '../../shared/live';
 import { ruleBasedSession } from '../rules';
 import { loadState, type CoachState } from '../state';
 import { computeTogether } from '../together';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 export type RemoteCoachOptions = {
   /** `<coachDir>/remote/<profileId>`: state.json and queue.json. */
@@ -53,14 +54,8 @@ export const ruleFallback = (coachDir: string, profileId: string, ftpW: number, 
 
 /** Temp file, fsync, rename, fsync of the folder: after a power cut the file is the old one or the new one, never empty. */
 const writeAtomic = (file: string, data: unknown): void => {
-  const dir = path.dirname(file);
-  fs.mkdirSync(dir, { recursive: true });
-  const tmp = `${file}.tmp`;
-  const fd = fs.openSync(tmp, 'w');
-  try { fs.writeSync(fd, JSON.stringify(data)); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-  fs.renameSync(tmp, file);
-  const dfd = fs.openSync(dir, 'r');
-  try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); }
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, data);
 };
 
 /**

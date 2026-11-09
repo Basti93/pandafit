@@ -141,7 +141,8 @@ describe('RecordStore', () => {
     vi.spyOn(fs, 'fsyncSync').mockImplementation(fd => { order.push('fsync'); return fsync(fd); });
     vi.spyOn(fs, 'renameSync').mockImplementation((a, b) => { order.push('rename'); return rename(a, b); });
     new RecordStore({ dir }).put('a', rec('w1', 1));
-    expect(order).toEqual(['fsync', 'rename']);
+    // The folder is synced after the rename.
+    expect(order).toEqual(['fsync', 'rename', 'fsync']);
   });
 
   it('a file with a bad entry counts as broken and moves aside', () => {

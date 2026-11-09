@@ -4,6 +4,7 @@ import { overlapsByHalf, trainingSessions, type TrainingInput, type TrainingSess
 import { dateKey } from './day-load';
 import { kindOf } from './activities-export';
 import type { Sport } from '../shared/week-plan';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 const MIN = 60_000;
 const DAY = 24 * 60 * MIN;
@@ -79,9 +80,7 @@ export class ActivitySeen {
   private save(): void {
     try {
       fs.mkdirSync(path.dirname(this.file), { recursive: true });
-      const tmp = `${this.file}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify(this.seen));
-      fs.renameSync(tmp, this.file);
+      writeJsonAtomic(this.file, this.seen);
     } catch { /* then it only holds until the restart */ }
   }
 

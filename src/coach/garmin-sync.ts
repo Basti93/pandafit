@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { GarminSyncInfo } from '../shared/coach-protocol';
 import { plainTokens, TokensUnopenable, type GarminTokens, type TokenCheckout } from './secrets/garmin-tokens';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 const HOUR = 3600_000;
 const WHILE_LOADING_MS = 3 * HOUR;
@@ -47,8 +48,7 @@ export class GarminSync {
     try {
       fs.mkdirSync(this.dataDir(id), { recursive: true, mode: 0o700 });
       const file = path.join(this.dataDir(id), 'sync-meta.json');
-      fs.writeFileSync(`${file}.tmp`, JSON.stringify(m));
-      fs.renameSync(`${file}.tmp`, file);
+      writeJsonAtomic(file, m);
     } catch { /* then it only holds until the restart */ }
     this.opts.onUpdate();
   }

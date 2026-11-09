@@ -8,6 +8,7 @@ import { nutritionFlags, unhealthyReason } from './recipe-health';
 import { importRecipe, norm, PROTEIN_UNKNOWN, sanitizeUrl, type Structure, type StoredRecipe } from './recipe-import';
 import { searchRecipes, type SearchQuery } from './recipe-search';
 import { allTags, classify, completeTags, deriveVersion, hardTags, mergeTags, parseQualityMin, slotsFrom, tagAi, tagInputHash, tagInputOf, tagLabels, tagPromptVersion, vocabulary, FACETS, type AiTags, type TagAsk } from './recipe-tags';
+import { writeFileAtomic } from '../../shared/node/atomic-write';
 
 /**
  * The recipe collection: `<root>/recipes/recipes.db` (node:sqlite), the `inbox/` an outside fetcher fills with JSONL files,
@@ -266,13 +267,10 @@ export class RecipeStore {
     const ext = EXT[pic.type];
     const dir = this.imagesDir();
     const final = path.join(dir, `${id}.${ext}`);
-    const tmp = path.join(dir, `.${id}.${crypto.randomBytes(4).toString('hex')}.tmp`);
     try {
       fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-      const fd = fs.openSync(tmp, 'w', 0o600);
-      try { fs.writeFileSync(fd, pic.bytes); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-      fs.renameSync(tmp, final);
-    } catch { try { fs.rmSync(tmp, { force: true }); } catch { /* gone */ } return false; }
+      writeFileAtomic(final, pic.bytes, { mode: 0o600 });
+    } catch { return false; }
     this.open().prepare('INSERT INTO images (recipe_id, ext) VALUES (?, ?) ON CONFLICT(recipe_id) DO UPDATE SET ext = excluded.ext').run(id, ext);
     return true;
   }

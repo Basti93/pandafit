@@ -12,6 +12,7 @@ import type { Diagnostics } from './diagnostics';
 import { exportFit } from './export/fit';
 import { readRide, RideRecorder } from './recorder';
 import { findOpenRides, resumePoint } from './recovery';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 type Active = {
   recorder: RideRecorder; engine: RideEngine; session: Session; ftpW: number; recovered: boolean;
@@ -95,8 +96,7 @@ export class RideService {
           rideId, profileId: msg.profileId, sessionId: session.id, startedAtMs: this.deps.nowMs(), status: 'open',
         }, this.deps.recorderFs);
         const sessionFile = path.join(this.deps.dir, rideId, 'session.json');
-        fs.writeFileSync(`${sessionFile}.tmp`, JSON.stringify({ session, ftpW: msg.ftpW, maxHrBpm: msg.maxHrBpm, hrMaxBpm: msg.hrMaxBpm }));
-        fs.renameSync(`${sessionFile}.tmp`, sessionFile);
+        writeJsonAtomic(sessionFile, { formatVersion: 1, session, ftpW: msg.ftpW, maxHrBpm: msg.maxHrBpm, hrMaxBpm: msg.hrMaxBpm });
         this.guard(() => this.deps.onRideStart?.());
         this.setActive({ recorder, engine: this.newEngine(session, msg.ftpW, { maxHrBpm: msg.maxHrBpm, hrMaxBpm: msg.hrMaxBpm }), session, ftpW: msg.ftpW, recovered: false });
         return;
@@ -123,8 +123,7 @@ export class RideService {
         // Only the profile entry goes: rides stay on disk, a ride is never lost.
         if (a && a.recorder.profileId === msg.profileId) throw new Error('Das Profil fährt gerade und kann nicht gelöscht werden.');
         const file = path.join(this.deps.dir, 'profiles.json');
-        fs.writeFileSync(`${file}.tmp`, JSON.stringify(this.profiles().filter((x) => x.id !== msg.profileId)));
-        fs.renameSync(`${file}.tmp`, file);
+        writeJsonAtomic(file, this.profiles().filter((x) => x.id !== msg.profileId));
         this.broadcastState();
         return;
       }
@@ -142,8 +141,7 @@ export class RideService {
         const profile = parseProfile(msg.profile);
         const others = this.profiles().filter((x) => x.id !== profile.id);
         const file = path.join(this.deps.dir, 'profiles.json');
-        fs.writeFileSync(`${file}.tmp`, JSON.stringify([...others, profile]));
-        fs.renameSync(`${file}.tmp`, file);
+        writeJsonAtomic(file, [...others, profile]);
         this.broadcastState();
         return;
       }

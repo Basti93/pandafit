@@ -48,3 +48,31 @@ test('skipped seconds are restored from the logged skip events', () => {
   rec.event({ wallClockMs: 1, type: 'skip', detail: '0:50' }); rec.event({ wallClockMs: 2, type: 'skip', detail: '1:30' }); rec.event({ wallClockMs: 3, type: 'skip', detail: 'junk' });
   expect(resumePoint(readRide(dir, 'a')).skippedS).toBe(80);
 });
+
+const sampleLine = (seq: number, wallClockMs: number) => `${JSON.stringify({ ...sample(seq), wallClockMs })}\n`;
+test.each([['empty', ''], ['broken', '{"rideId":']])('a ride with %s meta.json and samples is recovered as open', (_n, content) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+  fs.mkdirSync(path.join(dir, 'ride-9'));
+  fs.writeFileSync(path.join(dir, 'ride-9', 'meta.json'), content);
+  fs.writeFileSync(path.join(dir, 'ride-9', 'samples.jsonl'), sampleLine(0, 5000) + sampleLine(1, 6000));
+  fs.writeFileSync(path.join(dir, 'ride-9', 'session.json'), JSON.stringify({ session: { id: 'sess-1' }, ftpW: 200 }));
+  const open = findOpenRides(dir);
+  expect(open).toHaveLength(1);
+  expect(open[0]).toMatchObject({ rideId: 'ride-9', status: 'open', startedAtMs: 5000, sessionId: 'sess-1' });
+  // The rebuilt meta is saved, so the next read works.
+  expect(readRide(dir, 'ride-9').meta.status).toBe('open');
+});
+test('a ride with broken meta.json and no samples is still skipped', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+  fs.mkdirSync(path.join(dir, 'ride-9'));
+  fs.writeFileSync(path.join(dir, 'ride-9', 'meta.json'), '');
+  expect(findOpenRides(dir)).toEqual([]);
+});
+test('an old meta.json without formatVersion is read; new rides write formatVersion 1', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+  fs.mkdirSync(path.join(dir, 'old'));
+  fs.writeFileSync(path.join(dir, 'old', 'meta.json'), JSON.stringify({ rideId: 'old', profileId: 'p', sessionId: 's', startedAtMs: 1, status: 'open' }));
+  expect(findOpenRides(dir).map((m) => m.rideId)).toEqual(['old']);
+  RideRecorder.create(dir, { rideId: 'n', profileId: 'p', sessionId: 's', startedAtMs: 1, status: 'open' });
+  expect(readRide(dir, 'n').meta.formatVersion).toBe(1);
+});

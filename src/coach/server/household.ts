@@ -15,6 +15,7 @@ import type { MailConfig } from '../mail-client';
 import { HeavyLock, inQuietHours } from './heavy';
 import { internalLinks } from './internal-links';
 import { MigrationDesk } from './migration';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 type Ask = (input: { prompt: string; systemPrompt: string; schema: object; timeoutMs?: number }) => Promise<unknown>;
 
@@ -61,15 +62,7 @@ const readProfile = (file: string): Profile | null => {
   } catch { return null; }
 };
 
-const writeJson = (file: string, data: unknown): void => {
-  const tmp = `${file}.tmp`;
-  const fd = fs.openSync(tmp, 'w', 0o600);
-  try {
-    fs.writeFileSync(fd, JSON.stringify(data));
-    fs.fsyncSync(fd);
-  } finally { fs.closeSync(fd); }
-  fs.renameSync(tmp, file);
-};
+const writeJson = (file: string, data: unknown): void => writeJsonAtomic(file, data, { mode: 0o600 });
 
 /**
  * The server's coach: one runtime per moved account, each in its own folder, so one account never reads the other's rides, health data,

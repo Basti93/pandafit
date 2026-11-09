@@ -286,7 +286,7 @@ test('queue.json is written with fsync of the file and of its folder', () => {
   const openSpy = vi.spyOn(fs, 'openSync').mockImplementation(((f: fs.PathLike, ...rest: never[]) => { const fd = (realOpen as (...a: unknown[]) => number)(f, ...rest); byFd.set(fd, String(f)); return fd; }) as typeof fs.openSync);
   const sync = vi.spyOn(fs, 'fsyncSync').mockImplementation((fd: number) => { synced.push(byFd.get(fd) ?? '?'); realSync(fd); });
   coach.send({ type: 'note', profileId: 'pa', text: 'sicher' });
-  expect(synced).toContain(path.join(dir, 'queue.json.tmp'));
+  expect(synced.some((f) => f.startsWith(path.join(dir, 'queue.json.')) && f.endsWith('.tmp'))).toBe(true);
   expect(synced).toContain(dir);
   expect(JSON.parse(fs.readFileSync(path.join(dir, 'queue.json'), 'utf8'))).toHaveLength(1);
   sync.mockRestore(); openSpy.mockRestore();

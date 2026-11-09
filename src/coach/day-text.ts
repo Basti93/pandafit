@@ -3,6 +3,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import { DAY_TEXT_MAX, PRESSURE_WORDS, hashOf } from '../shared/day-text';
 import { DIAGNOSIS_WORDS } from './health/coach-text';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 export type AskFn = (input: { prompt: string; systemPrompt: string; schema: object }) => Promise<unknown>;
 
@@ -71,7 +72,7 @@ export class DayTexts {
   set(profileId: string, e: DayEntry): void {
     const d = this.load();
     d[profileId] = e;
-    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); const tmp = `${this.file}.tmp`; fs.writeFileSync(tmp, JSON.stringify(d)); fs.renameSync(tmp, this.file); } catch { /* written again at worst once more */ }
+    try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); writeJsonAtomic(this.file, d); } catch { /* written again at worst once more */ }
   }
 }
 

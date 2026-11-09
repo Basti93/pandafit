@@ -4,6 +4,7 @@ import { exportFit } from '../../service/export/fit';
 import { readRide } from '../../service/recorder';
 import { RIDE_FILE_NAMES, RIDE_ID, readRideFiles, rideHash } from '../ride-upload-format';
 import { CoachHttpError, type CoachHttp } from './coach-http';
+import { writeFileAtomic } from '../../shared/node/atomic-write';
 
 /** After a failed run, a profile's restore waits this long. */
 const RETRY_MS = 60_000;
@@ -23,10 +24,7 @@ export type RideRestoreOptions = {
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
 
-const writeSynced = (file: string, data: string | Buffer): void => {
-  const fd = fs.openSync(file, 'w', 0o600);
-  try { fs.writeFileSync(fd, data); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-};
+const writeSynced = (file: string, data: string | Buffer): void => writeFileAtomic(file, data, { mode: 0o600 });
 const isFit = (b: Buffer): boolean => b.length >= 14 && b.subarray(8, 12).toString('latin1') === '.FIT';
 
 /**

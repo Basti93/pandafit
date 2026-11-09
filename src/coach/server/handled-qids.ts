@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 /** The most qids kept per account; past that the oldest go first. */
 const MAX_QIDS = 5000;
@@ -36,9 +37,6 @@ export class HandledQids {
     // Oldest first by insertion: trim by age and by count.
     for (const [k, at] of seen) { if (seen.size > MAX_QIDS || nowMs - at > KEEP_MS) seen.delete(k); else break; }
     fs.mkdirSync(path.dirname(this.file), { recursive: true, mode: 0o700 });
-    const tmp = `${this.file}.tmp`;
-    const fd = fs.openSync(tmp, 'w', 0o600);
-    try { fs.writeSync(fd, JSON.stringify([...seen])); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-    fs.renameSync(tmp, this.file);
+    writeJsonAtomic(this.file, [...seen], { mode: 0o600 });
   }
 }

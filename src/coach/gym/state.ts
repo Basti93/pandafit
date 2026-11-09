@@ -4,6 +4,7 @@ import type { ClaudeErrorKind } from '../claude-client';
 import type { GymWorkout } from './types';
 import type { GymOutlook } from '../../shared/gym-outlook';
 import { readKeyedNotes, type KeyedNote } from '../../shared/change-notes';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 export type GymState = {
   profileId: string;
@@ -65,8 +66,7 @@ export const saveGymState = (dir: string, state: GymState, dropLegacy = false): 
   fs.mkdirSync(dir, { recursive: true });
   const f = file(dir, state.profileId);
   const keep = dropLegacy ? undefined : legacyField(f);
-  fs.writeFileSync(`${f}.tmp`, JSON.stringify(keep === undefined ? state : { ...state, rules: keep }));
-  fs.renameSync(`${f}.tmp`, f);
+  writeJsonAtomic(f, keep === undefined ? state : { ...state, rules: keep });
 };
 
 export const removeGymState = (dir: string, profileId: string): void => {

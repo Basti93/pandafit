@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto';
 import type { RecordKind, TrackedRecord } from '../../shared/records';
 import { lineAfterAck, planWrite, type WriteOrigin } from '../../tracking/kept-copy';
 import type { PutResult } from '../../tracking/ports';
+import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 const MAX_OVERWRITTEN = 200;
 
@@ -49,12 +50,7 @@ export class RecordStore {
   private save(profileId: string, data: FileData): void {
     fs.mkdirSync(this.dir, { recursive: true });
     const f = this.file(profileId);
-    const fd = fs.openSync(`${f}.tmp`, 'w');
-    try {
-      fs.writeFileSync(fd, JSON.stringify(data));
-      fs.fsyncSync(fd);
-    } finally { fs.closeSync(fd); }
-    fs.renameSync(`${f}.tmp`, f);
+    writeJsonAtomic(f, data);
   }
 
   /** A write made on this Mac. `seenMs` is the version it stands on, when the writer knows one. */

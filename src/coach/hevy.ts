@@ -16,6 +16,7 @@ const KEY_FORMAT = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const KEY_FILE = 'api-key';
 
 import type { Effort } from '../shared/records';
+import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 export type StrengthWorkout = {
   id: string; title: string; startMs: number; durationS: number;
@@ -86,8 +87,7 @@ export class HevySync {
   private save(): void {
     if (this.closed) return;
     fs.mkdirSync(this.opts.dir, { recursive: true, mode: 0o700 });
-    fs.writeFileSync(`${this.file}.tmp`, JSON.stringify(this.store), { mode: 0o600 });
-    fs.renameSync(`${this.file}.tmp`, this.file);
+    writeJsonAtomic(this.file, this.store, { mode: 0o600 });
   }
 
   close(): void { this.closed = true; }
