@@ -2,7 +2,7 @@ import { useId, useMemo, useRef, useState } from 'react';
 import { nextUpdatedMs } from '../tracking/ui/run-view';
 import type { TrackedRecord } from '../shared/records';
 import {
-  addWeeks, changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealPlan, readMealState, recipeAmount,
+  changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealState, recipeAmount,
   shoppingList, sideText, SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf, withEater, withItem,
   type ItemState, type LinkRequest, type Meal, type MealChat, type MealPlan, type MealState, type ShopItem,
 } from '../shared/meals';
@@ -10,31 +10,11 @@ import { weekRangeOfKey } from '../shared/dates';
 import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { ConfirmLink, PageHead, Row, RowCard, RowList, Segments, Sheet } from '../tracking/ui/kit';
+import { listAnd, mealDayOf, mealWeeks, type Week } from './essen/meals-view';
 import { placements, RecipesSheet, RecipeView, type RecipeCtx } from './RecipesScreen';
 
-export type Week = { plan: MealPlan; state: MealState };
-
-/** The plan of the week `ms` lies in (any week, also the previous and the next) and the day index; null without a readable plan. */
-export function mealDayOf(records: TrackedRecord[] | null, ms: number): { week: Week; day: number } | null {
-  const w = weekOf(ms);
-  const rec = (records ?? []).find((r) => r.id === `week-${w}` && !r.deleted);
-  const plan = rec ? readMealPlan(rec.body) : null;
-  if (!plan) return null;
-  const stateRec = (records ?? []).find((r) => r.id === stateRecordId(w) && !r.deleted);
-  return { week: { plan, state: readMealState(stateRec?.body) }, day: dayIndex(ms) };
-}
-
-/** The readable plans of this and next week, from the account's records. */
-export function mealWeeks(records: TrackedRecord[] | null, now: number): Week[] {
-  const current = weekOf(now);
-  return [current, addWeeks(current, 1)].flatMap((w) => {
-    const rec = (records ?? []).find((r) => r.id === `week-${w}` && !r.deleted);
-    const plan = rec ? readMealPlan(rec.body) : null;
-    if (!plan) return [];
-    const stateRec = (records ?? []).find((r) => r.id === stateRecordId(w) && !r.deleted);
-    return [{ plan, state: readMealState(stateRec?.body) }];
-  });
-}
+export type { Week };
+export { mealDayOf, mealWeeks };
 
 /** This person's messages to the coach about the plan, oldest first. */
 export const mealChats = (records: TrackedRecord[] | null): MealChat[] =>
@@ -104,7 +84,6 @@ function ChatSheet({ chat, onSend, onClose }: { chat: MealChat[]; onSend: (text:
 export const short = (k: string) => { const [d, s] = k.split('-'); return `${DAY_SHORT[Number(d)]}${s === 'mittag' ? '' : ` ${SLOT_LABEL[s as keyof typeof SLOT_LABEL]}`}`; };
 const color = (plan: MealPlan, id: string) => Math.max(0, plan.people.findIndex((p) => p.id === id)) % 4;
 const NEXT: Record<ItemState, ItemState> = { offen: 'gekauft', gekauft: 'offen', da: 'offen' };
-const listAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]}` : names[0] ?? '');
 
 /** One meal as a row; opened, it shows the recipe, the protein and who eats. A deviation from the plan shows under the title. */
 /** A small picture of the recipe behind a dish; nothing at all when it has none. */
