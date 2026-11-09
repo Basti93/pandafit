@@ -4,12 +4,13 @@
   .tk-pick { background: var(--pick) !important; color: var(--text) !important; }
   .tk-chip-warm { color: var(--chip-warm); } .tk-chip-fail { color: var(--chip-fail); } .tk-chip-drop { color: var(--chip-drop); }
 }
-html, body { margin: 0; background: var(--bg); color: var(--text); }
-body { font-family: var(--font-ui); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+html { background: var(--page-bg); }
+html, body { margin: 0; color: var(--text); }
+body { font-family: var(--font-text); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 /* The tab bar sits at the bottom, inside the safe area. The page keeps room for it, so it never covers the finish button. */
-.web-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); gap: .1rem; padding: .3rem max(calc(.5rem + env(safe-area-inset-right)), calc((100% - 640px) / 2)) calc(.3rem + env(safe-area-inset-bottom)) max(calc(.5rem + env(safe-area-inset-left)), calc((100% - 640px) / 2)); background: var(--bg); }
+.web-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr); gap: .1rem; padding: .3rem max(calc(.5rem + env(safe-area-inset-right)), calc((100% - var(--content-max)) / 2)) calc(.3rem + env(safe-area-inset-bottom)) max(calc(.5rem + env(safe-area-inset-left)), calc((100% - var(--content-max)) / 2)); background: var(--bg); }
 /* On a wide screen the tabs and their line stay in the content column (640 px), like the page. */
-.web-nav::before { content: ''; position: absolute; top: 0; left: max(0px, calc((100% - 640px) / 2)); right: max(0px, calc((100% - 640px) / 2)); border-top: 1px solid var(--line); }
+.web-nav::before { content: ''; position: absolute; top: 0; left: max(0px, calc((100% - var(--content-max)) / 2)); right: max(0px, calc((100% - var(--content-max)) / 2)); border-top: 1px solid var(--line); }
 .web-nav button { font: inherit; font-size: var(--text-m); font-weight: 600; min-height: 48px; padding: .3rem .2rem; border-radius: .9rem; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 /* At most five tabs: the label never wraps. */
 .web-nav button { font-size: var(--text-s); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: .1rem; padding-right: .1rem; }
@@ -134,7 +135,7 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .gm-stack li span { text-align: left; }
 /* The profile sits at the top right instead of taking a tab. */
 .web-main { position: relative; }
-.web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .55rem); right: max(calc(env(safe-area-inset-right) + 1rem), calc((100% - 640px) / 2 + 1rem)); width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--line); background: var(--card); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .55rem); right: max(calc(env(safe-area-inset-right) + 1rem), calc((100% - var(--content-max)) / 2 + 1rem)); width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--line); background: var(--card); color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .web-profile[aria-current='page'] { color: var(--text); border-color: var(--accent); }
 /* Sub pages of a tab (Kraft, Ausdauer, Essen Tage/Einkauf): one pill with segments, not loose buttons. One look everywhere. */
 .tk-seg { display: flex; background: var(--card); border-radius: var(--radius-pill); padding: 3px; margin-right: 3.4rem; }
@@ -226,7 +227,7 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-bodyrows { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
 
 /* Top bar: the wordmark on the left, the round profile button on the right (it is positioned on the same row). */
-.web-top { box-sizing: border-box; max-width: 640px; margin: 0 auto; min-height: calc(44px + .55rem); padding: calc(.55rem + 6px) 4.6rem 0 var(--space-4); }
+.web-top { box-sizing: border-box; max-width: var(--content-max); margin: 0 auto; min-height: calc(44px + .55rem); padding: calc(.55rem + 6px) 4.6rem 0 var(--space-4); }
 .web-wordmark { font-family: var(--font-display); font-size: var(--text-l); letter-spacing: .04em; color: var(--text); line-height: 1.2; }
 @media (max-width: 400px) { .web-top { padding-left: .6rem; } }
 /* Display face: the wordmark, Panda's name and short page titles only. Workout titles and anything with measures stay in the UI face. */

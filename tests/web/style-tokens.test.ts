@@ -84,3 +84,33 @@ describe('style tokens', () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe('dojo fundament', () => {
+  it('hosts Zen Kaku Gothic New itself and uses it for all web text', () => {
+    const tokens = read(TOKENS);
+    for (const w of [400, 500, 700]) {
+      expect(tokens).toContain(`url('/brand/zen-kaku-gothic-new-${w}.woff2')`);
+      // The latin subset is about 9.6 kB, so the floor only guards against an empty or error file.
+      expect(statSync(`src/web/public/brand/zen-kaku-gothic-new-${w}.woff2`).size).toBeGreaterThan(5_000);
+    }
+    expect(tokens).toMatch(/--font-text:\s*'Zen Kaku Gothic New'/);
+    expect(read(WEB)).toMatch(/body\s*\{[^}]*font-family:\s*var\(--font-text\)/);
+    expect(read(TRACKING)).toMatch(/\.tk-screen\s*\{[^}]*font-family:\s*var\(--font-text\)/);
+  });
+  it('defines the Dojo tokens in both schemes, light only under the media query', () => {
+    const css = read(TOKENS);
+    const [dark, light] = css.split('@media (prefers-color-scheme: light)');
+    for (const t of ['--bg-top', '--card-soft', '--kicker', '--brush', '--glow']) {
+      expect(dark).toContain(`${t}:`);
+      expect(light).toContain(`${t}:`);
+    }
+    expect(css).not.toMatch(/\[data-theme="(light|dark)"\]\s*\{[^}]*--/);
+  });
+  it('keeps the page background in one token with a fixed-height glow', () => {
+    expect(read(TOKENS)).toMatch(/--page-bg:\s*radial-gradient\([^;]*600px[^;]*\)[^;]*var\(--bg\)/);
+    expect(read(WEB)).toMatch(/html\s*\{[^}]*background:\s*var\(--page-bg\)/);
+  });
+  it('uses one content width token instead of 640px literals', () => {
+    for (const f of [WEB, TRACKING]) expect(read(f).replace(/\/\*[\s\S]*?\*\//g, '')).not.toContain('640px');
+  });
+});
