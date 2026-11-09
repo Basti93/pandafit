@@ -48,10 +48,14 @@ async function boot(seed: TrackedRecord[]) {
 }
 
 describe('Bo on Heute', () => {
-  it('takes the pose of the day and plays it once', async () => {
-    await boot([week('bike')]);
-    await waitFor(() => expect(log.last.pose).toBe('bike'));
+  it('takes the pose of the day once, if it fits the nest', async () => {
+    await boot([week('gym')]);
+    await waitFor(() => expect(log.last.pose).toBe('flex'));
     expect(log.mounts).toBe(1);
+  });
+  it('in the nest Bo sits: a bike day keeps the greeting instead of the standing bike pose', async () => {
+    await boot([week('bike')]);
+    await waitFor(() => expect(log.last.pose).toBe('greet'));
   });
   it('a strength day gives flex, and a day without a plan gives the greeting pose', async () => {
     await boot([week('gym')]);

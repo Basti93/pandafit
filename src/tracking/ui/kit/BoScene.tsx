@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { PandaGesture } from '../panda-canvas';
 
 /**
  * Bo in one of his places: the scene behind him, a glow, Bo (`children`), and the front edge of the place in front of him.
@@ -6,6 +7,19 @@ import type { ReactNode } from 'react';
  * `children` darf das Standbild oder das bewegte `PandaPortrait` sein.
  */
 export type BoPlace = 'nest';
+
+/**
+ * The poses that fit each place. Bo sits in the nest, so standing poses with their own ground
+ * (bike, run, yoga on a mat) do not fit there; they get their own places in Dojo 5.
+ */
+export const PLACE_POSES: Record<BoPlace, readonly PandaGesture[]> = {
+  nest: ['greet', 'listen', 'nod', 'breathe', 'flex', 'read', 'knit'],
+};
+
+/** The pose Bo takes in a place: the wanted one if it fits there, otherwise the greeting. */
+export function poseIn(place: BoPlace, wanted: PandaGesture | null | undefined): PandaGesture {
+  return wanted && PLACE_POSES[place].includes(wanted) ? wanted : 'greet';
+}
 
 export function BoScene({ place, children }: { place: BoPlace; children: ReactNode }) {
   return (
