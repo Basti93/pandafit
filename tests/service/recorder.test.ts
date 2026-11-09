@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { RideRecorder, readRide, type RideMeta } from '../../src/service/recorder';
+import { RideRecorder } from '../../src/service/recorder';
+import { readRide, type RideMeta } from '../../src/ride-format/read';
 import type { Sample } from '../../src/shared/sample';
 
 const meta: RideMeta = { rideId: 'r1', profileId: 'p', sessionId: 's', startedAtMs: 1, status: 'open' };

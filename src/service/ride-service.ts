@@ -10,7 +10,8 @@ import type { BlePort } from './ble/device-port';
 import { RideEngine } from './engine';
 import type { Diagnostics } from './diagnostics';
 import { exportFit } from '../ride-format/export/fit';
-import { readRide, RideRecorder } from './recorder';
+import { RideRecorder } from './recorder';
+import { readRide } from '../ride-format/read';
 import { findOpenRides, resumePoint, type ResumePoint } from '../ride-format/recovery';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 

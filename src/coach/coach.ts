@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { readMeta, readRide } from '../service/recorder';
+import { readMeta, readRide } from '../ride-format/read';
 import type { Profile } from '../shared/profiles';
 import type { RideDetail } from '../shared/coach-protocol';
 import { DUTCH_WORDS, recordAnswer } from '../shared/language';

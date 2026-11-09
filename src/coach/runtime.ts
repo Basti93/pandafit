@@ -7,7 +7,7 @@ import type { Profile } from '../shared/profiles';
 import type { CoachClientMessage, CoachServerMessage, CoachStateMessage } from '../shared/coach-protocol';
 import { suggestProfile } from '../shared/garmin-profile';
 import { Coach } from './coach';
-import { readRide } from '../service/recorder';
+import { readRide } from '../ride-format/read';
 import { cleanSamples } from './metrics';
 import { GarminLink } from './garmin';
 import { GarminDb } from './garmin-db';

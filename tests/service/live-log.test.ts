@@ -5,7 +5,7 @@ import path from 'node:path';
 import { undoLastLive } from '../../scripts/live-undo';
 import { FakeBlePort } from '../../src/service/ble/fake-device';
 import { LiveLog } from '../../src/service/live-log';
-import { readRide } from '../../src/service/recorder';
+import { readRide } from '../../src/ride-format/read';
 import { RideService } from '../../src/service/ride-service';
 
 const session = { id: 's', name: 'x', steps: [{ kind: 'erg' as const, durationS: 100, ftpFraction: 0.5, label: 'A' }] };

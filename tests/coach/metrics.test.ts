@@ -1,5 +1,5 @@
 import { cleanSamples, loadModel, summarizeRide, type RideSummary } from '../../src/coach/metrics';
-import type { RideMeta } from '../../src/service/recorder';
+import type { RideMeta } from '../../src/ride-format/read';
 import type { Sample } from '../../src/shared/sample';
 
 const meta: RideMeta = { rideId: 'r', profileId: 'p', sessionId: 's', startedAtMs: 0, status: 'finished' };

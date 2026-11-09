@@ -1,5 +1,5 @@
 import { Encoder, Profile } from '@garmin/fitsdk';
-import type { RideMeta } from '../../service/recorder';
+import type { RideMeta } from '../read';
 import type { RideEvent, Sample } from '../../shared/sample';
 
 const NUM = Profile.MesgNum;

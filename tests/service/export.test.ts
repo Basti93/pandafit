@@ -1,6 +1,6 @@
 import { Decoder, Stream } from '@garmin/fitsdk';
 import { exportFit } from '../../src/ride-format/export/fit';
-import type { RideMeta } from '../../src/service/recorder';
+import type { RideMeta } from '../../src/ride-format/read';
 import type { Sample } from '../../src/shared/sample';
 
 const T0 = Date.UTC(2026, 9, 31, 12);

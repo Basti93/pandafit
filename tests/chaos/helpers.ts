@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { WebSocket } from 'ws';
-import { readRide } from '../../src/service/recorder';
+import { readRide } from '../../src/ride-format/read';
 import type { Session } from '../../src/shared/session';
 
 export const SCALE = 20;

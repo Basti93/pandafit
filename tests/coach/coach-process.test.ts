@@ -5,7 +5,7 @@ import path from 'node:path';
 import { WebSocket } from 'ws';
 import { rampTest } from '../../src/coach/rules';
 import { TOKEN, connect, hardKill, rideId, send, session, sleep, startService, waitForSamples, type Svc } from '../chaos/helpers';
-import { readRide } from '../../src/service/recorder';
+import { readRide } from '../../src/ride-format/read';
 
 type Coach = { child: ChildProcess; port: number };
 let port = 7700;

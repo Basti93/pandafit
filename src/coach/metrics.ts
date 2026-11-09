@@ -1,4 +1,4 @@
-import type { RideMeta } from '../service/recorder';
+import type { RideMeta } from '../ride-format/read';
 import type { Sample } from '../shared/sample';
 import { stepFtpFraction, type Session, type Step } from '../shared/session';
 import { stepTargetZone, zoneOf } from '../shared/hr-zones';

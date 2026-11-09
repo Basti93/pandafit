@@ -1,4 +1,4 @@
-import { readRide } from '../../src/service/recorder';
+import { readRide } from '../../src/ride-format/read';
 import { connect, hardKill, rideId, send, session, sleep, startService, tempDir, waitForSamples, waitForStatus, type Svc } from './helpers';
 
 let running: Svc | null = null;
