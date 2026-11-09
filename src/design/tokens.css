@@ -33,6 +33,8 @@
   --good: #b5cc8d; /* shared */
   --good-text: #b5cc8d;
   --tile: #2f4033; /* icon tile of a row card */
+  --meal-shadow: rgba(13, 20, 15, .45); /* shadow under a meal picture */
+  --meal-steam: #7f9180; /* steam of a meal picture */
   --today-glow: rgba(242, 189, 85, .55); /* glow around today on the week path */
   --bubble-me: #3a3a2a; /* the user's own chat bubble */
   --bubble-me-line: #7a5a3e;
@@ -158,6 +160,8 @@
     --good-text: #34513b;
     --accent-text: #8a4a17;
     --tile: rgba(34, 55, 43, .08);
+    --meal-shadow: rgba(80, 60, 30, .18);
+    --meal-steam: #a3a690;
     --today-glow: rgba(224, 168, 58, .45);
     --bubble-me: #f6e3cf;
     --bubble-me-line: #e0b48c;

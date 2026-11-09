@@ -5,7 +5,8 @@
  *   MainCard is the only "Jetzt dran" card (`middle` = slot between text and buttons, `more` = quiet extras below): every screen shows its main next thing through it, never a hand-built copy.
  *   Role, ask and title come only from ../bo.ts; sentences may name Bo directly. Icons come only through Icon.
  *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Tag is the small green label with a check.
- *   RowCard (RowCard.tsx) is the only row card with an icon tile (DESIGN "Zeilenkarte"); Row stays the plain text row without icon (lists, settings). WordTile is the only word tile.
+ *   HeadCard is the one head card of a page with its title (Essen, a meal, a recipe, Profil); MealPicture the one drawn picture per meal type (brand/meals.svg).
+ *   RowCard is the only row card (an icon or picture tile in a card of its own); Row is the list row, with an optional icon tile and hint (settings). WordTile is the only word tile.
  *   StandCard is the one orientation card "… · diese Woche" (Kraft, Rad, Laufen); Segments the one switch between sub pages; PillButton the one pill (quiet side action and back);
  *   MarkDot the one state dot (done, now, open; button dots in a row need a gap of at least 16 px); Band the one part bar.
  *   TimerCard is the one slim timer card (the rest between sets): the text is the skip button, a secondary button beside it.
@@ -21,7 +22,7 @@
  *   Exception: the ride display (LiveRide) keeps 64 px outline buttons for use on the bike.
  * Other controls, one look each (CSS in ../tracking.css unless said):
  *   Chips (.tk-chips > button, aria-pressed)  every toggle choice: thin pill, chosen = accent ring and bold. Only tappable things are pills; a tag is muted text.
- *   Segments (kit)  Kraft, Ausdauer, Essen Tage/Einkauf, Darstellung: one pill with segments.
+ *   Segments (kit)  Kraft, Ausdauer, Darstellung: one pill with segments.
  *   Stepper (button.tk-step-btn)  − count +: a 44 px round outline button.
  *   Round icon buttons (day arrows, profile)  44 px, card fill, thin line.
  *   Callout (.tk-note)  card fill with a 4 px bar on the left, for a note or a warning; never a card inside a card.
@@ -44,9 +45,10 @@ export { PageHead } from './PageHead';
 export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
 export { ConfirmLink } from './ConfirmLink';
-export { AskBoButton, BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, PillButton, RoundButton, SeeProposalButton, Tag, TimerCard } from './Dojo';
+export { AskBoButton, BackButton, BrushTitle, BoBubble, Bubble, Card, HeadCard, Kicker, MainCard, PillButton, RoundButton, SeeProposalButton, Tag, TimerCard } from './Dojo';
 export { BoScene } from './BoScene';
 export type { BoPlace } from './BoScene';
+export { MealPicture } from './MealPicture';
 export { RowCard, WordTile } from './RowCard';
 export { WeekPath } from './WeekPath';
 export { Band, MarkDot, StandCard } from './StandCard';
