@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { apiFetch } from '../tracking/ui/data/api';
 import {
   DAY_SHORT, dayDate, dayIndex, mealKey, placeAnswer, readPlaceRequest, SLOT_LABEL, SLOTS, weekOf, type Meal, type MealPlan, type MealState,
@@ -6,8 +6,8 @@ import {
 } from '../shared/meals';
 import { Card, ConfirmLink, HeadCard, Kicker, PillButton, RoundButton } from '../tracking/ui/kit';
 import { EssenPage } from './essen/EssenPage';
-import { MealImage } from './essen/MealImage';
-import { eaterNames, eatersLine, placeButton, placeDefault, placedSentence, recipeSentence } from './essen/meals-view';
+import { MealImage, recipeImageUrl } from './essen/MealImage';
+import { eaterNames, placeButton, placeDefault, placedSentence, placePrompt, recipeSentence } from './essen/meals-view';
 import { IngredientsCard, StepsCard } from './essen/RecipeParts';
 
 /** What the recipe screens need from the Essen page. */
@@ -47,7 +47,6 @@ async function getJson(fetchFn: typeof fetch, path: string): Promise<unknown> {
   } catch { return null; }
 }
 
-const imageUrl = (id: string) => `/coach/recipes/${id}/image`;
 /** A soft colour block from the id: the calm stand-in when there is no picture. */
 const hueOf = (id: string): number => [...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
 
@@ -55,7 +54,7 @@ const hueOf = (id: string): number => [...id].reduce((a, c) => (a * 31 + c.charC
 export function RecipePicture({ id, has }: { id: string; has: boolean }) {
   const [failed, setFailed] = useState(false);
   const cls = 'rc-thumb';
-  if (has && !failed) return <img className={cls} src={imageUrl(id)} alt="" loading="lazy" onError={() => setFailed(true)} />;
+  if (has && !failed) return <img className={cls} src={recipeImageUrl(id)} alt="" loading="lazy" onError={() => setFailed(true)} />;
   return <span className={`${cls} rc-blank`} style={{ ['--rc-hue' as string]: String(hueOf(id)) }} aria-hidden="true" />;
 }
 
@@ -212,16 +211,19 @@ function PlaceCard({ ctx, recipe }: { ctx: RecipeCtx; recipe: RecipeSummary }) {
   const t = ctx.now();
   const current = weekOf(t);
   const today = dayIndex(t);
-  const start = useMemo(() => {
+  // The default is read on each render until the person chooses, so plans that arrive after the card is shown still count.
+  const start = (() => {
     const d = placeDefault(ctx.weeks, t);
     if (d) return d;
     const w = ctx.weeks.find((x) => x.plan.week === current) ?? ctx.weeks[0];
     return w ? { week: w.plan.week, day: w.plan.week === current ? today : 0, slot: 'abend' as Slot } : null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const [weekKey, setWeekKey] = useState<string | null>(start?.week ?? null);
-  const [day, setDay] = useState(start?.day ?? 0);
-  const [slot, setSlot] = useState<Slot>(start?.slot ?? 'abend');
+  })();
+  const [chosenWeek, setWeekKey] = useState<string | null>(null);
+  const [chosenDay, setDay] = useState<number | null>(null);
+  const [chosenSlot, setSlot] = useState<Slot | null>(null);
+  const weekKey = chosenWeek ?? start?.week ?? null;
+  const day = chosenDay ?? start?.day ?? 0;
+  const slot = chosenSlot ?? start?.slot ?? 'abend';
   const [sentAt, setSentAt] = useState<number | null>(null);
   const week = ctx.weeks.find((w) => w.plan.week === weekKey);
   const key = mealKey(day, slot);
@@ -235,7 +237,7 @@ function PlaceCard({ ctx, recipe }: { ctx: RecipeCtx; recipe: RecipeSummary }) {
       <Kicker>In den Plan</Kicker>
       {!week ? <p>Es gibt noch keinen Essensplan, in den das Rezept passt.</p> : (
         <>
-          <p>Wähle einen Tag und eine Mahlzeit. {eatersLine(names)}.</p>
+          <p>{placePrompt(names)}</p>
           {ctx.weeks.length > 1 && (
             <div className="tk-textseg" role="group" aria-label="Woche">
               {ctx.weeks.map((w) => <button key={w.plan.week} type="button" className="link" aria-pressed={w.plan.week === weekKey} onClick={() => { setWeekKey(w.plan.week); setDay(w.plan.week === current ? Math.max(day, today) : day); setSentAt(null); }}>{w.plan.week === current ? 'Diese Woche' : 'Nächste Woche'}</button>)}

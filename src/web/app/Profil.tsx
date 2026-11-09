@@ -12,16 +12,16 @@ import { CoachLink } from '../coachLink';
 import { Env } from './env';
 import { PushState, PushSettings } from './Push';
 
+const QUIET = 'Alles ist gesichert.';
+
 export const syncText = (status: 'ok' | 'login' | 'offline', c: { pending: number; lastOkMs: number | null; refused?: number }): string => {
   if (status === 'login') return 'Bitte melde dich neu an. Bis dahin bleibt alles auf diesem Gerät.';
   if (status === 'offline') return `Gerade gibt es keine Verbindung. Alles bleibt auf diesem Gerät.${c.lastOkMs === null ? '' : ` Zuletzt gesichert um ${timeLabel(c.lastOkMs)}.`}`;
   if ((c.refused ?? 0) > 0) return 'Ein Eintrag wurde nicht angenommen. Er bleibt auf diesem Gerät.';
   if (c.pending > 0) return c.pending === 1 ? 'Ein Eintrag wartet aufs Senden.' : `${c.pending} Einträge warten aufs Senden.`;
   if (c.lastOkMs === null) return 'Der erste Abgleich folgt gleich.';
-  return 'Alles ist gesichert.';
+  return QUIET;
 };
-
-const QUIET = 'Alles ist gesichert.';
 
 /** The account on this device, a few switches, the coach's timing, and the way out. */
 export function Profil({ now, status, onLogout, push, link, storage }: { link: CoachLink | null; now: () => number; status: 'ok' | 'login' | 'offline'; onLogout: () => void; push: PushState | null; storage: Env['storage'] }) {

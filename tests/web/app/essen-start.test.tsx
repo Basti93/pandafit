@@ -135,4 +135,15 @@ describe('Essen start page', () => {
       expect((rec?.body as { week: string }).week).toBe(weekOf(wed));
     });
   });
+
+  it('Back from a meal gives the focus back to the button that opened it', async () => {
+    await boot({ account: 'anna', seed: [weekWith3MealsToday], now: wed });
+    await goEssen();
+    const open = await screen.findByRole('button', { name: 'Rezept ansehen' });
+    open.focus();
+    fireEvent.click(open);
+    await screen.findByRole('region', { name: 'Linsen-Bolognese' });
+    window.history.back();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Rezept ansehen' })));
+  });
 });

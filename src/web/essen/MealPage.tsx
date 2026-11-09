@@ -6,7 +6,7 @@ import type { MealData } from '../MealsScreen';
 import { RecipePage } from '../RecipesScreen';
 import { EssenPage } from './EssenPage';
 import { MealImage } from './MealImage';
-import { askedSentence, mealPageKicker, NOBODY_EATS, mealSentence, type MealAt } from './meals-view';
+import { ALREADY_COOKED, askedSentence, MEAL_GONE, mealPageKicker, NOBODY_EATS, mealSentence, type MealAt } from './meals-view';
 import { EatersButton, IngredientsCard, StepsCard } from './RecipeParts';
 
 /** One meal of the plan as a page: picture, when and what, who eats, ingredients and steps. */
@@ -18,7 +18,7 @@ export function MealPage({ data, at, me, backLabel, onBack }: { data: MealData; 
   const week = data.weeks.find((w) => w.plan.week === at.week);
   const meal = week?.plan.meals.find((m) => mealKey(m.day, m.slot) === at.meal);
   if (!week || !meal) {
-    return <EssenPage back={back}><div className="tk-screen"><Card><p>Diese Mahlzeit steht nicht mehr im Plan.</p></Card></div></EssenPage>;
+    return <EssenPage back={back}><div className="tk-screen"><Card><p>{MEAL_GONE}</p></Card></div></EssenPage>;
   }
   const { dish } = meal;
   const nowMs = data.recipeCtx.now();
@@ -35,7 +35,7 @@ export function MealPage({ data, at, me, backLabel, onBack }: { data: MealData; 
           <EatersButton week={week} meal={meal} me={me} past={past} onEater={(person, on) => void data.change(week.plan.week, (s, t) => withEater(s, at.meal, person, on, t))} />
         </HeadCard>
         {meal.reuseOf ? (
-          <Card><p>Das ist schon gekocht. Pack es einfach ein.</p></Card>
+          <Card><p>{ALREADY_COOKED}</p></Card>
         ) : (
           <>
             {cook.total > 0

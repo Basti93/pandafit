@@ -9,7 +9,8 @@ import {
 import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { RowCard, Sheet } from '../tracking/ui/kit';
-import { mealDayOf, mealWeeks, shoppingWeek, type MealAt, type Week } from './essen/meals-view';
+import { mealDayOf, mealWeeks, shoppingWeek, WISH_SENT, type MealAt, type Week } from './essen/meals-view';
+import { KeptPage } from './essen/EssenPage';
 import { EssenStart } from './essen/EssenStart';
 import { MealPage } from './essen/MealPage';
 import { ShoppingPage } from './essen/ShoppingPage';
@@ -73,7 +74,7 @@ function ChatSheet({ chat, onSend, onClose }: { chat: MealChat[]; onSend: (text:
           <input autoFocus aria-label="Nachricht an Bo" maxLength={CHAT_MAX_CHARS} placeholder="z. B. Mittwoch lieber Nudeln" value={text} onChange={(e) => { setText(e.target.value); setSent(false); }} />
         </label>
       </form>
-      {sent && <p className="muted" role="status">Wunsch gesendet</p>}
+      {sent && <p className="muted" role="status">{WISH_SENT}</p>}
       {last && <ul className="pm-chat-list"><ChatRow c={last} /></ul>}
       {before.length > 0 && (
         <details className="pm-chat-before">
@@ -117,7 +118,14 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
     const at = now();
     await port.put({ kind: 'mealplan', id: newPlaceId(at), updatedMs: at, deleted: false, body: { week: w, meal, recipeId, atMs: at, result: null, answeredMs: null } }).catch(() => { /* nothing was sent; try again */ });
   };
-  const recipeCtx: RecipeCtx = { fetchFn, now, favs, toggleFav, weeks, place, placements: placed };
+  /** Deleting the record deletes the recipe: the coach sees the tombstone. */
+  const deleteRecipe = async (recipeId: string) => {
+    const id = `recipe-${recipeId}`;
+    const have = (await port.list('mealplan')).find((r) => r.id === id);
+    if (!have) return;
+    await port.put({ ...have, updatedMs: nextUpdatedMs(now(), have), deleted: true }).catch(() => { /* still there; try again */ });
+  };
+  const recipeCtx: RecipeCtx = { fetchFn, now, favs, toggleFav, weeks, place, placements: placed, deleteOwn: (id) => void deleteRecipe(id) };
   return { records, weeks, change, favs, recipeCtx };
 }
 
@@ -164,42 +172,32 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
   const [addOpen, setAddOpen] = useState(false);
   const chat = useMemo(() => mealChats(records), [records]);
   const requests = useMemo(() => linkRequests(records), [records]);
-  if (page.name === 'meal') {
-    const from = page.from;
-    return <MealPage data={data} at={page.at} me={account} backLabel={from === 'heute' ? 'Heute' : 'Essen'} onBack={() => { if (from === 'heute') onHeute?.(); else setPage({ name: 'start' }); }} />;
-  }
-  if (page.name === 'einkauf') return <ShoppingPage weeks={weeks} nowMs={t} change={changeWeek} onBack={() => setPage({ name: 'start' })} />;
-
   /** A link to add: a record of its own, answered by the coach on the server. */
   const addLink = async (url: string) => {
     const at = now();
     await port.put({ kind: 'mealplan', id: newLinkId(at), updatedMs: at, deleted: false, body: { url, atMs: at, result: null, answeredMs: null } }).catch(() => { /* the field is empty again; nothing else is lost */ });
-  };
-  /** Deleting the record deletes the recipe: the coach sees the tombstone. */
-  const deleteRecipe = async (recipeId: string) => {
-    const id = `recipe-${recipeId}`;
-    const have = (await port.list('mealplan')).find((r) => r.id === id);
-    if (!have) return;
-    await port.put({ ...have, updatedMs: nextUpdatedMs(now(), have), deleted: true }).catch(() => { /* still there; try again */ });
   };
   /** A new record of its own: only the Mac writes it again, with the reply. The week is the one Einkauf shows first. */
   const say = async (text: string) => {
     const at = now();
     await port.put({ kind: 'mealplan', id: newChatId(at), updatedMs: at, deleted: false, body: { week: first?.plan.week, text, atMs: at, reply: null, answeredMs: null, changed: [] } }).catch(() => { /* the field stays empty; nothing else is lost */ });
   };
-  if (page.name === 'rezepte') {
-    return (
-      <>
-        <RecipesPage ctx={{ ...recipeCtx, deleteOwn: (id) => void deleteRecipe(id) }} onAddLink={() => setAddOpen(true)} onBack={() => setPage({ name: 'start' })} />
-        {addOpen && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setAddOpen(false)} />}
-      </>
-    );
-  }
+  // The start page stays mounted under the other pages, so Back finds its scroll position and focus.
+  const over = page.name !== 'start';
   return (
     <>
-      <EssenStart data={data} nowMs={t} me={account} onMeal={(at) => setPage({ name: 'meal', at, from: 'essen' })} onShopping={() => setPage({ name: 'einkauf' })} onRecipes={() => setPage({ name: 'rezepte' })} onChat={() => setChatOpen(true)} />
+      <KeptPage hidden={over}>
+        <EssenStart data={data} nowMs={t} me={account} onMeal={(at) => setPage({ name: 'meal', at, from: 'essen' })} onShopping={() => setPage({ name: 'einkauf' })} onRecipes={() => setPage({ name: 'rezepte' })} onChat={() => setChatOpen(true)} />
+      </KeptPage>
       {chatOpen && <ChatSheet chat={chat} onSend={say} onClose={() => setChatOpen(false)} />}
-      {addOpen && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setAddOpen(false)} />}
+      {page.name === 'meal' && <MealPage data={data} at={page.at} me={account} backLabel={page.from === 'heute' ? 'Heute' : 'Essen'} onBack={() => { if (page.from === 'heute') onHeute?.(); else setPage({ name: 'start' }); }} />}
+      {page.name === 'einkauf' && <ShoppingPage weeks={weeks} nowMs={t} change={changeWeek} onBack={() => setPage({ name: 'start' })} />}
+      {page.name === 'rezepte' && (
+        <>
+          <RecipesPage ctx={recipeCtx} onAddLink={() => setAddOpen(true)} onBack={() => setPage({ name: 'start' })} />
+          {addOpen && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setAddOpen(false)} />}
+        </>
+      )}
     </>
   );
 }

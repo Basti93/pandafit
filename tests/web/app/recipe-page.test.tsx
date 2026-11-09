@@ -100,13 +100,18 @@ describe('A recipe as a page', () => {
     await boot({ account: 'anna', seed: [wedPlan()], now: WED, recipes: recipes() });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
+    // The person scrolls the list: the page follows by scroll events.
     Object.defineProperty(window, 'scrollY', { value: 340, configurable: true });
+    fireEvent.scroll(window);
     fireEvent.click(await screen.findByRole('button', { name: /^Erfundener Topf 1\s?\d+ Min/ }));
     await screen.findByRole('region', { name: 'Erfundener Topf 1' });
     expect(spy).toHaveBeenLastCalledWith(0, 0);
+    // The browser shortens the document under the hidden list and clamps the scroll: that must not be remembered.
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+    fireEvent.scroll(window);
     fireEvent.click(pill('Rezepte'));
     await screen.findByRole('searchbox');
-    expect(spy).toHaveBeenLastCalledWith(0, 340);
+    await waitFor(() => expect(spy).toHaveBeenLastCalledWith(0, 340));
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
     spy.mockRestore();
   });

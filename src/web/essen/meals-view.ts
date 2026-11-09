@@ -16,26 +16,24 @@ export type Week = { plan: MealPlan; state: MealState };
 export type MealAt = { week: string; meal: string };
 export type MealRef = { week: Week; meal: Meal; when: 'heute' | 'morgen' | 'später' };
 
+/** The readable plan of the week `key` with its state; null without a readable plan. */
+function weekAt(records: TrackedRecord[] | null, key: string): Week | null {
+  const find = (id: string) => (records ?? []).find((r) => r.id === id && !r.deleted);
+  const rec = find(`week-${key}`);
+  const plan = rec ? readMealPlan(rec.body) : null;
+  return plan ? { plan, state: readMealState(find(stateRecordId(key))?.body) } : null;
+}
+
 /** The plan of the week `ms` lies in (any week, also the previous and the next) and the day index; null without a readable plan. */
 export function mealDayOf(records: TrackedRecord[] | null, ms: number): { week: Week; day: number } | null {
-  const w = weekOf(ms);
-  const rec = (records ?? []).find((r) => r.id === `week-${w}` && !r.deleted);
-  const plan = rec ? readMealPlan(rec.body) : null;
-  if (!plan) return null;
-  const stateRec = (records ?? []).find((r) => r.id === stateRecordId(w) && !r.deleted);
-  return { week: { plan, state: readMealState(stateRec?.body) }, day: dayIndex(ms) };
+  const week = weekAt(records, weekOf(ms));
+  return week ? { week, day: dayIndex(ms) } : null;
 }
 
 /** The readable plans of this and next week, from the account's records. */
 export function mealWeeks(records: TrackedRecord[] | null, now: number): Week[] {
   const current = weekOf(now);
-  return [current, addWeeks(current, 1)].flatMap((w) => {
-    const rec = (records ?? []).find((r) => r.id === `week-${w}` && !r.deleted);
-    const plan = rec ? readMealPlan(rec.body) : null;
-    if (!plan) return [];
-    const stateRec = (records ?? []).find((r) => r.id === stateRecordId(w) && !r.deleted);
-    return [{ plan, state: readMealState(stateRec?.body) }];
-  });
+  return [current, addWeeks(current, 1)].flatMap((w) => weekAt(records, w) ?? []);
 }
 
 export const listAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]}` : names[0] ?? '');
@@ -94,6 +92,8 @@ export const SLOT_WHEN: Record<Slot, string> = { fruehstueck: 'früh', mittag: '
 
 export const NEXT_PLAN = 'Der nächste Plan kommt am Samstagmorgen.';
 
+export const NO_PLAN = `Noch gibt es keinen Essensplan. ${NEXT_PLAN}`;
+
 export const headKicker = (nowMs: number, trainingDay: boolean): string => `${longDateLabel(nowMs)}${trainingDay ? ' · Trainingstag' : ''}`;
 
 export function headSentence(today: { meal: Meal; over: boolean }[], next: MealRef | null): string {
@@ -119,6 +119,9 @@ export function mealPageKicker(week: Week, meal: Meal, nowMs: number): string {
 
 // ---- A meal in words ----
 
+export const MEAL_GONE = 'Diese Mahlzeit steht nicht mehr im Plan.';
+export const ALREADY_COOKED = 'Das ist schon gekocht. Pack es einfach ein.';
+export const WISH_SENT = 'Dein Wunsch ist bei Bo angekommen.';
 export const NOBODY_EATS = 'Diesmal isst niemand mit. Darum gibt es keine Mengen.';
 
 const keepsText = (days: number): string => (days === 1 ? 'einen Tag' : `${numberWord(days)} Tage`);
@@ -212,6 +215,8 @@ export function placeDefault(weeks: Week[], nowMs: number): { week: string; day:
   const candidates = isOver('abend', nowMs) ? [{ ...t, slot: 'abend' as const }, today] : [today];
   return candidates.find((c) => weeks.some((w) => w.plan.week === c.week)) ?? null;
 }
+
+export const placePrompt = (names: string[]): string => `Wähle einen Tag und eine Mahlzeit. ${eatersLine(names)}.`;
 
 export const placeButton = (day: number, slot: Slot, today: boolean): string =>
   today ? `Heute ${SLOT_TO[slot]} eintragen` : `Am ${DAY_LONG[day]} ${SLOT_TO[slot]} eintragen`;

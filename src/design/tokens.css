@@ -27,7 +27,6 @@
   --line: #405044;
   --field-line: #5c7160;
   --muted: #b7c5ae;
-  --day: #cbd6c2;
   --accent: #efab76; /* shared */
   --accent-text: #efab76; /* apricot as text colour; darker in the light scheme */
   --good: #b5cc8d; /* shared */
@@ -54,9 +53,7 @@
   --danger: #e59585;
   --low: #f2bd55; /* shared */
 
-  /* Chosen person pill (meal plan), picked row. --seg-on stays dark in sheets; --seg-on-screen is the meal screen's own light value. */
-  --seg-on: #354734; /* shared */
-  --seg-on-screen: #354734;
+  /* Picked row. */
   --pick: #354734;
 
   /* Chips */
@@ -153,7 +150,6 @@
     --line: #d5d4bf;
     --field-line: var(--line);
     --muted: #536454;
-    --day: var(--muted);
     --good-text: #34513b;
     --accent-text: #8a4a17;
     --tile: rgba(34, 55, 43, .08);
@@ -173,7 +169,6 @@
     --scene-hollow: #d9ccab;
     --danger: #a8372a;
 
-    --seg-on-screen: #e1e8d3;
     --pick: #e1e8d3;
 
     --chip-warm: #9a6a00;

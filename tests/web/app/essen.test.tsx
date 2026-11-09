@@ -199,7 +199,7 @@ describe('Essen on the phone', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Einkauf/ }));
     expect(screen.getByRole('button', { name: 'Nächste Woche' }).getAttribute('aria-pressed')).toBe('true');
-    expect(await screen.findByText('Nudeln')).toBeTruthy();
+    expect(await screen.findByRole('checkbox', { name: 'Nudeln gekauft' })).toBeTruthy();
     // A tick on this page lands in the record of the week shown.
     fireEvent.click(screen.getByRole('checkbox', { name: 'Nudeln gekauft' }));
     await waitFor(async () => {
@@ -210,7 +210,7 @@ describe('Essen on the phone', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Diese Woche' }));
     expect(await screen.findByText('Skyr')).toBeTruthy();
-    expect(screen.queryByText('Nudeln')).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Nudeln gekauft' })).toBeNull();
   });
 
   it('Einkauf is a page with a back pill; Essen comes back', async () => {

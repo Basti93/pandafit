@@ -68,6 +68,20 @@ describe('the meal page', () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ganzes Rezept ansehen' })));
   });
 
+  it('an own recipe opened from a meal can be deleted: the same record as from the list', async () => {
+    const own: TrackedRecord = { kind: 'mealplan', id: `recipe-${RID}`, updatedMs: NOW - 500, deleted: false, body: { title: 'Linsen-Bolognese', sourceUrl: 'https://rezepte.example/x', minutes: 5 } };
+    const ownRecipes = (url: string) => json(200, url.includes('/search') ? { items: [], more: false } : { id: RID, title: 'Linsen-Bolognese', minutes: 5, proteinG: 25, keepsDays: 2, own: true, fav: false, image: false, tags: [], ingredients: [], steps: ['Linsen kochen.'], sourceUrl: '' });
+    const a = await boot({ account: 'anna', seed: [mealPlan, own], recipes: ownRecipes });
+    await goEssen();
+    await openMeal('Linsen-Bolognese');
+    fireEvent.click(await screen.findByRole('button', { name: 'Ganzes Rezept ansehen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rezept löschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
+    const store = await openIdb('anna', a.factory);
+    await waitFor(async () => expect((await store.list('mealplan')).find((r) => r.id === `recipe-${RID}`)?.deleted).toBe(true));
+    store.close();
+  });
+
   it('two quick changes in Wer isst mit both land in the state record', async () => {
     const a = await boot({ account: 'anna', seed: [mealPlan] });
     await goEssen();

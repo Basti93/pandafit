@@ -39,7 +39,7 @@ describe('Essen on the phone with the coach on the Mac', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Plan ändern' }));
     fireEvent.change(await screen.findByLabelText('Nachricht an Bo'), { target: { value: 'Heute Abend lieber was mit Nudeln' } });
     fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
-    expect(await screen.findByText('Wunsch gesendet')).toBeTruthy();
+    expect(await screen.findByText('Dein Wunsch ist bei Bo angekommen.')).toBeTruthy();
     expect(await screen.findByText('Bo antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeTruthy();
     expect(screen.getByText(/Heute Abend lieber was mit Nudeln/)).toBeTruthy();
     // Through the account to the Mac, which answers at its next tick.

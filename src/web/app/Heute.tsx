@@ -100,8 +100,8 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
     const target = tomorrowTarget({ tomorrow: tomorrowPlan, planWorkout: !!p?.workout, canBike: !!goBike, canRun: !!goRun });
     if (target === 'plan') goTraining('plan');
     else if (target === 'kraft') goTraining();
-    else if (target === 'rad') goBike!();
-    else if (target === 'lauf') goRun!();
+    else if (target === 'rad') goBike?.();
+    else if (target === 'lauf') goRun?.();
     else setSheetDate(tomorrow);
   };
   // Nothing planned and nothing switched on: the one card offers to plan.

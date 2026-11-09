@@ -18,7 +18,7 @@ function tsxFiles(dir: string, out: string[] = []): string[] {
 }
 
 // Custom properties that a component or a rule sets for its own children (not design tokens).
-const LOCAL = new Set(['--slot', '--rc-hue']);
+const LOCAL = new Set(['--rc-hue']);
 
 describe('style tokens', () => {
   it('uses only the weights Zen Kaku has', () => {

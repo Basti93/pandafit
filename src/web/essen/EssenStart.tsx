@@ -5,7 +5,7 @@ import { BoBubble, Card, HeadCard, Kicker, MainCard, RowCard, Sheet } from '../.
 import type { MealData } from '../MealsScreen';
 import { MealImage } from './MealImage';
 import {
-  favSentence, headKicker, headSentence, mealKicker, mealSentence, NEXT_PLAN, nextMeal, nextWeekRows, openCount, openSentence, pastSentence,
+  favSentence, headKicker, headSentence, mealKicker, mealSentence, NO_PLAN, nextMeal, nextWeekRows, openCount, openSentence, pastSentence,
   restOfWeek, rowSentence, shoppingWeek, slotKicker, todayMeals, type DayRow, type MealAt,
 } from './meals-view';
 import { EatersButton } from './RecipeParts';
@@ -33,7 +33,7 @@ export function EssenStart({ data, nowMs, me, onMeal, onShopping, onRecipes, onC
   if (weeks.length === 0) {
     return (
       <div className="tk-screen">
-        <HeadCard title="Essen" text={`Noch gibt es keinen Essensplan. ${NEXT_PLAN}`} />
+        <HeadCard title="Essen" text={NO_PLAN} />
         <div className="tk-tiles">{recipes}</div>
       </div>
     );
