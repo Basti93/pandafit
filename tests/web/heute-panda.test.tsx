@@ -53,9 +53,17 @@ describe('Bo on Heute', () => {
     await waitFor(() => expect(log.last.pose).toBe('flex'));
     expect(log.mounts).toBe(1);
   });
-  it('in the nest Bo sits: a bike day keeps the greeting instead of the standing bike pose', async () => {
+  it('on a bike day Bo rides on the hills', async () => {
     await boot([week('bike')]);
-    await waitFor(() => expect(log.last.pose).toBe('greet'));
+    await waitFor(() => expect(log.last.pose).toBe('bike'));
+    expect(document.querySelector('.tk-scene')!.getAttribute('data-place')).toBe('huegel');
+  });
+  it('each kind of day has its place', async () => {
+    for (const [sport, place] of [['gym', 'dojo'], ['run', 'wald'], ['mobility', 'matte']] as const) {
+      await boot([week(sport)]);
+      await waitFor(() => expect(document.querySelector('.tk-scene')!.getAttribute('data-place')).toBe(place));
+      cleanup();
+    }
   });
   it('a strength day gives flex, and a day without a plan gives the greeting pose', async () => {
     await boot([week('gym')]);

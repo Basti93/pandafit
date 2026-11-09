@@ -17,14 +17,14 @@ Die Bilder dazu: `docs/design/moodboard/*.html` im Browser öffnen (abgenommene 
 - Bo spricht nur in **Sprechblasen** (Karte mit kleinem Dreieck zu Bo), nie als loser Text.
 - Bo sitzt auf Heute in seinem **Bambusnest**: gebogene Halme als Laube, geflochtene Schale, Laterne an einem Halm.
 - **Bos Orte:** Jede Pose hat eine kleine Szene (Moodboard `bos-orte.html`). Hinter Bo liegt immer ein warmer Lichtschein, damit sein dunkles Fell auf dunklem Grund lesbar bleibt.
-- Jeder Ort legt fest, welche Posen zu ihm passen (`PLACE_POSES` in `kit/BoScene.tsx`). Im Nest sitzt Bo; Posen im Stehen mit eigenem Boden (Rad, Laufen, Yoga) zeigt er erst an ihren eigenen Orten (Dojo 5), bis dahin begrüßt er im Nest.
+- Jeder Ort legt fest, welche Posen zu ihm passen (`PLACE_POSES` in `kit/BoScene.tsx`). Auf Heute steht Bo an dem Ort seiner Pose (`placeOf`); Ort und Pose wählt er einmal beim Öffnen. Bei reduzierter Bewegung steht er dort als Standbild seiner Pose (`brand/bo-pose-*.svg`).
 - Bo gleitet beim Öffnen einer Seite ruhig in seine Pose. Gesten (Begrüßen, Nicken, Zuhören) hält er still. Tätigkeiten (Stricken, Lesen, `ACTIVITY_SPANS` in `panda-canvas.ts`) macht er ruhig weiter, vor und zurück ohne Sprung.
 
 | Pose | Wann | Ort |
 |---|---|---|
 | greet | Heute ohne Tagesplan | Bambusnest |
-| listen | Gespräch mit dem Sensai | Laternen, niedriger Tisch, Tee |
-| breathe | Pause, Atmen, Ende einer Einheit | Am Wasser unter dem Mond |
+| listen | Gespräch mit dem Sensai | Laternen, niedriger Tisch, Tee (noch nicht gebaut) |
+| breathe | Pause, Atmen, Ende einer Einheit | Am Wasser unter dem Mond (noch nicht gebaut) |
 | flex | Krafttag | Dojo, kleine Hantel, Arnold-Comicporträt an der Wand |
 | bike | Radtag | Hügel, Bambus, Mond |
 | run | Lauftag | Weg quer von links nach rechts durch den Bambuswald |
