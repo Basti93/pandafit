@@ -14,6 +14,7 @@ export function stillSvg(gesture: PandaGesture): string {
   walkNodes(pandaMotion, heldPoses(pandaMotion, gesture), {
     enter: (x, y, rotation, sx, sy) => lines.push(`<g transform="translate(${num(x)} ${num(y)}) rotate(${num(rotation * 180 / Math.PI)}) scale(${num(sx)} ${num(sy)})">`),
     shape({ path, fill, stroke }, alpha) {
+      if (num(alpha) === '0') return; // invisible once rounded
       const attributes = [`d="${path}"`, `fill="${fill ?? 'none'}"`];
       if (stroke) attributes.push(`stroke="${stroke[0]}"`, `stroke-width="${num(stroke[1])}"`, `stroke-linecap="${stroke[2]}"`, `stroke-linejoin="${stroke[3]}"`);
       if (alpha !== 1) attributes.push(`opacity="${num(alpha)}"`);
