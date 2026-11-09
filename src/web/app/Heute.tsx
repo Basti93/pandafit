@@ -9,6 +9,7 @@ import { useOpenProposals } from '../../tracking/ui/proposals';
 import { useWeekDays } from '../../tracking/ui/week-days';
 import { SPORT_ICON } from '../../tracking/ui/week-path';
 import { planDayLabel, planGymLine } from '../../tracking/ui/plan-text';
+import { tomorrowTarget } from '../today/tomorrow';
 import { MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
 import { complaintsOpenIn, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
@@ -93,6 +94,16 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
   const tomorrow = addDays(dayKey, 1);
   // In Spontan mode the plan rests, as on Woche: no Morgen card.
   const tomorrowPlan = week.spontaneous ? null : planFor(weekplans ?? [], tomorrow);
+  // Strength, a ride or a run: the card opens the training itself; rest and mobility keep the day sheet.
+  const openTomorrow = () => {
+    if (!tomorrowPlan) return;
+    const target = tomorrowTarget({ tomorrow: tomorrowPlan, planWorkout: !!p?.workout, canBike: !!goBike, canRun: !!goRun });
+    if (target === 'plan') goTraining('plan');
+    else if (target === 'kraft') goTraining();
+    else if (target === 'rad') goBike!();
+    else if (target === 'lauf') goRun!();
+    else setSheetDate(tomorrow);
+  };
   // Nothing planned and nothing switched on: the one card offers to plan.
   const setup = !open && weekplans !== null && plans !== null && !today && !planning && !p;
 
@@ -116,7 +127,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
             primary={{ label: 'Woche planen', onClick: goCoach }} secondary={{ label: 'Im Profil auswählen', onClick: goProfile }} more={mobilityRow} />
         ) : <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} extra={mobilityRow} />}
       {meals && goMeal && <DayMeals port={port} now={env.now} onOpen={goMeal} />}
-      {tomorrowPlan && <RowCard icon={SPORT_ICON[tomorrowPlan.sport]} kicker="Morgen" title={planDayLabel(tomorrowPlan)} onClick={() => setSheetDate(tomorrow)} />}
+      {tomorrowPlan && <RowCard icon={SPORT_ICON[tomorrowPlan.sport]} kicker="Morgen" title={planDayLabel(tomorrowPlan)} onClick={openTomorrow} />}
       {sheetDate && <DaySheet port={port} date={sheetDate} now={env.now} spontaneous={week.spontaneous} onClose={() => setSheetDate(null)} />}
     </div>
   );

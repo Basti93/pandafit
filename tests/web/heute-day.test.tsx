@@ -71,16 +71,46 @@ describe('Heute in the Dojo', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Dienstag/ }));
     expect(await screen.findByRole('dialog', { name: /^Dienstag/ })).toBeTruthy();
   });
-  it('tomorrow is one row card that opens the day sheet; without a plan for tomorrow there is none', async () => {
-    await boot([weekplanWithGymToday, planRecord]);
+  const dialogOfDay = () => screen.queryByRole('dialog', { name: /^(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)/ });
+  const TOMORROW = '2026-11-05';
+  const bikeRec = rec('bike', 'bike', {
+    type: 'bike', atMs: NOW - 1000, ftpW: 210, ftpHistory: [], phase: { name: 'Aufbau', weeksLeft: 3, goal: 'Ausdauer aufbauen' },
+    next: { name: 'Grundlage', reason: 'x', minutes: 60, hardness: 'easy', blocks: [{ label: '60 Min locker', minutes: 60, pct: 60 }] }, alternatives: [], weekHours: [],
+  });
+  const runStatus = rec('run', 'status', {
+    type: 'status', atMs: NOW - 1000, on: true, suggest: false, needsAnswers: false, garmin: false, suggestedDays: [1, 3, 5], hrCap: 150, complaint: null,
+    numbers: { easyPace: { now: null, weeks4: null, weeks12: null, trend: [] }, weeks: [], longest: { blockKm: null, lastBlockKm: null }, tests: [] }, card: null,
+  });
+  it('Morgen with strength opens Nächstes Training in Kraft directly, without the day sheet', async () => {
+    await boot([weekplan({ [TOMORROW]: 'gym' }), planRecord]);
+    fireEvent.click(await screen.findByRole('button', { name: /^Morgen/ }));
+    expect(await screen.findByRole('dialog', { name: 'Nächstes Training' })).toBeTruthy();
+    expect(dialogOfDay()).toBeNull();
+  });
+  it('Morgen with strength but no plan workout opens the Kraft page', async () => {
+    await boot([weekplan({ [TOMORROW]: 'gym' })]);
+    fireEvent.click(await screen.findByRole('button', { name: /^Morgen/ }));
+    expect(await screen.findByRole('region', { name: 'Kraft · diese Woche' })).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+  it('Morgen with a ride opens Ausdauer on Rad', async () => {
+    await boot([weekplan({ [TOMORROW]: 'bike' }), bikeRec]);
+    fireEvent.click(await screen.findByRole('button', { name: /^Morgen/ }));
+    expect(await screen.findByRole('region', { name: 'Rad · diese Woche' })).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+  it('Morgen with a run opens Ausdauer on Laufen', async () => {
+    await boot([weekplan({ [TOMORROW]: 'run' }), runStatus]);
+    fireEvent.click(await screen.findByRole('button', { name: /^Morgen/ }));
+    expect(await screen.findByRole('region', { name: 'Laufen · diese Woche' })).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+  it('Morgen as a rest day still opens the day sheet; Spontan and no plan keep no card', async () => {
+    await boot([weekplan({ '2026-11-04': 'gym' }), planRecord]);
     const row = await screen.findByRole('button', { name: /^Morgen/ });
+    expect(row.textContent).toContain('Ruhetag'); // Rest is a plan too: the card says so.
     fireEvent.click(row);
     expect(await screen.findByRole('dialog', { name: /^Donnerstag/ })).toBeTruthy();
-    cleanup();
-    await boot([weekplan({ '2026-11-04': 'gym' }), planRecord]);
-    await screen.findByRole('list', { name: 'Wochenweg' });
-    // Rest is a plan too: the card says so.
-    expect((await screen.findByRole('button', { name: /^Morgen/ })).textContent).toContain('Ruhetag');
     cleanup();
     await boot([]);
     expect(screen.queryByRole('button', { name: /^Morgen/ })).toBeNull();
