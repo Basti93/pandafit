@@ -6,6 +6,7 @@ import { dateKeyOf } from './run-view';
 import type { TrackingPort } from '../ports';
 import { bikeOf, bikeTrendSentence, blockBand, blockWatts, ftpSentence, phaseText, rideFacts, rideName, rideValue, ridesOf, type BikeRide } from './bike-view';
 import { usePortRecords } from './hooks';
+import { BO_LINES } from './bo';
 import { useSportWeek } from './sport-week';
 import { Band, BoBubble, MainCard, Row, RowCard, RowList, Sheet, StandCard } from './kit';
 
@@ -107,10 +108,11 @@ export function BikeScreen({ port, now }: { port: TrackingPort; now?: () => numb
       {next && (
         <MainCard kicker={day ?? 'Nächste Fahrt'} title={next.name} label="Nächste Fahrt"
           text={`${Math.round(next.minutes)} Minuten, ${HARDNESS_LABEL[next.hardness]}. Du fährst sie in der Mac-App.`}
-          more={hasBlocks ? <Band label={`Ablauf: ${next.blocks.map((b) => b.label).join(', ')}`} parts={blockBand(next.blocks)} /> : undefined}
+          middle={hasBlocks ? <Band label={`Ablauf: ${next.blocks.map((b) => b.label).join(', ')}`} parts={blockBand(next.blocks)} /> : undefined}
           primary={hasBlocks ? { label: 'Ablauf ansehen', onClick: () => setSheet('plan') } : undefined} />
       )}
-      {next?.reason && <BoBubble portrait="mini">{next.reason}</BoBubble>}
+      {/* The reason is written for today: on another day Bo says the calm general line. */}
+      {next && <BoBubble portrait="mini">{day === 'Heute' && next.reason ? next.reason : BO_LINES.weekCalm}</BoBubble>}
       {bike && <RowCard icon="entwicklung" kicker="Deine Entwicklung" title={bikeTrendSentence(bike) ?? 'Entwicklung ansehen'} onClick={() => setSheet('development')} />}
       {last && <RowCard icon="ausdauer" kicker={`Letzte Fahrt · ${weekdayOfKey(dateKeyOf(last.body.startedAtMs))}`} title={`${rideName(last.body)}, ${Math.round(last.body.durationS / 60)} Minuten`} onClick={() => setRide(last)} />}
       {sheet === 'plan' && next && <PlanSheet name={next.name} blocks={next.blocks} ftpW={bike?.ftpW ?? null} onClose={() => setSheet(null)} />}

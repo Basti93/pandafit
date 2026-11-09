@@ -60,7 +60,7 @@ const isHard = (b: BikeBlock): boolean => b.pct !== undefined && b.pct > HARD_PC
 
 /** "etwa 190 W" for a hard block only; easy blocks, blocks without a percent and rides without an FTP show none. */
 export const blockWatts = (b: BikeBlock, ftpW: number | null): string | null =>
-  ftpW && b.pct !== undefined && b.pct > HARD_PCT ? `etwa ${Math.round((ftpW * b.pct) / 100)} W` : null;
+  ftpW && isHard(b) ? `etwa ${Math.round((ftpW * b.pct!) / 100)} W` : null;
 
 /** The parts of the Ablauf band: one per block, as wide as its minutes, tall and filled when hard. */
 export const blockBand = (blocks: BikeBlock[]): { grow: number; fill: number; tall: boolean }[] =>

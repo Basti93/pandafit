@@ -27,13 +27,14 @@ export function BrushTitle({ children, level = 2 }: { children: ReactNode; level
 
 type Action = { label: string; onClick: () => void };
 
-/** "Jetzt dran": the one main card of a screen. The same look everywhere. `more` holds quiet extras below the buttons. */
-export function MainCard({ kicker, title, text, primary, secondary, more, label }: { kicker: string; title: string; text?: ReactNode; primary?: Action; secondary?: Action; more?: ReactNode; label?: string }) {
+/** "Jetzt dran": the one main card of a screen. The same look everywhere. `middle` sits between the text and the buttons (a band, a small figure); `more` holds quiet extras below the buttons. */
+export function MainCard({ kicker, title, text, primary, secondary, middle, more, label }: { kicker: string; title: string; text?: ReactNode; primary?: Action; secondary?: Action; middle?: ReactNode; more?: ReactNode; label?: string }) {
   return (
     <Card label={label ?? kicker}>
       <Kicker>{kicker}</Kicker>
       <BrushTitle>{title}</BrushTitle>
       {text && <p className="tk-maintext">{text}</p>}
+      {middle}
       {(primary || secondary) && (
         <div className="tk-mainactions">
           {primary && <button type="button" className="primary" onClick={primary.onClick}>{primary.label}</button>}

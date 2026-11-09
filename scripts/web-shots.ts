@@ -620,8 +620,8 @@ async function main() {
   await page.waitForTimeout(500);
   await shot('rad');
   await step('rad-aufbau', async () => { await page.getByRole('button', { name: /Ablauf ansehen/ }).click(); await shot('rad-aufbau'); await closeDialog(); });
-  await step('rad-fahrt', async () => { await page.getByRole('button', { name: /Grundlage|Locker|Schwellen/ }).first().click(); await shot('rad-fahrt'); await closeDialog(); });
-  await step('rad-entwicklung', async () => { await page.getByRole('button', { name: /^Entwicklung/ }).click(); await shot('rad-entwicklung'); await closeDialog(); });
+  await step('rad-fahrt', async () => { await page.getByRole('button', { name: /Letzte Fahrt/ }).first().click(); await shot('rad-fahrt'); await closeDialog(); });
+  await step('rad-entwicklung', async () => { await page.getByRole('button', { name: /Deine Entwicklung/ }).click(); await shot('rad-entwicklung'); await closeDialog(); });
   const enduranceSeg = (label: string) => page.getByRole('group', { name: 'Ausdauer' }).getByRole('button', { name: label, exact: true }).click().then(() => page.waitForTimeout(400));
   await enduranceSeg('Laufen');
   await shot('ausdauer-umschalter');

@@ -2,7 +2,7 @@
  * The calm UI kit. Every screen builds from these few pieces; the CSS is the "Calm UI kit" block in ../tracking.css.
  *
  * Dojo pieces (Dojo.tsx): Card (the one .card; `soft` for a quieter group), Kicker, BrushTitle, MainCard, Bubble, BoBubble.
- *   MainCard is the only "Jetzt dran" card: every screen shows its main next thing through it, never a hand-built copy.
+ *   MainCard is the only "Jetzt dran" card (`middle` = slot between text and buttons, `more` = quiet extras below): every screen shows its main next thing through it, never a hand-built copy.
  *   Role, ask and title come only from ../bo.ts; sentences may name Bo directly. Icons come only through Icon.
  *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Tag is the small green label with a check.
  *   RowCard (RowCard.tsx) is the only row card with an icon tile (DESIGN "Zeilenkarte"); Row stays the plain text row without icon (lists, settings). WordTile is the only word tile.

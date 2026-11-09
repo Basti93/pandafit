@@ -29,7 +29,10 @@ test('Rad shows the week stand, the next ride as the main card with the band, an
   expect(main.textContent).toContain('Freitag, 6. November');
   expect(main.textContent).toContain('60 Minuten, hart. Du fährst sie in der Mac-App.');
   expect(within(main).getByLabelText(/^Ablauf: 10 Min locker/)).toBeTruthy();
-  expect(document.querySelector('.tk-bo')!.textContent).toContain('Die Beine sind frisch.');
+  expect(document.querySelector('.tk-bo')!.textContent).not.toContain('Die Beine sind frisch.'); // not today: a general line
+  const band = within(main).getByLabelText(/^Ablauf: 10 Min locker/);
+  const btn = within(main).getByRole('button', { name: 'Ablauf ansehen' });
+  expect(band.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   fireEvent.click(within(main).getByRole('button', { name: 'Ablauf ansehen' }));
   const sheet = await screen.findByRole('dialog', { name: 'Intervalle' });
   expect(sheet.textContent).toContain('etwa 190 W');
@@ -41,6 +44,7 @@ test('a bike day today says Heute', async () => {
   const { port } = fakePort([bikeRec(), plan(['rest', 'rest', 'bike'])]);
   render(<BikeScreen port={port} now={() => NOW} />);
   expect(await screen.findByText('Heute')).toBeTruthy();
+  expect(document.querySelector('.tk-bo')!.textContent).toContain('Die Beine sind frisch.');
 });
 
 test('without a next ride there is no empty main card', async () => {

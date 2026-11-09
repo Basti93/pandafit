@@ -47,7 +47,7 @@ describe('Rad on the phone', () => {
     const card = await screen.findByRole('region', { name: 'Nächste Fahrt' });
     expect(card.textContent).toContain('Schwellen-Intervalle');
     expect(card.textContent).toContain('60 Minuten, hart');
-    expect(document.querySelector('.tk-bo')!.textContent).toContain('Die letzten Tage waren locker.');
+    expect(document.querySelector('.tk-bo')!.textContent).not.toContain('Die letzten Tage waren locker.'); // no bike day today
     fireEvent.click(within(card).getByRole('button', { name: 'Ablauf ansehen' }));
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByText('10 Min locker')).toBeTruthy();
