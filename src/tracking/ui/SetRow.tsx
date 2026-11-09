@@ -8,8 +8,12 @@ const invalidOf = (text: string, integer: boolean): boolean => {
   return n === undefined || (integer && n !== null && !Number.isInteger(n));
 };
 
-function NumField({ label, value, placeholder, integer, onCommit, onValidity }: {
-  label: string; value: number | null; placeholder: string; integer?: boolean; onCommit: (n: number | null) => void; onValidity: (invalid: boolean) => void;
+/**
+ * The one number field of a set: keeps what is typed while saves land, commits each readable change, and reports unreadable text.
+ * `big` is the large field of the focus card, with its unit written under the number.
+ */
+export function NumField({ label, value, placeholder, integer, big, onCommit, onValidity }: {
+  label: string; value: number | null; placeholder: string; integer?: boolean; big?: { unit: string }; onCommit: (n: number | null) => void; onValidity: (invalid: boolean) => void;
 }) {
   const d = useDraft(formatDecimal(value), (text) => {
     const bad = invalidOf(text, !!integer);
@@ -18,13 +22,14 @@ function NumField({ label, value, placeholder, integer, onCommit, onValidity }: 
   });
   const bad = invalidOf(d.draft, !!integer);
   return (
-    <span className="tk-field-wrap">
+    <span className={big ? 'tk-field-wrap tk-bignum' : 'tk-field-wrap'}>
       <input
         className="tk-num" aria-label={label} placeholder={placeholder} inputMode={integer ? 'numeric' : 'decimal'} autoComplete="off"
         aria-invalid={bad} value={d.draft} onFocus={d.onFocus}
         onBlur={() => { d.onBlur(); if (!bad) d.setDraft(formatDecimal(parseDecimal(d.draft) as number | null)); }}
         onChange={(e) => { onValidity(invalidOf(e.target.value, !!integer)); d.onChange(e.target.value); }}
       />
+      {big && <span className="tk-bignum-unit" aria-hidden="true">{big.unit}</span>}
       {bad && <small className="tk-invalid" role="note">{integer ? 'Bitte eine ganze Zahl' : 'Bitte eine Zahl'}</small>}
     </span>
   );

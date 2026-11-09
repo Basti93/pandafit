@@ -87,7 +87,7 @@ try {
   await page.getByLabel('Gewicht Satz 1').blur();
   await page.getByLabel('Wiederholungen Satz 1').fill('8');
   await page.getByLabel('Wiederholungen Satz 1').blur();
-  await page.getByRole('button', { name: 'Satz 1 erledigt' }).click();
+  await page.getByRole('button', { name: 'Satz geschafft' }).click(); // the fields above are the big ones in the focus card
   await page.getByRole('button', { name: 'Training beenden', exact: true }).click();
   // Everything is confirmed, so the summary shows; an end sheet only appears when sets are open.
   const endSheet = page.getByRole('button', { name: 'Trotzdem als gemacht eintragen' });

@@ -167,7 +167,8 @@ describe('ExerciseProposals card', () => {
     const open = async () => {
       render(<WorkoutScreen port={f.port} now={() => NOW} newId={() => 'x'} />);
       fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-      return (await screen.findByRole('region', { name: TITLE })).querySelector('.tk-ex-head [role="img"]')!.getAttribute('aria-label');
+      fireEvent.click(within(await screen.findByRole('region', { name: TITLE })).getByRole('button', { name: 'Anleitung' }));
+      return (await screen.findByRole('dialog', { name: TITLE })).querySelector('.tk-sheet-head [role="img"]')!.getAttribute('aria-label');
     };
     expect(await open()).not.toBe('Muskel unbekannt');
     cleanup();

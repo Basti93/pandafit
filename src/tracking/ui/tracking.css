@@ -84,6 +84,10 @@
 .tk-field-wrap { display: flex; flex-direction: column; min-width: 0; }
 .tk-invalid { color: var(--low); font-size: var(--text-xs); }
 .tk-num[aria-invalid="true"] { border-color: var(--low); }
+/* NumField big (focus card): a tall field, the number large, its unit small below inside the same frame. */
+.tk-bignum { position: relative; }
+.tk-screen .tk-bignum .tk-num { width: 100%; min-height: 96px; padding: 0 var(--space-2) 1.4rem; border-radius: var(--radius-m); text-align: center; font-family: var(--font-data); font-size: var(--text-3xl); font-weight: 700; line-height: 1.1; }
+.tk-bignum-unit { position: absolute; left: 0; right: 0; top: calc(96px - 1.6rem); text-align: center; font-size: var(--text-s); color: var(--muted); pointer-events: none; }
 .tk-tabs { display: flex; gap: var(--space-2); }
 /* The mobility offer, shared by the Mac and the phone. */
 .tk-mob-list { margin: var(--space-2) 0 var(--space-4); padding-left: 1.5rem; display: flex; flex-direction: column; gap: .6rem; }
@@ -134,10 +138,6 @@
 /* Done sets: a green row. Done exercises: green edge, a badge, the rest calmer. The current exercise: accent edge. */
 .tk-set.tk-done { background: color-mix(in srgb, var(--good) 22%, transparent); border-radius: .7rem; }
 .tk-done .tk-num { opacity: 1; text-decoration: none; color: var(--text); border-color: var(--good); }
-.tk-ex-done { border-left: 5px solid var(--good); }
-.tk-ex-done .tk-ex-head h2 { color: var(--good); }
-.tk-ex-badge { flex: none; align-self: center; padding: .15rem .6rem; border-radius: var(--radius-pill); background: var(--good); color: var(--ink); font-size: var(--text-xs); font-weight: 700; }
-.tk-ex-current { border-left: 5px solid var(--accent); scroll-margin-top: 4.5rem; }
 /* The statistics page. Sport colours come from the palette (accent and muted tones), told apart by the legend and by position. */
 .tk-screen { --tk-sport-bike: var(--accent); --tk-sport-strength: var(--muted); --tk-sport-run: color-mix(in srgb, var(--accent) 45%, var(--muted)); --tk-sport-mobility: color-mix(in srgb, var(--muted) 55%, var(--card)); --tk-sport-other: color-mix(in srgb, var(--text) 40%, var(--card)); }
 .tk-stats { display: flex; flex-direction: column; gap: .6rem; }
@@ -294,14 +294,6 @@
 .tk-live-head .tk-title { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .tk-live-head .tk-elapsed { flex: none; font-size: var(--text-s); font-variant-numeric: tabular-nums; }
 .tk-screen button.tk-more { flex: none; width: 48px; min-height: 48px; padding: 0; text-decoration: none; font-size: var(--text-2xl); line-height: 1; }
-.tk-live .tk-ex { border-top: 1px solid var(--line); padding-top: .25rem; display: flex; flex-direction: column; gap: var(--space-2); }
-.tk-live .tk-ex:first-of-type { border-top: 0; }
-.tk-live .tk-ex-head { align-items: center; gap: 0; }
-.tk-live .tk-ex-head h2 { padding: 0; flex: 1; min-width: 0; font-size: var(--text-l); }
-.tk-live .tk-ex-head h2 .tk-rowbtn { min-height: 52px; }
-.tk-live .tk-ex-current .tk-ex-head .tk-row-title { font-weight: 700; }
-.tk-live .tk-ex-done:not(.tk-ex-open) .tk-row-title { color: var(--muted); }
-.tk-live .tk-ex-body { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: .5rem; }
 .tk-live .tk-menu { padding: 0 0 var(--space-1); background: var(--card); border-radius: var(--radius-m); padding: var(--space-1) .8rem; }
 .tk-live .tk-menu .tk-rowitem:first-child { border-top: 0; }
 .tk-live .tk-menu .tk-choice { padding: var(--space-2) 0; }
@@ -394,12 +386,9 @@
 .tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; font-size: var(--text-xl); opacity: .8; justify-content: center; }
 .tk-set .tk-num { min-height: 48px; }
 .tk-live-head .tk-elapsed { font-size: var(--text-m); }
-.tk-live .tk-ex-head .tk-row-title { flex: 1 1 50%; overflow-wrap: break-word; }
-.tk-live .tk-ex-head .tk-row-value { flex: 0 1 45%; max-width: none; }
 .tk-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
 
 /* Reihenfolge: hold an exercise title, drag it in a compact list */
-.tk-hold, .tk-hold .tk-row-title { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .tk-reorder { list-style: none; margin: 0; padding: 0; }
 .tk-reorder.dragging { touch-action: none; user-select: none; -webkit-user-select: none; }
 .tk-reorder-block { background: var(--card); border-bottom: 1px solid var(--line); position: relative; transition: transform .15s ease; }
@@ -445,7 +434,6 @@
 .tk-chat-form textarea:focus-visible { outline: none; border-color: var(--accent); }
 
 /* Calmer strength screens (X4). */
-.tk-ex-sub { display: block; font-weight: 400; font-size: var(--text-xs); line-height: 1.2; }
 .tk-screen button.tk-rowbtn-main { font-weight: 800; color: var(--accent); }
 .tk-stepper { gap: var(--space-2); }
 .tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; }
@@ -489,13 +477,11 @@
 /* Kraft: the next training and the open training lead with an accent edge, like the other lead cards. */
 .tk-screen .card.tk-summary { border-top: 4px solid var(--good); }
 /* The active exercise is one soft panel; finished ones step back. */
-.tk-live .tk-ex.tk-ex-current { background: var(--card); border-radius: var(--radius-card); border-left: 0; border-top: 0; padding: var(--space-2) var(--space-3); box-shadow: inset 0 0 0 1.5px var(--accent); }
-.tk-live .tk-ex.tk-ex-done:not(.tk-ex-open) { border-left: 0; box-shadow: inset 3px 0 0 var(--good); padding-left: var(--space-3); }
 .tk-live-head .tk-title { font-size: var(--text-xl); }
 .tk-rest { box-shadow: 0 4px 14px var(--shadow-lift); }
 .tk-set.tk-done { border-radius: var(--radius-m); }
 .tk-plan-ex .tk-ex-head h2, .tk-plan-ex h2 { overflow-wrap: anywhere; }
-@media (max-width: 360px) { .tk-live .tk-ex.tk-ex-current { padding-inline: var(--space-2); } .tk-sheet-head .tk-pandahead-mini { width: 2.8rem; } }
+@media (max-width: 360px) { .tk-sheet-head .tk-pandahead-mini { width: 2.8rem; } }
 
 /* Cockpit numbers keep the UI face (DESIGN.md: Zahlen und Daten in Cockpit-Ansichten). */
 .tk-screen :is(.tk-rest-main, .tk-elapsed, .tk-pace dd, .tk-stack-col, .tk-spark-scale) { font-family: var(--font-data); }
@@ -549,6 +535,19 @@
 .tk-screen .tk-seg button[aria-pressed='true'] { background: var(--bg); color: var(--text); font-weight: 700; }
 /* The focus card of a running workout. */
 .tk-screen .card.focus { border-color: var(--accent); box-shadow: 0 0 24px var(--focus-glow); }
+/* Layout of the focus card: the two large fields side by side, the set dots (16 px apart for their tap areas) left, the round buttons right. */
+.tk-lift-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--space-2); }
+.tk-lift-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.tk-lift-marks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); padding: var(--space-2); }
+.tk-lift-tools { display: flex; gap: var(--space-2); flex: none; }
+.tk-screen .card p.tk-lift-hint { margin-top: calc(-1 * var(--space-1)); text-align: center; font-size: var(--text-s); }
+/* A button with an icon before its label. */
+.tk-screen button.tk-iconbtn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); }
+.tk-iconbtn > svg { flex: none; }
+/* The set table in its sheet. */
+.tk-sets { display: flex; flex-direction: column; gap: var(--space-2); }
+/* The effort question inside its own card: the card is the frame. */
+.tk-screen .card .tk-effort { margin: 0; padding: 0; border: 0; background: none; }
 /* The one state dot (kit MarkDot): done green with a check, now an accent ring, open a quiet ring. The week path dots extend it. */
 .tk-mark, .tk-screen button.tk-mark { position: relative; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 1.5rem; min-width: 1.5rem; height: 1.5rem; min-height: 1.5rem; padding: 0; border: 2px solid var(--field-line); border-radius: var(--radius-round); background: var(--bg); box-shadow: none; color: var(--muted); font-size: var(--text-xs); font-weight: 700; }
 .tk-mark.done, .tk-screen button.tk-mark.done { background: var(--good); border-color: var(--good); color: var(--ink); }

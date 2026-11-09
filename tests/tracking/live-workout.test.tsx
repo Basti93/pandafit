@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import { fakePort } from './fake-port';
+import { setsSheet } from './live-helpers';
 
 afterEach(cleanup);
 
@@ -25,39 +26,9 @@ async function running(w = three()) {
   await screen.findByRole('region', { name: 'Kniebeuge' });
   return f;
 }
-const toggle = (title: string) => within(within(screen.getByRole('region', { name: title })).getByRole('heading', { level: 2 })).getByRole('button');
-
-test('only the current exercise is open; the others are one row with their progress', async () => {
-  await running();
-  expect(screen.getByLabelText('Wiederholungen Satz 2')).toBeTruthy();
-  expect(screen.getAllByLabelText('Gewicht Satz 1')).toHaveLength(1); // one exercise shows its sets
-  expect(within(screen.getByRole('region', { name: 'Bankdrücken' })).getByText('2 von 2 ✓')).toBeTruthy();
-  expect(within(screen.getByRole('region', { name: 'Kreuzheben' })).getByText('0 von 1')).toBeTruthy();
-  expect(toggle('Kniebeuge').getAttribute('aria-expanded')).toBe('true');
-  expect(toggle('Kreuzheben').getAttribute('aria-expanded')).toBe('false');
-});
-
-test('tapping a row opens it and closes the previous one', async () => {
-  await running();
-  fireEvent.click(toggle('Kreuzheben'));
-  expect(toggle('Kreuzheben').getAttribute('aria-expanded')).toBe('true');
-  expect(toggle('Kniebeuge').getAttribute('aria-expanded')).toBe('false');
-  expect(within(screen.getByRole('region', { name: 'Kreuzheben' })).getByLabelText('Gewicht Satz 1')).toBeTruthy();
-  expect(within(screen.getByRole('region', { name: 'Kniebeuge' })).queryByLabelText('Gewicht Satz 1')).toBeNull();
-});
-
-test('the open exercise follows the next open set after a confirm', async () => {
-  const w = three();
-  w.exercises[1]!.sets = [set(80, 5, 7000), set(80, 5, 8000), set(80, 5, null)];
-  const f = await running(w);
-  fireEvent.click(screen.getByRole('button', { name: 'Satz 3 erledigt' }));
-  await waitFor(() => expect(bodyOf(f.map).exercises[1]!.sets[2]!.doneMs).toBe(100_000));
-  await waitFor(() => expect(toggle('Kreuzheben').getAttribute('aria-expanded')).toBe('true'));
-});
-
 test('the hints sit on the next open set only', async () => {
   await running(); // Kniebeuge: set 1 done, set 2 is next
-  const rows = screen.getAllByLabelText(/^Gewicht Satz/).map((i) => i.closest('.tk-set')!);
+  const rows = within(await setsSheet(1)).getAllByLabelText(/^Gewicht Satz/).map((i) => i.closest('.tk-set')!);
   expect(rows).toHaveLength(3);
   expect(rows.map((r) => r.querySelector('.tk-hint, .tk-plates') !== null)).toEqual([false, true, false]); // plates for the next set with a weight
 });
@@ -145,73 +116,11 @@ test('the start screen: studio is a pill, the others live behind "Anderes Traini
   await waitFor(() => expect(f.state.puts.some((p) => p.kind === 'workout')).toBe(true));
 });
 
-describe('Reihenfolge by holding a title', () => {
-  const titleBtn = (t: string) => toggle(t);
-  const down = (el: Element, x = 10, y = 100) => fireEvent.pointerDown(el, { clientX: x, clientY: y, pointerId: 1, button: 0, pointerType: 'touch' });
-  beforeEach(() => { vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }); });
-  afterEach(() => { vi.useRealTimers(); });
-  const order = (m: Map<string, TrackedRecord>) => bodyOf(m).exercises.map((e) => e.title).join(',');
-
-  test('a long press enters the mode, a short tap does not', async () => {
-    vi.useRealTimers();
-    await running();
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    down(titleBtn('Kreuzheben'));
-    act(() => { vi.advanceTimersByTime(200); });
-    fireEvent.pointerUp(titleBtn('Kreuzheben'));
-    act(() => { vi.advanceTimersByTime(600); });
-    expect(screen.queryByRole('list', { name: 'Reihenfolge der Übungen' })).toBeNull();
-    down(titleBtn('Kreuzheben'));
-    act(() => { vi.advanceTimersByTime(460); });
-    expect(screen.getByRole('list', { name: 'Reihenfolge der Übungen' })).toBeTruthy();
-  });
-
-  test('moving more than 8 px before the timer cancels the long press', async () => {
-    vi.useRealTimers();
-    await running();
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    down(titleBtn('Kreuzheben'));
-    act(() => { vi.advanceTimersByTime(200); });
-    fireEvent.pointerMove(titleBtn('Kreuzheben'), { clientX: 10, clientY: 120, pointerId: 1 });
-    act(() => { vi.advanceTimersByTime(600); });
-    expect(screen.queryByRole('list', { name: 'Reihenfolge der Übungen' })).toBeNull();
-  });
-
-  test('dragging the held row writes the new order; × leaves the mode', async () => {
-    vi.useRealTimers();
-    const f = await running(); // Bankdrücken, Kniebeuge, Kreuzheben
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
-      const i = Number((this as HTMLElement).dataset.i ?? -1);
-      return { top: i * 50, height: 50, bottom: i * 50 + 50, left: 0, right: 0, width: 0, x: 0, y: i * 50, toJSON: () => ({}) };
-    });
-    const mark = (el: Element, i: number) => (el as HTMLElement).setAttribute('data-i', String(i));
-    down(titleBtn('Kreuzheben'), 10, 125);
-    act(() => { vi.advanceTimersByTime(460); });
-    const list = screen.getByRole('list', { name: 'Reihenfolge der Übungen' });
-    [...list.children].forEach(mark);
-    // rects are read when a drag begins: grab the grip of the last row again so they are measured with the marks
-    fireEvent.pointerDown(within(list.children[2] as HTMLElement).getByText('⋮⋮'), { clientX: 10, clientY: 125, pointerId: 1, button: 0 });
-    fireEvent.pointerMove(window, { clientX: 10, clientY: 10, pointerId: 1 }); // up to the first place
-    fireEvent.pointerUp(window, { clientX: 10, clientY: 10, pointerId: 1 });
-    spy.mockRestore();
-    vi.useRealTimers();
-    await waitFor(() => expect(order(f.map)).toBe('Kreuzheben,Bankdrücken,Kniebeuge'));
-    expect(bodyOf(f.map).exercises[2]!.sets[0]!.doneMs).toBe(7000); // done sets stay with their exercise
-    // The order is saved with every move: no "Fertig", × closes.
-    expect(within(screen.getByRole('dialog', { name: 'Reihenfolge' })).queryByRole('button', { name: 'Fertig' })).toBeNull();
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Reihenfolge' })).getByRole('button', { name: 'Schließen' }));
-    expect(screen.queryByRole('list', { name: 'Reihenfolge der Übungen' })).toBeNull();
-  });
-
-  test('the arrow buttons move one place', async () => {
-    vi.useRealTimers();
-    const f = await running();
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    down(titleBtn('Kreuzheben'));
-    act(() => { vi.advanceTimersByTime(460); });
-    vi.useRealTimers();
-    fireEvent.click(screen.getByRole('button', { name: 'Kreuzheben nach oben' }));
-    await waitFor(() => expect(order(f.map)).toBe('Bankdrücken,Kreuzheben,Kniebeuge'));
-  });
+test('Reihenfolge from the menu: the arrow buttons move one place', async () => {
+  const f = await running();
+  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Reihenfolge ändern Kniebeuge' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Kreuzheben nach oben' }));
+  await waitFor(() => expect(bodyOf(f.map).exercises.map((e) => e.title).join(',')).toBe('Bankdrücken,Kreuzheben,Kniebeuge'));
 });

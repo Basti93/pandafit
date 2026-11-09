@@ -178,7 +178,7 @@ describe('the sheet "Nächstes Training"', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Fertig' }));
     fireEvent.click((await card()).getByRole('button', { name: 'Training starten' }));
     await screen.findByRole('region', { name: 'Latzug' });
-    expect(screen.getByRole('region', { name: 'Face Pull' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Face Pull/ })).toBeTruthy(); // waits under Danach
   });
 
   test('a start from a draft does not name exercises the rules dropped from the plan', async () => {

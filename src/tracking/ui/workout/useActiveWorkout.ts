@@ -12,7 +12,6 @@ import { useCatalog, useExcluded, usePortRecords, useStoreView, useTick, useWake
 import { effortQuestionsOn } from '../EffortQuestion';
 import type { DragStart } from '../ReorderSheet';
 import { markUsed } from './markUsed';
-import { useHold } from './useHold';
 import { useLatest } from './useLatest';
 
 export type Picker = { mode: 'add' } | { mode: 'swap'; ex: string } | null;
@@ -24,13 +23,19 @@ export type UiState = {
   menu: string | null; menuMore: boolean;
   topMenu: boolean; studioOpen: boolean; coachAsk: number;
   reorder: DragStart | null; editing: string | null;
-  notesOpen: ReadonlySet<string>; info: ReadonlySet<string>;
+  notesOpen: ReadonlySet<string>;
+  /** The exercise whose Anleitung sheet is open. */
+  infoRid: string | null;
+  /** The exercise whose sets sheet (the set table) is open. */
+  setsRid: string | null;
+  /** The exercise whose effort answer is thanked for, until the next confirmed set. */
+  thanked: string | null;
   notice: string | null; effortOn: boolean;
-  /** Only the current exercise is open; tapping another opens it and closes the previous one. The open one follows the next open set. */
+  /** The focus exercise: it follows the next open set; a row under "Danach" makes another one the focus. */
   openRid: string | null;
 };
 
-type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'toggleInfo'; rid: string } | { t: 'askCoach' };
+type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'askCoach' };
 
 const toggled = (s: ReadonlySet<string>, rid: string): ReadonlySet<string> => { const n = new Set(s); if (!n.delete(rid)) n.add(rid); return n; };
 
@@ -38,7 +43,6 @@ export function uiReducer(s: UiState, a: Action): UiState {
   switch (a.t) {
     case 'set': return { ...s, ...a.patch };
     case 'toggleNote': return { ...s, notesOpen: toggled(s.notesOpen, a.rid) };
-    case 'toggleInfo': return { ...s, info: toggled(s.info, a.rid) };
     case 'askCoach': return { ...s, coachAsk: s.coachAsk + 1 };
   }
 }
@@ -57,14 +61,12 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, menuMore: false, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null, editing: null,
-    notesOpen: new Set(), info: new Set(), notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid,
+    notesOpen: new Set(), infoRid: null, setsRid: null, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
-  const toggleInfo = useCallback((rid: string) => dispatch({ t: 'toggleInfo', rid }), []);
   const askCoach = useCallback(() => dispatch({ t: 'askCoach' }), []);
   const setNotice = useCallback((notice: string | null) => dispatch({ t: 'set', patch: { notice } }), []);
-  const { holdProps, held } = useHold((reorder) => set({ reorder }));
 
   const ending = useRef(false);
   const leaving = useRef(false);
@@ -99,13 +101,8 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   useEffect(() => () => releaseStore(port, store), [store, port]);
   const remaining = restRemainingS(w, now());
 
-  // Opening (or continuing) a workout scrolls once to the exercise with the next open set.
+  // The focus follows the next open set (in a superset from round to round).
   useEffect(() => { if (currentRid) set({ openRid: currentRid }); }, [currentRid, set]);
-  const screenRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = screenRef.current?.querySelector('[aria-current="step"]');
-    if (el && el !== screenRef.current?.querySelector('.tk-ex')) el.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
-  }, []);
 
   // The rest end is armed once per rest (not per tick); skipping or leaving cancels it.
   const restEnd = w.rest ? w.rest.startMs + w.rest.durationS * 1000 : null;
@@ -186,7 +183,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const known = knownStudios([...history, w], studios.renames, studios.picks, studios.hidden);
 
   return {
-    port, store, history, now, newId, w, save, ui, set, toggleNote, toggleInfo, askCoach, setNotice, holdProps, held, screenRef,
+    port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice,
     catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, remaining, currentRid, known, act, end, discard,
   };
 }

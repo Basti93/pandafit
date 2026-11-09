@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { exerciseDescription } from '../../src/shared/exercise-descriptions';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import { exerciseImages } from '../../src/tracking/media';
@@ -27,46 +27,46 @@ async function running() {
   await screen.findByText('Kniebeuge');
 }
 
-describe('workout: Anleitung behind the info icon on the card', () => {
-  test('collapsed by default; the info icon opens it with the wger credit, and hides it again', async () => {
+/** Makes the exercise the focus (its row under "Danach") and opens its Anleitung sheet. */
+async function anleitung(title: string) {
+  if (!screen.queryByRole('region', { name: title })) fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent?.startsWith(title))!);
+  fireEvent.click(within(screen.getByRole('region', { name: title })).getByRole('button', { name: 'Anleitung' }));
+  return screen.findByRole('dialog', { name: title });
+}
+/** The muscle icon at the head of the Anleitung sheet. */
+const headIcon = (sheet: HTMLElement) => sheet.querySelector('.tk-sheet-head [role="img"]')!;
+
+describe('workout: Anleitung behind its round button on the focus card', () => {
+  test('closed by default; the button opens it in a sheet with the wger credit, and × closes it', async () => {
     await running();
     expect(screen.queryByText(/Füße etwas mehr als hüftbreit/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
-    const note = screen.getByRole('note', { name: 'Anleitung Kniebeuge' });
+    const sheet = await anleitung('Kniebeuge');
+    const note = within(sheet).getByRole('note', { name: 'Anleitung Kniebeuge' });
     expect(note.textContent).toMatch(/Füße etwas mehr als hüftbreit/);
     expect(note.textContent).toContain('Quelle: wger.de, CC-BY-SA 3.0');
-    expect(screen.queryByRole('button', { name: 'Kniebeuge tauschen' })).toBeNull(); // the menu closed
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
+    expect(screen.queryByRole('button', { name: 'Kniebeuge tauschen' })).toBeNull(); // the menu stays closed
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Schließen' }));
     expect(screen.queryByRole('note', { name: 'Anleitung Kniebeuge' })).toBeNull();
   });
 
-  test('the info icon toggles: a second tap hides it; the menu has no such entry any more', async () => {
+  test('the menu has no Anleitung entry; the round button is the one way', async () => {
     await running();
-    const icon = screen.getByRole('button', { name: 'Anleitung Kniebeuge' });
-    expect(icon.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(icon);
-    expect(screen.getByRole('note', { name: 'Anleitung Kniebeuge' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }).getAttribute('aria-expanded')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
-    expect(screen.queryByRole('note', { name: 'Anleitung Kniebeuge' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
-    expect(screen.getAllByRole('button', { name: 'Anleitung Kniebeuge' })).toHaveLength(1); // only the icon, none in the menu
+    expect(screen.getAllByRole('button', { name: 'Anleitung' })).toHaveLength(1); // only the round button, none in the menu
     expect(within(screen.getByRole('list', { name: 'Mehr zu Kniebeuge' })).queryByText('Anleitung')).toBeNull();
   });
 
   test('an own text shows without a credit line', async () => {
     await running();
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Frontkniebeuge' }));
-    const note = screen.getByRole('note', { name: 'Anleitung Frontkniebeuge' });
+    const note = within(await anleitung('Frontkniebeuge')).getByRole('note', { name: 'Anleitung Frontkniebeuge' });
     expect(note.textContent).toMatch(/Ellbogen/);
     expect(note.textContent).not.toContain('Quelle');
   });
 
   test('an exercise without a description still opens: no text yet, but the video link', async () => {
     await running();
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Meine Übung' }));
-    const note = screen.getByRole('note', { name: 'Anleitung Meine Übung' });
+    const note = within(await anleitung('Meine Übung')).getByRole('note', { name: 'Anleitung Meine Übung' });
     expect(note.textContent).toContain('Für diese Übung gibt es noch keine Beschreibung.');
     const video = within(note).getByRole('link', { name: 'Video ansehen' });
     expect(video.getAttribute('href')).toBe('https://www.youtube.com/results?search_query=Meine%20%C3%9Cbung%20exercise%20form');
@@ -74,8 +74,7 @@ describe('workout: Anleitung behind the info icon on the card', () => {
 
   test('the video link searches the English Hevy name in a new window; no picture means no image', async () => {
     await running();
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Kniebeuge' }));
-    const note = screen.getByRole('note', { name: 'Anleitung Kniebeuge' });
+    const note = within(await anleitung('Kniebeuge')).getByRole('note', { name: 'Anleitung Kniebeuge' });
     const video = within(note).getByRole('link', { name: 'Video ansehen' });
     expect(video.getAttribute('href')).toBe('https://www.youtube.com/results?search_query=Squat%20(Barbell)%20exercise%20form');
     expect(video.getAttribute('target')).toBe('_blank');
@@ -83,11 +82,11 @@ describe('workout: Anleitung behind the info icon on the card', () => {
     expect(within(note).queryByRole('img', { name: /Ausführung/ })).toBeNull();
   });
 
-  test('each card head shows the muscle icon of the exercise', async () => {
+  test('the Anleitung sheet shows the muscle icon of the exercise', async () => {
     await running();
-    const card = screen.getByRole('region', { name: 'Kniebeuge' });
-    expect(within(card).getByRole('img', { name: 'Oberschenkel vorn' })).toBeTruthy();
-    expect(within(screen.getByRole('region', { name: 'Meine Übung' })).getByRole('img', { name: 'Muskel unbekannt' })).toBeTruthy();
+    expect(headIcon(await anleitung('Kniebeuge')).getAttribute('aria-label')).toBe('Oberschenkel vorn');
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
+    expect(headIcon(await anleitung('Meine Übung')).getAttribute('aria-label')).toBe('Muskel unbekannt');
   });
 });
 
@@ -104,27 +103,27 @@ describe('workout: imported exercises resolve by identity', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
     await screen.findByText('Cable Row Custom');
   }
-  const iconOf = (title: string) => within(within(screen.getByRole('region', { name: title })).getByRole('img').closest('.tk-ex-head') as HTMLElement).getByRole('img');
+  const iconOf = async (title: string) => headIcon(await anleitung(title));
 
   test('a Hevy row unknown to the catalog shows the back from the stats muscles', async () => {
     await runningWith([good]);
-    expect(await within(screen.getByRole('region', { name: 'Cable Row Custom' })).findByRole('img', { name: 'Rücken' })).toBeTruthy();
+    const sheet = await anleitung('Cable Row Custom');
+    await waitFor(() => expect(headIcon(sheet).getAttribute('aria-label')).toBe('Rücken'));
   });
 
   test('without a stats record the same exercise shows "Muskel unbekannt", not Sonstiges', async () => {
     await runningWith([]);
-    expect(iconOf('Cable Row Custom').getAttribute('aria-label')).toBe('Muskel unbekannt');
+    expect((await iconOf('Cable Row Custom')).getAttribute('aria-label')).toBe('Muskel unbekannt');
   });
 
   test('a malformed stats record is ignored', async () => {
     await runningWith([statsRec({ type: 'stats' })]);
-    expect(iconOf('Cable Row Custom').getAttribute('aria-label')).toBe('Muskel unbekannt');
+    expect((await iconOf('Cable Row Custom')).getAttribute('aria-label')).toBe('Muskel unbekannt');
   });
 
   test('a Smith machine squat shows no free-weight text and no pictures', async () => {
     await runningWith([good]);
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Squat (Smith Machine)' }));
-    const note = screen.getByRole('note', { name: 'Anleitung Squat (Smith Machine)' });
+    const note = within(await anleitung('Squat (Smith Machine)')).getByRole('note', { name: 'Anleitung Squat (Smith Machine)' });
     expect(note.textContent).toContain('Für diese Übung gibt es noch keine Beschreibung.');
     expect(note.textContent).not.toContain('Beschrieben am Beispiel');
     expect(within(note).queryByRole('img', { name: /Ausführung/ })).toBeNull();
@@ -132,8 +131,7 @@ describe('workout: imported exercises resolve by identity', () => {
 
   test('the machine reverse fly from Hevy shows its machine text', async () => {
     await runningWith([]);
-    fireEvent.click(screen.getByRole('button', { name: 'Anleitung Rear Delt Reverse Fly (Machine)' }));
-    const note = screen.getByRole('note', { name: 'Anleitung Rear Delt Reverse Fly (Machine)' });
+    const note = within(await anleitung('Rear Delt Reverse Fly (Machine)')).getByRole('note', { name: 'Anleitung Rear Delt Reverse Fly (Machine)' });
     expect(note.textContent).toContain(exerciseDescription('pf-rear-delt-fly-machine')!.text);
     expect(note.textContent).not.toMatch(/Kurzhantel/);
   });

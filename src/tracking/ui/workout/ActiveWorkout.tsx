@@ -1,23 +1,31 @@
 import type { Exercise } from '../../../shared/exercises';
-import { extendRest, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo } from '../../session';
+import { asksEffort } from '../../effort';
+import { extendRest, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo, setEffort } from '../../session';
 import { takeChange, undoChange } from '../../workout-change';
 import { rememberStudio, renameStudio } from '../../studios';
 import { ExercisePicker } from '../ExercisePicker';
 import { ReorderSheet } from '../ReorderSheet';
 import { StudioSheet } from '../StudioSheet';
 import { WorkoutCoach } from '../WorkoutCoach';
-import { ConfirmLink, Sheet } from '../kit';
+import { EffortQuestion } from '../EffortQuestion';
+import { Card, ConfirmLink, Icon, Kicker, Row, RowList, Sheet } from '../kit';
 import { clock } from '../labels';
-import { ExerciseSection } from './ExerciseSection';
+import { FocusCard } from './FocusCard';
+import { focusExercise, upNext } from './live-view';
+import { SetsSheet } from './SetsSheet';
 import { sinceLabel } from './markUsed';
 import { NOT_SAVED, useActiveWorkout, type ActiveWorkoutProps } from './useActiveWorkout';
 
 export function ActiveWorkout(props: ActiveWorkoutProps) {
   const a = useActiveWorkout(props);
-  const { port, w, save, ui, set, askCoach, setNotice, screenRef, held, catalog, excluded, studios, overrides, history, now, newId, remaining, known, act, end, discard } = a;
+  const { port, w, save, ui, set, askCoach, setNotice, catalog, excluded, studios, overrides, history, now, newId, remaining, known, act, end, discard } = a;
   const { picker } = ui;
+  const focus = focusExercise(w, ui.openRid, a.currentRid);
+  const next = upNext(w, focus?.rid ?? null);
+  const asking = ui.effortOn ? w.exercises.filter((e) => asksEffort(w, e.rid, history, catalog, studios)) : [];
+  const thanked = w.exercises.find((e) => e.rid === ui.thanked && e.effort && e.effort !== 'skip');
   return (
-    <div className="tk-screen tk-live" ref={screenRef}>
+    <div className="tk-screen tk-live">
       <div className="tk-live-head">
         <h1 className="tk-title">{w.title}</h1>
         <button type="button" className="link tk-more" aria-label="Mehr zum Training" onClick={() => set({ topMenu: true })}>⋯</button>
@@ -31,14 +39,32 @@ export function ActiveWorkout(props: ActiveWorkoutProps) {
       {ui.notice && <p role="note" className="tk-note">{ui.notice}</p>}
       <WorkoutCoach port={port} workout={w} catalog={catalog} now={now} newId={newId} openSignal={ui.coachAsk}
         onTake={(id, c) => act((x) => takeChange(x, id, c, history, catalog, studios, now(), excluded).workout)} onUndo={(id) => act((x) => undoChange(x, id).workout)} />
-      {w.exercises.map((e) => <ExerciseSection key={e.rid} e={e} a={a} />)}
+      {asking.map((e) => (
+        <Card soft key={e.rid}>
+          <EffortQuestion title={e.title} onAnswer={(ans) => { if (ans !== 'skip') set({ thanked: e.rid }); act((x) => setEffort(x, e.rid, ans)); }}
+            onOff={() => { set({ effortOn: false }); act((x) => setEffort(x, e.rid, 'skip')); }} />
+        </Card>
+      ))}
+      {thanked && <Card soft><p className="tk-maintext">Danke! Das fließt in den nächsten Vorschlag ein.</p></Card>}
+      <FocusCard key={focus?.rid ?? 'none'} a={a} />
+      {focus && (
+        <Card soft>
+          {next.length > 0 && <Kicker>Danach</Kicker>}
+          {next.length > 0 && (
+            <RowList label="Danach">
+              {next.map((r) => <Row key={r.rid} title={r.title} value={r.sub} onClick={() => set({ openRid: r.rid })} />)}
+            </RowList>
+          )}
+          <button type="button" className="secondary tk-iconbtn" onClick={() => set({ picker: { mode: 'add' } })}><Icon name="plus" size={18} /><span>Übung hinzufügen</span></button>
+        </Card>
+      )}
+      {ui.setsRid && <SetsSheet a={a} rid={ui.setsRid} />}
       {ui.reorder && (
         <ReorderSheet workout={w} start={ui.reorder}
           onDrop={(rid, to) => act((x) => moveExerciseTo(x, rid, to))} onStep={(rid, dir) => act((x) => moveExercise(x, rid, dir))}
-          onClose={() => { held.current = false; set({ reorder: null }); }} />
+          onClose={() => set({ reorder: null })} />
       )}
       <div className="tk-end">
-        <button type="button" className="secondary" onClick={() => set({ picker: { mode: 'add' } })}>Übung hinzufügen</button>
         <button type="button" className="secondary" onClick={() => void end()}>Training beenden</button>
       </div>
       {w.rest && remaining > 0 && !ui.ask && (
