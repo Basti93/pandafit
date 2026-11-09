@@ -75,7 +75,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
           {next.length > 0 && <Kicker>Danach</Kicker>}
           {next.length > 0 && (
             <RowList label="Danach">
-              {next.map((r) => <Row key={r.rid} title={r.title} value={r.sub} onClick={() => set({ openRid: r.rid })} />)}
+              {next.map((r) => <Row key={r.rid} title={r.title} value={r.sub} press={a.holdProps(r.rid)} onClick={() => { if (!a.wasHeld()) set({ openRid: r.rid }); }} />)}
             </RowList>
           )}
           <button type="button" className="secondary tk-iconbtn" onClick={() => set({ picker: { mode: 'add' } })}><Icon name="plus" size={18} /><span>Übung hinzufügen</span></button>
@@ -85,7 +85,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
       {ui.reorder && (
         <ReorderSheet workout={w} start={ui.reorder}
           onDrop={(rid, to) => act((x) => moveExerciseTo(x, rid, to))} onStep={(rid, dir) => act((x) => moveExercise(x, rid, dir))}
-          onClose={() => set({ reorder: null })} />
+          onClose={() => { a.releaseHold(); set({ reorder: null }); }} />
       )}
       <div className="tk-liveend">
         <button type="button" className="secondary" onClick={() => void end()}>Training beenden</button>

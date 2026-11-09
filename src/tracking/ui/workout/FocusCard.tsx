@@ -39,7 +39,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
   return (
     <Card focus label={e.title}>
       <Kicker>{focus ? focus.kicker : 'Alle Sätze geschafft'}</Kicker>
-      <BrushTitle>{e.title}</BrushTitle>
+      <div className="tk-hold" {...a.holdProps(e.rid)}><BrushTitle>{e.title}</BrushTitle></div>
       {focus ? (
         <>
           {lastTime && <p className="tk-maintext">{`Letztes Mal hast du ${lastTime} geschafft.`}</p>}
