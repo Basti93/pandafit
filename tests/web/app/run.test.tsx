@@ -63,14 +63,14 @@ describe('Laufen on the phone', () => {
 
   it('a notification with tab laufen opens it, at start and while open', async () => {
     await boot({ account: 'anna', seed: [status(), planWeek], startTab: 'laufen' });
-    expect(await screen.findByRole('region', { name: 'Läufe dieser Woche' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Laufen · diese Woche' })).toBeTruthy();
     cleanup();
     let open!: (t: string) => void;
     await boot({ account: 'anna', seed: [status(), planWeek], onOpenTab: (f) => { open = f; return () => {}; } });
     await screen.findByRole('navigation');
     await waitFor(() => expect(open).toBeTypeOf('function'));
     act(() => open('laufen'));
-    expect(await screen.findByRole('region', { name: 'Läufe dieser Woche' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Laufen · diese Woche' })).toBeTruthy();
   });
 
   it('a notification for Laufen without a run status stays on Heute', async () => {
@@ -84,12 +84,12 @@ describe('Laufen on the phone', () => {
     await boot({ account: 'anna', seed: [status()] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
     await screen.findByRole('button', { name: 'Lauf eintragen' });
-    expect(screen.queryByRole('button', { name: /^Entwicklung/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Deine Entwicklung/ })).toBeNull();
     cleanup();
     await boot({ account: 'anna', seed: [status(), review] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
     expect(screen.queryByRole('heading', { name: 'Wochenrückblick' })).toBeNull();
-    fireEvent.click(await screen.findByRole('button', { name: /^Entwicklung/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Deine Entwicklung/ }));
     fireEvent.click(await screen.findByRole('button', { name: /^Ältere Wochen/ }));
     expect(await screen.findByRole('heading', { name: 'Wochenrückblick' })).toBeTruthy();
     expect(screen.getByText(/12,5 km/)).toBeTruthy();

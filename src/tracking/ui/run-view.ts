@@ -1,7 +1,7 @@
 import type { TrackedRecord } from '../../shared/records';
 import { weekOf } from '../../shared/meals';
 import { shortDateOfKey } from '../../shared/dates';
-import { readRunBody, runIdType, type RunReviewBody, type RunSettingsBody, type RunStatusBody, type RunWeekBody } from '../../shared/run';
+import { readRunBody, runIdType, type RunNumbers, type RunReviewBody, type RunSettingsBody, type RunStatusBody, type RunWeekBody } from '../../shared/run';
 
 export type RunView = { status: RunStatusBody | null; settings: RunSettingsBody | null; week: RunWeekBody | null; reviews: RunReviewBody[]; visible: boolean };
 
@@ -40,3 +40,12 @@ export const dateKeyOf = (ms: number): string => {
 /** "Mi., 4. Nov." */
 export const dayText = (key: string): string => shortDateOfKey(key);
 export const kmFromKm = (km: number): string => `${km.toFixed(1).replace('.', ',')} km`;
+
+/** One sentence without a number: the easy pace now, against the oldest value there is (12 weeks, else 4). */
+export function runTrendSentence(n: RunNumbers): string | null {
+  const { now, weeks4, weeks12 } = n.easyPace;
+  const [then, label] = weeks12 !== null ? [weeks12, 'vor 12 Wochen'] : [weeks4, 'vor 4 Wochen'];
+  if (now === null || then === null) return null;
+  const d = Math.round(then) - Math.round(now);
+  return d > 0 ? 'Du wirst bei gleichem Puls schneller.' : d < 0 ? `Du bist gerade etwas langsamer als ${label}.` : 'Dein ruhiges Tempo ist gleich geblieben.';
+}

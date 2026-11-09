@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { feelAsked, RunFeelQuestion } from './RunFeel';
 import { ReviewList } from './RunLookBack';
-import { Row, RowList, Sheet, Switch } from './kit';
-import { shortDateOfKey } from '../../shared/dates';
+import { BoBubble, Card, Kicker, MainCard, Row, RowCard, RowList, Sheet, StandCard, Switch } from './kit';
+import { BO_LINES } from './bo';
+import { useSportWeek } from './sport-week';
+import { dayMonthLongOfKey, shortDateOfKey, weekdayOfKey } from '../../shared/dates';
 import type { TrackedRecord } from '../../shared/records';
 import { manualRunId, paceText, runSendId, weekFp, type PlannedRun, type RunGarmin, type RunNumbers, type RunSendBody, type RunFeelBody, runFeelId, type RunWeekBody, type RunReviewBody, type ManualRunBody } from '../../shared/run';
 import type { TrackingPort } from '../ports';
 import { usePortRecords } from './hooks';
 import { writeSettings } from './RunSettingsCard';
-import { DAY_NAMES, DAY_SHORT, dateKeyOf, kmFromKm, nextUpdatedMs, runView } from './run-view';
+import { DAY_NAMES, DAY_SHORT, dateKeyOf, kmFromKm, nextUpdatedMs, runTrendSentence, runView } from './run-view';
 
 const KIND: Record<PlannedRun['kind'], string> = { easy: 'Ruhiger Lauf', long: 'Langer, ruhiger Lauf', test: 'Testlauf über 30 Minuten' };
 const CHANGED = 'Der Plan hat sich geändert. Bitte bestätige noch einmal, dann geht die neue Version an Garmin.';
@@ -19,11 +21,11 @@ const PAUSE = 'Laufen pausiert, solange die Beschwerde offen ist. Sobald sie vor
 const GENTLE = 'Wir planen gerade sanft.';
 const FAILED = 'Das Senden hat gerade nicht geklappt. Du kannst es später noch einmal versuchen.';
 
+/** "{minutes} Minuten, Puls bis {cap}." and what counts, in whole sentences. */
+const runText = (r: PlannedRun): string => `${r.minutes} Minuten${r.hrCap !== null ? `, Puls bis ${r.hrCap}` : ''}.${r.kind !== 'long' && r.counts ? ` ${r.counts}` : ''}`;
+
 /** "Di und Sa", "Di, Do und Sa". */
 const dayList = (days: number[]): string => { const n = days.map((d) => DAY_SHORT[d]!); return n.length < 2 ? n.join('') : `${n.slice(0, -1).join(', ')} und ${n.at(-1)}`; };
-
-/** "40 Min" when every run is as long, else the sum. */
-const weekMinutes = (runs: PlannedRun[]): string => (runs.every((r) => r.minutes === runs[0]!.minutes) ? `${runs[0]!.minutes} Min` : `${runs.reduce((a, r) => a + r.minutes, 0)} Min zusammen`);
 
 const num = (s: string): number | null => {
   const n = Number(s.trim().replace(',', '.'));
@@ -32,13 +34,10 @@ const num = (s: string): number | null => {
 
 function Suggestion({ onAnswer }: { onAnswer: (on: boolean) => void }) {
   return (
-    <section className="card">
-      <p>Pandafit hat Läufe von deiner Uhr gefunden. Soll Pandafit dein Laufen mitplanen?</p>
-      <div className="tk-row">
-        <button type="button" onClick={() => onAnswer(true)}>Laufen einschalten</button>
-        <button type="button" className="link" onClick={() => onAnswer(false)}>Nicht jetzt</button>
-      </div>
-    </section>
+    <MainCard kicker="Laufen" title="Laufen mitplanen"
+      text="Pandafit hat Läufe von deiner Uhr gefunden. Soll Pandafit dein Laufen mitplanen?"
+      primary={{ label: 'Laufen einschalten', onClick: () => onAnswer(true) }}
+      more={<button type="button" className="link" onClick={() => onAnswer(false)}>Nicht jetzt</button>} />
   );
 }
 
@@ -57,7 +56,7 @@ function Questions({ suggested, saved, onSave, onCancel }: {
   const p = num(perWeek);
   const m = num(minutes);
   const ok = days.length > 0 && p !== null && p >= 1 && p <= 7 && m !== null && m >= 5 && m <= 300;
-  const save = <button type="button" disabled={!ok} onClick={() => ok && onSave({ runsPerWeek: Math.round(p), usualMinutes: Math.round(m), pain }, days)}>Speichern</button>;
+  const save = <button type="button" className="primary" disabled={!ok} onClick={() => ok && onSave({ runsPerWeek: Math.round(p), usualMinutes: Math.round(m), pain }, days)}>Speichern</button>;
   const fields = (
     <>
       <div role="group" aria-label="An welchen Tagen möchtest du laufen?" className="tk-field">
@@ -78,7 +77,7 @@ function Questions({ suggested, saved, onSave, onCancel }: {
     </>
   );
   if (onCancel) return <Sheet title="Lauftage" onClose={onCancel} actions={save}><div className="tk-form">{fields}</div></Sheet>;
-  return <section className="card tk-form">{fields}<div className="tk-row">{save}</div></section>;
+  return <Card><div className="tk-form">{fields}<div className="tk-row">{save}</div></div></Card>;
 }
 
 function GarminBlock({ week, pending, onSend }: { week: RunWeekBody; pending: boolean; onSend: () => void }) {
@@ -226,6 +225,7 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [thanked, setThanked] = useState<string | null>(null);
   const view = runView(q.records ?? [], now());
+  const stand = useSportWeek(port, now(), 'lauf');
   if (q.records === null) return null;
   // "Laufen planen" is on, but the run coach has not answered yet: one sentence, so the page is not empty.
   if (!view.status || !view.visible) return view.settings?.on ? <div className="tk-screen tk-run"><p className="muted">{FIRST_PLAN}</p></div> : null;
@@ -259,64 +259,60 @@ export function RunScreen({ port, now, newId }: { port: TrackingPort; now: () =>
   };
   const numbers = status.numbers;
   const hasDevelopment = hasProgress(numbers) || numbers.longest.blockKm !== null || hasWeeklyKm(numbers) || view.reviews.length > 0;
-  const showWeek = status.on && !paused && !!week && week.runs.length > 0 && !!(week.reason || week.note || status.garmin);
+  const sheetEntry = () => setSheet('entry');
+  const trend = runTrendSentence(numbers);
+  const card = status.card;
+  const enter = { label: 'Lauf eintragen', onClick: sheetEntry };
+  const showGarmin = status.on && !paused && !!week && week.runs.length > 0 && status.garmin && !!week.garmin;
+  const bo = week && !paused && week.runs.length > 0 ? [week.reason, upcoming?.hrCap == null ? week.note : null].filter((t): t is string => !!t) : [];
 
   return (
     <div className="tk-screen tk-run">
       {status.suggest && !status.on && <Suggestion onAnswer={(on) => { void writeSettings(port, all, now(), (old) => ({ type: 'settings', on, weekdays: old?.weekdays ?? null, answers: old?.answers ?? null })).catch(() => {}); }} />}
       {status.on && firstQuestions && <Questions suggested={status.suggestedDays} saved={view.settings ?? null} onSave={saveSettings} />}
       {status.on && paused && <p role="status" className="tk-note">{PAUSE}</p>}
+      {status.on && paused && <button type="button" className="secondary" onClick={enter.onClick}>{enter.label}</button>}
       {status.on && leftOnWatch && week && (
-        <section className="card tk-garmin">
-          <p>{LEFT_ON_WATCH}</p>
-          <button type="button" className="secondary" disabled={week.garmin?.status === 'sending' || pending} onClick={send}>Entfernen</button>
-        </section>
+        <Card>
+          <div className="tk-garmin">
+            <p>{LEFT_ON_WATCH}</p>
+            <button type="button" className="secondary" disabled={week.garmin?.status === 'sending' || pending} onClick={send}>Entfernen</button>
+          </div>
+        </Card>
       )}
       {status.on && gentle && !paused && <p role="status" className="tk-note">{GENTLE}</p>}
+      {status.on && stand.loaded && (
+        <StandCard kicker="Laufen · diese Woche" text={stand.text} marks={stand.marks} marksLabel={stand.label}
+          action={firstQuestions ? undefined : { label: 'Lauftage ändern', onClick: () => { setSavedNote(null); setSheet('settings'); } }} />
+      )}
       {status.on && !paused && upcoming && (
-        <section className="card" aria-label={upcoming === today ? 'Heute' : 'Nächster Lauf'}>
-          <p className="muted">{upcoming === today ? 'Heute' : shortDateOfKey(upcoming.date)}</p>
-          <p className="tk-today-line"><b>{KIND[upcoming.kind]}</b> · {upcoming.minutes} Min{upcoming.hrCap !== null ? ` · Puls bis ${upcoming.hrCap}` : ''}</p>
-          {upcoming.kind !== 'long' && <p className="muted">{upcoming.counts}</p>}
-        </section>
+        <MainCard label={upcoming === today ? 'Heute' : 'Nächster Lauf'} kicker={upcoming === today ? 'Heute' : `${weekdayOfKey(upcoming.date)}, ${dayMonthLongOfKey(upcoming.date)}`}
+          title={KIND[upcoming.kind]} text={runText(upcoming)} primary={enter} />
       )}
-      {status.on && !paused && !upcoming && week && week.runs.length > 0 && (
-        <section className="card tk-weekcard" aria-label="Diese Woche">
-          <p className="muted">Diese Woche: {dayList([...week.runs].sort((a, b) => a.date.localeCompare(b.date)).map((r) => (new Date(`${r.date}T12:00`).getDay() + 6) % 7))} · {weekMinutes(week.runs)}</p>
-          {(status.hrCap ?? null) !== null && !week.note && <p>Ruhig laufen, Puls bis {status.hrCap}.</p>}
-        </section>
+      {status.on && !paused && !upcoming && (
+        <MainCard kicker="Laufen" title="Freier Lauf" text="Für diese Woche ist kein Lauf mehr geplant. Trag einen Lauf ein, wenn du gelaufen bist." primary={enter} />
       )}
-      {showWeek && week && (
-        <section className="tk-weekinfo" aria-label="Läufe dieser Woche">
-          {week.reason && <p className="muted">{week.reason}</p>}
-          {week.note && upcoming?.hrCap == null && <p>{week.note}</p>}
-          {status.garmin && <GarminBlock week={week} pending={pending} onSend={send} />}
-        </section>
+      {status.on && !paused && week && week.runs.length > 0 && <BoBubble portrait="mini">{bo.length > 0 ? bo.join(' ') : BO_LINES.weekCalm}</BoBubble>}
+      {showGarmin && week && <Card><GarminBlock week={week} pending={pending} onSend={send} /></Card>}
+      {status.on && card && thanked === card.runId && <p role="status" className="muted">Danke! Das fließt in den nächsten Laufplan ein.</p>}
+      {status.on && card && feelAsked(card, answeredFeels, now()) && (
+        <Card label="Letzter Lauf">
+          <Kicker>{`Letzter Lauf · ${weekdayOfKey(card.date)}`}</Kicker>
+          <p className="tk-maintext"><b>{card.result}</b></p>
+          <p className="muted">{card.sentence}</p>
+          <RunFeelQuestion
+            onAnswer={(feel) => {
+              const runId = card.runId;
+              if (byId(runFeelId(runId))) return;
+              put(runFeelId(runId), { type: 'feel', runId, feel, atMs: now() } satisfies RunFeelBody);
+              if (feel !== null) setThanked(runId);
+            }} />
+        </Card>
       )}
-      {status.on && <button type="button" className="tk-entry" onClick={() => setSheet('entry')}>Lauf eintragen</button>}
-      {status.on && status.card && thanked === status.card.runId && <p role="status" className="muted">Danke! Das fließt in den nächsten Laufplan ein.</p>}
-      {status.on && status.card && (
-        <section className="tk-lastrun" aria-label="Dein letzter Lauf">
-          <h2 className="tk-section">Letzter Lauf</h2>
-          <p><b>{shortDateOfKey(status.card.date)}</b> · {status.card.result}</p>
-          <p className="muted">{status.card.sentence}</p>
-          {feelAsked(status.card, answeredFeels, now()) && (
-            <RunFeelQuestion
-              onAnswer={(feel) => {
-                const runId = status.card!.runId;
-                if (byId(runFeelId(runId))) return;
-                put(runFeelId(runId), { type: 'feel', runId, feel, atMs: now() } satisfies RunFeelBody);
-                if (feel !== null) setThanked(runId);
-              }} />
-          )}
-        </section>
+      {status.on && card && !feelAsked(card, answeredFeels, now()) && (
+        <RowCard icon="lauf" kicker={`Letzter Lauf · ${weekdayOfKey(card.date)}`} title={card.result} sub={card.sentence} end="none" />
       )}
-      {status.on && (
-        <RowList>
-          {hasDevelopment && <Row title="Entwicklung" onClick={() => setSheet('development')} />}
-          {!firstQuestions && <Row title="Lauftage" onClick={() => { setSavedNote(null); setSheet('settings'); }} />}
-        </RowList>
-      )}
+      {status.on && hasDevelopment && <RowCard icon="entwicklung" kicker="Deine Entwicklung" title={trend ?? 'Entwicklung ansehen'} onClick={() => setSheet('development')} />}
       {status.on && savedNote && !firstQuestions && <p role="status" className="muted">{savedNote}</p>}
       {status.on && sheet === 'entry' && (
         <ManualForm plannedOn={(d) => (paused ? null : week?.runs.find((r) => r.date === d) ?? null)} now={now()} onClose={close}
