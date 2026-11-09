@@ -19,7 +19,7 @@ test('hides empty parts', () => {
 });
 test('says the coach is still writing while the rule version shows', () => {
   render(<DebriefCard debrief={{ ...debrief, source: 'rules' }} thinking />);
-  expect(screen.getByRole('status').textContent).toContain('Dein Coach schreibt noch');
+  expect(screen.getByRole('status').textContent).toContain('Bo schreibt noch');
 });
 test('does not say so once the AI version is there', () => {
   render(<DebriefCard debrief={debrief} thinking />);

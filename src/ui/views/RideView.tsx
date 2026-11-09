@@ -7,6 +7,7 @@ import { beep, beepsAt, saveSoundEnabled, soundEnabled } from '../countdown';
 import { hrZoneColor, ZoneChip } from '../hr-zone-style';
 import { useRideTip } from '../ride-tips';
 import { powerZone, WorkoutBar } from './WorkoutBar';
+import { BO } from '../../shared/bo';
 
 const WARN_BEFORE_S = 15;
 const ON_TARGET = 0.05;
@@ -70,7 +71,7 @@ export const RideView = ({ state, send, compact = false, extra, tools, hrMaxBpm,
     <>
       {state.storageError && <div className="banner danger" role="alert">Speichern schlägt gerade fehl. Die Fahrt läuft weiter, bitte Speicherplatz prüfen.</div>}
       {warn && <div className="banner warn" role="alert">In {engine.secondsToNext} s: {engine.nextLabel}{sudden ? ', plötzlicher Anstieg' : ''}</div>}
-      {tip && <div className="banner tip" role="status" data-testid="ride-tip"><b>Coach:</b> {tip}</div>}
+      {tip && <div className="banner tip" role="status" data-testid="ride-tip"><b>{BO.name}:</b> {tip}</div>}
       {engine.paused && <div className="banner info" role="status">Pause. Tritt an, dann geht es weiter.</div>}
     </>
   );

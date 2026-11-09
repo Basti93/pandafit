@@ -143,7 +143,7 @@ test('the coach gives a short tip, keeps its distance and takes it away again', 
   rerender(at(600 + TIP_GAP_S - 1));
   expect(screen.queryByTestId('ride-tip')).toBeNull();
   rerender(at(600 + TIP_GAP_S));
-  expect(screen.getByTestId('ride-tip').textContent).toContain('Coach:');
+  expect(screen.getByTestId('ride-tip').textContent).toContain('Bo:');
   rerender(at(600 + TIP_GAP_S + TIP_SHOW_S));
   expect(screen.queryByTestId('ride-tip')).toBeNull();
 });

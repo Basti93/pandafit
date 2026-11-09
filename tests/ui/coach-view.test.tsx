@@ -50,7 +50,7 @@ test('the start screen has the backup line and, only with a link, the button to 
 });
 test('no chat, motivation, mobility or together cards on the Mac start screen', () => {
   view(state);
-  expect(screen.queryByRole('textbox', { name: 'Hinweis an den Coach' })).toBeNull();
-  expect(screen.queryByText('Dein Coach')).toBeNull();
+  expect(screen.queryByRole('textbox', { name: 'Hinweis an Bo' })).toBeNull();
+  expect(screen.queryByText('Bo, dein Sensei')).toBeNull();
   expect(screen.getByText('Los')).toBeTruthy();
 });
