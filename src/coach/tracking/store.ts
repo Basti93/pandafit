@@ -157,4 +157,6 @@ export class RecordStore {
     fs.writeFileSync(f, secret, { mode: 0o600 });
     return secret;
   }
+  /** Copies that lost to a newer one, newest last, at most 200 per profile. A copy: the caller cannot change the store. */
+  overwritten(profileId: string): TrackedRecord[] { return [...this.load(profileId).overwritten]; }
 }
