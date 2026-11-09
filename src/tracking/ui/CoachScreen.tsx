@@ -17,6 +17,8 @@ import { useGoal, usePortRecords } from './hooks';
 import { dayText as runDay } from './run-view';
 import { PageHead, Row, RowList } from './kit';
 import { LookBack } from './StatsScreen';
+import { HealthCard, HealthPage } from './HealthPage';
+import { healthOf } from './health-view';
 
 /** Woche is the week: seven days, what changed lately, rows that open the goal, the rules and the chat with the coach, and the Rückblick. */
 /** `openChat`: the page opens with the chat already open ("Bo fragen" on Heute leads straight there). */
@@ -31,6 +33,8 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | null>(openChat ? 'chat' : null);
   const [open, setOpen] = useState(false);
+  const [page, setPage] = useState<'week' | 'health'>('week');
+  const health = healthOf(usePortRecords(port, 'health').records);
   const goal = useGoal(port, now());
   // Until a goal was picked (or the coach changed it) the shown one is only the default.
   const goalChosen = (usePortRecords(port, 'goal').records ?? []).length > 0;
@@ -71,6 +75,8 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
   const rows = bare ? rest : [...rest, coachRow];
   const saveFailed = () => setError('Die Einstellung konnte nicht gespeichert werden.');
 
+  if (page === 'health' && health) return <HealthPage health={health} onBack={() => setPage('week')} />;
+
   return (
     <div className="tk-screen tk-coach">
       <PageHead title="Woche" />
@@ -98,6 +104,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
           )}
         </section>
       )}
+      {health && <HealthCard health={health} onOpen={() => setPage('health')} />}
       {waiting && <WaitingProposal onOpen={() => setSheet('chat')} />}
       <RowList>{rows}</RowList>
       {error && <p role="alert" className="tk-note">{error}</p>}

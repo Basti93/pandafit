@@ -609,3 +609,11 @@
 .tk-datehead { min-height: 2.75rem; display: flex; align-items: center; padding-right: 3.4rem; }
 .tk-dateline { margin: 0; font-size: var(--text-s); font-weight: 700; color: var(--muted); }
 .tk-rowcards { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* Health card and page (HealthPage.tsx). */
+.tk-wordtiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin: var(--space-3) 0; }
+.tk-health-area { display: flex; align-items: center; gap: var(--space-3); }
+.tk-health-area-text { min-width: 0; }
+.tk-health-area-text .tk-kicker { margin: 0; }
+.tk-health-word { margin: 0; font-size: var(--text-l); font-weight: 700; color: var(--good-text); }
+.tk-health-word.note { color: var(--accent-text); }
