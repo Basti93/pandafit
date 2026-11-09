@@ -123,19 +123,19 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 
 ## Parkplatz
 - Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen. Heute und Woche sind mit Dojo 2 umgestellt; Kraft, Ausdauer, Essen folgen in Dojo 3–4.
-- Aus Dojo 1: Die Mac-Oberfläche (`src/ui`) sagt noch „Coach“, z. B. HevyCard „Kraft-Coach“. `training-policy/rules.ts` sagt intern „Coach“, erreicht aber weder Screen noch Prompt.
+- ~~Aus Dojo 1: Die Mac-Oberfläche (`src/ui`) sagt noch „Coach“, z. B. HevyCard „Kraft-Coach“. `training-policy/rules.ts` sagt intern „Coach“, erreicht aber weder Screen noch Prompt.~~ Erledigt (Parkplatz Design).
 - ~~Aus Dojo 1: Im CSS steht teils font-weight 600.~~ Erledigt mit Dojo 2 (nur die Mac-Oberfläche hat noch 600, eigene Schrift).
-- Aus Dojo 2: „Zurück“ im Chat, den man von Heute aus geöffnet hat, landet auf der Woche statt auf Heute (gehört zu Browser-Zurück, Entscheidung 10).
-- Aus Dojo 2: Gesundheit und Gemeinsam sind Unterseiten der Woche ohne Browser-Zurück.
-- Aus Dojo 2: `TogetherScreen` baut seine Karten noch von Hand (`section.card`); beim nächsten Anfassen auf Kit-Bausteine umstellen.
+- ~~Aus Dojo 2: „Zurück“ im Chat, den man von Heute aus geöffnet hat, landet auf der Woche statt auf Heute (gehört zu Browser-Zurück, Entscheidung 10).~~ Erledigt (Parkplatz Design).
+- ~~Aus Dojo 2: Gesundheit und Gemeinsam sind Unterseiten der Woche ohne Browser-Zurück.~~ Erledigt (Parkplatz Design).
+- ~~Aus Dojo 2: `TogetherScreen` baut seine Karten noch von Hand (`section.card`); beim nächsten Anfassen auf Kit-Bausteine umstellen.~~ Erledigt (Parkplatz Design).
 - Aus Dojo 2: `BoBubble` mit `portrait="mini"` und `place` verkleinert die Szene; in Dojo 5 prüfen, sobald es einen Aufruf gibt.
-- `npm run dev:web`: Der Proxy-Präfix `/push` fängt auch das Modul `/push.ts` ab, ohne laufenden Server bleibt die Seite leer. Präfix enger fassen (`/push/`).
+- ~~`npm run dev:web`: Der Proxy-Präfix `/push` fängt auch das Modul `/push.ts` ab, ohne laufenden Server bleibt die Seite leer. Präfix enger fassen (`/push/`).~~ Erledigt (Parkplatz Design).
 
 - Anpassungen am nächsten Training liegen nur auf dem Gerät; eine Übernahme zwischen Geräten wäre ein eigener Record. Ein Vorschlag, der zwischen Anpassen und Start übernommen wird, fehlt im Entwurf.
 
 - ~~Export nach Hevy wählt bei zwei verknüpften Hevy-Vorlagen derselben Übung die zuerst gelistete (aus Review Meilenstein 0).~~ Erledigt mit K.
-- Ohne Statistik-Record zählen manche deutschen Hevy-Varianten als „Sonstiges“ (löst sich mit A).
-- Eigene Übung mit gleichem Titel wie eine eingebaute verliert gegen die eingebaute (löst sich mit A).
+- ~~Ohne Statistik-Record zählen manche deutschen Hevy-Varianten als „Sonstiges“ (löst sich mit A).~~ Erledigt mit A.
+- ~~Eigene Übung mit gleichem Titel wie eine eingebaute verliert gegen die eingebaute (löst sich mit A).~~ Erledigt mit A.
 - ~~Harmlose doppelte Titelformen wie „Seitheben am Kabel (Kabel)“.~~ Erledigt mit K.
 - ~~Zweitnamen „Dip“/„Single Arm Dumbbell Row“ prüfen, ob gewichtet/ungewichtet zusammenpasst.~~ Erledigt mit K.
 - Aus Meilenstein A:
@@ -155,7 +155,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - Unbekannte Hevy-Übungen mit „Schultern“ zählen als Schulter vorn.
   - Coach erkennt Übungen über ID/Hevy-Verknüpfung, die Statistik zusätzlich über deutsche Titel; in seltenen Fällen leicht abweichende halbe Sätze.
 - Aus Meilenstein C:
-  - Coach plant immer fürs zuletzt genutzte Studio; wer vor dem Start ein anderes Studio wählt, bekommt Gewichte des alten Studios aus dem Plan.
+  - ~~Coach plant immer fürs zuletzt genutzte Studio; wer vor dem Start ein anderes Studio wählt, bekommt Gewichte des alten Studios aus dem Plan.~~ Erledigt mit I.
   - Eigenes Inventar pro Studio (Stangengewicht, begrenzte Scheiben, Hantelsätze).
   - Gewichtsstufen und Studios werden nicht zwischen Profilen geteilt.
   - ~~Eine eigene Gewichtsstufe geht beim Umbenennen eines Studios verloren; ein Studio lässt sich noch nicht entfernen.~~ Erledigt mit I.
@@ -169,7 +169,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - ~~Sportarten in der Zielkarte immer alle drei; später nur die genutzten zeigen.~~ Erledigt mit I.
   - ~~Schwerpunkt-Muskeln wirken im Coach-Prompt, noch nicht in der Bilanz-Anzeige.~~ Erledigt mit H.
 - Aus Meilenstein F:
-  - Die Handy-App kennt keine Radfahrten; ohne veröffentlichte Empfehlung des Coaches rechnet sie nur mit Kraft und Laufen.
+  - ~~Die Handy-App kennt keine Radfahrten; ohne veröffentlichte Empfehlung des Coaches rechnet sie nur mit Kraft und Laufen.~~ Erledigt mit O.
   - Ein Plantag kann nicht „nur Beine“ markieren; nach harten Beinen wird Kraft immer zu „Kraft ohne Beine“.
   - ~~Die Empfehlung kennt keine Uhrzeit; abends gilt noch die Empfehlung des Tages.~~ Erledigt mit I.
 - Aus Meilenstein G:
@@ -190,15 +190,15 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - ~~Titel-Auflösung beim Tausch per Chat unterscheidet Groß-/Kleinschreibung.~~ Erledigt mit K.
   - Einordnung einzelner Basis-Übungen (enges Bankdrücken bei Bankdrücken, Hyperextensions bei Sonstige).
 - Aus Meilenstein L:
-  - Eigene Produkte der Einkaufsliste erscheinen nur in der Web-App, nicht in der Mac-Ansicht.
-  - Datumsstil in Laufen/Entwicklung noch gemischt („ab 14. Sept.“ / „26.10. bis 1.11.“).
+  - ~~Eigene Produkte der Einkaufsliste erscheinen nur in der Web-App, nicht in der Mac-Ansicht.~~ Überholt mit Q.
+  - ~~Datumsstil in Laufen/Entwicklung noch gemischt („ab 14. Sept.“ / „26.10. bis 1.11.“).~~ Erledigt.
   - Native Datums-/Zeitfelder folgen der Gerätesprache (im Test-Browser AM/PM).
   - Katalog: große Gruppen zeigen zuerst eingebaute/genutzte Übungen; ggf. später Untergruppen.
   - Shot-Werkzeug erreicht „Haben wir“ auf der Einkaufsliste nicht.
 - Aus Meilenstein O:
   - Eine harte Fahrt zählt nicht als „Beine müde“ (Server und Web gleich); nur die Regel „zwei harte Tage“ schützt. Prüfen, ob Fahrten die Beine belasten sollen.
   - Umschalter „Rad | Laufen“ steht über dem Seitentitel (wie bei Laufen); unter den Titel nur mit Platz in `PageHead`.
-  - Sechs Tabs: auf Handys schmaler als 390 px nicht geprüft.
+  - ~~Sechs Tabs: auf Handys schmaler als 390 px nicht geprüft.~~ Überholt mit Dojo 1.
 - Aus Meilenstein P:
   - Nach „Intervall überspringen“ ordnen `onTargetPct` und die Intervallwerte (`src/coach/metrics.ts`) Fahrzeit den Schritten ohne die übersprungenen Sekunden zu; Fix: übersprungene Sekunden an `summarizeRide` geben. „Geschafft“ zählt Übersprungenes als nicht gefahren (gewollt).
   - Handy-Begleiter noch nicht in einer echten Fahrt erprobt; WebSocket unter CSP `default-src 'self'` in Safari ungetestet.
@@ -208,7 +208,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - `src/ui/coachTrackingPort.ts` nur noch von zwei Tests genutzt; tote CSS in `src/ui/style.css`.
 - Aus Meilenstein R:
   - `coach.strengthHealth` und die Nachricht `strength-health` haben keinen Nutzer mehr.
-  - Statistik ist ohne Statistik-Record und ohne Trainings ausgeblendet: eine Person nur mit Garmin sähe „Gesundheit“ nicht.
+  - ~~Statistik ist ohne Statistik-Record und ohne Trainings ausgeblendet: eine Person nur mit Garmin sähe „Gesundheit“ nicht.~~ Überholt mit Dojo 2.
   - Fällt die KI beim ersten Wochenlauf aus, bleibt der feste Text die ganze Woche.
   - HRV/Schlaf fließen noch nicht in die Tagesbewertung ein (nur angezeigt).
 - Aus Meilenstein V:
@@ -219,5 +219,5 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 - Aus Meilenstein X:
   - Ein neues Gerät kennt den Essensplan-Schalter erst nach der ersten Coach-Antwort (bis 30 s); ein synchronisierter Datensatz wäre sauberer (braucht Server).
   - Browser-Zurück in verschachtelten Sheets schließt das ganze Sheet.
-  - „Woche planen“ auf Heute führt zur Woche, dort braucht es einen zweiten Tipp bis zum Chat.
+  - ~~„Woche planen“ auf Heute führt zur Woche, dort braucht es einen zweiten Tipp bis zum Chat.~~ Erledigt mit Dojo 2.
   - Der Rad-Verlauf zeigt Wattbereiche nur bei „bei N %“-Bezeichnungen.

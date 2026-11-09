@@ -34,6 +34,34 @@ if (typeof window !== 'undefined') {
 }
 
 /**
+ * One history entry for as long as something is shown: the browser's Back calls `onPop`. The returned function gives the entry back
+ * (unless Back already used it). Shared by sheets and by `useBackEntry`.
+ */
+function takeEntry(id: string, onPop: () => void): () => void {
+  const mark = { sheet: id };
+  let popped = false;
+  let pushed = false;
+  let gone = false;
+  const push = () => { if (gone) return; try { history.pushState(mark, ''); pushed = true; } catch { /* no history: Escape and × still work */ } };
+  if (pendingBacks > 0) afterBacks.push(push); else push();
+  const listener = () => { if (swallowing || !pushed || (history.state as { sheet?: string } | null)?.sheet === id) return; popped = true; onPop(); };
+  window.addEventListener('popstate', listener);
+  return () => {
+    gone = true;
+    window.removeEventListener('popstate', listener);
+    if (!popped && pushed && (history.state as { sheet?: string } | null)?.sheet === id) giveBack();
+  };
+}
+
+/** A page that is not a sheet (a sub-page of Woche) takes one history entry while it is shown, so the browser's Back leads out of it: `onBack` runs. */
+export function useBackEntry(onBack: () => void) {
+  const id = useId();
+  const back = useRef(onBack);
+  useEffect(() => { back.current = onBack; });
+  useEffect(() => takeEntry(id, () => back.current()), [id]);
+}
+
+/**
  * One close pattern: × top right. A sub-page has "‹ Zurück" at the top left instead: a full sheet opened over another sheet
  * (it closes back to the one below), or a sheet given `onBack` (a page inside the same sheet).
  */
@@ -56,23 +84,14 @@ export function Sheet({ title, onClose, onBack, children, actions, size = 'full'
     if (!box.current?.contains(document.activeElement)) box.current?.focus(); // an autoFocus field inside keeps the focus
     // Back closes the sheet: it takes one history entry while open, and gives it back when closed by other means.
     stack.push(id);
-    const mark = { sheet: id };
-    let popped = false;
-    let pushed = false;
-    let gone = false;
-    const push = () => { if (gone) return; try { history.pushState(mark, ''); pushed = true; } catch { /* no history: Escape and × still work */ } };
-    if (pendingBacks > 0) afterBacks.push(push); else push();
-    const onPop = () => { if (swallowing || !pushed || (history.state as { sheet?: string } | null)?.sheet === id) return; popped = true; close.current(); };
+    const release = takeEntry(id, () => close.current());
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && stack[stack.length - 1] === id) { e.stopPropagation(); escape.current(); } };
-    window.addEventListener('popstate', onPop);
     document.addEventListener('keydown', onKey);
     return () => {
-      gone = true;
+      release();
       stack.splice(stack.indexOf(id), 1);
-      window.removeEventListener('popstate', onPop);
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = overflow;
-      if (!popped && pushed && (history.state as { sheet?: string } | null)?.sheet === id) giveBack();
       before?.focus();
     };
   }, [id]);
