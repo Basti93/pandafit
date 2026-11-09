@@ -1,0 +1,200 @@
+<!doctype html>
+<!--
+Logo "Bo als Teetrinker", Entwürfe für Dojo 5. Drei Richtungen, jede in den Größen, in denen das Logo wirklich steht:
+Dock (1024, macOS-Raster 824 von 1024, hier verkleinert), Handy (180, iOS rundet selbst), Browser-Tab (32 und 16).
+Jede Richtung hat eine kleine Fassung für 32 und 16 px (weniger Teile, kräftigere Formen); daneben steht zum Vergleich
+das große Bild einfach verkleinert. Hell und dunkel ist die Umgebung (Schreibtisch, Startbildschirm, Tab-Leiste), das
+Logo selbst bleibt gleich. Verworfen und nicht wiederholt: Ensō, Bambusnest, Panda und Maus auf dem Rad, Monogramm.
+Nach der Abnahme baut Dojo 5 aus dem gewählten Entwurf resources/icon.svg, das Mac-Icon, die PWA-Icons und das Favicon.
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logo-Entwürfe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shojumaru&amp;family=Zen+Kaku+Gothic+New:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #141d17; color: #f5ecd8; font-family: 'Zen Kaku Gothic New', system-ui, sans-serif; }
+  .page { max-width: 1240px; margin: 0 auto; padding: 40px 24px 64px; }
+  .title { font-family: Shojumaru, serif; font-size: 28px; letter-spacing: 1px; color: #efab76; }
+  .lead { max-width: 820px; font-size: 15px; line-height: 1.5; color: #b7c5ae; }
+  .draft { margin-top: 28px; border-radius: 22px; background: #263629; border: 1px solid #405044; padding: 20px 22px 22px; }
+  .kicker { font-size: 12px; font-weight: 700; letter-spacing: .6px; color: #f2bd55; }
+  .name { font-family: Shojumaru, serif; font-size: 20px; letter-spacing: 1px; margin: 4px 0 6px; }
+  .draft p { margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: #b7c5ae; max-width: 820px; }
+  .rows { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 860px) { .rows { grid-template-columns: 1fr; } }
+  .env { border-radius: 16px; padding: 16px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px; }
+  .env.dark { background: linear-gradient(160deg, #2b2f3a, #12141a); color: #e8e8ee; }
+  .env.light { background: linear-gradient(160deg, #eef0f4, #cfd5de); color: #23262d; }
+  figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  figcaption { font-size: 11px; opacity: .75; text-align: center; }
+  .dock svg { width: 256px; height: 256px; display: block; }
+  .phone { width: 180px; height: 180px; border-radius: 40px; overflow: hidden; display: block; }
+  .tabs { display: flex; flex-direction: column; gap: 8px; }
+  .tab { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px 8px 0 0; font-size: 13px; min-width: 150px; }
+  .env.dark .tab { background: #3a3e4a; }
+  .env.light .tab { background: #ffffff; }
+  .tab svg { flex: none; display: block; }
+  .zoom { image-rendering: pixelated; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="ground" cx=".5" cy=".32" r=".85"><stop offset="0" stop-color="#2f4a35"/><stop offset="1" stop-color="#142019"/></radialGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#efab76" stop-opacity=".55"/><stop offset="1" stop-color="#efab76" stop-opacity="0"/></radialGradient>
+    <radialGradient id="halo" cx=".5" cy=".5" r=".5"><stop offset=".6" stop-color="#efab76" stop-opacity=".35"/><stop offset="1" stop-color="#efab76" stop-opacity="0"/></radialGradient>
+    <clipPath id="disc"><circle cx="512" cy="512" r="330"/></clipPath>
+    <clipPath id="mac"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+  </defs>
+
+  <!-- A: Bo frontal, die Tasse am Kinn, Dampf steigt auf. -->
+  <symbol id="a" viewBox="0 0 1024 1024">
+    <rect width="1024" height="1024" fill="url(#ground)"/>
+    <circle cx="512" cy="540" r="420" fill="url(#glow)"/>
+    <path d="M190 1024 Q206 740 512 716 Q818 740 834 1024 Z" fill="#182c23"/>
+    <circle cx="318" cy="292" r="92" fill="#182c23"/><circle cx="706" cy="292" r="92" fill="#182c23"/>
+    <path d="M290 270 Q318 250 342 274 M682 274 Q706 250 734 270" stroke="#698c66" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <ellipse cx="512" cy="470" rx="290" ry="250" fill="#f5dfb7"/>
+    <path d="M236 380 Q512 290 788 380 L794 432 Q512 344 230 432 Z" fill="#efab76"/>
+    <path d="M248 404 Q512 322 780 404" stroke="#a75732" stroke-width="6" fill="none"/>
+    <ellipse cx="400" cy="486" rx="62" ry="74" transform="rotate(22 400 486)" fill="#182c23"/>
+    <ellipse cx="624" cy="486" rx="62" ry="74" transform="rotate(-22 624 486)" fill="#182c23"/>
+    <path d="M374 496 Q400 468 426 496 M598 496 Q624 468 650 496" stroke="#f5dfb7" stroke-width="14" fill="none" stroke-linecap="round"/>
+    <ellipse cx="512" cy="566" rx="26" ry="17" fill="#182c23"/>
+    <path d="M488 596 Q512 612 536 596" stroke="#182c23" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <ellipse cx="318" cy="590" rx="28" ry="15" fill="#efab76" opacity=".85"/><ellipse cx="706" cy="590" rx="28" ry="15" fill="#efab76" opacity=".85"/>
+    <path d="M404 712 L620 712 L604 860 Q598 902 556 902 L468 902 Q426 902 420 860 Z" fill="#efab76"/>
+    <path d="M616 742 C700 722 704 852 606 842" stroke="#efab76" stroke-width="24" fill="none" stroke-linecap="round"/>
+    <ellipse cx="512" cy="712" rx="108" ry="22" fill="#985e3c" stroke="#f4c49c" stroke-width="8"/>
+    <ellipse cx="412" cy="812" rx="56" ry="46" fill="#182c23"/>
+    <path d="M488 690 C468 664 506 650 488 618 M538 692 C518 666 556 652 538 620" stroke="#f5ecd8" stroke-width="10" fill="none" stroke-linecap="round" opacity=".9"/>
+  </symbol>
+  <symbol id="a-s" viewBox="0 0 1024 1024">
+    <rect width="1024" height="1024" fill="#223829"/>
+    <circle cx="300" cy="280" r="120" fill="#182c23"/><circle cx="724" cy="280" r="120" fill="#182c23"/>
+    <ellipse cx="512" cy="480" rx="340" ry="290" fill="#f5dfb7"/>
+    <path d="M180 360 Q512 250 844 360 L850 440 Q512 340 174 440 Z" fill="#efab76"/>
+    <ellipse cx="386" cy="510" rx="80" ry="94" transform="rotate(22 386 510)" fill="#182c23"/>
+    <ellipse cx="638" cy="510" rx="80" ry="94" transform="rotate(-22 638 510)" fill="#182c23"/>
+    <path d="M352 526 Q386 486 420 526 M604 526 Q638 486 672 526" stroke="#f5dfb7" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M390 724 L634 724 L614 960 L410 960 Z" fill="#efab76"/>
+    <ellipse cx="512" cy="724" rx="122" ry="30" fill="#985e3c"/>
+  </symbol>
+
+  <!-- B: Bo schaut über den Rand einer großen Tasse, die Pfoten auf dem Rand. -->
+  <symbol id="b" viewBox="0 0 1024 1024">
+    <rect width="1024" height="1024" fill="url(#ground)"/>
+    <circle cx="512" cy="600" r="400" fill="url(#glow)"/>
+    <circle cx="330" cy="322" r="86" fill="#182c23"/><circle cx="694" cy="322" r="86" fill="#182c23"/>
+    <path d="M304 300 Q330 282 352 304 M672 304 Q694 282 720 300" stroke="#698c66" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <ellipse cx="512" cy="520" rx="272" ry="232" fill="#f5dfb7"/>
+    <path d="M250 422 Q512 340 774 422 L780 470 Q512 390 244 470 Z" fill="#efab76"/>
+    <path d="M262 444 Q512 368 766 444" stroke="#a75732" stroke-width="6" fill="none"/>
+    <ellipse cx="408" cy="540" rx="60" ry="70" transform="rotate(22 408 540)" fill="#182c23"/>
+    <ellipse cx="616" cy="540" rx="60" ry="70" transform="rotate(-22 616 540)" fill="#182c23"/>
+    <path d="M384 550 Q408 524 432 550 M592 550 Q616 524 640 550" stroke="#f5dfb7" stroke-width="13" fill="none" stroke-linecap="round"/>
+    <path d="M206 640 L818 640 L786 872 Q776 930 718 930 L306 930 Q248 930 238 872 Z" fill="#efab76"/>
+    <path d="M250 770 Q512 812 774 770" stroke="#f5dfb7" stroke-width="10" fill="none" opacity=".55"/>
+    <path d="M812 680 C904 684 900 826 796 820" stroke="#efab76" stroke-width="38" fill="none" stroke-linecap="round"/>
+    <ellipse cx="512" cy="640" rx="310" ry="46" fill="#985e3c" stroke="#f4c49c" stroke-width="12"/>
+    <ellipse cx="292" cy="636" rx="66" ry="42" fill="#182c23"/><ellipse cx="732" cy="636" rx="66" ry="42" fill="#182c23"/>
+    <path d="M840 520 C808 480 868 452 836 404 M180 540 C212 500 152 472 184 424" stroke="#f2bd55" stroke-width="12" fill="none" stroke-linecap="round" opacity=".8"/>
+  </symbol>
+  <symbol id="b-s" viewBox="0 0 1024 1024">
+    <rect width="1024" height="1024" fill="#223829"/>
+    <circle cx="300" cy="250" r="118" fill="#182c23"/><circle cx="724" cy="250" r="118" fill="#182c23"/>
+    <ellipse cx="512" cy="470" rx="330" ry="270" fill="#f5dfb7"/>
+    <path d="M190 370 Q512 270 834 370 L840 440 Q512 350 184 440 Z" fill="#efab76"/>
+    <ellipse cx="388" cy="520" rx="78" ry="88" transform="rotate(22 388 520)" fill="#182c23"/>
+    <ellipse cx="636" cy="520" rx="78" ry="88" transform="rotate(-22 636 520)" fill="#182c23"/>
+    <path d="M354 534 Q388 496 422 534 M602 534 Q636 496 670 534" stroke="#f5dfb7" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M130 640 L894 640 L850 990 L174 990 Z" fill="#efab76"/>
+    <ellipse cx="512" cy="640" rx="382" ry="56" fill="#985e3c"/>
+  </symbol>
+
+  <!-- C: Bo mit Tasse im runden Laternenlicht; das Licht ist die Form, die man auch winzig erkennt. -->
+  <symbol id="c" viewBox="0 0 1024 1024">
+    <rect width="1024" height="1024" fill="url(#ground)"/>
+    <circle cx="512" cy="512" r="420" fill="url(#halo)"/>
+    <circle cx="512" cy="512" r="330" fill="#efab76"/>
+    <g clip-path="url(#disc)">
+      <path d="M262 900 Q282 650 512 636 Q742 650 762 900 Z" fill="#182c23"/>
+    </g>
+    <circle cx="374" cy="318" r="64" fill="#182c23"/><circle cx="650" cy="318" r="64" fill="#182c23"/>
+    <ellipse cx="512" cy="470" rx="204" ry="176" fill="#f5dfb7"/>
+    <path d="M318 404 Q512 340 706 404 L710 440 Q512 378 314 440 Z" fill="#c0563b"/>
+    <ellipse cx="430" cy="482" rx="44" ry="52" transform="rotate(22 430 482)" fill="#182c23"/>
+    <ellipse cx="594" cy="482" rx="44" ry="52" transform="rotate(-22 594 482)" fill="#182c23"/>
+    <path d="M412 490 Q430 470 448 490 M576 490 Q594 470 612 490" stroke="#f5dfb7" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <ellipse cx="512" cy="540" rx="19" ry="12" fill="#182c23"/>
+    <path d="M494 562 Q512 574 530 562" stroke="#182c23" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M436 652 L588 652 L578 770 Q574 798 544 798 L480 798 Q450 798 446 770 Z" fill="#f5ecd8"/>
+    <path d="M584 676 C640 664 642 760 578 752" stroke="#f5ecd8" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <ellipse cx="512" cy="652" rx="76" ry="16" fill="#985e3c"/>
+  </symbol>
+  <symbol id="c-s" viewBox="0 0 1024 1024">
+    <rect width="1024" height="1024" fill="#223829"/>
+    <circle cx="512" cy="512" r="440" fill="#efab76"/>
+    <circle cx="330" cy="280" r="104" fill="#182c23"/><circle cx="694" cy="280" r="104" fill="#182c23"/>
+    <ellipse cx="512" cy="520" rx="300" ry="256" fill="#f5dfb7"/>
+    <ellipse cx="400" cy="540" rx="72" ry="84" transform="rotate(22 400 540)" fill="#182c23"/>
+    <ellipse cx="624" cy="540" rx="72" ry="84" transform="rotate(-22 624 540)" fill="#182c23"/>
+    <path d="M368 554 Q400 518 432 554 M592 554 Q624 518 656 554" stroke="#f5dfb7" stroke-width="24" fill="none" stroke-linecap="round"/>
+    <path d="M300 400 Q512 320 724 400 L730 460 Q512 380 294 460 Z" fill="#c0563b"/>
+  </symbol>
+</svg>
+
+<div class="page">
+  <div class="title">LOGO · BO ALS TEETRINKER</div>
+  <p class="lead">Drei Entwürfe für das neue App-Logo. Jeder steht so da, wie man ihn später sieht: im Dock, auf dem Startbildschirm des Handys und als kleines Bild im Browser-Tab, jeweils auf hellem und dunklem Grund. Für den Tab gibt es pro Entwurf eine kleine Fassung mit weniger Teilen; daneben steht das große Bild einfach verkleinert, damit man sieht, warum.</p>
+
+  <section class="draft" id="entwurf-a">
+    <div class="kicker">ENTWURF A</div>
+    <div class="name">TASSE AM KINN</div>
+    <p>Bo von vorn mit Stirnband, die Tasse dicht vor dem Kinn, darüber zwei Dampfwölkchen. Am nächsten an Bo in der App; klein bleiben Kopf, Ohren und die Tasse.</p>
+    <div class="rows" data-draft="a"></div>
+  </section>
+
+  <section class="draft" id="entwurf-b">
+    <div class="kicker">ENTWURF B</div>
+    <div class="name">ÜBER DEN TASSENRAND</div>
+    <p>Eine große Tasse füllt die untere Hälfte, Bo schaut mit geschlossenen Augen über den Rand und hält ihn mit beiden Pfoten. Die Tasse ist die Form, die man auch winzig erkennt.</p>
+    <div class="rows" data-draft="b"></div>
+  </section>
+
+  <section class="draft" id="entwurf-c">
+    <div class="kicker">ENTWURF C</div>
+    <div class="name">IM LATERNENLICHT</div>
+    <p>Bo mit Tasse vor einem runden, warmen Licht wie von einer Laterne. Das Stirnband ist rot, damit es sich vom Licht abhebt. Klein bleibt der helle Kreis mit dem Pandakopf.</p>
+    <div class="rows" data-draft="c"></div>
+  </section>
+</div>
+
+<script>
+  // Builds the same preview set for every draft: Dock (macOS frame), Handy (180), Tab (32 and 16: small version and plain scale-down).
+  const use = (id) => `<use href="#${id}"/>`;
+  const dock = (id) => `<svg viewBox="0 0 1024 1024"><g clip-path="url(#mac)"><g transform="translate(100 100) scale(.8047)">${use(id)}</g></g></svg>`;
+  const square = (id, px, extra = '') => `<svg width="${px}" height="${px}" viewBox="0 0 1024 1024" ${extra}>${use(id)}</svg>`;
+  const tab = (id, px, label) => `<div class="tab">${square(id, px)}<span>Pandafit · ${label}</span></div>`;
+  const env = (d, mode) => `
+    <div class="env ${mode}">
+      <figure class="dock">${dock(d)}<figcaption>Dock, 1024 (hier 256)</figcaption></figure>
+      <figure><span class="phone">${square(d, 180)}</span><figcaption>Handy, 180</figcaption></figure>
+      <figure class="tabs">
+        ${tab(d + '-s', 32, '32, klein')}
+        ${tab(d + '-s', 16, '16, klein')}
+        ${tab(d, 16, '16, verkleinert')}
+        <figcaption>Browser-Tab</figcaption>
+      </figure>
+      <figure>${square(d + '-s', 64)}<figcaption>kleine Fassung, 64</figcaption></figure>
+    </div>`;
+  for (const rows of document.querySelectorAll('.rows')) {
+    const d = rows.dataset.draft;
+    rows.innerHTML = env(d, 'dark') + env(d, 'light');
+  }
+</script>
+</body>
+</html>
