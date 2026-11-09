@@ -40,11 +40,12 @@ const login = async (page: Page) => {
   await page.getByLabel('Passwort').fill(PASSWORD);
   await page.getByRole('button', { name: 'Anmelden' }).click();
   await page.getByRole('heading', { level: 1, name: 'Heute' }).waitFor();
-  // The day page: forward to Morgen and back.
-  await page.getByRole('button', { name: 'Tag vor' }).click();
-  await page.getByRole('heading', { level: 1, name: 'Morgen' }).waitFor({ timeout: 5000 });
-  await page.getByRole('button', { name: 'Tag zurück' }).click();
-  await page.getByRole('heading', { level: 1, name: 'Heute' }).waitFor({ timeout: 5000 });
+  // The week path: a day opens its sheet, which closes again.
+  await page.getByRole('list', { name: 'Wochenweg' }).getByRole('button').first().click();
+  const daySheet = page.getByRole('dialog');
+  await daySheet.waitFor({ timeout: 5000 });
+  await daySheet.getByRole('button', { name: 'Schließen' }).click();
+  await daySheet.waitFor({ state: 'detached', timeout: 5000 });
 };
 
 try {
