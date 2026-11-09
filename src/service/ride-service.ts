@@ -13,8 +13,6 @@ import { exportFit } from './export/fit';
 import { readRide, RideRecorder } from './recorder';
 import { findOpenRides, resumePoint } from './recovery';
 
-/** Provisional value until the device test (Plan Task 2). */
-
 type Active = {
   recorder: RideRecorder; engine: RideEngine; session: Session; ftpW: number; recovered: boolean;
   /** Waits for the user's decision after a long standstill and counts no time. */

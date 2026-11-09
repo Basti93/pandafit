@@ -1,6 +1,6 @@
-import type { CoachClientMessage, CoachServerMessage } from '../shared/coach-protocol';
-import { applyRecord, type RecordKind, type TrackedRecord } from '../shared/records';
-import type { TrackingPort } from '../tracking/ports';
+import type { CoachClientMessage, CoachServerMessage } from '../../src/shared/coach-protocol';
+import { applyRecord, type RecordKind, type TrackedRecord } from '../../src/shared/records';
+import type { TrackingPort } from '../../src/tracking/ports';
 
 /**
  * The Mac renderer shows no screen that writes records any more (milestone Q), so the app does not use this port.

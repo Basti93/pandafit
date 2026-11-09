@@ -29,7 +29,7 @@ const CLICKER_SCAN_MS = 4000;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Real Bluetooth connection. Remembers the last used device UUID per device type,
- * because macOS returns UUIDs instead of addresses. Not yet tested on a real device (Plan Task 2).
+ * because macOS returns UUIDs instead of addresses.
  */
 export class NobleBlePort implements BlePort {
   private subs = new Map<DeviceKind, (b: Buffer) => void>();

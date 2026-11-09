@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { createCoachTrackingPort } from '../../src/ui/coachTrackingPort';
+import { createCoachTrackingPort } from '../support/coachTrackingPort';
 import { handleRecords } from '../../src/coach/tracking/records-api';
 import { RecordStore } from '../../src/coach/tracking/store';
 import { openIdb } from '../../src/web/idbStore';

@@ -7,7 +7,7 @@ import type { CoachServerMessage } from '../../src/shared/coach-protocol';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import { createWorkoutStore } from '../../src/tracking/store';
 import type { TrackingPort } from '../../src/tracking/ports';
-import { createCoachTrackingPort } from '../../src/ui/coachTrackingPort';
+import { createCoachTrackingPort } from '../support/coachTrackingPort';
 import { setup } from '../web-server/helpers';
 import { mac, phone, rec, setsOf, sides, wk, type Side } from './two-devices';
 
