@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { Env } from './App';
+import type { Env } from './app/env';
 import type { WebPort } from './webPort';
 
 /** What every screen of a signed-in session needs. Set once by the shell. */

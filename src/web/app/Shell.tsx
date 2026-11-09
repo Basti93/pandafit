@@ -1,0 +1,151 @@
+import { bodyOf } from '../../shared/record-bodies';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { openStoreCount, subscribeStores } from '../../tracking/registry';
+import { bikeOf, hasBike as bikeVisible, ridesOf } from '../../tracking/ui';
+import { CoachScreen } from '../../tracking/ui/CoachScreen';
+import { runView } from '../../tracking/ui/run-view';
+import { usePortRecords } from '../../tracking/ui/hooks';
+import { shouldShowInstallHint } from '../logic';
+import type { OpenState } from '../register';
+import { type WebPort } from '../webPort';
+import { MealsScreen, mealWeeks } from '../MealsScreen';
+import { CoachLink } from '../coachLink';
+import { LiveClient } from '../live';
+import { LiveRide } from '../LiveRide';
+import { Env, HINT_KEY, OPEN_MAX_AGE_MS, get } from './env';
+import { LoginForm } from './LoginForm';
+import { ErrorBoundary } from './ErrorBoundary';
+import { Heute } from './Heute';
+import { Training } from './Training';
+import { usePush, PushCard } from './Push';
+import { Tab, TABS, readMealsOn, saveMealsOn, NO_LINK, COACH_ASK_MS, noSub, visibleTabs, saveEndurance, tabFor } from './tabs';
+import { Ausdauer } from './Ausdauer';
+import { Profil } from './Profil';
+import { App } from './Boot';
+
+export function Shell({ account, env, port, onLogout, onRelogin }: { account: string; env: Env; port: WebPort; onLogout: () => void; onRelogin: (name: string) => void }) {
+  // "Weitermachen" on Heute opens the open workout itself, once; "Ansehen und anpassen" opens the sheet "Nächstes Training", once; every other way into Kraft shows the start screen.
+  const [entry, setEntry] = useState<'resume' | 'plan' | null>(null);
+  const openTab = (t: string): void => {
+    const next = tabFor(t);
+    if (!next) return;
+    if (t === 'rad' || t === 'laufen') saveEndurance(env, account, t);
+    setTab(next);
+  };
+  /** Set by a way into the coach from Heute: Woche opens with the chat open, once. */
+  const [chatOnOpen, setChatOnOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>(() => {
+    if (env.startTab === 'rad' || env.startTab === 'laufen') saveEndurance(env, account, env.startTab);
+    return tabFor(env.startTab) ?? 'heute';
+  });
+  const push = usePush(env, account);
+  // The ride companion: optional, a socket of its own, and nothing else in the app depends on it.
+  const live = useMemo(() => (env.openLive ? new LiveClient({ open: env.openLive, now: env.now, newId: env.newId }) : null), [env]);
+  useEffect(() => { live?.start(); return () => live?.stop(); }, [live]);
+  // Hevy, Garmin, Krafttraining and the meal plan are set on the coach's socket; it opens while Profil is shown, and once at the start.
+  const link = useMemo(() => (env.openLive ? new CoachLink({ open: env.openLive, status: async () => {
+    const res = await get(env, '/coach/status');
+    if (!res.ok) return null;
+    const j = await res.json() as { profileId?: unknown; moved?: unknown };
+    return { profileId: typeof j.profileId === 'string' ? j.profileId : null, moved: j.moved === true };
+  } }) : null), [env]);
+  useEffect(() => env.onOpenTab?.((t) => { const next = tabFor(t); if (!next) return; if (t === 'rad' || t === 'laufen') saveEndurance(env, account, t); setTab(next); }), [env, account]);
+  const [hint, setHint] = useState(false);
+  const [, tick] = useState(0);
+  const status = useSyncExternalStore(port.onStatus, port.status);
+  const workouts = usePortRecords(port, 'workout').records;
+  const openStores = useSyncExternalStore((cb) => subscribeStores(port, cb), () => openStoreCount(port));
+  // Essen only when the Mac sent a plan for this account: the meal plan is off by default.
+  const mealRecords = usePortRecords(port, 'mealplan').records;
+  const linkSnap = useSyncExternalStore(link?.subscribe ?? noSub, link?.snapshot ?? (() => NO_LINK));
+  const linkMeals = linkSnap.view ? linkSnap.view.meals?.on === true : null;
+  const [storedMeals, setStoredMeals] = useState(() => readMealsOn(env, account));
+  useEffect(() => { if (linkMeals !== null) { saveMealsOn(env, account, linkMeals); setStoredMeals(linkMeals); } }, [env, account, linkMeals]);
+  // Once per session: ask the account's coach for its switches, then let go. The stored value is only the fast first guess.
+  useEffect(() => {
+    if (!link) return;
+    let held = true;
+    const release = () => { if (held) { held = false; link.stop(); } };
+    const unsub = link.subscribe(() => { const s = link.snapshot(); if (s.view || s.unavailable) release(); });
+    link.start();
+    const give = setTimeout(release, COACH_ASK_MS); // not reached: keep what is stored
+    return () => { clearTimeout(give); unsub(); release(); };
+  }, [link]);
+  const hasMeals = (linkMeals ?? storedMeals) || mealWeeks(mealRecords, env.now()).length > 0;
+  // Laufen once "Laufen planen" is on or the run coach suggests it: nothing of it for a person who does not run.
+  const runRecords = usePortRecords(port, 'run').records;
+  const run = runView(runRecords ?? [], env.now());
+  const hasRun = run.visible || run.settings?.on === true;
+  // Rad once the coach published a plan to ride or a ride: nothing of it for a person who does not ride.
+  const bikeRecords = usePortRecords(port, 'bike').records;
+  const rideRecords = usePortRecords(port, 'ride').records;
+  const hasBike = bikeVisible(bikeOf(bikeRecords), ridesOf(rideRecords));
+  const hasEndurance = hasRun || hasBike;
+  const shown = visibleTabs({ meals: hasMeals, endurance: hasEndurance });
+  const tabs = TABS.filter(([t]) => shown.includes(t));
+  useEffect(() => { if (tab === 'ausdauer' && runRecords !== null && bikeRecords !== null && rideRecords !== null && !hasEndurance) setTab('heute'); }, [tab, hasEndurance, runRecords, bikeRecords, rideRecords]);
+  useEffect(() => { if (tab === 'essen' && mealRecords !== null && !hasMeals) setTab('heute'); }, [tab, hasMeals, mealRecords]);
+
+  // Open on this device: a recent open record, or a store this session has opened or still has unsaved. Unknown until the first read.
+  const state: OpenState = workouts === null ? 'unknown'
+    : openStores > 0 || workouts.some((r) => bodyOf('workout', r).endMs === null && env.now() - r.updatedMs < OPEN_MAX_AGE_MS) ? 'open' : 'none';
+  const lastState = useRef<OpenState | null>(null);
+  useEffect(() => { if (lastState.current !== state) { lastState.current = state; env.onWorkoutOpen?.(state); } });
+  useEffect(() => { const t = setInterval(() => tick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
+
+  useEffect(() => {
+    void env.persist().catch(() => {});
+    if (shouldShowInstallHint({ ua: env.ua, standalone: env.standalone, seen: env.storage.getItem(HINT_KEY) === '1' })) {
+      setHint(true);
+      env.storage.setItem(HINT_KEY, '1');
+    }
+    void port.sync();
+  }, [env, port]);
+
+  // While typing, the bottom bar steps aside, so the on-screen keyboard never pushes it over a field.
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const field = (t: EventTarget | null) => t instanceof HTMLElement && t.matches('input, textarea, select');
+    const on = (e: FocusEvent) => { if (field(e.target)) setTyping(true); };
+    const off = (e: FocusEvent) => { if (field(e.target) && !field(e.relatedTarget)) setTyping(false); };
+    document.addEventListener('focusin', on);
+    document.addEventListener('focusout', off);
+    return () => { document.removeEventListener('focusin', on); document.removeEventListener('focusout', off); };
+  }, []);
+
+  return (
+    <>
+      <main className="web-main">
+        <div className="web-top"><span className="web-wordmark">Pandafit</span></div>
+        <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => setTab('profil')}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+        </button>
+        {status === 'login' && (
+          <div className="tk-screen">
+            <LoginForm env={env}
+              note="Bitte melde dich neu an. Alles auf diesem Gerät bleibt erhalten, auch ein offenes Training."
+              before={() => port.pause()} failed={() => port.resume()}
+              onDone={(n) => { if (n === account) { port.resume(); void port.sync(); } else onRelogin(n); }} />
+          </div>
+        )}
+        {push.state?.showCard && <PushCard push={push.state} />}
+        {push.msg && <div className="tk-screen"><p role="status" className="tk-note">{push.msg}</p></div>}
+        {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
+        {live && <LiveRide client={live} now={env.now} />}
+        <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
+          {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
+          {tab === 'training' && <Training entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} />}
+          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
+          {tab === 'ausdauer' && hasEndurance && <Ausdauer hasRun={hasRun} hasBike={hasBike} />}
+          {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} showPrefs={false} openChat={chatOnOpen} />}
+          {tab === 'profil' && <Profil link={link} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}
+        </ErrorBoundary>
+      </main>
+      <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+        {tabs.map(([t, label]) => (
+          <button key={t} type="button" aria-current={tab === t ? 'page' : undefined} aria-pressed={tab === t} onClick={() => { setEntry(null); setChatOnOpen(false); setTab(t); }}>{label}</button>
+        ))}
+      </nav>
+    </>
+  );
+}
