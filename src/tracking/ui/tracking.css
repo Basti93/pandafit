@@ -517,8 +517,9 @@
 .tk-screen .tk-brush h1, .tk-screen .tk-brush h2, .tk-screen .tk-brush h3 { margin: 0; font-family: var(--font-display); font-weight: 400; text-transform: uppercase; line-height: 1.2; font-size: var(--text-xl); color: var(--text); }
 .tk-screen .tk-brush h3 { font-size: var(--text-l); }
 .tk-screen .card p.tk-maintext { color: var(--muted); }
-.tk-mainactions { display: flex; gap: var(--space-2); }
-.tk-mainactions > .primary { flex-grow: 1; }
+/* Buttons sit side by side while their labels fit on one line; otherwise they stack, each at full width. */
+.tk-mainactions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tk-mainactions > * { flex: 1 1 auto; white-space: nowrap; }
 .tk-bo { display: flex; gap: var(--space-3); align-items: flex-start; }
 .tk-bo-portrait { flex: none; width: 6rem; border-radius: var(--radius-card); background: radial-gradient(circle at 50% 60%, var(--glow), transparent 70%); }
 .tk-bo.mini .tk-bo-portrait { width: 3.4rem; }
