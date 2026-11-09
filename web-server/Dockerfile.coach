@@ -18,9 +18,7 @@ RUN npm ci --omit=dev --ignore-scripts
 COPY src/coach ./src/coach
 COPY src/shared ./src/shared
 COPY src/tracking ./src/tracking
-COPY src/service/recorder.ts ./src/service/
-COPY src/ride-format/recovery.ts ./src/ride-format/
-COPY src/ride-format/export ./src/ride-format/export
+COPY src/ride-format ./src/ride-format
 COPY scripts/garmin ./scripts/garmin
 RUN mkdir -p /data/home && chown -R node:node /data
 USER node
