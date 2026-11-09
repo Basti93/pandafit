@@ -1,3 +1,4 @@
+import { logServerErrors, fastifyLogger } from '../src/shared/node/log';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { existsSync, realpathSync, statSync, readFileSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
@@ -47,7 +48,8 @@ export const buildServer = (opts: {
   const now = opts.nowMs ?? Date.now;
   // No server-wide limit on a request's total time, so a slow but steady upload to the coach (up to 128 MiB) completes. A
   // connection that goes silent is cut instead; Node's headersTimeout still bounds the headers against slow senders.
-  const app = Fastify({ logger: false, bodyLimit: BODY_LIMIT, requestTimeout: 0, connectionTimeout: opts.idleMs ?? IDLE_MS });
+  const app = Fastify({ logger: fastifyLogger(), bodyLimit: BODY_LIMIT, requestTimeout: 0, connectionTimeout: opts.idleMs ?? IDLE_MS });
+  logServerErrors(app);
   app.server.maxConnections = MAX_CONNECTIONS;
   // Every route outside /coach keeps a total limit: a client trickling a body to /login or /records is cut when it is over.
   const limitMs = opts.requestLimitMs ?? REQUEST_LIMIT_MS;

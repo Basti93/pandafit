@@ -8,6 +8,9 @@ import { ruleBasedSession } from '../rules';
 import { loadState, type CoachState } from '../state';
 import { computeTogether } from '../together';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
+import { createLogger } from '../../shared/node/log';
+
+const log = createLogger('remote-coach');
 
 export type RemoteCoachOptions = {
   /** `<coachDir>/remote/<profileId>`: state.json and queue.json. */
@@ -122,7 +125,7 @@ export class RemoteCoach {
   private queueBlocked = false;
   private saveQueue(): void {
     if (this.queueBlocked) return;
-    try { writeAtomic(this.queueFile, this.queue); } catch { /* kept in memory, written with the next change */ }
+    try { writeAtomic(this.queueFile, this.queue); } catch (e) { log.error('offline queue not saved', e); /* kept in memory, written with the next change */ }
   }
 
   private changed(): void { try { this.opts.onMessage(this.view()); } catch { /* a listener never stops the coach */ } }
@@ -211,7 +214,7 @@ export class RemoteCoach {
     if (m.type === 'coach-state') {
       if (!isObj(m.state) || (m.state as { profileId?: unknown }).profileId !== this.opts.profileId) return;
       this.cache = { receivedMs: this.opts.nowMs(), view: m as CoachStateMessage };
-      try { writeAtomic(this.stateFile, this.cache); } catch { /* shown from memory, written with the next state */ }
+      try { writeAtomic(this.stateFile, this.cache); } catch (e) { log.error('state cache not saved', e); /* shown from memory, written with the next state */ }
       this.changed();
       return;
     }

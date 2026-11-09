@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import type { IncomingMessage } from 'node:http';
 import path from 'node:path';
+import { logServerErrors, fastifyLogger } from '../../shared/node/log';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { parseCoachClientMessage } from '../../shared/coach-messages';
@@ -59,7 +60,8 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
   const nowMs = opts.nowMs ?? (() => Date.now());
   // No limit on a request's total time: an upload streamed through the api at the client's pace (up to 128 MiB) must complete.
   // A connection that goes silent is cut instead; Node's headersTimeout still bounds the headers.
-  const app = Fastify({ logger: false, bodyLimit: 64 * 1024, requestTimeout: 0, connectionTimeout: opts.idleMs ?? 60_000 });
+  const app = Fastify({ logger: fastifyLogger(), bodyLimit: 64 * 1024, requestTimeout: 0, connectionTimeout: opts.idleMs ?? 60_000 });
+  logServerErrors(app);
   const tokenDigest = digest(opts.internalToken);
 
   const tokenOk = (h: unknown): boolean => typeof h === 'string' && h.length > 0 && timingSafeEqual(digest(h), tokenDigest);

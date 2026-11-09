@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import { createLogger } from '../shared/node/log';
+import { guardChild } from './python-runner';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { GarminSyncInfo } from '../shared/coach-protocol';
@@ -12,6 +14,8 @@ const QUICK_MS = 50 * 60_000;
 const WHEN_COMPLETE_MS = 6 * HOUR;
 const AFTER_RATE_LIMIT_MS = 6 * HOUR;
 const AFTER_FAILURE_MS = 30 * 60_000;
+const SYNC_TIMEOUT_MS = 10 * 60_000;
+const log = createLogger('garmin-sync');
 const EXIT_REAUTH = 10;
 const EXIT_RATE = 11;
 const SAFE_ID = /^[A-Za-z0-9-]+$/;
@@ -118,8 +122,9 @@ export class GarminSync {
     try {
       child = (this.opts.spawnFn ?? spawn)(this.opts.python, [
         this.opts.script, '--tokens', handle.dir, '--db', path.join(this.dataDir(id), 'garmin.db'), ...(quick ? ['--quick'] : []),
-      ], { stdio: ['ignore', 'pipe', 'ignore'] });
-    } catch { checkin(); failed(); return; }
+      ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) { log.error('sync helper did not start', e, { profileId: id }); checkin(); failed(); return; }
+    const guard = guardChild(child, SYNC_TIMEOUT_MS, () => log.warn('sync timed out', { profileId: id }));
     const run: Run = { child, handle, stopped: false };
     this.running.set(id, run);
     if (quick) this.save(id, { lastQuickMs: startedAt });
@@ -141,6 +146,8 @@ export class GarminSync {
     const end = (code: number | null): void => {
       if (ended) return;
       ended = true;
+      guard.clear();
+      if (code !== 0 && !this.running.get(id)?.stopped) log.warn('sync helper failed', { profileId: id, code, stderr: guard.stderr().slice(-300) });
       checkin();
       if (this.running.get(id) === run) this.running.delete(id);
       if (run.stopped) { this.opts.onUpdate(); return; }

@@ -48,7 +48,7 @@ test('no run starts during a ride or without tokens', () => {
 test('the ops go to stdin and the last JSON line is the result', () => {
   const { w, children, spawnFn, checkins, results } = make();
   expect(w.send('pa', '2026-11-02', OPS)).toBe(true);
-  expect(spawnFn).toHaveBeenCalledWith('py', ['w.py', '--tokens', '/run/pa'], expect.objectContaining({ stdio: ['pipe', 'pipe', 'ignore'] }));
+  expect(spawnFn).toHaveBeenCalledWith('py', ['w.py', '--tokens', '/run/pa'], expect.objectContaining({ stdio: ['pipe', 'pipe', 'pipe'] }));
   expect(children[0]!.stdin.end).toHaveBeenCalledWith(JSON.stringify(OPS));
   // One run per profile at a time.
   expect(w.send('pa', '2026-11-02', OPS)).toBe(false);

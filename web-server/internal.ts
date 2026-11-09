@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { lookup as dnsLookup } from 'node:dns/promises';
+import { logServerErrors, fastifyLogger } from '../src/shared/node/log';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { openDb } from './db';
 import type { DatabaseSync } from 'node:sqlite';
@@ -29,7 +30,8 @@ const bare = (ip: string): string => ip.replace(/^::ffff:/i, '').toLowerCase();
 export const buildInternal = (opts: { dbPath: string; db?: DatabaseSync; token: string; push?: PushOptions; nowMs?: () => number; peer?: PeerCheck }): FastifyInstance => {
   const db = opts.db ?? openDb(opts.dbPath);
   const now = opts.nowMs ?? Date.now;
-  const app = Fastify({ logger: false, bodyLimit: BODY_LIMIT, requestTimeout: 30000 });
+  const app = Fastify({ logger: fastifyLogger(), bodyLimit: BODY_LIMIT, requestTimeout: 30000 });
+  logServerErrors(app);
   // No version announcement here: the public app does that once.
   const { push } = pushFor(db, opts.push && { ...opts.push, version: null }, now);
   const expected = digest(`Bearer ${opts.token}`);

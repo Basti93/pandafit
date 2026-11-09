@@ -17,6 +17,9 @@ const KEY_FILE = 'api-key';
 
 import type { Effort } from '../shared/records';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
+import { createLogger } from '../shared/node/log';
+
+const log = createLogger('hevy');
 
 export type StrengthWorkout = {
   id: string; title: string; startMs: number; durationS: number;
@@ -170,7 +173,7 @@ export class HevySync {
       if (e instanceof Rejected) this.rejected = true;
       this.failedAtMs = now;
       this.store.lastTryMs = now;
-      try { this.save(); } catch { /* try again on the next run */ }
+      try { this.save(); } catch (e) { log.error('hevy state not saved', e); /* try again on the next run */ }
       return false;
     } finally {
       this.running = false;

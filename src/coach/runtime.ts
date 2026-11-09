@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createLogger } from '../shared/node/log';
 import type { Profile } from '../shared/profiles';
 import type { CoachClientMessage, CoachServerMessage, CoachStateMessage } from '../shared/coach-protocol';
 import { suggestProfile } from '../shared/garmin-profile';
@@ -140,6 +141,7 @@ export type CoachRuntime = {
   accountSync: AccountSync;
 };
 
+const log = createLogger('runtime');
 const RETRY_MS = 30 * 60_000;
 const GARMIN_CACHE_MS = 5 * 60_000;
 const GARMIN_DAYS = 60;
@@ -531,7 +533,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     } catch { return null; }
   };
   const refresh = (profileId: string): void => {
-    void coach.refresh(profileId).catch(() => {}).finally(publish);
+    void coach.refresh(profileId).catch((e) => log.error('coach refresh', e)).finally(publish);
     publish();
   };
   const uploader = new GarminUploader({
@@ -582,9 +584,9 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     if (m.type === 'meals-settings') meals.setSettings(m.profileId, m.settings);
     if (m.type === 'meals-eater') meals.setEater(m.profileId, m.week, m.meal, m.person, m.on === true, atMs);
     if (m.type === 'meals-item') meals.setItem(m.profileId, m.week, m.item, m.state, atMs);
-    if (m.type === 'meals-replan') { void meals.replan(m.profileId, m.week).catch(() => {}).finally(sync); }
-    if (m.type === 'meals-swap') { void meals.swap(m.profileId, m.week, m.meal, m.ai === true).catch(() => {}).finally(sync); }
-    if (m.type === 'meals-chat') { void meals.chat(m.profileId, m.week, m.text).catch(() => {}).finally(sync); }
+    if (m.type === 'meals-replan') { void meals.replan(m.profileId, m.week).catch((e) => log.error('meals replan', e)).finally(sync); }
+    if (m.type === 'meals-swap') { void meals.swap(m.profileId, m.week, m.meal, m.ai === true).catch((e) => log.error('meals swap', e)).finally(sync); }
+    if (m.type === 'meals-chat') { void meals.chat(m.profileId, m.week, m.text).catch((e) => log.error('meals chat', e)).finally(sync); }
     sync();
   };
 
@@ -613,7 +615,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
         return;
       }
       // The password is only passed on to the server once, never stored, logged or sent back.
-      if (m.type === 'account-link') { void accountSync.link(m.profileId, m.url, m.name, m.password).catch(() => {}).finally(publish); publish(); return; }
+      if (m.type === 'account-link') { void accountSync.link(m.profileId, m.url, m.name, m.password).catch((e) => log.error('account link', e)).finally(publish); publish(); return; }
       if (m.type === 'account-unlink') { accountSync.unlink(m.profileId); publish(); return; }
       // The server coaches a moved profile; only its meals stay here while the meal plan is local.
       if (!coachHere(m.profileId) && !m.type.startsWith('meals-')) {
@@ -624,7 +626,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       if (!READ_ONLY.has(m.type)) accountSync.touch(m.profileId);
       // Login credentials are only passed on, never stored or sent back.
       // The key is only passed on and stored privately, never sent back.
-      if (m.type === 'hevy-connect') { void hevy.connect(m.profileId, m.key).catch(() => {}).finally(publish); publish(); return; }
+      if (m.type === 'hevy-connect') { void hevy.connect(m.profileId, m.key).catch((e) => log.error('hevy connect', e)).finally(publish); publish(); return; }
       if (m.type === 'hevy-disconnect') { hevy.disconnect(m.profileId); publish(); return; }
       if (m.type === 'garmin-login') { garmin.login(m.profileId, m.email, m.password); return; }
       if (m.type === 'garmin-mfa') { garmin.mfa(m.profileId, m.code); return; }
@@ -694,7 +696,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       const now = nowMs();
       for (const p of list) {
         const s = coach.state(p.id);
-        if (runs && !coach.isThinking(p.id)) void coach.ensureDebrief(p.id).catch(() => {}).finally(publish);
+        if (runs && !coach.isThinking(p.id)) void coach.ensureDebrief(p.id).catch((e) => log.error('coach debrief', e)).finally(publish);
         if (!runs || !s.dirty || coach.isThinking(p.id)) continue;
         const waited = now - (s.dirtySinceMs ?? now) >= waitMs;
         if (s.awaitingFeedback && !waited) continue;
@@ -703,15 +705,15 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       }
       // Separate safeguard: Hevy must never disturb the coach run or a ride, and waits while a heavy run goes.
       const syncs = runs && !heavyBusy();
-      if (syncs) void hevy.tick(list.map((p) => p.id), noOpenRide).catch(() => {}).finally(publish);
+      if (syncs) void hevy.tick(list.map((p) => p.id), noOpenRide).catch((e) => log.error('hevy tick', e)).finally(publish);
       // Separate safeguard: the gym coach must never disturb the bike coach or a ride, and runs with no ride open only.
       // Unknown exercise titles are then classified once; the answer is stored and applied by code, never by AI later. Written to this profile, the mirror copies it.
-      if (runs) for (const p of list) { try { void gym.tick(p.id).catch(() => {}).then(() => exerciseMapper.run(p.id)).then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch(() => {}).finally(publish); } catch { /* try again on the next run */ } }
+      if (runs) for (const p of list) { try { void gym.tick(p.id).catch((e) => log.error('gym tick', e)).then(() => exerciseMapper.run(p.id)).then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('gym tick (step 2)', e)).finally(publish); } catch { /* try again on the next run */ } }
       // Separate safeguard: the run coach must never disturb a ride or the other coaches, and plans with no ride open only.
-      if (runs) for (const p of list) { try { void run.tick(p.id).catch(() => {}).finally(publish); } catch { /* try again on the next run */ } }
+      if (runs) for (const p of list) { try { void run.tick(p.id).catch((e) => log.error('run tick', e)).finally(publish); } catch { /* try again on the next run */ } }
       // Separate safeguard: the meal plan must never disturb a ride or the coach. It plans only with no ride open.
       // A shared meal plan is ticked by its owner.
-      if (ownCoach && scheduled() && mealsHere()) void ownCoach.tick().catch(() => {}).finally(publish);
+      if (ownCoach && scheduled() && mealsHere()) void ownCoach.tick().catch((e) => log.error('own coach tick', e)).finally(publish);
       // One exercise catalog for every profile on this store: mirrored on every scan (cheap, idempotent, the first scan covers the start). Touches no workout.
       if (free) mealsChanged(mirrorExercises(records, all.map((p) => p.id)));
       // The together page for linked accounts: written only when it changes, never with a ride open. Never throws.
@@ -733,7 +735,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       // The accepted week plan is never changed: the chat proposes the updated week, the rider takes it or keeps the old one.
       if (runs) for (const [id, acts] of weekReviews) {
         if (!list.some((p) => p.id === id)) { weekReviews.delete(id); continue; }
-        void chat.reviewWeek(id, acts).then((r) => { if (r === 'done' && weekReviews.get(id) === acts) weekReviews.delete(id); if (r === 'done') mealsChanged([id]); }).catch(() => {}).finally(publish);
+        void chat.reviewWeek(id, acts).then((r) => { if (r === 'done' && weekReviews.get(id) === acts) weekReviews.delete(id); if (r === 'done') mealsChanged([id]); }).catch((e) => log.error('chat week review', e)).finally(publish);
       }
       if (free && scheduled()) for (const p of list) {
         try {
@@ -742,25 +744,25 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
           if (due.week && now - (weekTried.get(p.id) ?? 0) >= WEEK_RETRY_MS) {
             weekTried.set(p.id, now);
             const monday = mondayOf(dateKey(now));
-            void chat.openWeek(p.id).then((wrote) => { if (wrote) { sentPrompts.mark(p.id, 'week', monday); mealsChanged([p.id]); } }).catch(() => {}).finally(publish);
+            void chat.openWeek(p.id).then((wrote) => { if (wrote) { sentPrompts.mark(p.id, 'week', monday); mealsChanged([p.id]); } }).catch((e) => log.error('chat open week', e)).finally(publish);
           }
         } catch { /* next scan */ }
       }
       // Chat answers: a message gets its answer even while scheduled runs pause. Never with a ride open.
-      if (free) for (const p of list) { try { void chat.tick(p.id).then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch(() => {}).finally(publish); } catch { /* next scan */ } }
+      if (free) for (const p of list) { try { void chat.tick(p.id).then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('chat tick', e)).finally(publish); } catch { /* next scan */ } }
       // Separate safeguard: a mail problem never reaches the coach loop; the mailer catches and logs once.
-      if (weeklyMailer) for (const p of list) { try { void weeklyMailer.tick(p.id, contactOfProfile(records, p.id), weeklyMailOf(p.id)).catch(() => {}); } catch { /* next scan */ } }
+      if (weeklyMailer) for (const p of list) { try { void weeklyMailer.tick(p.id, contactOfProfile(records, p.id), weeklyMailOf(p.id)).catch((e) => log.error('weekly mail tick', e)); } catch { /* next scan */ } }
       // The stats record for every profile coached here, linked or not: written only when it changes, never with a ride open. Never throws.
       if (free) mealsChanged(exportStats({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: statsDue }));
       // The health record and the weekly note on it: only on change and once per week, never with a ride open. Never throws.
       if (free) {
         mealsChanged(exportHealthNow(list.map((p) => p.id)));
-        for (const p of list) { try { const body = healthContent(p.id); if (body) void healthText.tick(p.id, body).then((wrote) => { if (wrote) mealsChanged(exportHealthNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
+        for (const p of list) { try { const body = healthContent(p.id); if (body) void healthText.tick(p.id, body).then((wrote) => { if (wrote) mealsChanged(exportHealthNow([p.id])); }).catch((e) => log.error('health text tick', e)); } catch { /* next scan */ } }
       }
       // The coach sentence of the day, renewed after each finished training: only on change, at most four AI calls a day, never with a ride open or in quiet hours (`scheduled()`). Never throws.
       if (free) {
         mealsChanged(exportDayTextNow(list.map((p) => p.id)));
-        if (scheduled()) for (const p of list) { try { if (!coachHere(p.id)) continue; const last = dayLooked.get(p.id); if (last !== undefined && now - last < DAY_LOOK_EVERY_MS && now >= last) continue; dayLooked.set(p.id, now); const input = dayInputOf(p.id, now); if (dayHasData(input)) void dayText.tick(p.id, input).then((wrote) => { if (wrote) mealsChanged(exportDayTextNow([p.id])); }).catch(() => {}); } catch { /* next scan */ } }
+        if (scheduled()) for (const p of list) { try { if (!coachHere(p.id)) continue; const last = dayLooked.get(p.id); if (last !== undefined && now - last < DAY_LOOK_EVERY_MS && now >= last) continue; dayLooked.set(p.id, now); const input = dayInputOf(p.id, now); if (dayHasData(input)) void dayText.tick(p.id, input).then((wrote) => { if (wrote) mealsChanged(exportDayTextNow([p.id])); }).catch((e) => log.error('day look', e)); } catch { /* next scan */ } }
       }
       // All recent activities from every source for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportActivities({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: (id) => { try { return activityItems(activitiesOf(id), garminData(id)?.activities ?? []); } catch { return null; } } }));

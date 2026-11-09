@@ -5,6 +5,9 @@ import path from 'node:path';
 import type { Exercise } from '../../shared/exercises';
 import type { ExerciseTemplate, GymWorkout } from './types';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
+import { createLogger } from '../../shared/node/log';
+
+const log = createLogger('hevy-routines');
 
 const API = 'https://api.hevyapp.com';
 const FOLDER_TITLE = 'Pandafit';
@@ -85,7 +88,7 @@ export class HevyRoutines {
     try {
       fs.mkdirSync(this.opts.dir, { recursive: true, mode: 0o700 });
       writeJsonAtomic(file, { fetchedMs: this.opts.nowMs(), templates }, { mode: 0o600 });
-    } catch { /* The fetched templates still count; the next plan fetches again. */ }
+    } catch (e) { log.error('hevy templates not cached', e); /* The fetched templates still count; the next plan fetches again. */ }
     return templates;
   }
 
