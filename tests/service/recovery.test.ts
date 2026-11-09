@@ -62,6 +62,13 @@ test.each([['empty', ''], ['broken', '{"rideId":']])('a ride with %s meta.json a
   // The rebuilt meta is saved, so the next read works.
   expect(readRide(dir, 'ride-9').meta.status).toBe('open');
 });
+test('a ride without meta.json keeps its profile from session.json', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+  fs.mkdirSync(path.join(dir, 'ride-8'));
+  fs.writeFileSync(path.join(dir, 'ride-8', 'samples.jsonl'), sampleLine(0, 5000));
+  fs.writeFileSync(path.join(dir, 'ride-8', 'session.json'), JSON.stringify({ profileId: 'p1', session: { id: 'sess-1' }, ftpW: 200 }));
+  expect(findOpenRides(dir)).toEqual([expect.objectContaining({ rideId: 'ride-8', profileId: 'p1', status: 'open' })]);
+});
 test('a ride with broken meta.json and no samples is still skipped', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
   fs.mkdirSync(path.join(dir, 'ride-9'));

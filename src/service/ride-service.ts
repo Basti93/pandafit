@@ -96,7 +96,7 @@ export class RideService {
           rideId, profileId: msg.profileId, sessionId: session.id, startedAtMs: this.deps.nowMs(), status: 'open',
         }, this.deps.recorderFs);
         const sessionFile = path.join(this.deps.dir, rideId, 'session.json');
-        writeJsonAtomic(sessionFile, { formatVersion: 1, session, ftpW: msg.ftpW, maxHrBpm: msg.maxHrBpm, hrMaxBpm: msg.hrMaxBpm });
+        writeJsonAtomic(sessionFile, { formatVersion: 1, profileId: msg.profileId, session, ftpW: msg.ftpW, maxHrBpm: msg.maxHrBpm, hrMaxBpm: msg.hrMaxBpm });
         this.guard(() => this.deps.onRideStart?.());
         this.setActive({ recorder, engine: this.newEngine(session, msg.ftpW, { maxHrBpm: msg.maxHrBpm, hrMaxBpm: msg.hrMaxBpm }), session, ftpW: msg.ftpW, recovered: false });
         return;

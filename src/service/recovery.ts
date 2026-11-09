@@ -13,8 +13,13 @@ const rebuildMeta = (dir: string, name: string): RideMeta | null => {
   }
   if (!first) return null;
   let sessionId = '';
-  try { sessionId = String((JSON.parse(fs.readFileSync(path.join(dir, name, 'session.json'), 'utf8')) as { session: { id: string } }).session.id); } catch { /* unknown session */ }
-  const meta: RideMeta = { rideId: name, profileId: '', sessionId, startedAtMs: first.wallClockMs, status: 'open', formatVersion: 1 };
+  let profileId = '';
+  try {
+    const stored = JSON.parse(fs.readFileSync(path.join(dir, name, 'session.json'), 'utf8')) as { session: { id: string }; profileId?: string };
+    sessionId = String(stored.session.id);
+    if (typeof stored.profileId === 'string') profileId = stored.profileId;
+  } catch { /* unknown session */ }
+  const meta: RideMeta = { rideId: name, profileId, sessionId, startedAtMs: first.wallClockMs, status: 'open', formatVersion: 1 };
   writeJsonAtomic(path.join(dir, name, 'meta.json'), meta);
   return meta;
 };
@@ -23,7 +28,8 @@ export const findOpenRides = (dir: string): RideMeta[] => {
   if (!fs.existsSync(dir)) return [];
   const open: RideMeta[] = [];
   for (const name of fs.readdirSync(dir)) {
-    if (!fs.existsSync(path.join(dir, name, 'meta.json'))) continue;
+    // A crash before the first meta.json write leaves only the samples; they still count as a ride.
+    if (!fs.existsSync(path.join(dir, name, 'meta.json')) && !fs.existsSync(path.join(dir, name, 'samples.jsonl'))) continue;
     try {
       let meta: RideMeta | null;
       try { meta = readMeta(dir, name); } catch { meta = rebuildMeta(dir, name); }
