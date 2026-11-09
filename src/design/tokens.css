@@ -39,7 +39,7 @@
   --bubble-me-line: #7a5a3e;
   --good-wash: rgba(156, 186, 114, .16); /* soft green fill of a tag */
   --focus-glow: rgba(239, 171, 118, .14); /* glow of the focus card in a running workout */
-  /* Bo's places (BoScene, brand/bo-*.svg): stems, nodes, leaves, woven wood */
+  /* Bo's places (BoScene, brand/bo-*.svg) */
   --scene-stem: #4f6b43;
   --scene-node: #8fae6e;
   --scene-leaf: #6f9152;
@@ -50,6 +50,18 @@
   --scene-lantern-line: #c96a3a; /* shared */
   --scene-lantern-cap: #5c4630; /* shared */
   --scene-string: #7f9180; /* shared */
+  --scene-moon: #f2e3bf;
+  --scene-moon-glow: rgba(242, 227, 191, .25);
+  --scene-hill: #22332a;
+  --scene-hill-far: #2c4031;
+  --scene-floor: #2b2418;
+  --scene-floor-line: #3a3020;
+  --scene-wall: #3b4a3e;
+  --scene-path: #5e5230;
+  --scene-iron: #1b1b1b; /* shared */
+  --scene-paper: #d9cfbf; /* shared */
+  --scene-skin: #d08a5a; /* shared */
+  --scene-frame: #6b4226; /* shared */
   --danger: #e59585;
   --low: #f2bd55; /* shared */
 
@@ -167,6 +179,14 @@
     --scene-wood-deep: #a68e55;
     --scene-weave: #8a7547;
     --scene-hollow: #d9ccab;
+    --scene-moon: #e6d3a2;
+    --scene-moon-glow: rgba(200, 170, 110, .25);
+    --scene-hill: #cfd8bf;
+    --scene-hill-far: #dde2cd;
+    --scene-floor: #e5d8b9;
+    --scene-floor-line: #cdbb91;
+    --scene-wall: #dfe3d2;
+    --scene-path: #c9b98c;
     --danger: #a8372a;
 
     --pick: #e1e8d3;

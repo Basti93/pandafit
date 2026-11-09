@@ -46,7 +46,7 @@ export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
 export { ConfirmLink } from './ConfirmLink';
 export { AskBoButton, BackButton, BrushTitle, BoBubble, Bubble, Card, HeadCard, Kicker, MainCard, PillButton, RoundButton, SeeProposalButton, Tag, TimerCard } from './Dojo';
-export { BoScene } from './BoScene';
+export { BoScene, PLACES, placeOf } from './BoScene';
 export type { BoPlace } from './BoScene';
 export { MealPicture } from './MealPicture';
 export { RowCard, WordTile } from './RowCard';

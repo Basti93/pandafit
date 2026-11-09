@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { PandaPortrait, type PandaGesture } from '../PandaPortrait';
-import { BoScene, poseIn, type BoPlace } from './BoScene';
+import { BoScene, placeOf, poseIn, type BoPlace } from './BoScene';
 import { Icon, type IconName } from './Icon';
 import { BO, BO_LINES } from '../bo';
 
@@ -132,13 +132,19 @@ export function Tag({ children }: { children: ReactNode }) {
   return <span className="tk-tag"><Icon name="haken" size={14} />{children}</span>;
 }
 
-/** Bo speaks: his portrait (in a scene when `place` is set) and a bubble next to it. `mini` is the still picture only; a moving mini Bo is a PandaPortrait set by the caller. */
-export function BoBubble({ children, actions, pose, portrait = 'full', place, foot }: { children: ReactNode; actions?: ReactNode; foot?: ReactNode; pose?: PandaGesture | null; portrait?: 'full' | 'mini' | 'none'; place?: BoPlace }) {
+/**
+ * Bo speaks: his portrait (in a scene when `place` is set) and a bubble next to it. `mini` is the still picture only and never shows a place; a moving mini Bo is a PandaPortrait set by the caller.
+ * `place="own"` puts Bo where his pose belongs, decided when he takes the pose (`onTake`): before that the place follows `pose`; if he took none, he stays in the nest even when a pose arrives later.
+ * A fixed place shows `poseIn(place, pose)`.
+ */
+export function BoBubble({ children, actions, pose, portrait = 'full', place, foot }: { children: ReactNode; actions?: ReactNode; foot?: ReactNode; pose?: PandaGesture | null; portrait?: 'full' | 'mini' | 'none'; place?: BoPlace | 'own' }) {
+  const [taken, setTaken] = useState<PandaGesture | null | undefined>(undefined);
   if (portrait === 'none') return <div className="tk-bo"><Bubble actions={actions} foot={foot} tail="none">{children}</Bubble></div>;
-  const bo = portrait === 'mini' ? <img className="tk-bo-still" src="/brand/panda-still.svg" alt="" /> : <PandaPortrait pose={place ? poseIn(place, pose) : pose} />;
+  const where: BoPlace | undefined = portrait === 'mini' || !place ? undefined : place === 'own' ? placeOf(taken === undefined ? pose : taken) : place;
+  const bo = portrait === 'mini' ? <img className="tk-bo-still" src="/brand/panda-still.svg" alt="" /> : <PandaPortrait pose={place && place !== 'own' ? poseIn(place, pose) : pose} onTake={place === 'own' ? setTaken : undefined} />;
   return (
     <div className={`tk-bo ${portrait}`}>
-      <span className="tk-bo-portrait">{place ? <BoScene place={place}>{bo}</BoScene> : bo}</span>
+      <span className="tk-bo-portrait">{where ? <BoScene place={where}>{bo}</BoScene> : bo}</span>
       <Bubble actions={actions} foot={foot}>{children}</Bubble>
     </div>
   );
