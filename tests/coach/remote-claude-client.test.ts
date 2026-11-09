@@ -27,7 +27,7 @@ test('maps_statuses_to_claude_error_kinds', async () => {
 });
 
 test('client_limit_names_the_service_limit', async () => {
-  await expect(askRemote(input, cfg(respond(429, { status: 'client_limit' }) as unknown as typeof fetch))).rejects.toThrow('Tageslimit des Coaches im KI-Dienst erreicht');
+  await expect(askRemote(input, cfg(respond(429, { status: 'client_limit' }) as unknown as typeof fetch))).rejects.toThrow('Tageslimit von Bo im KI-Dienst erreicht');
 });
 
 test('network_error_maps_to_failed', async () => {

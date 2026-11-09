@@ -54,7 +54,7 @@ test('without a plan the suggestion, the way to it and "Etwas anderes heute?" ar
   expect(screen.getByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
   expect(screen.getByText(/^Das passt heute als ruhiger Einstieg/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Etwas anderes heute?' }));
-  expect(screen.getByText('Der Coach schlägt dir dann etwas für diese Zeit vor.')).toBeTruthy();
+  expect(screen.getByText('Bo schlägt dir dann etwas für diese Zeit vor.')).toBeTruthy();
 });
 test('a rest day says it once', () => {
   render(<TodayCard weekplans={[plan([])]} runs={[]} nowMs={NOW} gym={null} />);

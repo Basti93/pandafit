@@ -268,7 +268,7 @@ describe('Essen on the phone', () => {
     expect((screen.getByRole('button', { name: 'Hinzufügen' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(field, { target: { value: 'https://rezepte.example/a' } });
     fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }));
-    expect(await screen.findByText('Der Coach schaut sich die Seite gleich an.')).toBeTruthy();
+    expect(await screen.findByText('Bo schaut sich die Seite gleich an.')).toBeTruthy();
     const phone = await openIdb('anna', a.factory);
     const sent = (await phone.list('mealplan')).filter((r) => r.id.startsWith('link-'));
     expect(sent).toHaveLength(1);
@@ -299,7 +299,7 @@ describe('Essen on the phone', () => {
   it('without a plan there is no Essen and so no chat: nothing is sent', async () => {
     const a = await boot({ account: 'anna', seed: [] });
     await screen.findByRole('navigation');
-    expect(screen.queryByLabelText('Nachricht an den Coach')).toBeNull();
+    expect(screen.queryByLabelText('Nachricht an Bo')).toBeNull();
     const s = await openIdb('anna', a.factory);
     expect((await s.list('mealplan')).length).toBe(0);
     s.close();

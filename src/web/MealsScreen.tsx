@@ -71,7 +71,7 @@ const chatDate = (ms: number) => new Date(ms).toLocaleDateString('de-DE', { week
 const ChatRow = ({ c }: { c: MealChat }) => (
   <li>
     <p className="pm-said">{c.text}<small>{chatDate(c.atMs)}</small></p>
-    <p className={c.reply ? 'pm-reply' : 'pm-reply pending'}>{c.reply ?? 'Der Coach antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.'}</p>
+    <p className={c.reply ? 'pm-reply' : 'pm-reply pending'}>{c.reply ?? 'Bo antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.'}</p>
   </li>
 );
 
@@ -85,8 +85,8 @@ function ChatSheet({ chat, onSend, onClose }: { chat: MealChat[]; onSend: (text:
   return (
     <Sheet title="Änderung wünschen" onClose={onClose} actions={<button type="submit" form={formId} disabled={!text.trim()}>Senden</button>}>
       <form id={formId} className="tk-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <label className="tk-field"><span>Sag dem Coach, was du ändern willst. Der Coach schlägt eine Änderung vor. Du bestätigst sie.</span>
-          <input autoFocus aria-label="Nachricht an den Coach" maxLength={CHAT_MAX_CHARS} placeholder="z. B. Mittwoch lieber Nudeln" value={text} onChange={(e) => { setText(e.target.value); setSent(false); }} />
+        <label className="tk-field"><span>Sag Bo, was du ändern willst. Bo schlägt eine Änderung vor. Du bestätigst sie.</span>
+          <input autoFocus aria-label="Nachricht an Bo" maxLength={CHAT_MAX_CHARS} placeholder="z. B. Mittwoch lieber Nudeln" value={text} onChange={(e) => { setText(e.target.value); setSent(false); }} />
         </label>
       </form>
       {sent && <p className="muted" role="status">Wunsch gesendet</p>}

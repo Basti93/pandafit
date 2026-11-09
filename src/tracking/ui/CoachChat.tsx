@@ -13,6 +13,7 @@ import { planRows } from './done-days';
 import { openProposals, storedWeek, weekAnswer } from './chat-open';
 import { useCatalog, usePortRecords } from './hooks';
 import { Sheet } from './kit';
+import { BO } from './bo';
 import { PandaPortrait } from './PandaPortrait';
 import { dateLabel } from './labels';
 import { newestNotes } from '../../shared/change-notes';
@@ -142,14 +143,14 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
       {strip}
       {error && <p role="alert" className="tk-note">{error}</p>}
       <form className="tk-chat-form" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-        <textarea aria-label="Nachricht an den Coach" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} placeholder="z. B. Samstag habe ich keine Zeit" />
+        <textarea aria-label="Nachricht an Bo" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} placeholder="z. B. Samstag habe ich keine Zeit" />
         <button type="submit" className="tk-send" aria-label="Senden" disabled={!text.trim()}>↑</button>
       </form>
     </>
   );
 
   return (
-    <Sheet title="Bo, dein Coach" display onClose={onClose} actions={pins} lead={<PandaPortrait className="tk-pandahead-mini" pose="listen" />}>
+    <Sheet title={BO.title} display onClose={onClose} actions={pins} lead={<PandaPortrait className="tk-pandahead-mini" pose="listen" />}>
       {notes.length > 0 && (
         <div className="tk-notes">
           <button type="button" className="link" aria-expanded={notesOpen} onClick={() => setNotesOpen(!notesOpen)}>Zuletzt geändert {notesOpen ? '⌃' : '⌄'}</button>
@@ -160,7 +161,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
           )}
         </div>
       )}
-      <section className="tk-chat" aria-label="Unterhaltung mit dem Coach">
+      <section className="tk-chat" aria-label="Unterhaltung mit Bo">
         {thread.length === 0 && <p className="muted">Zum Beispiel: „4 Tage diese Woche, Freitag bin ich sicher im Studio“ oder „Schlag mir eine Woche vor“.</p>}
         {visible.length > shown && <button type="button" className="link" onClick={older}>Ältere anzeigen</button>}
         {visible.slice(-shown).map((m, i, list) => (
@@ -173,7 +174,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
             </ChatBubble>
           </Fragment>
         ))}
-        {waiting && <ChatNote>{now() - waiting.atMs > STALE_MS ? 'Darauf kam keine Antwort mehr. Schreib gern nochmal.' : now() - waiting.atMs > SLOW_MS ? 'Der Coach antwortet, sobald er wieder erreichbar ist.' : 'Gesendet. Der Coach antwortet, sobald er kann.'}</ChatNote>}
+        {waiting && <ChatNote>{now() - waiting.atMs > STALE_MS ? 'Darauf kam keine Antwort mehr. Schreib gern nochmal.' : now() - waiting.atMs > SLOW_MS ? 'Bo antwortet, sobald er wieder erreichbar ist.' : 'Gesendet. Bo antwortet, sobald er kann.'}</ChatNote>}
         <div ref={endRef} />
       </section>
       {proposalsOpen && pinned.length > 0 && (

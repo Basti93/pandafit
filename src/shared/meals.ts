@@ -353,7 +353,7 @@ export const linkAnswer = (r: LinkResult | null): string => {
     case 'limit': return 'Für heute sind es genug Rezepte. Morgen geht es weiter.';
     case 'bad': return 'Das ist kein Link, den ich öffnen kann. Er muss mit https beginnen.';
     case 'fetch': return 'Die Seite war nicht zu erreichen. Versuch es später noch einmal.';
-    default: return 'Der Coach schaut sich die Seite gleich an.';
+    default: return 'Bo schaut sich die Seite gleich an.';
   }
 };
 
@@ -404,7 +404,7 @@ export const placeAnswer = (r: PlaceState | null): string => {
     case 'past': return 'Dieser Tag ist schon vorbei.';
     case 'noplan': return 'Für diese Woche gibt es keinen Plan mehr, den ich ändern kann.';
     case 'gone': return 'Dieses Rezept gibt es nicht mehr.';
-    default: return 'Der Coach trägt es gleich ein.';
+    default: return 'Bo trägt es gleich ein.';
   }
 };
 

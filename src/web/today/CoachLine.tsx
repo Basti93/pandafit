@@ -8,7 +8,7 @@ import type { PandaGesture } from '../../tracking/ui/PandaPortrait';
  */
 export function CoachLine({ text, onAsk, pose }: { text: string; onAsk?: () => void; pose?: PandaGesture | null }) {
   return (
-    <section className="tk-coachline" aria-label="Satz vom Coach">
+    <section className="tk-coachline" aria-label="Satz von Bo">
       <BoBubble pose={pose} actions={onAsk && <button type="button" className="secondary" onClick={onAsk}>{BO.ask}</button>}>
         <span className="tk-bo-name">{BO.name} · {BO.role}</span>
         <p className="tk-coachtext">{text}</p>

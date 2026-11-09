@@ -178,7 +178,7 @@ export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort;
           <div className="tk-stats">
             <h3 className="tk-section">Diese Woche</h3>
             <p className="tk-week-line">{sentence}</p>
-            <p className="muted tk-small">{v.asOfMs !== null ? `Stand: ${dateLabel(v.asOfMs)}` : 'Minuten und harte Tage erscheinen nach dem nächsten Lauf des Coaches.'}</p>
+            <p className="muted tk-small">{v.asOfMs !== null ? `Stand: ${dateLabel(v.asOfMs)}` : 'Minuten und harte Tage erscheinen nach dem nächsten Lauf von Bo.'}</p>
             {minutes && (
               <dl className="tk-pace" aria-label="Diese Woche nach Sportart">
                 {v.sports.map((s) => <div key={s}><dt>{SPORT_LABEL[s]}</dt><dd>{durationText(w.minutes[s])}</dd></div>)}

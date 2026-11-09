@@ -80,7 +80,7 @@ export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUnd
 
   if (!shown) return openSignal !== undefined ? null : <button type="button" className="secondary tk-coach-open" onClick={() => { setOpen(true); setClosed(false); }}>Bo fragen</button>;
   return (
-    <section className="card tk-coach-panel" aria-label="Coach im Training">
+    <section className="card tk-coach-panel" aria-label="Bo im Training">
       {mine.length === 0 && <p className="muted">Zum Beispiel: „Gerät belegt“, „Schulter zwickt“ oder „nur noch 30 Minuten“.</p>}
       {mine.slice(-6).map((m) => (
         <ChatBubble key={m.id} m={m}>
@@ -103,10 +103,10 @@ export function WorkoutCoach({ port, workout, catalog, now, newId, onTake, onUnd
         </ChatBubble>
       ))}
       {line && <p role="note" className="tk-note">{line}</p>}
-      {waiting && <p role="status" className="muted">Der Coach denkt nach … Dafür braucht er Netz.</p>}
+      {waiting && <p role="status" className="muted">Bo denkt nach … Dafür braucht er Netz.</p>}
       {error && <p role="alert" className="tk-note">{error}</p>}
       <form className="tk-row tk-chat-input" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-        <textarea aria-label="Nachricht an den Coach im Training" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} placeholder="Was ist los?" />
+        <textarea aria-label="Nachricht an Bo im Training" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} placeholder="Was ist los?" />
         <button type="submit" disabled={!text.trim()}>Senden</button>
       </form>
       {!pending && !proposedNext && !waiting && <button type="button" className="link" onClick={() => { setOpen(false); setClosed(true); }}>Schließen</button>}

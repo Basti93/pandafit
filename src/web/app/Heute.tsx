@@ -87,7 +87,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
     <>
       {p.workout && <p className="muted"><span>{p.workout.name}</span>{p.workout.exercises.length > 0 ? ` · ${durationNote(p.workout)}` : ''}</p>}
       {p.workout && p.workout.exercises.length > 0 && <p className="muted tk-clamp">{p.workout.exercises.map((e) => e.title).join(', ')}</p>}
-      {planIsStale(p.atMs, now) && <p className="muted">Der Plan ist schon etwas älter. Der Coach macht einen neuen, sobald er dazu kommt.</p>}
+      {planIsStale(p.atMs, now) && <p className="muted">Der Plan ist schon etwas älter. Bo macht einen neuen, sobald er dazu kommt.</p>}
       {p.questions.length > 0 && <ul>{p.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>}
       {toTraining}
       {p.workout && p.workout.exercises.length > 0
@@ -132,7 +132,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
       {!open && weekplans !== null && plans !== null && !today && !planning && !p && (
         <section className="card" aria-label="Was Pandafit planen kann">
           <h2>Was soll Pandafit für dich planen?</h2>
-          <p className="muted">Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit dem Coach.</p>
+          <p className="muted">Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit Bo.</p>
           <div className="tk-row">
             <button type="button" className="secondary" onClick={goCoach}>Woche planen</button>
             <button type="button" className="secondary" onClick={goProfile}>Im Profil auswählen</button>

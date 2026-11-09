@@ -117,10 +117,10 @@ test('the header menu: discard asks first and then removes the workout; Studio a
 
 test('Bo fragen from the header menu opens the coach panel', async () => {
   await running();
-  expect(screen.queryByRole('region', { name: 'Coach im Training' })).toBeNull();
+  expect(screen.queryByRole('region', { name: 'Bo im Training' })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Mehr zum Training' }));
   fireEvent.click(screen.getByRole('button', { name: /^Bo fragen/ }));
-  expect(await screen.findByRole('region', { name: 'Coach im Training' })).toBeTruthy();
+  expect(await screen.findByRole('region', { name: 'Bo im Training' })).toBeTruthy();
 });
 
 test('the rest bar is one button that skips, with +30 s next to it', async () => {

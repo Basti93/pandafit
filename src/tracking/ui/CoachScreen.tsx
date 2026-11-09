@@ -63,10 +63,10 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
   const last = visible[visible.length - 1];
   const asking = waitingMessage(thread) !== null;
   // While a proposal waits, the card above says so; the row then shows no second "waiting".
-  const preview = asking ? 'Der Coach denkt nach …' : last ? <>{last.text} <small>{timeLabel(last.atMs)}</small></> : 'Schreib dem Coach';
-  // Fixed order: Nächste Woche, Ziel und Planung, Was der Coach beachtet, Coach. The last change is the Coach row's second line.
+  const preview = asking ? 'Bo denkt nach …' : last ? <>{last.text} <small>{timeLabel(last.atMs)}</small></> : 'Schreib Bo';
+  // Fixed order: Nächste Woche, Ziel und Planung, Was Bo beachtet, Bo. The last change is Bo's row's second line.
   const changed = notes[0] ? <small className="tk-row-sub muted tk-clip">Zuletzt geändert: {notes[0].text}{notes[0].reason ? `, ${notes[0].reason}` : ''}</small> : null;
-  const coachRow = <Row key="coach" title={<>Coach{changed}</>} value={<span className="tk-ellipsis">{preview}</span>} onClick={() => setSheet('chat')} />;
+  const coachRow = <Row key="coach" title={<>Bo{changed}</>} value={<span className="tk-ellipsis">{preview}</span>} onClick={() => setSheet('chat')} />;
   const ruleCount = rules.length + tasks.length;
   const rest = [
     next && fr.frame.mode !== 'spontaneous' && (
@@ -75,7 +75,7 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
       </Row>
     ),
     <Row key="goal" title="Ziel und Planung" value={<span className="tk-ellipsis">{goalChosen ? goalSummary(goal) : `Vorschlag: ${goalSummary(goal)}`}</span>} onClick={() => setSheet('goal')} />,
-    <Row key="rules" title="Was der Coach beachtet" value={ruleCount === 0 ? 'nichts' : String(ruleCount)} onClick={() => setSheet('rules')} />,
+    <Row key="rules" title="Was Bo beachtet" value={ruleCount === 0 ? 'nichts' : String(ruleCount)} onClick={() => setSheet('rules')} />,
   ];
   // Empty week and nothing said yet: the "Woche planen" button is the way to the coach, so no second row for it.
   // (Only once the records are read: no flash of the empty state while they load.)

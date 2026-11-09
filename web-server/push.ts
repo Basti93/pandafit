@@ -14,7 +14,7 @@ export const MESSAGES: Record<PushType, { title: string; body: string }> = {
   meal: { title: 'Pandafit', body: 'Dein Essensplan für die Woche ist da.' },
   run: { title: 'Pandafit', body: 'Dein Laufplan für die Woche ist da.' },
   rest: { title: 'Pandafit', body: 'Die Pause ist vorbei. Weiter geht es mit dem nächsten Satz.' },
-  coach: { title: 'Pandafit', body: 'Dein Coach hat dir geschrieben.' },
+  coach: { title: 'Pandafit', body: 'Bo hat dir geschrieben.' },
 };
 export const MAX_SUBSCRIPTIONS = 10;
 export const SEND_TIMEOUT_MS = 10_000;

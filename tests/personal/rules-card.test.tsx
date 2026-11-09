@@ -20,7 +20,7 @@ const sheet = async (row: RegExp, title: string) => {
   fireEvent.click(await screen.findByRole('button', { name: row }));
   return within(await screen.findByRole('dialog', { name: title }));
 };
-const rules = () => sheet(/^Was der Coach beachtet/, 'Was der Coach beachtet');
+const rules = () => sheet(/^Was Bo beachtet/, 'Was Bo beachtet');
 const goalSheet = () => sheet(/^Ziel und Planung/, 'Ziel und Planung');
 /** A choice row opens a small sheet; picks an option in it. */
 const choose = async (label: string | RegExp, option: string) => {

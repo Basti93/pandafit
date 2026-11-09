@@ -187,7 +187,7 @@ describe('without the AI', () => {
     await t.coach.chat('max', WEEK, 'Mittwoch Abendessen bitte tauschen');
     expect(t.meal('2-abend').dish.source).toBe('liste');
     expect(t.meal('2-abend').askedBy).toBe('max');
-    expect(t.coach.view('max').chat[0]!.reply).toMatch(/^Der Coach ist gerade nicht erreichbar\. Ich habe Mittwoch, Abendessen aus der Rezeptliste getauscht: .+\.$/);
+    expect(t.coach.view('max').chat[0]!.reply).toMatch(/^Bo ist gerade nicht erreichbar\. Ich habe Mittwoch, Abendessen aus der Rezeptliste getauscht: .+\.$/);
   });
 
   it('anything else gets the plain answer and changes nothing', async () => {

@@ -166,7 +166,7 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
       {SPORTS.some((s) => !shown(s)) && !moreSports && <button type="button" className="link tk-small" aria-expanded={moreSports} onClick={() => setMoreSports(true)}>Weitere Sportarten</button>}
       {moreSports && SPORTS.filter((s) => !shown(s)).map(sportChoice)}
       <h3 className="tk-section">Planung</h3>
-      <p className="muted tk-sheet-note">Feste Woche: der Coach plant die ganze Woche im Voraus. Spontan: er schlägt jeden Tag neu vor.</p>
+      <p className="muted tk-sheet-note">Feste Woche: Bo plant die ganze Woche im Voraus. Spontan: er schlägt jeden Tag neu vor.</p>
       <ChoiceRow label="Wochenplan" value={frame.mode} options={[{ value: 'week', label: 'Feste Woche' }, { value: 'spontaneous', label: 'Spontan' }]} onChange={onMode} />
       <ChoiceRow label="Zeit pro Einheit" value={frame.minutes ?? 0} options={[{ value: 0, label: '–' }, ...minuteChoices().map((m) => ({ value: m, label: `${m} Min` }))]} onChange={(m) => onMinutes(m === 0 ? null : m)} />
       {error && <p role="alert" className="tk-note">{error}</p>}
@@ -231,8 +231,8 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
   };
 
   return (
-    <Sheet title="Was der Coach beachtet" onClose={onClose}>
-      {rules.length === 0 && tasks.length === 0 && complaints.length === 0 ? <p className="muted">Noch keine Regeln. Schreib dem Coach „künftig …“ oder füge eine hinzu.</p> : (
+    <Sheet title="Was Bo beachtet" onClose={onClose}>
+      {rules.length === 0 && tasks.length === 0 && complaints.length === 0 ? <p className="muted">Noch keine Regeln. Schreib Bo „künftig …“ oder füge eine hinzu.</p> : (
         <RowList label="Regeln">
           {complaints.length > 0 && <Row title="Rücksicht" value={<span className="tk-ellipsis">{complaints.join(', ')}</span>} />}
           {active.map(ruleRow)}
@@ -258,7 +258,7 @@ export function RulesSheet({ port, now, newId, onClose }: { port: TrackingPort; 
       ) : (
         <>
           <button type="button" className="secondary" onClick={() => setAddMenu(true)}>+ Regel hinzufügen</button>
-          <p className="muted tk-sheet-note">oder schreib sie dem Coach</p>
+          <p className="muted tk-sheet-note">oder schreib sie Bo</p>
         </>
       )}
       {addMenu && (

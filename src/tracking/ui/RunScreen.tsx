@@ -14,7 +14,7 @@ const KIND: Record<PlannedRun['kind'], string> = { easy: 'Ruhiger Lauf', long: '
 const CHANGED = 'Der Plan hat sich geändert. Bitte bestätige noch einmal, dann geht die neue Version an Garmin.';
 const STALE = 'Inzwischen gibt es einen neueren Plan. Bitte schau ihn dir an und bestätige noch einmal.';
 const LEFT_ON_WATCH = 'Auf deiner Uhr sind noch geplante Läufe. Sollen sie entfernt werden?';
-const FIRST_PLAN = 'Laufen ist an. Dein Laufplan erscheint hier, sobald der Coach ihn angelegt hat.';
+const FIRST_PLAN = 'Laufen ist an. Dein Laufplan erscheint hier, sobald Bo ihn angelegt hat.';
 const PAUSE = 'Laufen pausiert, solange die Beschwerde offen ist. Sobald sie vorbei ist, geht es ruhig weiter.';
 const GENTLE = 'Wir planen gerade sanft.';
 const FAILED = 'Das Senden hat gerade nicht geklappt. Du kannst es später noch einmal versuchen.';
@@ -74,7 +74,7 @@ function Questions({ suggested, saved, onSave, onCancel }: {
       <label className="tk-field">Wie lange dauert ein Lauf meist (Minuten)?
         <input inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
       </label>
-      <Switch label="Hast du beim Laufen gerade Schmerzen?" hint="Dann plant der Coach sanfter." checked={pain} onChange={setPain} />
+      <Switch label="Hast du beim Laufen gerade Schmerzen?" hint="Dann plant Bo sanfter." checked={pain} onChange={setPain} />
     </>
   );
   if (onCancel) return <Sheet title="Lauftage" onClose={onCancel} actions={save}><div className="tk-form">{fields}</div></Sheet>;

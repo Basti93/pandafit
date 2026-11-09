@@ -8,7 +8,7 @@ const DIETS: { value: Diet; label: string }[] = [{ value: 'vegetarisch', label: 
 const HABITS: { value: Habit; label: string }[] = [{ value: 'zuhause', label: 'zu Hause' }, { value: 'mitnehmen', label: 'zum Mitnehmen' }, { value: 'auswaerts', label: 'auswärts' }];
 const HEVY_PROBLEM = { invalid: 'Der Schlüssel funktioniert nicht. Ist er vollständig und Hevy Pro aktiv?', expired: 'Der Schlüssel gilt nicht mehr. Bitte trag einen neuen ein.', failed: 'Hevy ist gerade nicht erreichbar.' } as const;
 const GARMIN_PROBLEM: Record<string, string> = { credentials: 'E-Mail oder Passwort wurde abgelehnt.', 'rate-limit': 'Garmin blockt gerade zu viele Versuche. Versuch es bitte später nochmal.', setup: 'Das Garmin-Hilfsprogramm fehlt auf dem Server.', failed: 'Das hat nicht geklappt. Versuch es bitte später nochmal.' };
-const SENT_NO = 'Gerade gibt es keine Verbindung zum Coach.';
+const SENT_NO = 'Gerade gibt es keine Verbindung zu Bo.';
 
 const hevyValue = (s: HevyStatus): string => (s.state === 'connected' ? 'verbunden' : s.state === 'connecting' ? 'verbindet…' : 'optional');
 const syncLine = (s: GarminSyncInfo | null): string | null => {
@@ -27,7 +27,7 @@ function HevySheet({ v, send, onClose }: { v: CoachSettingsView; send: (m: { typ
     <Sheet title="Hevy" size="small" onClose={onClose}
       actions={s.state === 'connected' ? <ConfirmLink label="Trennen" question="Wirklich trennen?" onConfirm={() => { setOffline(!send({ type: 'hevy-disconnect' })); }} />
         : <button type="button" className="primary" disabled={s.state === 'connecting' || !key.trim()} onClick={connect}>Verbinden</button>}>
-      {s.state === 'connected' ? <p className="muted">{s.workouts} Workouts{s.loading ? ' · Verlauf wird geladen' : ''}. Der Coach plant damit dein Krafttraining.</p> : (
+      {s.state === 'connected' ? <p className="muted">{s.workouts} Workouts{s.loading ? ' · Verlauf wird geladen' : ''}. Bo plant damit dein Krafttraining.</p> : (
         <form onSubmit={(e) => { e.preventDefault(); connect(); }}>
           <input type="password" autoComplete="off" aria-label="Hevy-Schlüssel" placeholder="API-Schlüssel (Hevy Pro)" value={key} onChange={(e) => setKey(e.target.value)} />
           {s.state === 'connecting' && <p role="status" className="muted">Hevy wird verbunden…</p>}

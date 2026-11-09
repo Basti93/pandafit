@@ -181,10 +181,10 @@ describe('web app', () => {
     expect(within(sheet).getByText(/^Plan vom /)).toBeTruthy();
     expect(within(sheet).getByText('Beine sind dran')).toBeTruthy();
     expect(within(sheet).getByText('Gut gemacht diese Woche')).toBeTruthy();
-    expect(screen.queryByText(/Coach macht einen neuen/)).toBeNull();
+    expect(screen.queryByText(/Bo macht einen neuen/)).toBeNull();
     cleanup();
     await boot({ seed: [plan(NOW - 9 * DAY)] });
-    expect(await screen.findByText(/Coach macht einen neuen/)).toBeTruthy();
+    expect(await screen.findByText(/Bo macht einen neuen/)).toBeTruthy();
   });
 
   it('the plan sheet from Heute opens once; an adjusted plan says "Angepasst" on Heute', async () => {
@@ -280,7 +280,7 @@ describe('web app', () => {
     await boot({ seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
-    const field = await screen.findByLabelText('Nachricht an den Coach');
+    const field = await screen.findByLabelText('Nachricht an Bo');
     const nav = screen.getByRole('navigation', { name: 'Seiten' });
     fireEvent.focusIn(field);
     expect(nav.className).toContain('web-nav-away');
@@ -385,7 +385,7 @@ describe('web app', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
     await waitFor(() => expect(storage.get('pandafit.account')).toBe('ben'));
     // The shell rebuilds after the login: open the chat until Ben's record shows there.
-    await waitFor(() => { fireEvent.click(screen.getByRole('button', { name: 'Woche' })); fireEvent.click(screen.getByRole('button', { name: /^Coach/ })); expect(screen.getByText('Nur Ben')).toBeTruthy(); });
+    await waitFor(() => { fireEvent.click(screen.getByRole('button', { name: 'Woche' })); fireEvent.click(screen.getByRole('button', { name: /^Bo/ })); expect(screen.getByText('Nur Ben')).toBeTruthy(); });
     expect(posts.filter((p) => p.user === 'ben' && p.ids.includes('a-only'))).toEqual([]);
     const a = await openIdb('anna', factory);
     expect((await a.list('chat')).map((r) => r.id)).toEqual(['a-only']);

@@ -42,7 +42,7 @@ export function NextChangeCard({ port, changeId, records, now, history }: { port
         </div>
       )}
       {c.state === 'taken' && <div className="tk-row"><span className="muted">Das gilt jetzt fürs nächste Training.</span><button type="button" className="link" onClick={() => void go('undone')}>{UNDO}</button></div>}
-      {c.state === 'used' && <p className="muted">Der Coach hat das im Training berücksichtigt.</p>}
+      {c.state === 'used' && <p className="muted">Bo hat das im Training berücksichtigt.</p>}
       {c.state === 'declined' && <p className="muted">{DECLINED}.</p>}
       {c.state === 'undone' && <p className="muted">Du hast das rückgängig gemacht.</p>}
       {failed && <p role="status" className="tk-note">Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.</p>}

@@ -35,7 +35,7 @@ const NOTES: Record<string, { body: string; url: string; alert?: boolean }> = {
   meal: { body: 'Dein Essensplan für die Woche ist da.', url: '/?tab=essen' },
   run: { body: 'Dein Laufplan für die Woche ist da.', url: '/?tab=laufen' },
   rest: { body: 'Die Pause ist vorbei. Weiter geht es mit dem nächsten Satz.', url: '/', alert: true },
-  coach: { body: 'Dein Coach hat dir geschrieben.', url: '/?tab=coach' },
+  coach: { body: 'Bo hat dir geschrieben.', url: '/?tab=coach' },
 };
 export type Note = { title: string; options: { body: string; tag: string; icon: string; badge: string; data: { url: string }; renotify?: boolean; silent?: boolean; vibrate?: number[] } };
 

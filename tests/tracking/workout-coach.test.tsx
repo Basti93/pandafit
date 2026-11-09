@@ -23,7 +23,7 @@ test('closed until asked; a message is sent for this workout and the coach is sh
   const { port, map } = fakePort();
   render(<WorkoutCoach port={port} workout={w} {...props} onTake={() => {}} onUndo={() => {}} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Bo fragen' }));
-  fireEvent.change(screen.getByLabelText('Nachricht an den Coach im Training'), { target: { value: 'Bank belegt' } });
+  fireEvent.change(screen.getByLabelText('Nachricht an Bo im Training'), { target: { value: 'Bank belegt' } });
   fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
   await waitFor(() => expect(all(map)).toEqual([{ role: 'rider', text: 'Bank belegt', atMs: NOW, inWorkout: 'w1' }]));
   expect(await screen.findByRole('status')).toBeTruthy();
