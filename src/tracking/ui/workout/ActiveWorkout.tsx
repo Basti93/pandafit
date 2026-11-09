@@ -8,15 +8,15 @@ import { ReorderSheet } from '../ReorderSheet';
 import { StudioSheet } from '../StudioSheet';
 import { WorkoutCoach } from '../WorkoutCoach';
 import { EffortQuestion } from '../EffortQuestion';
-import { Card, ConfirmLink, Icon, Kicker, Row, RowList, Sheet } from '../kit';
+import { Band, BrushTitle, Card, ConfirmLink, Icon, Kicker, RoundButton, Row, RowList, Sheet, TimerCard } from '../kit';
 import { clock } from '../labels';
 import { FocusCard } from './FocusCard';
-import { focusExercise, upNext } from './live-view';
+import { doneSentence, focusExercise, isDoneExercise, progressOf, upNext } from './live-view';
 import { SetsSheet } from './SetsSheet';
 import { sinceLabel } from './markUsed';
 import { NOT_SAVED, useActiveWorkout, type ActiveWorkoutProps } from './useActiveWorkout';
 
-export function ActiveWorkout(props: ActiveWorkoutProps) {
+export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /** Verkleinern: the screen goes, the workout keeps running (and saving) in the registry. */ onMinimize: () => void }) {
   const a = useActiveWorkout(props);
   const { port, w, save, ui, set, askCoach, setNotice, catalog, excluded, studios, overrides, history, now, newId, remaining, known, act, end, discard } = a;
   const { picker } = ui;
@@ -24,11 +24,17 @@ export function ActiveWorkout(props: ActiveWorkoutProps) {
   const next = upNext(w, focus?.rid ?? null);
   const asking = ui.effortOn ? w.exercises.filter((e) => asksEffort(w, e.rid, history, catalog, studios)) : [];
   const thanked = w.exercises.find((e) => e.rid === ui.thanked && e.effort && e.effort !== 'skip');
+  const progress = progressOf(w, focus?.rid ?? null);
+  const done = doneSentence(progress.doneTitles);
   return (
     <div className="tk-screen tk-live">
-      <div className="tk-live-head">
-        <h1 className="tk-title">{w.title}</h1>
-        <button type="button" className="link tk-more" aria-label="Mehr zum Training" onClick={() => set({ topMenu: true })}>⋯</button>
+      <div className="tk-livehead">
+        <RoundButton icon="verkleinern" name="Verkleinern, Training läuft weiter" onClick={onMinimize} />
+        <div className="tk-livehead-mid">
+          <BrushTitle level={1}>{w.title}</BrushTitle>
+          <p role="timer" aria-label="Trainingsdauer" className="muted">Läuft seit {sinceLabel(now() - w.startMs)}</p>
+        </div>
+        <RoundButton icon="mehr" name="Mehr zum Training" onClick={() => set({ topMenu: true })} />
       </div>
       {save === 'unsaved' && (
         <p role="status" className="tk-note">
@@ -37,6 +43,23 @@ export function ActiveWorkout(props: ActiveWorkoutProps) {
         </p>
       )}
       {ui.notice && <p role="note" className="tk-note">{ui.notice}</p>}
+      {w.rest && remaining > 0 && !ui.ask && (
+        <div className="tk-livepause">
+          <TimerCard label="Satzpause" skipName="Pause überspringen" onSkip={() => act((x) => ({ ...x, rest: null }))} more={{ label: '30 s mehr', onClick: () => act((x) => extendRest(x)) }}>
+            Pause, noch <b>{clock(remaining)}</b>
+          </TimerCard>
+        </div>
+      )}
+      {progress.total > 0 && (
+        <Card label="Dein Training">
+          <div className="tk-liveprog">
+            <Kicker>Dein Training</Kicker>
+            <span className="muted">Übung {progress.index} von {progress.total}</span>
+          </div>
+          <Band parts={progress.parts} />
+          {done && <button type="button" className="link" onClick={() => set({ doneOpen: true })}>{done}</button>}
+        </Card>
+      )}
       <WorkoutCoach port={port} workout={w} catalog={catalog} now={now} newId={newId} openSignal={ui.coachAsk}
         onTake={(id, c) => act((x) => takeChange(x, id, c, history, catalog, studios, now(), excluded).workout)} onUndo={(id) => act((x) => undoChange(x, id).workout)} />
       {asking.map((e) => (
@@ -64,18 +87,18 @@ export function ActiveWorkout(props: ActiveWorkoutProps) {
           onDrop={(rid, to) => act((x) => moveExerciseTo(x, rid, to))} onStep={(rid, dir) => act((x) => moveExercise(x, rid, dir))}
           onClose={() => set({ reorder: null })} />
       )}
-      <div className="tk-end">
+      <div className="tk-liveend">
         <button type="button" className="secondary" onClick={() => void end()}>Training beenden</button>
       </div>
-      {w.rest && remaining > 0 && !ui.ask && (
-        <div role="timer" aria-label="Satzpause" className="tk-rest">
-          <button type="button" className="tk-rest-main" aria-label="Pause überspringen" onClick={() => act((x) => ({ ...x, rest: null }))}>Pause {clock(remaining)}</button>
-          <button type="button" className="tk-skip" onClick={() => act((x) => extendRest(x))}>+30 s</button>
-        </div>
+      {ui.doneOpen && (
+        <Sheet size="small" title="Geschafft" onClose={() => set({ doneOpen: false })}>
+          <RowList>
+            {w.exercises.filter(isDoneExercise).map((e) => <Row key={e.rid} title={e.title} onClick={() => set({ openRid: e.rid, doneOpen: false })} />)}
+          </RowList>
+        </Sheet>
       )}
       {ui.topMenu && (
         <Sheet size="small" title="Training" onClose={() => set({ topMenu: false })}>
-          <p role="timer" aria-label="Trainingsdauer" className="muted tk-elapsed">Läuft seit {sinceLabel(now() - w.startMs)}</p>
           <ul className="tk-rows">
             <li className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { set({ topMenu: false, studioOpen: true }); }}><span className="tk-row-title">Studio wechseln</span><span className="tk-row-value muted">{w.studio ?? '–'}</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>
             <li className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { set({ topMenu: false }); askCoach(); }}><span className="tk-row-title">Bo fragen</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>
@@ -92,7 +115,7 @@ export function ActiveWorkout(props: ActiveWorkoutProps) {
       {ui.ask && ui.ask.question === 'open-sets' && (
         <Sheet title={ui.ask.open === 1 ? 'Ein Satz ist noch offen' : `${ui.ask.open} Sätze sind noch offen`} onClose={() => set({ ask: null })}
           actions={<>
-            <button type="button" onClick={() => void end('omit')}>Offene Sätze nicht eintragen</button>
+            <button type="button" className="primary" onClick={() => void end('omit')}>Offene Sätze nicht eintragen</button>
             <button type="button" className="secondary" onClick={() => void end('complete')}>Trotzdem als gemacht eintragen</button>
             <button type="button" className="link" onClick={() => set({ ask: null })}>Zurück</button>
           </>}>
@@ -102,7 +125,7 @@ export function ActiveWorkout(props: ActiveWorkoutProps) {
       {ui.ask && ui.ask.question === 'nothing-confirmed' && (
         <Sheet title="Du hast noch nichts erledigt" onClose={() => set({ ask: null })}
           actions={<>
-            <button type="button" onClick={() => set({ ask: null })}>Weiter trainieren</button>
+            <button type="button" className="primary" onClick={() => set({ ask: null })}>Weiter trainieren</button>
             <button type="button" className="secondary" onClick={() => void end('complete')}>Alle Sätze als erledigt markieren</button>
           </>}>
           <p>Noch kein Satz ist als erledigt markiert. Was soll mit dem Training passieren?</p>

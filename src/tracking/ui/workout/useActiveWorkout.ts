@@ -28,6 +28,8 @@ export type UiState = {
   infoRid: string | null;
   /** The exercise whose sets sheet (the set table) is open. */
   setsRid: string | null;
+  /** The small sheet "Geschafft" (the done exercises) is open. */
+  doneOpen: boolean;
   /** The exercise whose effort answer is thanked for, until the next confirmed set. */
   thanked: string | null;
   notice: string | null; effortOn: boolean;
@@ -63,7 +65,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, menuMore: false, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null, editing: null,
-    notesOpen: new Set(), infoRid: null, setsRid: null, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid,
+    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);

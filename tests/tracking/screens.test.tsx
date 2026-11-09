@@ -776,12 +776,12 @@ test('the start screen shows what the plan holds before starting', async () => {
   expect(within(card).getByRole('button', { name: 'Training starten' })).toBeTruthy();
 });
 
-test('the rest timer has +30 s, and the per-exercise Pause select sets the rest', async () => {
+test('the rest timer has 30 s mehr, and the per-exercise Pause select sets the rest', async () => {
   const w = { ...open(), rest: { startMs: 70_000, durationS: 90 } };
   const { port, map } = fakePort([rec(w as LoggedWorkout)]);
   render(<WorkoutScreen port={port} {...ids} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-  fireEvent.click(await screen.findByRole('button', { name: '+30 s' }));
+  fireEvent.click(await screen.findByRole('button', { name: '30 s mehr' }));
   await waitFor(() => expect((bodyOf(map, 'workout:open1') as unknown as { rest: { durationS: number } }).rest.durationS).toBe(120));
   fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Bankdrücken' }));
   fireEvent.click(within(screen.getByRole('list', { name: 'Menü Bankdrücken' })).getByRole('button', { name: /^Pause ändern/ }));

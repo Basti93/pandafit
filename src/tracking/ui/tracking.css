@@ -55,7 +55,6 @@
 .tk-ex-head { display: flex; align-items: flex-start; gap: var(--space-2); }
 .tk-ex-head h2 { flex: 1; min-width: 0; overflow-wrap: anywhere; padding-top: .55rem; }
 .tk-ex-head .muted { padding-top: .6rem; }
-.tk-screen button.tk-more { flex: none; padding: 0; width: 44px; font-size: var(--text-xl); line-height: 1; }
 .tk-menu { justify-content: flex-end; }
 .tk-studio { margin: 0; font-size: var(--text-s); display: flex; gap: var(--space-2); align-items: center; flex-wrap: nowrap; }
 .tk-studio select { width: auto; max-width: 65%; flex: 0 1 auto; padding: .2rem .4rem; }
@@ -63,8 +62,6 @@
 .tk-studio input { width: auto; flex: 1 1 8rem; min-width: 0; }
 .tk-sub { margin: -.3rem 0 0; font-size: var(--text-s); }
 .tk-screen .tk-notes { width: 100%; resize: none; overflow: hidden; line-height: 1.4; font: inherit; }
-.tk-screen button.tk-skip { background: var(--skip-bg); color: var(--ink); border: 1px solid var(--skip-line); }
-.tk-rest { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem var(--space-4); border-radius: 1rem; background: var(--good); color: var(--ink); font-weight: 700; }
 /* One callout: card fill, a 4 px bar on the left (amber for a note, green for the effort question), the same radius and padding. */
 .tk-note { background: var(--card); border-left: 4px solid var(--low); padding: .7rem var(--space-4); border-radius: var(--radius-m); display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .tk-effort { margin: .6rem 0; padding: .7rem var(--space-4); border-radius: var(--radius-m); border-left: 4px solid var(--good); background: var(--card); }
@@ -134,7 +131,6 @@
 .tk-switch { display: flex; align-items: center; gap: .7rem; min-height: 44px; }
 .tk-garmin { margin-top: .6rem; display: flex; flex-direction: column; gap: var(--space-2); }
 
-.tk-elapsed { font-variant-numeric: tabular-nums; font-weight: 700; }
 /* Done sets: a green row. Done exercises: green edge, a badge, the rest calmer. The current exercise: accent edge. */
 .tk-set.tk-done { background: color-mix(in srgb, var(--good) 22%, transparent); border-radius: .7rem; }
 .tk-done .tk-num { opacity: 1; text-decoration: none; color: var(--text); border-color: var(--good); }
@@ -288,12 +284,16 @@
 /* The mobility row also sits outside .tk-screen (on the Mac): it needs the row-button look on its own. */
 .tk-mob button.tk-rowbtn { background: none; border: 0; border-radius: 0; font-weight: 400; color: inherit; padding: var(--space-2) 0; }
 
-/* ---- Live workout: one line of header, the current exercise open, a rest bar above the tab bar ---- */
+/* ---- Live workout: the head (Verkleinern, title, Mehr), the slim rest card sticky on top, then the cards ---- */
 .tk-live { gap: var(--space-2); }
-.tk-live-head { display: flex; align-items: center; gap: var(--space-2); }
-.tk-live-head .tk-title { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-.tk-live-head .tk-elapsed { flex: none; font-size: var(--text-s); font-variant-numeric: tabular-nums; }
-.tk-screen button.tk-more { flex: none; width: 48px; min-height: 48px; padding: 0; text-decoration: none; font-size: var(--text-2xl); line-height: 1; }
+.tk-livehead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.tk-livehead-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.tk-livehead-mid .tk-title { margin: 0; font-size: var(--text-xl); overflow-wrap: anywhere; }
+.tk-livehead-mid p { margin: 0; font-size: var(--text-s); }
+.tk-livepause { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--space-2)); z-index: 4; }
+.tk-liveprog { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.tk-liveprog .tk-kicker { margin: 0; }
+.tk-liveend { display: flex; flex-direction: column; margin-top: var(--space-2); }
 .tk-live .tk-menu { padding: 0 0 var(--space-1); background: var(--card); border-radius: var(--radius-m); padding: var(--space-1) .8rem; }
 .tk-live .tk-menu .tk-rowitem:first-child { border-top: 0; }
 .tk-live .tk-menu .tk-choice { padding: var(--space-2) 0; }
@@ -303,11 +303,6 @@
 .tk-end { display: flex; flex-direction: column; gap: var(--space-2); margin-top: .5rem; }
 .tk-end button { width: 100%; }
 .tk-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
-.tk-rest { position: sticky; bottom: calc(var(--web-nav-h, 0px) + env(safe-area-inset-bottom, 0px) + .5rem); z-index: 4; display: flex; align-items: stretch; gap: var(--space-2); padding: var(--space-1); border-radius: 1rem; background: var(--card); border: 1px solid var(--good); color: var(--text); font-weight: 700; box-shadow: 0 .25rem 1rem var(--shadow-rest); }
-.tk-screen button.tk-rest-main { flex: 1; min-height: 52px; background: transparent; color: inherit; border: 0; font-size: var(--text-l); font-variant-numeric: tabular-nums; text-align: left; }
-.tk-rest button.tk-skip { background: transparent; color: var(--good); border: 1px solid var(--good); min-height: 52px; min-width: 5rem; }
-.tk-summary { display: flex; flex-direction: column; gap: var(--space-2); }
-.tk-summary .tk-sub { margin: 0; }
 
 /* Picker, Routinen, Verlauf */
 .tk-sheet .tk-search { flex: none; }
@@ -385,7 +380,6 @@
 .tk-stepper { gap: var(--space-1); }
 .tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; font-size: var(--text-xl); opacity: .8; justify-content: center; }
 .tk-set .tk-num { min-height: 48px; }
-.tk-live-head .tk-elapsed { font-size: var(--text-m); }
 .tk-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
 
 /* Reihenfolge: hold an exercise title, drag it in a compact list */
@@ -452,7 +446,6 @@
 .tk-info-btn[aria-expanded='true'] span { color: var(--text); background: var(--card, transparent); }
 
 /* ---- Zum Abschluss: a card on Heute, a plain block inside the summary card ---- */
-.tk-summary > .card { border: 0; background: none; box-shadow: none; padding: var(--space-2) 0 0; }
 
 /* ---- One look per kind (task 3) ---- */
 /* Steppers (− count +): one round outline button, in the routine editor and on the recipe. */
@@ -466,7 +459,7 @@
 .tk-screen .tk-plan-ex button.tk-del-ex { flex: none; align-self: center; width: 44px; min-width: 44px; min-height: 44px; padding: 0; justify-content: center; text-decoration: none; font-size: var(--text-xl); line-height: 1; }
 
 /* ==== Redesign task 2 and 3: Woche, coach chat and Kraft (one block; the display face falls back to the UI face on the Mac) ==== */
-.tk-display, .tk-summary h2 { font-family: var(--font-display, inherit); font-weight: 400; letter-spacing: .03em; }
+.tk-display { font-family: var(--font-display, inherit); font-weight: 400; letter-spacing: .03em; }
 .tk-screen button:focus-visible, .tk-picker button:focus-visible, .tk-screen summary:focus-visible, .tk-screen a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Woche: the week as a card with fine lines between the days; today is tinted and keeps its bar. */
 /* The coach chat: Panda in the header, soft bubbles. Coach words sit on the card colour, rider words on a light apricot. */
@@ -475,16 +468,13 @@
 .tk-pin { border-radius: var(--radius-card); border-width: 1px; padding: var(--space-3) var(--space-4); }
 .tk-chat-form textarea { border-radius: var(--radius-pill); padding: .7rem var(--space-4); }
 /* Kraft: the next training and the open training lead with an accent edge, like the other lead cards. */
-.tk-screen .card.tk-summary { border-top: 4px solid var(--good); }
 /* The active exercise is one soft panel; finished ones step back. */
-.tk-live-head .tk-title { font-size: var(--text-xl); }
-.tk-rest { box-shadow: 0 4px 14px var(--shadow-lift); }
 .tk-set.tk-done { border-radius: var(--radius-m); }
 .tk-plan-ex .tk-ex-head h2, .tk-plan-ex h2 { overflow-wrap: anywhere; }
 @media (max-width: 360px) { .tk-sheet-head .tk-pandahead-mini { width: 2.8rem; } }
 
 /* Cockpit numbers keep the UI face (DESIGN.md: Zahlen und Daten in Cockpit-Ansichten). */
-.tk-screen :is(.tk-rest-main, .tk-elapsed, .tk-pace dd, .tk-stack-col, .tk-spark-scale) { font-family: var(--font-data); }
+.tk-screen :is(.tk-rest-main, .tk-pace dd, .tk-stack-col, .tk-spark-scale) { font-family: var(--font-data); }
 
 /* Dojo kit (see kit/Dojo.tsx): kicker, brush title, main card, Bo's bubble. */
 .tk-kicker { margin: 0; font-size: var(--text-s); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--kicker); }
@@ -556,6 +546,10 @@
 .tk-mark:is(button)::after { content: ''; position: absolute; inset: -8px; }
 .tk-stand { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .tk-stand-marks { display: flex; gap: var(--space-2); flex: none; }
+/* The one slim timer card (kit TimerCard): the text is the skip button, a secondary button beside it. */
+.tk-timercard { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); border-radius: var(--radius-card); background: var(--card); border: 1px solid var(--line); box-shadow: 0 4px 14px var(--shadow-lift); }
+.tk-timercard > button.secondary { flex: none; }
+.tk-screen button.tk-rest-main { flex: 1; min-width: 0; min-height: 44px; padding: 0; background: transparent; color: inherit; border: 0; font-weight: 400; font-size: var(--text-m); font-variant-numeric: tabular-nums; text-align: left; }
 /* The one part bar (kit Band): parts as wide as their share, filled in the accent. */
 .tk-band { display: flex; align-items: flex-end; gap: 3px; height: 1rem; }
 .tk-band > span { display: block; min-width: 4px; height: 6px; border-radius: 3px; background: var(--field-line); overflow: hidden; }

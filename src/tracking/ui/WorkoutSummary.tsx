@@ -2,8 +2,8 @@ import type { ActivityItem } from '../../shared/activities';
 import type { LoggedWorkout } from '../../shared/records';
 import type { NextStep } from '../../shared/stats';
 import type { PlanDay } from '../../shared/week-plan';
-import { Finisher } from './FinisherCard';
-import { finisherOf } from './finisher';
+import { BoBubble, MainCard } from './kit';
+import { finisherLine, finisherOf, STRETCH_LINE } from './finisher';
 import { nextLine, nextOf } from './next-line';
 
 const KEY = 'pandafit-summary-pending';
@@ -13,19 +13,19 @@ export const setPendingSummary = (id: string | null): void => {
   try { if (id === null) localStorage.removeItem(KEY); else localStorage.setItem(KEY, id); } catch { /* private mode: the summary lives until the screen is left */ }
 };
 
-/** After a saved finish: what was done, and the coach's next step per exercise (or that it is still coming). One button. */
+/** After a saved finish: the main card "Gespeichert" with the coach's next step per exercise, and Bo with what to do now. One button. */
 export function WorkoutSummary({ workout: w, next, onDone, nowMs, today, activities, complaintsOpen }: { workout: LoggedWorkout; next: readonly NextStep[]; onDone: () => void; nowMs: number; today: PlanDay | null; activities: ActivityItem[]; complaintsOpen: boolean }) {
   const mine = next.filter((n) => n.forWorkoutId === w.id || n.atMs === w.startMs);
   const minutes = Math.max(1, Math.round(((w.endMs ?? w.startMs) - w.startMs) / 60000));
   const rows = w.exercises.map((e) => ({ e, n: nextOf(mine, e) })).filter((r) => r.n);
   const finisher = finisherOf({ workout: w, nowMs, today, activities, complaintsOpen });
+  const count = w.exercises.length === 1 ? '1 Übung' : `${w.exercises.length} Übungen`;
   return (
-    <section className="card tk-summary" aria-label="Zusammenfassung">
-      <h2>Gespeichert</h2>
-      <p className="muted">{w.exercises.length} {w.exercises.length === 1 ? 'Übung' : 'Übungen'} · {minutes} Min</p>
-      {rows.map(({ e, n }, i) => <p key={i} className="muted tk-sub">{e.title} · {nextLine(n!)}</p>)}
-      {finisher && <Finisher f={finisher} />}
-      <button type="button" onClick={onDone}>Fertig</button>
-    </section>
+    <>
+      <MainCard label="Zusammenfassung" kicker="Gespeichert" title={w.title} text={`${count} in ${minutes === 1 ? '1 Minute' : `${minutes} Minuten`}.`}
+        primary={{ label: 'Fertig', onClick: onDone }}
+        more={rows.length > 0 && rows.map(({ e, n }, i) => <p key={i} className="muted tk-sub">{e.title} · {nextLine(n!)}</p>)} />
+      {finisher && <BoBubble portrait="mini">{[finisherLine(finisher), STRETCH_LINE].filter((x, i, all) => all.indexOf(x) === i).join(' ')}</BoBubble>}
+    </>
   );
 }

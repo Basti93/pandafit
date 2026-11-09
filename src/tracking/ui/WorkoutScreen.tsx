@@ -181,7 +181,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
     if (routine && workouts && c.openRecs.length === 0 && !c.store && started.current !== routine) { started.current = routine; void actions.current.startPlan(routine); }
   }, [routine, workouts, cur, actions]);
 
-  if (store) return <ActiveWorkout port={port} store={store.s} history={history} now={now} newId={newId} autoEnd={store.autoEnd} startNotice={store.notice} onLeave={(m, finishedId) => { setStore(null); if (finishedId) { setPendingSummary(finishedId); setSummaryId(finishedId); setMessage(null); } else setMessage(m); }} />;
+  if (store) return <ActiveWorkout port={port} store={store.s} history={history} now={now} newId={newId} autoEnd={store.autoEnd} startNotice={store.notice} onMinimize={() => setStore(null)} onLeave={(m, finishedId) => { setStore(null); if (finishedId) { setPendingSummary(finishedId); setSummaryId(finishedId); setMessage(null); } else setMessage(m); }} />;
   if (workoutsQ.failed) {
     return (
       <div className="tk-screen">

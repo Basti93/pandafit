@@ -102,6 +102,9 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
 
   // While typing, the bottom bar steps aside, so the on-screen keyboard never pushes it over a field.
   const [typing, setTyping] = useState(false);
+  // The running workout has the whole screen: the wordmark, the profile button and the tab bar step aside while it is shown.
+  const [liveWorkout, setLiveWorkout] = useState(false);
+  const frame = !(tab === 'training' && liveWorkout);
   useEffect(() => {
     const field = (t: EventTarget | null) => t instanceof HTMLElement && t.matches('input, textarea, select');
     const on = (e: FocusEvent) => { if (field(e.target)) setTyping(true); };
@@ -114,10 +117,12 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
   return (
     <>
       <main className="web-main">
-        <div className="web-top"><span className="web-wordmark">Pandafit</span></div>
-        <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => setTab('profil')}>
-          <Icon name="profil" />
-        </button>
+        {frame && <div className="web-top"><span className="web-wordmark">Pandafit</span></div>}
+        {frame && (
+          <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => setTab('profil')}>
+            <Icon name="profil" />
+          </button>
+        )}
         {status === 'login' && (
           <div className="tk-screen">
             <LoginForm env={env}
@@ -133,7 +138,7 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           <Suspense fallback={<p className="muted" role="status">Wird geladen.</p>}>
           {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
-          {tab === 'training' && <Training entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} />}
+          {tab === 'training' && <Training entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} onLive={setLiveWorkout} />}
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} openChat={chatOnOpen} onChatClosed={() => { setChatOnOpen(false); setTab('heute'); }} />}
@@ -141,11 +146,13 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
           </Suspense>
         </ErrorBoundary>
       </main>
-      <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-        {tabs.map(([t, label]) => (
-          <button key={t} type="button" aria-current={tab === t ? 'page' : undefined} onClick={() => { setEntry(null); setChatOnOpen(false); setTab(t); }}><Icon name={TAB_ICON[t]} />{label}</button>
-        ))}
-      </nav>
+      {frame && (
+        <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+          {tabs.map(([t, label]) => (
+            <button key={t} type="button" aria-current={tab === t ? 'page' : undefined} onClick={() => { setEntry(null); setChatOnOpen(false); setTab(t); }}><Icon name={TAB_ICON[t]} />{label}</button>
+          ))}
+        </nav>
+      )}
     </>
   );
 }

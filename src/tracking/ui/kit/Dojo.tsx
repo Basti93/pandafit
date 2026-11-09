@@ -81,6 +81,19 @@ export function AskBoButton({ onClick }: { onClick: () => void }) {
   return <button type="button" className="secondary" onClick={onClick}><Icon name="sprechen" size={18} /><span>{BO.ask}</span></button>;
 }
 
+/**
+ * The one slim timer card (the rest between sets): the whole text is one button (`skipName`, e.g. "Pause überspringen"),
+ * a `secondary` button beside it. `label` names the timer. Where it sits (sticky) is the screen's layout.
+ */
+export function TimerCard({ label, skipName, onSkip, more, children }: { label: string; skipName: string; onSkip: () => void; more: Action; children: ReactNode }) {
+  return (
+    <div role="timer" aria-label={label} className="tk-timercard">
+      <button type="button" className="tk-rest-main" aria-label={skipName} onClick={onSkip}>{children}</button>
+      <button type="button" className="secondary" onClick={more.onClick}>{more.label}</button>
+    </div>
+  );
+}
+
 /** A small green label with a check, e.g. "Im Training berücksichtigt". */
 export function Tag({ children }: { children: ReactNode }) {
   return <span className="tk-tag"><Icon name="haken" size={14} />{children}</span>;

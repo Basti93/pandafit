@@ -8,6 +8,7 @@
  *   RowCard (RowCard.tsx) is the only row card with an icon tile (DESIGN "Zeilenkarte"); Row stays the plain text row without icon (lists, settings). WordTile is the only word tile.
  *   StandCard is the one orientation card "… · diese Woche" (Kraft, Rad, Laufen); Segments the one switch between sub pages; PillButton the one pill (quiet side action and back);
  *   MarkDot the one state dot (done, now, open; button dots in a row need a gap of at least 16 px); Band the one part bar.
+ *   TimerCard is the one slim timer card (the rest between sets): the text is the skip button, a secondary button beside it.
  *   RoundButton is the one round icon button; BackButton is the one back button of pages (RoundButton, or a PillButton with a label); Sheet `page` is for pages like the chat (BackButton instead of ×).
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
@@ -43,7 +44,7 @@ export { PageHead } from './PageHead';
 export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
 export { ConfirmLink } from './ConfirmLink';
-export { AskBoButton, BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, PillButton, RoundButton, SeeProposalButton, Tag } from './Dojo';
+export { AskBoButton, BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, PillButton, RoundButton, SeeProposalButton, Tag, TimerCard } from './Dojo';
 export { BoScene } from './BoScene';
 export type { BoPlace } from './BoScene';
 export { RowCard, WordTile } from './RowCard';

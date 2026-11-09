@@ -25,7 +25,6 @@ body { font-family: var(--font-text); padding: 0 env(safe-area-inset-right) env(
 .web-login input { border-color: var(--muted); }
 .web-login button[type='submit'] { margin-top: .25rem; }
 /* Sticky pieces sit below the notch; the tab bar is at the bottom now. */
-.tk-rest { top: calc(env(safe-area-inset-top) + .4rem) !important; }
 .tk-picker { padding-top: calc(1rem + env(safe-area-inset-top)); padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
 
 /* Meal plan: one day at a time, the three meals as cards with a color per meal. */

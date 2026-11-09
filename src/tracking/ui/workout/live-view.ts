@@ -68,3 +68,31 @@ export function upNext(w: TrackedWorkout, focusRid: string | null): { rid: strin
 export function focusExercise(w: TrackedWorkout, openRid: string | null, currentRid: string | null): TrackedExercise | null {
   return w.exercises.find((e) => e.rid === openRid) ?? w.exercises.find((e) => e.rid === currentRid) ?? w.exercises[w.exercises.length - 1] ?? null;
 }
+
+/** All sets of the exercise are done (an exercise without sets is never done). */
+export const isDoneExercise = (e: TrackedExercise): boolean => e.sets.length > 0 && e.sets.every((s) => !isOpen(s));
+
+/**
+ * Where the workout stands, for the card "Dein Training": the focus exercise's place, the parts for `Band`
+ * (a done exercise full, the focus one by its done work sets, an open one empty) and the titles of the done exercises.
+ */
+export function progressOf(w: TrackedWorkout, focusRid: string | null): { index: number; total: number; parts: { grow: 1; fill: number }[]; doneTitles: string[] } {
+  const at = w.exercises.findIndex((e) => e.rid === focusRid);
+  const parts = w.exercises.map((e): { grow: 1; fill: number } => {
+    if (isDoneExercise(e)) return { grow: 1, fill: 1 };
+    if (e.rid !== focusRid) return { grow: 1, fill: 0 };
+    const work = workOf(e);
+    return { grow: 1, fill: work.length === 0 ? 0 : work.filter((s) => !isOpen(s)).length / work.length };
+  });
+  return { index: at + 1, total: w.exercises.length, parts, doneTitles: w.exercises.filter(isDoneExercise).map((e) => e.title) };
+}
+
+const COUNT_WORD = ['Null', 'Eine', 'Zwei', 'Drei', 'Vier', 'Fünf', 'Sechs', 'Sieben', 'Acht', 'Neun', 'Zehn', 'Elf', 'Zwölf'];
+
+/** The done exercises as one sentence: one or two by name, from three on as a count in words. None: null. */
+export function doneSentence(titles: string[]): string | null {
+  if (titles.length === 0) return null;
+  if (titles.length === 1) return `${titles[0]} hast du schon geschafft.`;
+  if (titles.length === 2) return `${titles[0]} und ${titles[1]} hast du schon geschafft.`;
+  return `${COUNT_WORD[titles.length] ?? titles.length} Übungen hast du schon geschafft.`;
+}

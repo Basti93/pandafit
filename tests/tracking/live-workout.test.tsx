@@ -94,16 +94,7 @@ test('Bo fragen from the header menu opens the coach panel', async () => {
   expect(await screen.findByRole('region', { name: 'Bo im Training' })).toBeTruthy();
 });
 
-test('the rest bar is one button that skips, with +30 s next to it', async () => {
-  const w = { ...three(), rest: { startMs: 70_000, durationS: 90 } };
-  const f = await running(w as LoggedWorkout);
-  const bar = screen.getByRole('timer', { name: 'Satzpause' });
-  expect(bar.textContent).toContain('Pause 1:00');
-  fireEvent.click(within(bar).getByRole('button', { name: '+30 s' }));
-  await waitFor(() => expect((bodyOf(f.map) as unknown as { rest: { durationS: number } }).rest.durationS).toBe(120));
-  fireEvent.click(within(screen.getByRole('timer', { name: 'Satzpause' })).getByRole('button', { name: 'Pause überspringen' }));
-  await waitFor(() => expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull());
-});
+// The rest card and the head ("Läuft seit") are in live-frame.test.tsx.
 
 test('the start screen: studio is a pill, the others live behind "Anderes Training"', async () => {
   const f = fakePort([]);

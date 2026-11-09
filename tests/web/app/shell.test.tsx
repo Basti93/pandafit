@@ -166,6 +166,20 @@ describe('web app', () => {
     await waitFor(() => expect(screen.queryByRole('group', { name: 'Kraft' })).toBeNull()); // the Kraft sub-navigation is gone while a workout runs
   });
 
+  it('the tab bar and the profile button step aside while the workout is shown and come back after Verkleinern', async () => {
+    await boot({ account: 'anna', seed: [plan(NOW - 1000)] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
+    fireEvent.click(within(await screen.findByRole('region', { name: 'Nächstes Training' })).getByRole('button', { name: 'Training starten' }));
+    await screen.findByRole('button', { name: 'Satz geschafft' });
+    await waitFor(() => expect(screen.queryByRole('navigation', { name: 'Seiten' })).toBeNull());
+    expect(screen.queryByRole('button', { name: 'Profil' })).toBeNull();
+    expect(screen.queryByText('Pandafit')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Verkleinern, Training läuft weiter' }));
+    expect(await screen.findByRole('navigation', { name: 'Seiten' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Profil' })).toBeTruthy();
+    expect(within(await screen.findByRole('region', { name: 'Läuft noch' })).getByRole('button', { name: 'Weitermachen' })).toBeTruthy();
+  });
+
   it('an expired login keeps unsent data and asks to log in again', async () => {
     const a = await boot({ syncStatus: 401, seed: [plan(NOW - 1000)] });
     expect(await screen.findByText(/Bitte melde dich neu an/)).toBeTruthy();
@@ -499,7 +513,8 @@ describe('web app', () => {
     const note = await screen.findByLabelText('Notiz zu Kniebeuge');
     fireEvent.focus(note);
     fireEvent.change(note, { target: { value: 'Rechtes Knie ziept' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Verkleinern, Training läuft weiter' })); // the profile button is back once the workout is minimized
+    fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
     const confirm = screen.queryByRole('button', { name: 'Trotzdem abmelden' });
     if (confirm) fireEvent.click(confirm);

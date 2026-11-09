@@ -130,6 +130,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 - ~~Aus Dojo 2: `TogetherScreen` baut seine Karten noch von Hand (`section.card`); beim nächsten Anfassen auf Kit-Bausteine umstellen.~~ Erledigt (Parkplatz Design).
 - Aus Dojo 2: `BoBubble` mit `portrait="mini"` und `place` verkleinert die Szene; in Dojo 5 prüfen, sobald es einen Aufruf gibt.
 - Aus Dojo 3: Sheets, die aus dem Übungsmenü geöffnet werden (Sätze bearbeiten, Tauschen, Reihenfolge ändern), zeigen „‹ Zurück“ statt ×; einmal im Kit lösen.
+- Aus Dojo 3: Der Pausen-Wecker (`port.restAlarm`) endet beim Verkleinern des Trainings wie beim Tab-Wechsel. Die Pause selbst läuft im Record weiter und steht nach „Weitermachen“ wieder da; nur der Ton am Ende fehlt dann.
 - ~~`npm run dev:web`: Der Proxy-Präfix `/push` fängt auch das Modul `/push.ts` ab, ohne laufenden Server bleibt die Seite leer. Präfix enger fassen (`/push/`).~~ Erledigt (Parkplatz Design).
 
 - Anpassungen am nächsten Training liegen nur auf dem Gerät; eine Übernahme zwischen Geräten wäre ein eigener Record. Ein Vorschlag, der zwischen Anpassen und Start übernommen wird, fehlt im Entwurf.

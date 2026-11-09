@@ -22,7 +22,7 @@ function SubPage({ title, onBack, children }: { title: string; onBack: () => voi
   );
 }
 
-export function Training({ entry, onEntryDone, onDone }: { entry: 'resume' | 'plan' | null; /** The plan sheet asked for by Heute has opened: the request is used up. */ onEntryDone: () => void; onDone: () => void }) {
+export function Training({ entry, onEntryDone, onDone, onLive }: { entry: 'resume' | 'plan' | null; /** The plan sheet asked for by Heute has opened: the request is used up. */ onEntryDone: () => void; onDone: () => void; /** Told whether the running workout is shown, so the app frame (tab bar, profile, wordmark) can step aside. */ onLive?: (live: boolean) => void }) {
   const { port, env, account } = useApp();
   const [running, setRunning] = useState(false);
   const plans = usePortRecords(port, 'plan').records;
@@ -54,7 +54,7 @@ export function Training({ entry, onEntryDone, onDone }: { entry: 'resume' | 'pl
           {week.loaded && <StandCard kicker="Kraft · diese Woche" text={week.text} marks={week.marks} marksLabel={week.label} />}
         </div>
       )}
-      <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={entry === 'resume'} onActive={setRunning} onDone={onDone} plan={plan?.workout ?? null} routine={routine}
+      <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={entry === 'resume'} onActive={(v) => { setRunning(v); onLive?.(v); }} onDone={onDone} plan={plan?.workout ?? null} routine={routine}
         planMeta={plan ? { atMs: plan.atMs, dateText: planDateText(plan.atMs), reason: plan.reason, note: plan.note, outlook: plan.outlook } : null} account={account} storage={env.storage} openPlan={entry === 'plan'} onOpened={onEntryDone} now={env.now} newId={env.newId} />
       {!running && (
         <div className="tk-screen tk-tiles">
