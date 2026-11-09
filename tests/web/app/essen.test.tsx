@@ -100,8 +100,8 @@ describe('Essen on the phone', () => {
       await boot({ account: 'anna', seed: [mealPlan] });
       const list = await screen.findByRole('list', { name: 'Essen heute' });
       const rows = within(list).getAllByRole('listitem').map((r) => r.textContent ?? '');
-      expect(rows[0]).toContain('Frühstück · Skyr mit Beeren');
-      expect(rows[1]).toContain('Mittagessen · Linsen-Bolognese');
+      expect(rows[0]).toContain('FrühstückSkyr mit Beeren');
+      expect(rows[1]).toContain('MittagessenLinsen-Bolognese');
       expect(rows[0]).not.toContain('Min'); // how long it takes is for the plan, not for Heute
       expect(rows.some((r) => r.includes('Tomatensuppe'))).toBe(false);
       expect(screen.queryByText(/Heute vorkochen/)).toBeNull();

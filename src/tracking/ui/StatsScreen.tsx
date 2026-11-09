@@ -12,8 +12,6 @@ import { MuscleIcon } from './MuscleIcon';
 import { progressRows, type ProgressRow } from '../progress';
 import { runView } from './run-view';
 import { Row, RowList, Sheet } from './kit';
-import { HealthSheet } from './HealthSheet';
-import { healthOf, healthWord } from './health-view';
 
 const SPORT_LABEL: Record<Sport, string> = { bike: 'Rad', strength: 'Kraft', run: 'Laufen', mobility: 'Mobility', other: 'Andere' };
 const shortDate = (iso: string) => `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
@@ -127,8 +125,7 @@ function Progress({ rows }: { rows: ProgressRow[] }) {
  * What is worth saying about the last weeks stands above the rows. Rows without data are left out; Verlauf is always there.
  */
 export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort; now: () => number; /** The newest activity in a few words. */ latest?: string; onHistory: () => void }) {
-  const [sheet, setSheet] = useState<'time' | 'muscles' | 'health' | null>(null);
-  const health = healthOf(usePortRecords(port, 'health').records);
+  const [sheet, setSheet] = useState<'time' | 'muscles' | null>(null);
   const statsQ = usePortRecords(port, 'stats');
   const workoutsQ = usePortRecords(port, 'workout');
   const statsRecords = statsQ.records;
@@ -162,16 +159,13 @@ export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort;
   const gaps = [...gapGroups(v)].length;
   return (
     <section className="tk-lookback" aria-label="Rückblick">
-      <h2 className="tk-section">Rückblick</h2>
       {failed && <ReadFailed text="Der Rückblick konnte gerade nicht gelesen werden. Es ist nichts verloren." retry={retry} />}
       {any && v.verdicts.length > 0 && <ul className="tk-verdicts">{v.verdicts.map((t) => <li key={t}>{verdictText(t)}</li>)}</ul>}
       <RowList label="Rückblick">
         <Row title="Verlauf" value={latest ? <span className="tk-ellipsis">{latest}</span> : undefined} onClick={onHistory} />
         {muscles && <Row title="Muskeln" value={gaps > 0 ? `${gaps} ${gaps === 1 ? 'Lücke' : 'Lücken'}` : 'ausgewogen'} onClick={() => setSheet('muscles')} />}
-        {health && <Row title="Gesundheit" value={healthWord(health)} onClick={() => setSheet('health')} />}
         {any && <Row title="Zeit pro Woche" onClick={() => setSheet('time')} />}
       </RowList>
-      {sheet === 'health' && health && <HealthSheet health={health} onClose={() => setSheet(null)} />}
       {sheet === 'muscles' && <MusclesSheet v={v} onClose={() => setSheet(null)} />}
       {sheet === 'time' && (
         <Sheet title="Zeit pro Woche" onClose={() => setSheet(null)}>

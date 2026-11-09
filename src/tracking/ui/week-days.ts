@@ -1,0 +1,45 @@
+import { addDays, mondayOf, planOfWeek } from '../../shared/week-plan';
+import type { PlannedRun } from '../../shared/run';
+import { localDayKey } from '../../shared/dates';
+import type { TrackingPort } from '../ports';
+import { doneDays, mergedActivities, type DayRow } from './done-days';
+import { useTodayAdvice } from './frame-hooks';
+import { usePortRecords } from './hooks';
+import { runView } from './run-view';
+import { weekCount, weekCountText, weekPathOf, type PathDay } from './week-path';
+
+/**
+ * The one source of the week: Heute (the week path) and Woche (the list) read the same rows.
+ * `loaded` is true once the week plans, the activities and the workouts are read (a failed read counts as empty, so the path never hangs): before that the rows would only look empty.
+ * Monday to today in Spontan mode or without a plan, else the whole week; every activity counts once.
+ * `path` and `count` are the week path and "2 von 5 geschafft" (null when there is nothing to count); Spontan counts without a plan.
+ */
+export function useWeekDays(port: TrackingPort, nowMs: number): {
+  today: string; monday: string; dates: string[]; rows: DayRow[]; current: ReturnType<typeof planOfWeek>; next: ReturnType<typeof planOfWeek>;
+  runs: PlannedRun[]; spontaneous: boolean; loaded: boolean; frame: ReturnType<typeof useTodayAdvice>; path: PathDay[]; count: string | null;
+} {
+  const planRead = usePortRecords(port, 'weekplan');
+  const plans = planRead.all;
+  const runRecords = usePortRecords(port, 'run').all;
+  const activityRead = usePortRecords(port, 'activities');
+  const activityRecords = activityRead.all;
+  const workoutRead = usePortRecords(port, 'workout');
+  const workoutRecords = workoutRead.all;
+  const frame = useTodayAdvice(port, nowMs);
+
+  const today = localDayKey(nowMs);
+  const monday = mondayOf(today);
+  const current = planOfWeek(plans ?? [], monday);
+  const next = planOfWeek(plans ?? [], addDays(monday, 7));
+  // The run coach's runs sit on their days; without a week plan they are listed on their own.
+  const runs = runView(runRecords ?? [], nowMs).week?.runs ?? [];
+  const dates = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  // Without a week plan (or in Spontan) the week still shows Monday to today, from what was done.
+  const spontaneous = frame.frame.mode === 'spontaneous';
+  const rowDates = current && !spontaneous ? dates : dates.filter((d) => d <= today);
+  const merged = mergedActivities(activityRecords, workoutRecords, true);
+  const rows = doneDays(rowDates, today, spontaneous ? null : current?.days ?? null, merged);
+  const path = weekPathOf(dates, rows, today);
+  const count = weekCountText(weekCount(rows, current && !spontaneous ? current.days : null));
+  return { today, monday, dates, rows, current, next, runs, spontaneous, path, count, loaded: (plans !== null || planRead.failed) && (activityRecords !== null || activityRead.failed) && (workoutRecords !== null || workoutRead.failed), frame };
+}

@@ -1,125 +1,157 @@
 import { useState } from 'react';
 import { chatThread, waitingMessage } from '../../shared/chat';
-import { mondayOf, planOfWeek, addDays, SPORT_LABEL } from '../../shared/week-plan';
+import { localDayKey } from '../../shared/dates';
 import type { TrackingPort } from '../ports';
-import { readStats, STATS_ID } from '../../shared/stats';
-import { newestNotes } from '../../shared/change-notes';
-import { localDayKey, timeLabel } from '../../shared/dates';
-import { useTodayAdvice } from './frame-hooks';
-import { CoachPrefs } from './CoachPrefs';
+import { useWeekDays } from './week-days';
 import { CoachChat } from './CoachChat';
-import { GoalSheet, goalSummary, RulesSheet, useRuleList } from './GoalRules';
+import { GoalSheet, goalSentence, RulesSheet } from './GoalRules';
 import { ActivityHistory } from './ActivityHistory';
-import { activityText, doneDays, mergedActivities, planRows } from './done-days';
-import { Week, dayName, runText } from './WeekList';
-import { openProposals } from './chat-open';
+import { activityText, mergedActivities, planRows, type DayRow } from './done-days';
+import { Week, runText } from './WeekList';
 import { useGoal, usePortRecords } from './hooks';
-import { dayText as runDay, runView } from './run-view';
-import { PageHead, Row, RowList } from './kit';
+import { planDayLabel } from './plan-text';
+import { AskBoButton, Card, BoBubble, Icon, PageHead, RoundButton, RowCard, SeeProposalButton, Sheet, WeekPath } from './kit';
+import { BO_LINES } from './bo';
 import { LookBack } from './StatsScreen';
-import { WaitingProposal } from './WaitingProposal';
+import { HealthCard, HealthPage } from './HealthPage';
+import { healthOf } from './health-view';
+import { DaySheet } from './DaySheet';
+import { ProposalsSheet } from './ProposalCard';
+import { useOpenProposals } from './proposals';
+import { isRest, KIND_ICON, SPORT_ICON, restDaysText, shortDay, weekRangeText, weekSentence } from './week-path';
+import { TogetherPage, togetherOf } from './TogetherScreen';
 
-/** Woche is the week: seven days, what changed lately, rows that open the goal, the rules and the chat with the coach, and the Rückblick. */
+/** Woche is the week: the week card, the days (Erledigt, Heute, Kommt noch), health, Bo's bubble and three quiet tiles. */
 /** `openChat`: the page opens with the chat already open ("Bo fragen" on Heute leads straight there). */
-export function CoachScreen({ port, now, newId, showPrefs = true, openChat = false }: { port: TrackingPort; now: () => number; newId: () => string; showPrefs?: boolean; openChat?: boolean }) {
+export function CoachScreen({ port, now, newId, openChat = false }: { port: TrackingPort; now: () => number; newId: () => string; openChat?: boolean }) {
   const chat = usePortRecords(port, 'chat').all;
-  const plans = usePortRecords(port, 'weekplan').all;
-  const changeRecs = usePortRecords(port, 'change').all;
-  const ruleRecs = usePortRecords(port, 'rule').all;
-  const runRecords = usePortRecords(port, 'run').all;
   const activityRecords = usePortRecords(port, 'activities').all;
   const workoutRecords = usePortRecords(port, 'workout').all;
-  const statsRecords = usePortRecords(port, 'stats').all;
   const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | null>(openChat ? 'chat' : null);
-  const [open, setOpen] = useState(false);
+  const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | 'look' | 'proposals' | 'next' | null>(openChat ? 'chat' : null);
+  const [dayDate, setDayDate] = useState<string | null>(null);
+  const [page, setPage] = useState<'week' | 'health' | 'together'>('week');
+  const health = healthOf(usePortRecords(port, 'health').records);
+  const together = togetherOf(usePortRecords(port, 'together').records);
   const goal = useGoal(port, now());
   // Until a goal was picked (or the coach changed it) the shown one is only the default.
   const goalChosen = (usePortRecords(port, 'goal').records ?? []).length > 0;
-  const { rules, tasks } = useRuleList(port, now());
-  const fr = useTodayAdvice(port, now());
   const thread = chatThread(chat ?? []);
+  const proposals = useOpenProposals(port, now());
+  // The sheet never opens by itself: once the last waiting proposal is answered, forget that it was open.
+  if (sheet === 'proposals' && proposals.length === 0) setSheet(null);
 
-  const today = localDayKey(now());
-  const monday = mondayOf(today);
-  const current = planOfWeek(plans ?? [], monday);
-  const next = planOfWeek(plans ?? [], addDays(monday, 7));
-  // The run coach's runs sit on their days; without a week plan they are listed on their own.
-  const runs = runView(runRecords ?? [], now()).week?.runs ?? [];
-  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
-  // Without a week plan (or in Spontan) the week still shows Monday to today, from what was done.
-  const spontaneous = fr.frame.mode === 'spontaneous';
-  const rowDates = current && !spontaneous ? weekDates : weekDates.filter((d) => d <= today);
+  const week = useWeekDays(port, now());
+  const { today, monday, rows: dayRows, current, next, runs, spontaneous, frame: fr, loaded, path, count } = week;
   const merged = mergedActivities(activityRecords, workoutRecords, true);
-  const dayRows = doneDays(rowDates, today, spontaneous ? null : current?.days ?? null, merged);
   const newestActivity = merged.items[0];
-  const recent = Object.values(fr.ratings).filter((r) => r.sports?.length).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 4)
-    .map((r) => `${dayName(r.date).slice(0, 2)} ${r.sports!.map((k) => SPORT_LABEL[k]).join(' + ')}`).join(' · ');
-
-  const stats = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);
-  const notes = newestNotes((stats && readStats(stats.body)?.changes) || [], 1);
-  const waiting = openProposals(thread, plans ?? [], changeRecs ?? [], ruleRecs ?? [], monday).length > 0;
-  const visible = thread.filter((m) => !(m.takes || m.declines || m.undoes));
-  const last = visible[visible.length - 1];
   const asking = waitingMessage(thread) !== null;
-  // While a proposal waits, the card above says so; the row then shows no second "waiting".
-  const preview = asking ? 'Bo denkt nach …' : last ? <>{last.text} <small>{timeLabel(last.atMs)}</small></> : 'Schreib Bo';
-  // Fixed order: Nächste Woche, Ziel und Planung, Was Bo beachtet, Bo. The last change is Bo's row's second line.
-  const changed = notes[0] ? <small className="tk-row-sub muted tk-clip">Zuletzt geändert: {notes[0].text}{notes[0].reason ? `, ${notes[0].reason}` : ''}</small> : null;
-  const coachRow = <Row key="coach" title={<>Bo{changed}</>} value={<span className="tk-ellipsis">{preview}</span>} onClick={() => setSheet('chat')} />;
-  const ruleCount = rules.length + tasks.length;
-  const rest = [
-    next && fr.frame.mode !== 'spontaneous' && (
-      <Row key="next" title="Nächste Woche" expanded={open} onClick={() => setOpen(!open)}>
-        <Week rows={planRows(next.days)} label="Wochenplan nächste Woche" runs={runs} />
-      </Row>
-    ),
-    <Row key="goal" title="Ziel und Planung" value={<span className="tk-ellipsis">{goalChosen ? goalSummary(goal) : `Vorschlag: ${goalSummary(goal)}`}</span>} onClick={() => setSheet('goal')} />,
-    <Row key="rules" title="Was Bo beachtet" value={ruleCount === 0 ? 'nichts' : String(ruleCount)} onClick={() => setSheet('rules')} />,
-  ];
-  // Empty week and nothing said yet: the "Woche planen" button is the way to the coach, so no second row for it.
-  // (Only once the records are read: no flash of the empty state while they load.)
-  const loaded = plans !== null && chat !== null;
-  const bare = loaded && !current && !spontaneous && !last && !waiting && !asking && notes.length === 0;
-  const rows = bare ? rest : [...rest, coachRow];
   const saveFailed = () => setError('Die Einstellung konnte nicht gespeichert werden.');
+
+  if (page === 'health' && health) return <HealthPage health={health} onBack={() => setPage('week')} />;
+  if (page === 'together' && together) return <TogetherPage t={together} now={now()} onBack={() => setPage('week')} />;
+
+  const noPlan = !current && !spontaneous;
+
+  // The days: Erledigt (past days with something done), Heute, Kommt noch. Rest days before today stay in the week path only.
+  const runsOn = (date: string) => runs.filter((r) => r.date === date);
+  const planTitle = (r: DayRow): string => {
+    const own = r.plan!.sport === 'run' ? runsOn(r.date) : [];
+    return own.length > 0 ? own.map(runText).join(' · ') : planDayLabel(r.plan!);
+  };
+  const extraRuns = (r: DayRow): string | undefined => {
+    const list = r.plan && r.plan.sport === 'run' ? [] : runsOn(r.date);
+    return list.length > 0 ? list.map(runText).join(' · ') : undefined;
+  };
+  const doneRows = dayRows.filter((r) => r.date < today && r.done.length > 0);
+  const todayRow = dayRows.find((r) => r.date === today);
+  const todayDone = todayRow && todayRow.done.length > 0;
+  const todayOpen = todayRow?.plan ?? null;
+  const coming = current && !spontaneous ? dayRows.filter((r) => r.date > today && r.plan && !isRest(r.plan)) : [];
+  const comingRuns = noPlan ? runs.filter((r) => r.date > today) : [];
+  const rest = current && !spontaneous ? restDaysText(dayRows, today) : null;
+  const todayRuns = noPlan ? runs.filter((r) => r.date === today) : [];
+  const showToday = (!!todayRow && (todayDone || todayOpen !== null)) || todayRuns.length > 0;
+  const boReady = loaded && chat !== null;
+  const anyDays = doneRows.length > 0 || showToday || coming.length > 0 || comingRuns.length > 0;
+  const open = (date: string) => () => setDayDate(date);
+
+  // Bo's bubble: the first line that fits. The main button is the next step, the secondary one always opens the chat.
+  const main = asking ? null : proposals.length > 0 ? 'proposals' : boReady && noPlan ? 'plan' : null;
+  const boText = asking ? BO_LINES.thinking : proposals.length > 0 ? BO_LINES.proposal : boReady && noPlan ? BO_LINES.weekEmpty : BO_LINES.weekCalm;
+  const boActions = (
+    <>
+      {main === 'proposals' && <SeeProposalButton onClick={() => setSheet('proposals')} />}
+      {main === 'plan' && <button type="button" className="primary" onClick={() => setSheet('chat')}>Woche planen</button>}
+      <AskBoButton onClick={() => setSheet('chat')} />
+    </>
+  );
 
   return (
     <div className="tk-screen tk-coach">
-      <PageHead title="Woche" />
-      {fr.frame.mode === 'spontaneous' ? (
-        <>
-          <section className="card" aria-label="Heute">
-            <h2>Heute: {fr.advice.line}</h2>
-            <p className="muted">Zuletzt: {recent || 'noch nichts'}</p>
-          </section>
-          <section className="card" aria-label="Wochenübersicht"><Week rows={dayRows} label="Diese Woche" today={today} /></section>
-        </>
-      ) : (
-        <section className="card" aria-label="Wochenplan">
-          {/* Without a plan seven empty days say nothing: one button instead. */}
-          {current || !loaded ? <Week rows={dayRows} label="Wochenplan diese Woche" today={today} runs={runs} /> : (
-            <>
-              <p className="muted">Es gibt noch keinen Wochenplan.</p>
-              <button type="button" onClick={() => setSheet('chat')}>Woche planen</button>
-            </>
+      <PageHead title="Deine Woche" />
+      <Card label="Diese Woche">
+        {loaded && <WeekPath days={path} kicker={weekRangeText(monday)} count={count} onPick={setDayDate} />}
+        <p className="tk-weeksentence">
+          {spontaneous ? `Heute: ${fr.advice.line}` : current ? weekSentence(dayRows, today, current.days) : loaded ? 'Für diese Woche gibt es noch keinen Plan.' : ''}
+        </p>
+        <div className="tk-weekgoal">
+          <span className="tk-weekgoal-icon" aria-hidden="true"><Icon name="ziel" size={22} /></span>
+          <p><b>Dein Ziel:</b> {goalSentence(goal)}{!goalChosen && <> <span className="muted">Das ist ein Vorschlag.</span></>}</p>
+          <RoundButton icon="stift" name="Ziel und Planung" onClick={() => setSheet('goal')} />
+        </div>
+      </Card>
+      {loaded && anyDays && (
+        <Card label="Tage">
+          {doneRows.length > 0 && (
+            <div className="tk-daysection">
+              <h3 className="tk-section">Erledigt</h3>
+              {doneRows.map((r) => <RowCard key={r.date} flat lead={shortDay(r.date)} icon={KIND_ICON[r.kinds[0] ?? 'andere']} title={r.done.join(' + ')} end="done" onClick={open(r.date)} />)}
+            </div>
           )}
-          {!current && runs.length > 0 && (
-            <ul className="tk-week" aria-label="Läufe diese Woche">
-              {runs.map((r) => <li key={r.date + r.kind}><b>{runDay(r.date)}</b> <span>{runText(r)}</span></li>)}
-            </ul>
+          {showToday && (
+            <div className="tk-daysection">
+              <h3 className="tk-section">Heute</h3>
+              {todayDone && <RowCard flat highlight={!todayOpen && todayRuns.length === 0} lead={shortDay(today)} icon={KIND_ICON[todayRow!.kinds[0] ?? 'andere']} title={todayRow!.done.join(' + ')} end="done" onClick={open(today)} />}
+              {todayOpen && <RowCard flat highlight lead={todayDone ? undefined : shortDay(today)} icon={SPORT_ICON[todayOpen.sport]} title={isRest(todayRow!.plan) ? 'Ruhetag' : planTitle(todayRow!)} sub={extraRuns(todayRow!)} onClick={open(today)} />}
+              {todayRuns.map((r) => <RowCard key={r.kind} flat highlight={!todayDone} lead={todayDone ? undefined : shortDay(today)} icon="lauf" title={runText(r)} onClick={open(today)} />)}
+            </div>
           )}
-        </section>
+          {(coming.length > 0 || comingRuns.length > 0) && (
+            <div className="tk-daysection">
+              <h3 className="tk-section tk-daysection-head"><span>Kommt noch</span>{rest && <span className="muted tk-small">{rest}</span>}</h3>
+              {coming.map((r) => <RowCard key={r.date} flat lead={shortDay(r.date)} icon={SPORT_ICON[r.plan!.sport]} title={planTitle(r)} sub={extraRuns(r)} onClick={open(r.date)} />)}
+              {comingRuns.map((r) => <RowCard key={r.date + r.kind} flat lead={shortDay(r.date)} icon="lauf" title={runText(r)} onClick={open(r.date)} />)}
+            </div>
+          )}
+          {next && !spontaneous && <RowCard flat icon="woche" title="Nächste Woche" onClick={() => setSheet('next')} />}
+        </Card>
       )}
-      {waiting && <WaitingProposal onOpen={() => setSheet('chat')} />}
-      <RowList>{rows}</RowList>
+      {loaded && !anyDays && next && !spontaneous && <RowCard icon="woche" title="Nächste Woche" onClick={() => setSheet('next')} />}
+      {health && <HealthCard health={health} onOpen={() => setPage('health')} />}
+      <BoBubble portrait="mini" actions={boActions}>{boText}</BoBubble>
       {error && <p role="alert" className="tk-note">{error}</p>}
-      <LookBack port={port} now={now} latest={newestActivity ? `${dayName(localDayKey(newestActivity.startMs)).slice(0, 2)} · ${activityText(newestActivity)}` : undefined} onHistory={() => setSheet('history')} />
-      {showPrefs && <section className="card"><CoachPrefs port={port} now={now} /></section>}
+      <div className="tk-tiles">
+        <RowCard icon="rueckblick" title="Rückblick" end="none" onClick={() => setSheet('look')} />
+        <RowCard icon="regeln" title="Was Bo beachtet" end="none" onClick={() => setSheet('rules')} />
+        {together && <RowCard icon="ausdauer" title="Gemeinsam" end="none" onClick={() => setPage('together')} />}
+      </div>
+      {dayDate && <DaySheet port={port} date={dayDate} now={now} spontaneous={spontaneous} onClose={() => setDayDate(null)} />}
+      {sheet === 'next' && next && (
+        <Sheet size="small" title="Nächste Woche" onClose={() => setSheet(null)}>
+          <Week rows={planRows(next.days)} label="Wochenplan nächste Woche" runs={runs} />
+        </Sheet>
+      )}
       {sheet === 'goal' && <GoalSheet port={port} now={now} onClose={() => setSheet(null)} frame={fr.frame}
         onMode={(m) => void fr.setMode(m).catch(saveFailed)} onMinutes={(m) => void fr.setMinutes(m).catch(saveFailed)} />}
       {sheet === 'rules' && <RulesSheet port={port} now={now} newId={newId} onClose={() => setSheet(null)} />}
-      {sheet === 'history' && <ActivityHistory port={port} now={now} onClose={() => setSheet(null)} />}
+      {(sheet === 'look' || sheet === 'history') && (
+        <Sheet title="Rückblick" onClose={() => setSheet(null)}>
+          <LookBack port={port} now={now} latest={newestActivity ? `${shortDay(localDayKey(newestActivity.startMs))} · ${activityText(newestActivity)}` : undefined} onHistory={() => setSheet('history')} />
+        </Sheet>
+      )}
+      {sheet === 'history' && <ActivityHistory port={port} now={now} onClose={() => setSheet('look')} />}
+      {sheet === 'proposals' && <ProposalsSheet port={port} now={now} newId={newId} entries={proposals} onClose={() => setSheet(null)} />}
       {sheet === 'chat' && <CoachChat port={port} now={now} newId={newId} onClose={() => setSheet(null)} />}
     </div>
   );

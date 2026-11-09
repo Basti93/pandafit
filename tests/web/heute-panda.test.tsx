@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
 import { useEffect } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../src/shared/records';
@@ -48,15 +48,10 @@ async function boot(seed: TrackedRecord[]) {
 }
 
 describe('Bo on Heute', () => {
-  it('takes the pose of the day; Gestern and back opens the card anew', async () => {
+  it('takes the pose of the day and plays it once', async () => {
     await boot([week('bike')]);
     await waitFor(() => expect(log.last.pose).toBe('bike'));
     expect(log.mounts).toBe(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Tag zurück' }));
-    expect(screen.queryByLabelText('Satz von Bo')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Tag vor' }));
-    expect(await screen.findByLabelText('Satz von Bo')).toBeTruthy();
-    expect(log.mounts).toBe(2);
   });
   it('a strength day gives flex, and a day without a plan gives the greeting pose', async () => {
     await boot([week('gym')]);

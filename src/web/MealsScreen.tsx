@@ -9,7 +9,7 @@ import {
 import { weekRangeOfKey } from '../shared/dates';
 import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
-import { ConfirmLink, PageHead, Row, RowList, Sheet } from '../tracking/ui/kit';
+import { ConfirmLink, PageHead, Row, RowCard, RowList, Sheet } from '../tracking/ui/kit';
 import { placements, RecipesSheet, RecipeView, type RecipeCtx } from './RecipesScreen';
 
 export type Week = { plan: MealPlan; state: MealState };
@@ -265,53 +265,46 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
   return { records, weeks, change, favs, recipeCtx };
 }
 
-const DAY_WORD = { '-1': 'gestern', '0': 'heute', '1': 'morgen' } as const;
-const PREV_WORD = { '-1': 'vorgestern', '0': 'gestern', '1': 'heute' } as const;
-
-/** The meals of the shown day on Heute, calm: a row per slot, a quiet line for what is cooked today for later (the Essen tab is the way into the plan). Yesterday is read only. */
-export function DayMeals({ port, now, fetchFn, account, offset }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string; offset: -1 | 0 | 1 }) {
+/** The meals of today on Heute, calm: a row card per slot, a quiet line for what is cooked today for later (the Essen tab is the way into the plan and into other days). */
+export function DayMeals({ port, now, fetchFn, account }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string }) {
   const { records, change, recipeCtx } = useMealData(port, now, fetchFn);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
-  const shown = new Date(now()); shown.setDate(shown.getDate() + offset);
-  const found = useMemo(() => mealDayOf(records, shown.getTime()), [records, shown.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
-  const heading = `Essen ${DAY_WORD[String(offset) as '0']}`;
+  const at = now();
+  const found = useMemo(() => mealDayOf(records, at), [records, at]);
+  const heading = 'Essen heute';
   const week = found?.week;
   const today = found?.day ?? 0;
   const meals = week ? SLOTS.flatMap((slot) => week.plan.meals.filter((m) => m.day === today && m.slot === slot)) : [];
-  if (!week || meals.length === 0) {
-    return offset === 1 ? <section aria-label={heading}><h2 className="tk-section">{heading}</h2><p className="muted">Für morgen gibt es noch keinen Essensplan.</p></section> : null;
-  }
+  if (!week || meals.length === 0) return null;
   const open = meals.find((m) => mealKey(m.day, m.slot) === openKey);
   const label = (m: Meal) => {
     if (!m.reuseOf) return undefined; // the time it takes belongs in the plan, not on Heute
     const from = Number(m.reuseOf.split('-')[0]);
-    return from === today ? 'vorgekocht' : from === today - 1 ? `Rest von ${PREV_WORD[String(offset) as '0']}` : `Rest von ${DAY_SHORT[from]}`;
+    return from === today ? 'vorgekocht' : from === today - 1 ? 'Rest von gestern' : `Rest von ${DAY_SHORT[from]}`;
   };
   // Cooked today, eaten again later (a later day, or the evening for a midday dish): "Heute vorkochen".
-  const ahead = offset === 0 ? meals.filter((m) => !m.reuseOf && week.plan.meals.some((r) => r.reuseOf === mealKey(m.day, m.slot) && (r.day > m.day || SLOTS.indexOf(r.slot) > SLOTS.indexOf(m.slot)))) : [];
+  const ahead = meals.filter((m) => !m.reuseOf && week.plan.meals.some((r) => r.reuseOf === mealKey(m.day, m.slot) && (r.day > m.day || SLOTS.indexOf(r.slot) > SLOTS.indexOf(m.slot))));
   return (
     <section aria-label={heading}>
       <h2 className="tk-section">{heading}</h2>
-      <RowList label={heading}>
+      <div className="tk-rowcards" role="list" aria-label={heading}>
         {meals.map((m) => (
-          <Row key={m.slot} onClick={() => setOpenKey(mealKey(m.day, m.slot))} value={label(m)}
-            title={<span className="pm-titleline"><MealThumb recipeId={m.dish.recipeId} title={m.dish.title} /><span className="pm-rowtitle"><b>{SLOT_LABEL[m.slot]}</b> · {m.dish.title}{m.dish.side && <span className="muted"> + {m.dish.side.name}</span>}</span></span>} />
+          <div role="listitem" key={m.slot}>
+            <RowCard icon="essen" kicker={SLOT_LABEL[m.slot]} title={m.dish.side ? `${m.dish.title} + ${m.dish.side.name}` : m.dish.title} sub={label(m)} onClick={() => setOpenKey(mealKey(m.day, m.slot))} />
+          </div>
         ))}
-      </RowList>
+      </div>
       {ahead.length > 0 && <p className="muted">Heute vorkochen: {ahead.map((m) => m.dish.title).join(', ')}</p>}
       {open && (
         <Sheet title={open.dish.title} onClose={() => setOpenKey(null)}>
-          <MealDetail week={week} meal={open} readOnly={offset === -1} onEater={(person, on) => void change(week.plan.week, (s, at) => withEater(s, mealKey(open.day, open.slot), person, on, at))} onView={setViewId} me={account} />
+          <MealDetail week={week} meal={open} onEater={(person, on) => void change(week.plan.week, (s, atMs) => withEater(s, mealKey(open.day, open.slot), person, on, atMs))} onView={setViewId} me={account} />
         </Sheet>
       )}
       {viewId && <RecipeView ctx={recipeCtx} id={viewId} onClose={() => setViewId(null)} />}
     </section>
   );
 }
-
-/** Today's meals: DayMeals at offset 0. */
-export const TodayMeals = (p: Omit<Parameters<typeof DayMeals>[0], 'offset'>) => <DayMeals {...p} offset={0} />;
 
 /** The meal plan on the phone: one day at a time with a day picker, and the shopping list. Ticks and who eats go back to the Mac. */
 export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string }) {

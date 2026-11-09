@@ -44,7 +44,7 @@ describe('week chat', () => {
     expect(chat.getByText('13:07')).toBeTruthy();
   });
 
-  it('shows the newest 30 and "Ältere anzeigen" adds 30 more', async () => {
+  it('shows the newest 30 and "Frühere Nachrichten zeigen" adds 30 more', async () => {
     const rows = Array.from({ length: 75 }, (_, i) => msg(`m${String(i).padStart(2, '0')}`, 'rider', `Nachricht ${i}`, NOW - (75 - i) * 60_000));
     const { port } = fakePort(rows);
     render(<CoachScreen port={port} {...env} />);
@@ -53,12 +53,12 @@ describe('week chat', () => {
     await chat.findByText('Nachricht 74');
     expect(chat.getAllByText(/^Nachricht \d+$/)).toHaveLength(30);
     expect(chat.queryByText('Nachricht 44')).toBeNull();
-    fireEvent.click(chat.getByRole('button', { name: 'Ältere anzeigen' }));
+    fireEvent.click(chat.getByRole('button', { name: 'Frühere Nachrichten zeigen' }));
     expect(chat.getAllByText(/^Nachricht \d+$/)).toHaveLength(60);
     expect(chat.getByText('Nachricht 15')).toBeTruthy();
-    fireEvent.click(chat.getByRole('button', { name: 'Ältere anzeigen' }));
+    fireEvent.click(chat.getByRole('button', { name: 'Frühere Nachrichten zeigen' }));
     expect(chat.getAllByText(/^Nachricht \d+$/)).toHaveLength(75);
-    expect(chat.queryByRole('button', { name: 'Ältere anzeigen' })).toBeNull();
+    expect(chat.queryByRole('button', { name: 'Frühere Nachrichten zeigen' })).toBeNull();
   });
 });
 

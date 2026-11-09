@@ -21,6 +21,26 @@ function tsxFiles(dir: string, out: string[] = []): string[] {
 const LOCAL = new Set(['--slot', '--rc-hue']);
 
 describe('style tokens', () => {
+  it('uses only the weights Zen Kaku has', () => {
+    for (const f of [WEB, TRACKING]) expect(read(f)).not.toMatch(/font-weight:\s*600/);
+  });
+  it('defines the Dojo 2 tokens in both schemes', () => {
+    const [dark, light] = read(TOKENS).split('@media (prefers-color-scheme: light)');
+    for (const t of ['--tile', '--today-glow', '--bubble-me', '--bubble-me-line', '--good-wash']) {
+      expect(dark).toContain(`${t}:`);
+      expect(light).toContain(`${t}:`);
+    }
+  });
+
+  it('defines Bo\'s place tokens, light where they are not shared', () => {
+    const [dark, light] = read(TOKENS).split('@media (prefers-color-scheme: light)');
+    for (const t of ['--scene-stem', '--scene-node', '--scene-leaf', '--scene-wood', '--scene-wood-deep', '--scene-weave', '--scene-hollow']) {
+      expect(dark).toContain(`${t}:`);
+      expect(light).toContain(`${t}:`);
+    }
+    for (const t of ['--scene-lantern-line', '--scene-lantern-cap', '--scene-string']) expect(dark).toMatch(new RegExp(`${t}:[^;]+;\\s*/\\* shared \\*/`));
+  });
+
   it('has no literal colour in the Mac, web or tracking stylesheets', () => {
     for (const f of [MAC, WEB, TRACKING]) {
       const css = read(f).replace(/\/\*[\s\S]*?\*\//g, '');

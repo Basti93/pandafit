@@ -1,20 +1,27 @@
 import type { ReactNode } from 'react';
 import type { ChatEntry } from '../../shared/chat';
 import { timeLabel } from '../../shared/dates';
-import { BO } from './bo';
+import { Bubble, BoBubble } from './kit';
 
-/** One message of a chat with the coach: who and when, the text, and what hangs on it (a change, a rule, a plan). The week chat and the workout chat use it. */
+/** One message of a chat with Bo: Bo speaks left with his still picture, you speak right; the time sits under the text. What hangs on it (a change, a rule, a plan) comes as children. */
 export function ChatBubble({ m, children }: { m: ChatEntry; children?: ReactNode }) {
-  return (
-    <div className={`tk-msg tk-msg-${m.role}`}>
-      <p className="muted tk-sub">{m.role === 'rider' ? 'Du' : BO.name} <time>{timeLabel(m.atMs)}</time></p>
-      <p>{m.text}</p>
+  const foot = <time>{timeLabel(m.atMs)}</time>;
+  const body = (
+    <>
+      <p className="tk-msgtext">{m.text}</p>
       {children}
-    </div>
+    </>
   );
+  return m.role === 'rider'
+    ? <Bubble tail="right" foot={foot}>{body}</Bubble>
+    : <BoBubble portrait="mini" foot={foot}>{body}</BoBubble>;
 }
 
-/** "Bo denkt nach …" and its slower variants as a message from Bo. */
+/** "Bo denkt nach …" and its slower variants as a message from Bo, with three quiet dots. */
 export function ChatNote({ children }: { children: ReactNode }) {
-  return <div className="tk-msg tk-msg-coach" role="status"><p className="muted">{children}</p></div>;
+  return (
+    <div role="status">
+      <BoBubble portrait="mini"><p className="tk-msgtext muted tk-noteline"><span className="tk-typing" aria-hidden="true"><i /><i /><i /></span>{children}</p></BoBubble>
+    </div>
+  );
 }

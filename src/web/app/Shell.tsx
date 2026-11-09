@@ -136,7 +136,7 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
           {tab === 'training' && <Training entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} />}
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer hasRun={hasRun} hasBike={hasBike} />}
-          {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} showPrefs={false} openChat={chatOnOpen} />}
+          {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} openChat={chatOnOpen} />}
           {tab === 'profil' && <Profil link={link} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}
           </Suspense>
         </ErrorBoundary>

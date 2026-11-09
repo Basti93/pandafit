@@ -53,6 +53,7 @@ test('a Kraft entry opens the workout detail; one without local record falls bac
 test('the row Verlauf on the week page shows the newest activity and opens the list', async () => {
   const { port } = fakePort(seed);
   render(<CoachScreen port={port} now={() => NOW} newId={() => 'x'} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Rückblick' }));
   const row = await screen.findByRole('button', { name: /^Verlauf/ });
   await screen.findByText(/^\S\S · Kraft Oberkörper$/, { selector: '.tk-ellipsis' });
   fireEvent.click(row);

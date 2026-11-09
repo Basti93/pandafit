@@ -48,7 +48,7 @@ export function activityText(a: ActivityItem): string {
   return `${name} ${Math.max(1, Math.round(a.minutes))} Min`;
 }
 
-export type DayRow = { date: string; done: string[]; plan: PlanDay | null; rest: boolean };
+export type DayRow = { date: string; done: string[]; kinds: ActivityKind[]; plan: PlanDay | null; rest: boolean };
 
 const SPORT_KIND: Record<Sport, ActivityKind | null> = { bike: 'rad', gym: 'kraft', run: 'lauf', mobility: 'andere', rest: null };
 
@@ -69,13 +69,21 @@ function openParts(d: PlanDay, items: ActivityItem[]): PlanDay | null {
 export function doneDays(dates: string[], today: string, plan: PlanDay[] | null, merged: Merged): DayRow[] {
   return dates.map((date): DayRow => {
     const planDay = plan?.find((p) => p.date === date) ?? null;
-    if (date > today) return { date, done: [], plan: planDay, rest: false };
-    const items = merged.items.filter((a) => localDayKey(a.startMs) === date).sort((a, b) => a.startMs - b.startMs);
+    if (date > today) return { date, done: [], kinds: [], plan: planDay, rest: false };
+    const items = activitiesOn(merged, date) ?? [];
     const done = items.map(activityText);
-    if (date < today) return { date, done, plan: null, rest: done.length === 0 && merged.known };
-    return { date, done, plan: planDay ? openParts(planDay, items) : null, rest: false };
+    const kinds = items.map((a) => a.kind);
+    if (date < today) return { date, done, kinds, plan: null, rest: done.length === 0 && merged.known };
+    return { date, done, kinds, plan: planDay ? openParts(planDay, items) : null, rest: false };
   });
 }
 
 /** Rows that only show the plan, for weeks that have not started. */
-export const planRows = (days: PlanDay[]): DayRow[] => days.map((d) => ({ date: d.date, done: [], plan: d, rest: false }));
+export const planRows = (days: PlanDay[]): DayRow[] => days.map((d) => ({ date: d.date, done: [], kinds: [], plan: d, rest: false }));
+
+/** The items of one local date, oldest first; null when the activities are unknown and no local item is there. */
+export function activitiesOn(merged: { items: ActivityItem[]; known: boolean }, date: string): ActivityItem[] | null {
+  const items = merged.items.filter((a) => localDayKey(a.startMs) === date).sort((a, b) => a.startMs - b.startMs);
+  if (!merged.known && items.length === 0) return null;
+  return items;
+}
