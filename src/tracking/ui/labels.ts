@@ -3,6 +3,8 @@ import { EQUIPMENT, MUSCLES } from '../../shared/muscles';
 export const muscleLabel = (m: string): string => MUSCLES[m] ?? m;
 export const clock = (s: number): string => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 export { shortDate as dateLabel } from '../../shared/dates';
+/** A date in words with the long month ("Montag, 9. November"): it never ends in a period, so a sentence can end right after it. */
+export const longDateLabel = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 const words = (t: string): string[] => t.toLocaleLowerCase('de').split(/[^\p{L}\p{N}]+/u).filter(Boolean);
 /** The equipment label for a title, or '' when the title already names the equipment (any word of the label, case-insensitive). */
 export function equipmentSuffix(title: string, equipment: string): string {

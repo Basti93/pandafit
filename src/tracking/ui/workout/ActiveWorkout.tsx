@@ -11,7 +11,7 @@ import { EffortQuestion } from '../EffortQuestion';
 import { Band, BrushTitle, Card, ConfirmLink, Icon, Kicker, RoundButton, Row, RowList, Sheet, TimerCard } from '../kit';
 import { clock } from '../labels';
 import { FocusCard } from './FocusCard';
-import { doneSentence, focusExercise, isDoneExercise, progressOf, upNext } from './live-view';
+import { doneSentence, effortAsk, focusExercise, isDoneExercise, progressOf, upNext } from './live-view';
 import { SetsSheet } from './SetsSheet';
 import { sinceLabel } from './markUsed';
 import { NOT_SAVED, useActiveWorkout, type ActiveWorkoutProps } from './useActiveWorkout';
@@ -22,7 +22,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
   const { picker } = ui;
   const focus = focusExercise(w, ui.openRid, a.currentRid);
   const next = upNext(w, focus?.rid ?? null);
-  const asking = ui.effortOn ? w.exercises.filter((e) => asksEffort(w, e.rid, history, catalog, studios)) : [];
+  const asking = ui.effortOn ? effortAsk(w, (rid) => asksEffort(w, rid, history, catalog, studios)) : null;
   const thanked = w.exercises.find((e) => e.rid === ui.thanked && e.effort && e.effort !== 'skip');
   const progress = progressOf(w, focus?.rid ?? null);
   const done = doneSentence(progress.doneTitles);
@@ -57,17 +57,17 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
             <span className="muted">Übung {progress.index} von {progress.total}</span>
           </div>
           <Band parts={progress.parts} />
-          {done && <button type="button" className="link" onClick={() => set({ doneOpen: true })}>{done}</button>}
+          {done && <button type="button" className="link" aria-haspopup="dialog" onClick={() => set({ doneOpen: true })}>{done}<span aria-hidden="true">&nbsp;›</span></button>}
         </Card>
       )}
       <WorkoutCoach port={port} workout={w} catalog={catalog} now={now} newId={newId} openSignal={ui.coachAsk}
         onTake={(id, c) => act((x) => takeChange(x, id, c, history, catalog, studios, now(), excluded).workout)} onUndo={(id) => act((x) => undoChange(x, id).workout)} />
-      {asking.map((e) => (
-        <Card soft key={e.rid}>
-          <EffortQuestion title={e.title} onAnswer={(ans) => { if (ans !== 'skip') set({ thanked: e.rid }); act((x) => setEffort(x, e.rid, ans)); }}
-            onOff={() => { set({ effortOn: false }); act((x) => setEffort(x, e.rid, 'skip')); }} />
+      {asking && (
+        <Card soft key={`effort-${asking.rid}`}>
+          <EffortQuestion title={asking.title} onAnswer={(ans) => { if (ans !== 'skip') set({ thanked: asking.rid }); act((x) => setEffort(x, asking.rid, ans)); }}
+            onOff={() => { set({ effortOn: false }); act((x) => setEffort(x, asking.rid, 'skip')); }} />
         </Card>
-      ))}
+      )}
       {thanked && <Card soft><p className="tk-maintext">Danke! Das fließt in den nächsten Vorschlag ein.</p></Card>}
       <FocusCard key={focus?.rid ?? 'none'} a={a} />
       {focus && (

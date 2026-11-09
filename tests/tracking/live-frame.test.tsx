@@ -74,6 +74,43 @@ describe('the frame of the running workout', () => {
     expect(bodyOf(map, 'workout:open1').endMs).toBeNull();
   });
 
+  it('Verkleinern while a save hangs: Weitermachen brings back the same workout, nothing is confirmed twice, and the record gets the set', async () => {
+    const { port, map, state } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    let open!: () => void;
+    state.gate = new Promise<void>((r) => { open = r; });
+    doneNow();
+    minimize(); // the put is still pending: the store stays in the registry
+    const card = await screen.findByRole('region', { name: 'Läuft noch' });
+    fireEvent.click(within(card).getByRole('button', { name: 'Weitermachen' }));
+    // The screen shows what is saved (store view); the store itself already holds the confirmed set.
+    // A second tap on the set still shown does not confirm another set.
+    doneNow();
+    expect(bodyOf(map, 'workout:open1').exercises[0]!.sets[0]!.doneMs).toBeNull();
+    state.gate = null;
+    open();
+    await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0]!.sets[0]!.doneMs).toBe(100_000));
+    await waitFor(() => expect(within(screen.getByRole('region', { name: 'Bankdrücken' })).getByText('Nächster Satz · 2 von 2')).toBeTruthy());
+    expect(bodyOf(map, 'workout:open1').exercises[0]!.sets[1]!.doneMs).toBeNull();
+    expect(bodyOf(map, 'workout:open1').endMs).toBeNull();
+  });
+
+  it('asks the effort question once: only about the exercise with the most recently confirmed set', async () => {
+    const planned = (doneMs: number) => [{ ...set(60, 8, doneMs), plannedReps: 8 }];
+    const w = { ...open2(), exercises: [
+      { exerciseId: 'pf-bench-press', title: 'Bankdrücken', supersetId: null, notes: '', sets: planned(2000) },
+      { exerciseId: 'pf-seated-row-cable', title: 'Rudern', supersetId: null, notes: '', sets: planned(3000) },
+      { exerciseId: 'pf-squat', title: 'Kniebeuge', supersetId: null, notes: '', sets: [set(80, 5, null)] },
+    ] } as LoggedWorkout;
+    const { port } = fakePort([rec(w)]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    const groups = screen.getAllByRole('group', { name: /noch geschafft\?$/ });
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Wie viele hättest du bei Rudern noch geschafft?']);
+    expect(groups[0]!.textContent).toContain('bei Rudern noch geschafft?');
+  });
+
   it('the head says how long it runs; the progress card says what is done and opens Geschafft', async () => {
     const { port } = fakePort([rec(benchDone())]);
     render(<WorkoutScreen port={port} {...ids} />);
@@ -82,7 +119,9 @@ describe('the frame of the running workout', () => {
     expect(screen.getByRole('timer', { name: 'Trainingsdauer' }).textContent).toBe('Läuft seit 1 Min');
     const prog = screen.getByRole('region', { name: 'Dein Training' });
     expect(within(prog).getByText('Übung 2 von 2')).toBeTruthy();
-    fireEvent.click(within(prog).getByRole('button', { name: 'Bankdrücken hast du schon geschafft.' }));
+    const doneLink = within(prog).getByRole('button', { name: 'Bankdrücken hast du schon geschafft.' });
+    expect(doneLink.getAttribute('aria-haspopup')).toBe('dialog');
+    fireEvent.click(doneLink);
     const sheet = await screen.findByRole('dialog', { name: 'Geschafft' });
     fireEvent.click(within(sheet).getByRole('button', { name: /Bankdrücken/ }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Geschafft' })).toBeNull());

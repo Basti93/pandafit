@@ -47,7 +47,7 @@ export function latestFinishedStrength(workouts: TrackedRecord[] | null, nowMs: 
   return best;
 }
 
-export const CARDIO_LINE = 'Mach 20 Min lockeres Cardio auf dem Rad, dem Crosstrainer oder dem Laufband. Du kannst dabei noch reden.';
+export const CARDIO_LINE = 'Mach 20 Minuten lockeres Cardio auf dem Rad, dem Crosstrainer oder dem Laufband. Du kannst dabei noch reden.';
 export const STRETCH_LINE = 'Dehn ein paar Minuten, was sich fest anfühlt.';
 
 /** What to do after the workout in one line: the cardio sentence and the reason; without either, the stretch. */

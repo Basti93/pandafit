@@ -1,6 +1,6 @@
 import { bodyOf } from '../../shared/record-bodies';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { GymWorkout } from '../../shared/gym/types';
 
 import { readStats, STATS_ID } from '../../shared/stats';
@@ -79,7 +79,8 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
   const [others, setOthers] = useState(false);
   const resumed = useRef(false);
   const running = store !== null;
-  useEffect(() => { cur.current.onActive?.(running); return () => cur.current.onActive?.(false); }, [running, cur]);
+  // Before paint: the app frame steps aside in the same frame the workout shows.
+  useLayoutEffect(() => { cur.current.onActive?.(running); return () => cur.current.onActive?.(false); }, [running, cur]);
   useEffect(() => {
     const c = cur.current;
     if (!resume || resumed.current || c.store || !workouts || c.openRecs.length === 0) return;

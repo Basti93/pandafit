@@ -14,7 +14,7 @@ test('the summary: Bo says the cardio line and the stretch, and there is one Fer
   render(<WorkoutSummary {...props} onDone={() => { done++; }} />);
   expect(screen.getByRole('heading', { name: 'Beine' })).toBeTruthy();
   expect(screen.queryByRole('region', { name: 'Zum Abschluss' })).toBeNull();
-  expect(document.querySelector('.tk-bo')!.textContent).toBe('Mach 20 Min lockeres Cardio auf dem Rad, dem Crosstrainer oder dem Laufband. Du kannst dabei noch reden. Dehn ein paar Minuten, was sich fest anfühlt.');
+  expect(document.querySelector('.tk-bo')!.textContent).toBe('Mach 20 Minuten lockeres Cardio auf dem Rad, dem Crosstrainer oder dem Laufband. Du kannst dabei noch reden. Dehn ein paar Minuten, was sich fest anfühlt.');
   expect(screen.getAllByRole('button')).toHaveLength(1);
   fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
   expect(done).toBe(1);

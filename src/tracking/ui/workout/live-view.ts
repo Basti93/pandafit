@@ -96,3 +96,13 @@ export function doneSentence(titles: string[]): string | null {
   if (titles.length === 2) return `${titles[0]} und ${titles[1]} hast du schon geschafft.`;
   return `${COUNT_WORD[titles.length] ?? titles.length} Übungen hast du schon geschafft.`;
 }
+
+/**
+ * The one effort question: about the exercise that holds the most recently confirmed set, and only when `asks` is true for it.
+ * An older unanswered question goes away with the next exercise (the question is never owed) and does not come back.
+ */
+export function effortAsk(w: TrackedWorkout, asks: (rid: string) => boolean): TrackedExercise | null {
+  let last: { e: TrackedExercise; at: number } | null = null;
+  for (const e of w.exercises) for (const s of e.sets) if (s.doneMs !== null && (!last || s.doneMs >= last.at)) last = { e, at: s.doneMs };
+  return last && asks(last.e.rid) ? last.e : null;
+}

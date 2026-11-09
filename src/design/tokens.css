@@ -73,13 +73,10 @@
   /* Together: bar fill (the light value replaces the inline cell colour) */
   --gm-fill: #b5cc8d;
 
-  /* Same in both schemes: switch knob, skip button, list separator, shadows, scrim */
+  /* Same in both schemes: switch knob, list separator, shadows, scrim */
   --switch-knob: #f5ecd8; /* shared */
   --switch-knob-on: #fff; /* shared */
-  --skip-bg: rgba(255, 255, 255, .3); /* shared */
-  --skip-line: rgba(31, 20, 8, .45); /* shared */
   --run-sep: rgba(255, 255, 255, .08); /* shared */
-  --shadow-rest: rgba(0, 0, 0, .35); /* shared */
   --shadow-lift: rgba(0, 0, 0, .28); /* shared */
   --scrim: rgba(0, 0, 0, .55); /* shared */
 

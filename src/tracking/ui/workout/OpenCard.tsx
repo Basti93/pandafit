@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { bodyOf } from '../../../shared/record-bodies';
 import type { TrackedRecord } from '../../../shared/records';
-import { dateLabel } from '../labels';
+import { dateLabel, longDateLabel } from '../labels';
 import { ConfirmLink, MainCard, RowCard, Sheet } from '../kit';
 
 const QUESTION = 'Verwerfen löscht dieses Training samt erledigter Sätze. Wirklich verwerfen?';
@@ -13,7 +13,7 @@ const QUESTION = 'Verwerfen löscht dieses Training samt erledigter Sätze. Wirk
 export function OpenCard({ rec, primary, onResume, onEnd, onDiscard }: { rec: TrackedRecord; primary: boolean; onResume: () => void; onEnd: () => void; onDiscard: () => Promise<void> }) {
   const w = bodyOf('workout', rec);
   const [open, setOpen] = useState(false);
-  const text = `Gestartet ${dateLabel(w.startMs)}. Alles ist gespeichert.`;
+  const text = `Gestartet am ${longDateLabel(w.startMs)}. Alles ist gespeichert.`;
   if (primary) {
     return (
       <MainCard kicker="Läuft noch" title={w.title} text={text}
