@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { RideEvent, Sample } from '../shared/sample';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 import { stepFtpFraction, type Session } from '../shared/session';
-import { readMeta, type RideMeta } from './recorder';
+import { readMeta, type RideMeta } from '../service/recorder';
 
 /** A crash can leave meta.json empty or cut off. The samples still prove the ride exists, so the meta is rebuilt from them. */
 const rebuildMeta = (dir: string, name: string): RideMeta | null => {

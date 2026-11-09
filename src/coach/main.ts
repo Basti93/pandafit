@@ -4,7 +4,7 @@ import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { localClientAllowed } from '../service/ws-server';
 import { coachPort, requireLocalToken, servicePort } from '../shared/node/local-token';
-import { findOpenRides } from '../service/recovery';
+import { findOpenRides } from '../ride-format/recovery';
 import type { Profile } from '../shared/profiles';
 import { parseCoachClientMessage } from '../shared/coach-messages';
 import { COACH_PORT, type CoachClientMessage, type CoachHome, type CoachServerMessage } from '../shared/coach-protocol';

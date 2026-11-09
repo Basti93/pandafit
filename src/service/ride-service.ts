@@ -9,9 +9,9 @@ import { DeviceManager, type DeviceStatus, type Reading } from './ble/device-man
 import type { BlePort } from './ble/device-port';
 import { RideEngine } from './engine';
 import type { Diagnostics } from './diagnostics';
-import { exportFit } from './export/fit';
+import { exportFit } from '../ride-format/export/fit';
 import { readRide, RideRecorder } from './recorder';
-import { findOpenRides, resumePoint, type ResumePoint } from './recovery';
+import { findOpenRides, resumePoint, type ResumePoint } from '../ride-format/recovery';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 type Active = {

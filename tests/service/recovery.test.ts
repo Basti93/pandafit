@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { findOpenRides, resumePoint } from '../../src/service/recovery';
+import { findOpenRides, resumePoint } from '../../src/ride-format/recovery';
 import { readRide, RideRecorder } from '../../src/service/recorder';
 
 const sample = (seq: number) => ({ seq, wallClockMs: seq, rideElapsedS: seq + 1, powerW: 1, cadenceRpm: 1, speedKph: 1, hrBpm: null, targetW: 1, gradePct: null, gear: null });

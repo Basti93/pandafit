@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { exportFit } from '../../service/export/fit';
+import { exportFit } from '../../ride-format/export/fit';
 import { readRide } from '../../service/recorder';
 import { RIDE_FILE_NAMES, RIDE_ID, readRideFiles, rideHash } from '../ride-upload-format';
 import { CoachHttpError, type CoachHttp } from './coach-http';

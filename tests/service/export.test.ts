@@ -1,5 +1,5 @@
 import { Decoder, Stream } from '@garmin/fitsdk';
-import { exportFit } from '../../src/service/export/fit';
+import { exportFit } from '../../src/ride-format/export/fit';
 import type { RideMeta } from '../../src/service/recorder';
 import type { Sample } from '../../src/shared/sample';
 
