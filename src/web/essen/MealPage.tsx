@@ -3,7 +3,7 @@ import { cookPortions, dateOf, mealKey, withEater } from '../../shared/meals';
 import { localDayKey } from '../../shared/dates';
 import { Card, HeadCard, Kicker } from '../../tracking/ui/kit';
 import type { MealData } from '../MealsScreen';
-import { RecipeView } from '../RecipesScreen';
+import { RecipePage } from '../RecipesScreen';
 import { EssenPage } from './EssenPage';
 import { MealImage } from './MealImage';
 import { askedSentence, mealPageKicker, NOBODY_EATS, mealSentence, type MealAt } from './meals-view';
@@ -27,7 +27,8 @@ export function MealPage({ data, at, me, backLabel, onBack }: { data: MealData; 
   const asked = askedSentence(week, meal);
   const source = !dish.recipeId && dish.source === 'rezept' ? dish.sourceUrl : undefined;
   return (
-    <EssenPage back={back}>
+    <>
+    <EssenPage back={back} hidden={recipeOpen}>
       <div className="tk-screen">
         <HeadCard picture={<MealImage recipeId={dish.recipeId} slot={meal.slot} size="big" />} kicker={mealPageKicker(week, meal, nowMs)} title={dish.title} text={mealSentence(week, meal)}>
           {asked && <p className="muted">{asked}</p>}
@@ -51,8 +52,9 @@ export function MealPage({ data, at, me, backLabel, onBack }: { data: MealData; 
               : <a className="secondary" href={source} target="_blank" rel="noopener noreferrer">Originalrezept öffnen</a>}
           </Card>
         )}
-        {recipeOpen && dish.recipeId && <RecipeView ctx={data.recipeCtx} id={dish.recipeId} onClose={() => setRecipeOpen(false)} />}
       </div>
     </EssenPage>
+    {recipeOpen && dish.recipeId && <RecipePage ctx={data.recipeCtx} id={dish.recipeId} backLabel="Mahlzeit" onBack={() => setRecipeOpen(false)} />}
+    </>
   );
 }

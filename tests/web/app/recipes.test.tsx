@@ -125,9 +125,9 @@ describe('Rezepte on the phone', () => {
     await open({ recipes: route([]) });
     fireEvent.click(await screen.findByRole('button', { name: /^Erfundener Topf 1\s?21 Min/ }));
     expect(await screen.findByText('Linsen kochen.')).toBeTruthy();
-    expect(screen.getByText('21 Min · 25 g Eiweiß · hält 2 Tage')).toBeTruthy();
+    expect(screen.getByText('In 21 Minuten fertig, mit viel Eiweiß, und es hält sich zwei Tage.')).toBeTruthy();
     expect(screen.getByRole('list', { name: 'Schlagwörter' }).textContent).toContain('Proteinreich');
-    expect(document.querySelector('img.rc-hero')?.getAttribute('src')).toBe(`/coach/recipes/${RID(1)}/image`);
+    expect(document.querySelector('img.tk-meal.big')?.getAttribute('src')).toBe(`/coach/recipes/${RID(1)}/image`);
     expect(screen.getByText('200 g')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Eine Portion mehr' }));
     expect(screen.getByText('300 g')).toBeTruthy();
@@ -136,30 +136,29 @@ describe('Rezepte on the phone', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Eine Portion weniger' }));
     expect(screen.getByText('100 g')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Eine Portion weniger' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByRole('link', { name: 'Zum Originalrezept ↗' }).getAttribute('href')).toBe('https://rezepte.example/topf');
+    expect(screen.getByRole('link', { name: 'Originalrezept öffnen' }).getAttribute('href')).toBe('https://rezepte.example/topf');
   });
 
   it('the heart in the recipe view toggles the favourite too', async () => {
     const a = await open({ recipes: route([]) });
     fireEvent.click(await screen.findByRole('button', { name: /^Erfundener Topf 1\s?21 Min/ }));
-    const hearts = await screen.findAllByRole('button', { name: 'Erfundener Topf 1 zu den Favoriten' });
-    fireEvent.click(hearts.at(-1)!);
+    const head = within(await screen.findByRole('region', { name: 'Erfundener Topf 1' }));
+    fireEvent.click(head.getByRole('button', { name: 'Erfundener Topf 1 zu den Favoriten' }));
     await waitFor(async () => expect(await records(a, 'fav-')).toHaveLength(1));
-    expect((await screen.findAllByRole('button', { name: 'Erfundener Topf 1 aus den Favoriten nehmen' })).length).toBe(2);
+    expect((await head.findByRole('button', { name: 'Erfundener Topf 1 aus den Favoriten nehmen' })).getAttribute('aria-pressed')).toBe('true');
   });
 
   it('In den Plan: pick a day and a meal, it replaces that one and is sent as a request the coach answers', async () => {
     const a = await open({ recipes: route([]) });
     fireEvent.click(await screen.findByRole('button', { name: /^Erfundener Topf 1\s?21 Min/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'In den Plan ›' }));
     const day = within(await screen.findByRole('group', { name: 'Tag' }));
     // Days before today are not offered.
     const names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     names.forEach((n, i) => expect((day.getByRole('button', { name: new RegExp(`^${n}`) }) as HTMLButtonElement).disabled).toBe(i < today));
     fireEvent.click(within(screen.getByRole('group', { name: 'Mahlzeit' })).getByRole('button', { name: 'Frühstück' }));
-    expect(screen.getByText(/Tauscht Skyr mit Beeren aus/)).toBeTruthy();
-    expect(screen.getByText(/isst mit: Max, Lena/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Eintragen' }));
+    expect(screen.getByText(/Tauscht Skyr mit Beeren aus\./)).toBeTruthy();
+    expect(screen.getByText(/Max und Lena essen mit\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Heute zum Frühstück eintragen' }));
     expect(await screen.findByText('Bo trägt es gleich ein.')).toBeTruthy();
     const sent = await records(a, 'place-');
     expect(sent).toHaveLength(1);
@@ -170,8 +169,7 @@ describe('Rezepte on the phone', () => {
     const answered: TrackedRecord = { kind: 'mealplan', id: 'place-answered1', updatedMs: NOW + 5, deleted: false, body: { week, meal: `${today}-abend`, recipeId: RID(1), atMs: NOW + 10, result: 'nofit', answeredMs: NOW + 20 } };
     await open({ seed: [mealPlan, answered], recipes: route([]) });
     fireEvent.click(await screen.findByRole('button', { name: /^Erfundener Topf 1\s?21 Min/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'In den Plan ›' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Eintragen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /eintragen$/ }));
     expect(await screen.findByText('Das passt nicht zu den Angaben der Esser dieser Mahlzeit.')).toBeTruthy();
   });
 

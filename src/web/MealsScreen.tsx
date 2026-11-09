@@ -13,11 +13,11 @@ import { mealDayOf, mealWeeks, shoppingWeek, type MealAt, type Week } from './es
 import { EssenStart } from './essen/EssenStart';
 import { MealPage } from './essen/MealPage';
 import { ShoppingPage } from './essen/ShoppingPage';
-import { placements, RecipesSheet, type RecipeCtx } from './RecipesScreen';
+import { placements, RecipesPage, type RecipeCtx } from './RecipesScreen';
 
 export type { Week };
 export type MealData = ReturnType<typeof useMealData>;
-type Page = { name: 'start' } | { name: 'einkauf' } | { name: 'meal'; at: MealAt; from: 'essen' | 'heute' };
+type Page = { name: 'start' } | { name: 'einkauf' } | { name: 'rezepte' } | { name: 'meal'; at: MealAt; from: 'essen' | 'heute' };
 export { mealDayOf, mealWeeks };
 
 /** This person's messages to the coach about the plan, oldest first. */
@@ -39,7 +39,7 @@ function AddRecipeSheet({ requests, onAdd, onClose }: { requests: LinkRequest[];
   const last = sentAt === null ? recent : requests.find((q) => q.atMs >= sentAt);
   const submit = () => { if (!ok) return; setSentAt(Date.now() - 1000); setUrl(''); void onAdd(clean); };
   return (
-    <Sheet title="Rezept hinzufügen" onClose={onClose} actions={<button type="submit" form={formId} disabled={!ok}>Hinzufügen</button>}>
+    <Sheet title="Rezept hinzufügen" onClose={onClose} actions={<button type="submit" className="primary" form={formId} disabled={!ok}>Hinzufügen</button>}>
       <form id={formId} className="tk-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <label className="tk-field"><span>Link zum Rezept</span>
           <input autoFocus type="url" inputMode="url" aria-label="Link zum Rezept" maxLength={LINK_URL_MAX} placeholder="https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
@@ -161,7 +161,6 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
   const t = now();
   const first = shoppingWeek(weeks, t); // the week Einkauf shows first, also the one "Plan ändern" writes for
   const [chatOpen, setChatOpen] = useState(false);
-  const [recipesOpen, setRecipesOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const chat = useMemo(() => mealChats(records), [records]);
   const requests = useMemo(() => linkRequests(records), [records]);
@@ -188,11 +187,18 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
     const at = now();
     await port.put({ kind: 'mealplan', id: newChatId(at), updatedMs: at, deleted: false, body: { week: first?.plan.week, text, atMs: at, reply: null, answeredMs: null, changed: [] } }).catch(() => { /* the field stays empty; nothing else is lost */ });
   };
+  if (page.name === 'rezepte') {
+    return (
+      <>
+        <RecipesPage ctx={{ ...recipeCtx, deleteOwn: (id) => void deleteRecipe(id) }} onAddLink={() => setAddOpen(true)} onBack={() => setPage({ name: 'start' })} />
+        {addOpen && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setAddOpen(false)} />}
+      </>
+    );
+  }
   return (
     <>
-      <EssenStart data={data} nowMs={t} me={account} onMeal={(at) => setPage({ name: 'meal', at, from: 'essen' })} onShopping={() => setPage({ name: 'einkauf' })} onRecipes={() => setRecipesOpen(true)} onChat={() => setChatOpen(true)} />
+      <EssenStart data={data} nowMs={t} me={account} onMeal={(at) => setPage({ name: 'meal', at, from: 'essen' })} onShopping={() => setPage({ name: 'einkauf' })} onRecipes={() => setPage({ name: 'rezepte' })} onChat={() => setChatOpen(true)} />
       {chatOpen && <ChatSheet chat={chat} onSend={say} onClose={() => setChatOpen(false)} />}
-      {recipesOpen && <RecipesSheet ctx={{ ...recipeCtx, deleteOwn: (id) => void deleteRecipe(id) }} onAddLink={() => setAddOpen(true)} onClose={() => setRecipesOpen(false)} />}
       {addOpen && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setAddOpen(false)} />}
     </>
   );

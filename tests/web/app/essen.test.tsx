@@ -273,7 +273,7 @@ describe('Essen on the phone', () => {
       : json(200, { id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [], ingredients: [], steps: ['Kochen.'], sourceUrl: '' })) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
-    fireEvent.click(await screen.findByRole('button', { name: '+ Rezept per Link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rezept per Link' }));
     const field = await screen.findByLabelText('Link zum Rezept');
     // Only https links can be sent.
     fireEvent.change(field, { target: { value: 'http://rezepte.example/a' } });
@@ -293,10 +293,10 @@ describe('Essen on the phone', () => {
       : json(200, { id: 'l-aaaa1111', title: 'Erfundenes Curry', minutes: 20, proteinG: null, keepsDays: 0, own: true, fav: false, image: false, tags: [], ingredients: [], steps: ['Kochen.'], sourceUrl: '' })) });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
-    fireEvent.click(await screen.findByRole('button', { name: '+ Rezept per Link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Rezept per Link' }));
     expect(await screen.findByText('Das Rezept ist nicht vegetarisch. Darum ist es nicht gespeichert.')).toBeTruthy();
     expect(screen.getByText(/erscheint unter „Von mir“/)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '‹ Zurück' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     // An own recipe is listed as "von dir" and deleted in its own view, after a question.
     expect(await screen.findByText('20 Min · von dir')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /^Erfundenes Curry\s?20 Min/ }));

@@ -56,6 +56,9 @@ describe('the meal page', () => {
     expect(whole.className).toBe('secondary');
     fireEvent.click(whole);
     expect(await screen.findByText('Linsen kochen.')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Linsen-Bolognese' })).toBeTruthy();
+    fireEvent.click(pill('Mahlzeit'));
+    expect(await screen.findByRole('button', { name: 'Ganzes Rezept ansehen' })).toBeTruthy();
   });
 
   it('two quick changes in Wer isst mit both land in the state record', async () => {

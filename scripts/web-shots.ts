@@ -593,18 +593,19 @@ async function main() {
     await page.getByRole('heading', { name: 'Linsen-Gemüse-Pfanne' }).waitFor();
     await page.waitForTimeout(500);
     await shot('essen-rezept');
-    await page.getByRole('button', { name: 'In den Plan ›' }).click();
+    await page.getByRole('region', { name: 'In den Plan' }).scrollIntoViewIfNeeded();
     await shot('essen-rezept-in-den-plan');
-    await page.keyboard.press('Escape'); await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Rezepte', exact: true }).and(page.locator('.tk-pill')).click();
+    await page.getByRole('button', { name: 'Essen', exact: true }).and(page.locator('.tk-pill')).click();
   });
   await step('essen-rezept-hinzufuegen', async () => {
     await page.getByRole('button', { name: /^Rezepte/ }).click();
-    await page.getByRole('button', { name: '+ Rezept per Link' }).click();
+    await page.getByRole('button', { name: 'Rezept per Link' }).click();
     await page.getByLabel('Link zum Rezept').fill('https://rezepte.example/gemuese-curry');
     await shot('essen-rezept-hinzufuegen');
     await page.keyboard.press('Escape');
   });
-  await step('essen-eigene-rezepte', async () => { await page.getByRole('group', { name: 'Filter' }).getByRole('button', { name: 'Von mir' }).click(); await page.waitForTimeout(500); await shot('essen-eigene-rezepte'); await page.keyboard.press('Escape'); });
+  await step('essen-eigene-rezepte', async () => { await page.getByRole('group', { name: 'Filter' }).getByRole('button', { name: 'Von mir' }).click(); await page.waitForTimeout(500); await shot('essen-eigene-rezepte'); await page.getByRole('button', { name: 'Essen', exact: true }).and(page.locator('.tk-pill')).click(); });
   await step('essen-einkauf', async () => { await page.getByRole('button', { name: /^Einkauf/ }).click(); await shot('essen-einkauf'); });
   await step('essen-einkauf-haben-wir', async () => { await page.getByRole('button', { name: 'Haben wir' }).first().click(); await shot('essen-einkauf-haben-wir'); await page.getByRole('button', { name: 'Doch kaufen' }).first().click(); });
   await step('essen-einkauf-eigenes', async () => {
