@@ -68,7 +68,7 @@ Planned runs can be sent to Garmin Connect as structured workouts (warm-up, main
 
 ## Where it runs
 
-On the coach server from the server-coach work (`docs/superpowers/specs/2026-11-03-server-coach-design.md`), so plans are made with the Mac off. The phone and the Mac show the same screens. A new record kind is likely needed for run plans and manual runs. Older app versions must refetch it, as the kinds-signature fix does.
+On the coach server from the server-coach work (`docs/archive/specs/2026-11-03-server-coach-design.md`), so plans are made with the Mac off. The phone and the Mac show the same screens. A new record kind is likely needed for run plans and manual runs. Older app versions must refetch it, as the kinds-signature fix does.
 
 ## Constraints
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, React, Vitest (+ jsdom, Testing Library), Electron (Mac), PWA (phone), node:sqlite server (records stored as opaque JSON, kinds from `RECORD_KINDS`).
 
-**Spec:** `docs/superpowers/specs/2026-11-03-training-stats-design.md`
+**Spec:** `docs/archive/specs/2026-11-03-training-stats-design.md`
 
 ## Global Constraints
 

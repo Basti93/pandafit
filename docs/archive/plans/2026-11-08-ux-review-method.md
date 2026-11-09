@@ -35,4 +35,4 @@ Ein Durchgang über alle Befunddateien: Doppelte zusammenlegen, gegen die Grunds
 
 ## Phase 4 — Plan, Umsetzung, Abschluss
 
-Umsetzungsplan in `docs/superpowers/plans/`, Bau nach dem bekannten Ablauf (Sonnet baut, Prüfung je Aufgabe, Gesamtprüfung). Danach Variante A und F neu aufnehmen und vorher/nachher vergleichen. Dann Merge, Tests, Deploy, Push.
+Umsetzungsplan in `docs/archive/plans/`, Bau nach dem bekannten Ablauf (Sonnet baut, Prüfung je Aufgabe, Gesamtprüfung). Danach Variante A und F neu aufnehmen und vorher/nachher vergleichen. Dann Merge, Tests, Deploy, Push.

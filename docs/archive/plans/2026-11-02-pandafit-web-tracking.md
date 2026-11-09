@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, React, Vite, vitest; server: Fastify and `node:sqlite` as in `server/`; `fake-indexeddb` as a dev dependency for tests; no PWA plugin, a small hand-written service worker.
 
-**Spec:** `docs/superpowers/specs/2026-11-02-pandafit-web-tracking-design.md`
+**Spec:** `docs/archive/specs/2026-11-02-pandafit-web-tracking-design.md`
 
 ## Global Constraints
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, Node 24, vitest, Fastify 5 and `ws` (both already in the repo), `node:sqlite`, `node:crypto` AES-256-GCM, Python 3 with `garminconnect==0.3.20`, the Claude CLI, and Docker Compose.
 
-**Spec:** `docs/superpowers/specs/2026-11-03-server-coach-design.md`
+**Spec:** `docs/archive/specs/2026-11-03-server-coach-design.md`
 
 ## Global Constraints
 

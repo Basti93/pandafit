@@ -8,7 +8,7 @@ Brief: `docs/roadmap.md`, Meilenstein O (row in the table; the brief is written 
 - No npm install, no new dependencies, no push, no deploy.
 - **Public repo:** no personal data. Tests use invented rides.
 - A ride is never lost. Publishing is read-only on ride files.
-- **Light UI**, following the milestone L design rules (`docs/superpowers/plans/2026-11-07-milestone-l-calm-ui.md` "Design rules"; kit in `src/tracking/ui/kit/`):
+- **Light UI**, following the milestone L design rules (`docs/archive/plans/2026-11-07-milestone-l-calm-ui.md` "Design rules"; kit in `src/tracking/ui/kit/`):
   - one line per item;
   - numbers only on demand;
   - sheets for details;

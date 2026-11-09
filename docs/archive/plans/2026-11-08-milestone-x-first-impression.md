@@ -6,7 +6,7 @@
 
 **Architecture:** Web UI only (`src/web/**`, `src/tracking/ui/**`, shared label helpers in `src/shared/**` where a label lives there). No new record kinds and no server change, unless an item needs a field that already exists on the server.
 
-**Spec:** `docs/ux-review/2026-11-08-synthese.md` (84 items in 10 themes, 8 structure decisions, rejected and wrong lists). Method: `docs/superpowers/plans/2026-11-08-ux-review-method.md`. Each task names its spec items; the item text (Problem, Änderung, Dateien) is the requirement.
+**Spec:** `docs/archive/ux-review/2026-11-08-synthese.md` (84 items in 10 themes, 8 structure decisions, rejected and wrong lists). Method: `docs/archive/plans/2026-11-08-ux-review-method.md`. Each task names its spec items; the item text (Problem, Änderung, Dateien) is the requirement.
 
 ## Global Constraints
 

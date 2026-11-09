@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, React, vitest, zod, node coach server.
 
-**Spec:** `docs/superpowers/specs/2026-11-08-heute-day-pages-design.md` (the binding authority; its sections „Klärungen nach der Builder-Prüfung“ settle the details).
+**Spec:** `docs/archive/specs/2026-11-08-heute-day-pages-design.md` (the binding authority; its sections „Klärungen nach der Builder-Prüfung“ settle the details).
 
 ## Global Constraints
 

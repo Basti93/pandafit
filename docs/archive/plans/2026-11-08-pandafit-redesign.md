@@ -11,7 +11,7 @@
 **Design references**
 
 - [Design and motion study](../../../design/reference/pandafit-panda-in-bewegung.html) (copied into the repo 08.11.2026). The HTML contains the original Panda drawing, motion poses, typeface bytes and visual tokens. Treat the app around it as a sketch with sample data.
-- [Bike Coach design](../specs/2026-10-31-bike-coach-design.md), [Today day pages](../specs/2026-11-08-heute-day-pages-design.md), [strength plan preview and edits](2026-11-08-plan-preview-edit.md) and [web UX review](../../ux-review/2026-11-08-synthese.md) describe the real flows. This plan covers design parity and animation. Use the code at implementation HEAD to resolve any drift between the review and the shipped behavior.
+- [Bike Coach design](../../superpowers/specs/2026-10-31-bike-coach-design.md), [Today day pages](../specs/2026-11-08-heute-day-pages-design.md), [strength plan preview and edits](2026-11-08-plan-preview-edit.md) and [web UX review](../ux-review/2026-11-08-synthese.md) describe the real flows. This plan covers design parity and animation. Use the code at implementation HEAD to resolve any drift between the review and the shipped behavior.
 - [Panda drawing, clips and local Canvas conversion](../../../design/panda-rive/README.md).
 
 ## Global constraints
