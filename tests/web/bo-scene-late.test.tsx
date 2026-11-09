@@ -18,7 +18,7 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
-test('keeps place and pose together when the day arrives after Bo took his pose', async () => {
+test('keeps Bo in the nest when the day arrives after he took his greeting', async () => {
   const { rerender } = render(<BoBubble place="own" pose="greet">Guten Morgen.</BoBubble>);
   await settle(); await wait(800); // Bo glides into greet
   rerender(<BoBubble place="own" pose="bike">Guten Morgen.</BoBubble>);

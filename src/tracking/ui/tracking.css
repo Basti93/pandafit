@@ -654,3 +654,7 @@
 .tk-daysection-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
 .tk-daysection-head .muted { text-transform: none; letter-spacing: 0; font-weight: 400; text-align: right; }
 .tk-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); }
+
+/* The open places fade at the edges like the nest floats: top, sides and bottom of the back layer, the sides of the front layer. */
+.tk-scene:not([data-place="nest"]) .tk-scene-back { mask-image: linear-gradient(to bottom, transparent, black 22%, black 88%, transparent), linear-gradient(to right, transparent, black 14%, black 86%, transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 22%, black 88%, transparent), linear-gradient(to right, transparent, black 14%, black 86%, transparent); mask-composite: intersect; -webkit-mask-composite: source-in; }
+.tk-scene:not([data-place="nest"]) .tk-scene-front { mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); }
