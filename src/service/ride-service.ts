@@ -11,7 +11,7 @@ import { RideEngine } from './engine';
 import type { Diagnostics } from './diagnostics';
 import { exportFit } from '../ride-format/export/fit';
 import { RideRecorder } from './recorder';
-import { readRide } from '../ride-format/read';
+import { readRide, RIDE_ID } from '../ride-format/read';
 import { findOpenRides, resumePoint, type ResumePoint } from '../ride-format/recovery';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 
@@ -23,9 +23,7 @@ type Active = {
   ending?: 'finished' | 'aborted' | 'discarded';
 };
 const STALE_READING_MS = 3000;
-const CRASH_GAP_MS = 5000;
 const LONG_DOWNTIME_MS = 5 * 60 * 1000;
-const RIDE_ID = /^ride-[\w-]+$/;
 const checkRideId = (id: string): void => { if (!RIDE_ID.test(id)) throw new Error('Ungültige Fahrt-ID.'); };
 type Deps = { dir: string; ble: BlePort; nowMs: () => number; retryMs?: number; recorderFs?: typeof fs; onLive?: (line: object) => void; onRideChange?: (riding: boolean) => void; onRideStart?: () => void; diagnostics?: Diagnostics };
 
@@ -201,7 +199,7 @@ export class RideService {
     const point = resumePoint(ride, stored.session);
     const now = this.deps.nowMs();
     const lastMs = ride.samples.at(-1)?.wallClockMs ?? meta.startedAtMs;
-    if (now - lastMs > CRASH_GAP_MS) {
+    if (now - lastMs > GAP_THRESHOLD_MS) {
       recorder.event({ wallClockMs: lastMs, type: 'gap-start' });
       recorder.event({ wallClockMs: now, type: 'gap-end' });
     }

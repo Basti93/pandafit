@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { RAMP_ID } from '../../src/coach/guardrails';
+import { RAMP_ID } from '../../src/coach/session-limits';
 import { activityName, canUpload, REPO_DESCRIPTION, uploadSettings, withUploadMode } from '../../src/coach/garmin-upload';
 import { GarminUploader, type UploadResult } from '../../src/coach/garmin-uploader';
 import { externalLoad } from '../../src/coach/readiness';

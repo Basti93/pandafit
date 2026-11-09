@@ -1,4 +1,4 @@
-import { clampTargetW } from '../../src/shared/guardrails';
+import { clampTargetW } from '../../src/shared/target-power';
 test('clamp keeps target within 30-150% FTP', () => {
   expect(clampTargetW(1000, 200)).toBe(300);
   expect(clampTargetW(10, 200)).toBe(60);

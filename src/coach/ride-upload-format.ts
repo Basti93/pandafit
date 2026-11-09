@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { RIDE_ID } from '../ride-format/read';
 
-/** A ride id as the recorder makes it. Folders like `<id>.replaced-<ms>` or `.incoming-<id>` do not match. */
-export const RIDE_ID = /^ride-[0-9]+(-[0-9a-f]{8})?$/;
+export { RIDE_ID };
 
 export const RIDE_FILE_NAMES = ['meta.json', 'session.json', 'samples.jsonl', 'events.jsonl'] as const;
 export type RideFiles = { 'meta.json': string; 'session.json': string; 'samples.jsonl': string; 'events.jsonl': string };

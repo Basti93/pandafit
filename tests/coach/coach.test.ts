@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { answerJsonSchema, Coach, SYSTEM_PROMPT } from '../../src/coach/coach';
 import { ClaudeError } from '../../src/coach/claude-client';
-import { checkSession } from '../../src/coach/guardrails';
+import { checkSession } from '../../src/coach/session-limits';
 import { rampTest } from '../../src/coach/rules';
 import type { Sample } from '../../src/shared/sample';
 import type { Session } from '../../src/shared/session';

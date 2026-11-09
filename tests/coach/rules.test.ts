@@ -1,4 +1,4 @@
-import { checkSession, type CoachContext } from '../../src/coach/guardrails';
+import { checkSession, type CoachContext } from '../../src/coach/session-limits';
 import type { RideSummary } from '../../src/coach/metrics';
 import { adjustSession, ftpFromRamp, rampTest, ruleBasedSession } from '../../src/coach/rules';
 import type { Session } from '../../src/shared/session';

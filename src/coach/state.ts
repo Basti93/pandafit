@@ -7,7 +7,7 @@ import type { ClaudeErrorKind } from './claude-client';
 import type { RideDebrief } from './debrief';
 import type { GarminUploadSettings } from './garmin-upload';
 import type { RideSummary } from './metrics';
-import { RAMP_ID } from './guardrails';
+import { RAMP_ID } from './session-limits';
 import type { Complaint, Motive } from './motivation';
 import { ruleBasedSession } from './rules';
 import { writeJsonAtomic } from '../shared/node/atomic-write';

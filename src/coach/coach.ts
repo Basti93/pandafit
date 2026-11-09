@@ -10,7 +10,7 @@ import type { Session } from '../shared/session';
 import { thinSamples } from '../shared/bike';
 import { ClaudeError } from './claude-client';
 import { readTasks, type GivenTask, TASKS_GUIDE, zTasks, type CoachId } from './coach-tasks';
-import { checkSession, RAMP_ID, type CoachContext } from './guardrails';
+import { checkSession, RAMP_ID, type CoachContext } from './session-limits';
 import { cleanDebrief, debriefAnswerSchema, debriefJsonSchema, DEBRIEF_SYSTEM_PROMPT, ruleDebrief } from './debrief';
 import { uploadSettings, withUploadMode, type RideUpload, type UploadMode } from './garmin-upload';
 import type { StrengthWorkout } from './hevy';

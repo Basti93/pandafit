@@ -2,6 +2,9 @@ import nodeFs from 'node:fs';
 import path from 'node:path';
 import type { RideEvent, Sample } from '../shared/sample';
 
+/** Ride folder name: `ride-<ms>` with an optional 8-hex suffix. */
+export const RIDE_ID = /^ride-[0-9]+(-[0-9a-f]{8})?$/;
+
 export type RideStatus = 'open' | 'finished' | 'aborted' | 'discarded';
 export type RideMeta = { rideId: string; profileId: string; sessionId: string; startedAtMs: number; status: RideStatus; formatVersion?: number };
 

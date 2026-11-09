@@ -1,4 +1,4 @@
-import { checkSession, tssCap, type CoachContext } from '../../src/coach/guardrails';
+import { checkSession, tssCap, type CoachContext } from '../../src/coach/session-limits';
 import type { RideSummary } from '../../src/coach/metrics';
 import type { Session, Step } from '../../src/shared/session';
 

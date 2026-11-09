@@ -1,10 +1,11 @@
-import { clampTargetW } from '../shared/guardrails';
+import { clampTargetW } from '../shared/target-power';
 import type { RideEvent, Sample } from '../shared/sample';
 import { stepFtpFraction, type Session, type Step } from '../shared/session';
 import { zoneBounds } from '../shared/hr-zones';
 import type { Reading } from './ble/device-manager';
 
-const GAP_THRESHOLD_MS = 5000;
+/** A silence longer than this counts as a gap in the ride (also used to spot a crash gap on recovery). */
+export const GAP_THRESHOLD_MS = 5000;
 const HR_HOLD_S = 30;
 // Heart rate follows power with a delay, see docs/hr-zones.md.
 const HR_ZONE_SETTLE_S = 180;
@@ -13,7 +14,6 @@ const CADENCE_HOLD_S = 20;
 const CADENCE_FLOOR_RPM = 50;
 const AUTO_STEP_PCT = 5;
 const AUTO_MAX_PCT = 20;
-const RAMP_ID = 'ramp-test';
 const CLIMB_ENTRY_S = 25;
 // Riding by heart rate, our own choice: see docs/hr-zones.md.
 const HOLD_EVERY_S = 30;

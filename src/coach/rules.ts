@@ -1,5 +1,5 @@
 import type { Session, Step } from '../shared/session';
-import { checkSession, estimateTss, mustBeEasy, mustBeGentle, RAMP_ID, tssCap, type CoachContext } from './guardrails';
+import { checkSession, estimateTss, mustBeEasy, mustBeGentle, RAMP_ID, tssCap, type CoachContext } from './session-limits';
 import { loadModel, type RideSummary } from './metrics';
 
 const min = (n: number) => n * 60;

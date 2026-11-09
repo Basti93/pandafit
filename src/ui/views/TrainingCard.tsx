@@ -1,5 +1,5 @@
 import { ZoneChip } from '../hr-zone-style';
-import { estimateTss } from '../../coach/guardrails';
+import { estimateTss } from '../../coach/session-limits';
 import type { Session } from '../../shared/session';
 import { WorkoutBar } from './WorkoutBar';
 
