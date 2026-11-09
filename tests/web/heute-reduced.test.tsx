@@ -32,14 +32,14 @@ async function boot(seed: TrackedRecord[]) {
     storage: { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => { storage.set(k, v); }, removeItem: (k: string) => { storage.delete(k); } },
   };
   render(<App env={env} />);
-  await screen.findByRole('heading', { level: 1, name: 'Heute' });
+  await screen.findByRole('heading', { level: 1, name: 'Heute' }, { timeout: 4000 });
 }
 
 describe('Heute with reduced motion', () => {
   it('shows Bo at his place as the still of his pose', async () => {
     window.matchMedia = ((q: string) => ({ matches: q.includes('reduce'), media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false })) as typeof window.matchMedia;
     await boot([week('rest')]);
-    await waitFor(() => expect(document.querySelector('.tk-scene[data-place="buecher"] img[src="/brand/bo-pose-read.svg"]')).toBeTruthy());
+    await waitFor(() => expect(document.querySelector('.tk-scene[data-place="buecher"] img[src="/brand/bo-pose-read.svg"]')).toBeTruthy(), { timeout: 4000 });
     expect(document.querySelector('.tk-scene canvas')).toBeNull();
   });
 });

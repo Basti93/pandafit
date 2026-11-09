@@ -15,7 +15,7 @@ Die Bilder dazu: `docs/design/moodboard/*.html` im Browser öffnen (abgenommene 
 - Bo ist ein Panda mit Stirnband und Teetasse. Er heißt in der Oberfläche **Sensai**, nie „Coach“. Der Einstieg heißt „Frag Bo, deinen Sensai“.
 - Bo ist warm und unterstützt immer zu 100 %. Er ist ein bisschen tollpatschig und vergisst auch mal etwas, weiß aber, dass genau das das Leben ausmacht. Ein eigener kleiner Patzer kommt **selten** vor, höchstens in einem von vielen Sätzen.
 - Bo spricht nur in **Sprechblasen** (Karte mit kleinem Dreieck zu Bo), nie als loser Text.
-- Bo sitzt auf Heute in seinem **Bambusnest**: gebogene Halme als Laube, geflochtene Schale, Laterne an einem Halm.
+- Das **Bambusnest** ist der Ort für den Gruß und für Tage ohne Plan: gebogene Halme als Laube, geflochtene Schale, Laterne an einem Halm.
 - **Bos Orte:** Jede Pose hat eine kleine Szene (Moodboard `bos-orte.html`). Hinter Bo liegt immer ein warmer Lichtschein, damit sein dunkles Fell auf dunklem Grund lesbar bleibt.
 - Jeder Ort legt fest, welche Posen zu ihm passen (`PLACE_POSES` in `kit/BoScene.tsx`). Auf Heute steht Bo an dem Ort seiner Pose (`placeOf`); Ort und Pose wählt er einmal beim Öffnen. Bei reduzierter Bewegung steht er dort als Standbild seiner Pose (`brand/bo-pose-*.svg`).
 - Bo gleitet beim Öffnen einer Seite ruhig in seine Pose. Gesten (Begrüßen, Nicken, Zuhören) hält er still. Tätigkeiten (Stricken, Lesen, `ACTIVITY_SPANS` in `panda-canvas.ts`) macht er ruhig weiter, vor und zurück ohne Sprung.
