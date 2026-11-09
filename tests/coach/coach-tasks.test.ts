@@ -31,7 +31,8 @@ test('a task reaches only its coach, raises that coach version and is kept acros
 test('a one-off task ends after the 28 day cap, a lasting one after 60 days, at most 10 per coach, newest kept', () => {
   const t = board();
   t.add('p', { from: 'chat', to: 'gym', text: 'einmal', lasting: false }, NOW);
-  t.add('p', { from: 'bike', to: 'gym', text: 'dauerhaft', lasting: true }, NOW);
+  // A millisecond apart: tasks of the same moment have no defined order.
+  t.add('p', { from: 'bike', to: 'gym', text: 'dauerhaft', lasting: true }, NOW + 1);
   expect(t.open('p', 'gym', NOW + 10 * DAY).map((x) => x.text)).toEqual(['einmal', 'dauerhaft']);
   expect(t.open('p', 'gym', NOW + 29 * DAY).map((x) => x.text)).toEqual(['dauerhaft']);
   expect(t.open('p', 'gym', NOW + 61 * DAY)).toEqual([]);
@@ -85,8 +86,8 @@ test('settle: the next session of its sport finishes an undated one-off task, no
   const tue = mon + DAY;
   const t = board();
   t.add('p', { from: 'chat', to: 'gym', text: 'ohne Tag', lasting: false }, mon);
-  t.add('p', { from: 'chat', to: 'gym', text: 'mit Tag', lasting: false, forDate: '2026-11-09' }, mon);
-  t.add('p', { from: 'chat', to: 'gym', text: 'dauerhaft', lasting: true }, mon);
+  t.add('p', { from: 'chat', to: 'gym', text: 'mit Tag', lasting: false, forDate: '2026-11-09' }, mon + 1);
+  t.add('p', { from: 'chat', to: 'gym', text: 'dauerhaft', lasting: true }, mon + 2);
   t.settle('p', [{ sport: 'bike', startMs: tue }, { sport: 'gym', startMs: mon - 1 }], tue);
   expect(t.open('p', 'gym', tue)).toHaveLength(3);
   t.settle('p', [{ sport: 'gym', startMs: tue }], tue + 1000);
