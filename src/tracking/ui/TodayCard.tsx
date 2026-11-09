@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { reasonSentence } from '../../shared/today';
 import type { TrackedRecord } from '../../shared/records';
-import { dayLabel, HARDNESS_LABEL, hasSport, minutesText, planFor, SPORT_LABEL, type PlanDay } from '../../shared/week-plan';
+import { hasSport, planFor, type PlanDay } from '../../shared/week-plan';
+import { planDayLabel } from './plan-text';
 import type { TrackingPort } from '../ports';
 import { TodayOnly } from './FrameControls';
 import { useTodayAdvice } from './frame-hooks';
@@ -9,14 +10,6 @@ import { dateKeyOf, runView } from './run-view';
 import { Sheet } from './kit';
 
 const RUN_KIND: Record<string, string> = { easy: 'locker', long: 'lang', test: 'Test' };
-/** One session: "Kraft, mittel". Two sessions of the same hardness: "Kraft + Rad locker", else each with its own. */
-export const planDayLabel = (d: PlanDay) => {
-  if (!d.also || d.sport === 'rest') return dayLabel(d, (_, first) => (first && d.long ? ', lang' : ''));
-  const min = d.also.minutes ? ` ${minutesText(d.also)}` : '';
-  if (d.also.hardness === d.hardness) return `${SPORT_LABEL[d.sport]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.hardness]}`;
-  return `${SPORT_LABEL[d.sport]} ${HARDNESS_LABEL[d.hardness]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.also.hardness]}`;
-};
-
 /** Today's sport from the week plan, or null without a plan for today. */
 export const todayPlan = (weekplans: TrackedRecord[] | null, nowMs: number): PlanDay | null => planFor(weekplans ?? [], dateKeyOf(nowMs));
 

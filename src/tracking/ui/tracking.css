@@ -588,3 +588,21 @@
 .tk-wordtile-label { font-size: var(--text-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .tk-wordtile-word { font-size: var(--text-l); font-weight: 700; color: var(--good-text); overflow-wrap: anywhere; }
 .tk-wordtile.note .tk-wordtile-word { color: var(--accent-text); }
+
+/* Week path (kit/WeekPath.tsx): seven dots on a line. */
+.tk-weekpath { display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-weekpath-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.tk-weekpath-count { font-size: var(--text-s); color: var(--muted); }
+.tk-weekpath-track { position: relative; }
+.tk-weekpath-line { position: absolute; top: 21px; left: calc(100% / 14); right: calc(100% / 14); height: 2px; border-radius: 1px; background: var(--line); }
+.tk-weekpath-line > span { display: block; height: 100%; border-radius: 1px; background: var(--accent); }
+.tk-weekpath-dots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); }
+.tk-weekpath-dots li { display: flex; justify-content: center; position: relative; z-index: 1; }
+.tk-screen button.tk-pathdot, .tk-pathdot { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); min-width: 44px; min-height: 44px; padding: 0; background: transparent; border: 0; color: var(--muted); font: inherit; font-weight: 400; }
+.tk-pathdot-mark { box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; margin-top: calc(22px - .75rem); border-radius: var(--radius-round); background: var(--bg); border: 2px solid var(--field-line); color: var(--ink); }
+.tk-pathdot.rest .tk-pathdot-mark { border: 0; background: radial-gradient(circle, var(--dot-off) 0 .25rem, transparent calc(.25rem + 1px)); }
+.tk-pathdot.done .tk-pathdot-mark { background: var(--accent); border-color: var(--accent); }
+.tk-pathdot.today .tk-pathdot-mark { border-color: var(--kicker); box-shadow: 0 0 0 3px var(--today-glow); }
+.tk-pathdot.today.done .tk-pathdot-mark { background: var(--accent); }
+.tk-pathdot-name { font-size: var(--text-xs); }
+.tk-pathdot.today .tk-pathdot-name { color: var(--text); font-weight: 700; }

@@ -2,8 +2,7 @@ import { bodyOf } from '../../shared/record-bodies';
 import type { ActivityItem } from '../../shared/activities';
 import { localDayKey } from '../../shared/dates';
 import type { TrackedRecord } from '../../shared/records';
-import { activityText, mergedActivities } from '../../tracking/ui/done-days';
-import { activitiesOn } from './day-data';
+import { activitiesOn, activityText, mergedActivities } from '../../tracking/ui/done-days';
 
 /** Heute on Gestern: what was trained, as plain facts. Rest day only when the data is known and empty. */
 export function YesterdayTraining({ activities, workouts, mobility, date }: { activities: TrackedRecord[] | null; workouts: TrackedRecord[] | null; mobility: TrackedRecord[] | null; date: string }) {

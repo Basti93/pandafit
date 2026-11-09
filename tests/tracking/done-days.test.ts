@@ -2,7 +2,7 @@ import type { ActivityItem } from '../../src/shared/activities';
 import type { TrackedRecord } from '../../src/shared/records';
 import type { PlanDay } from '../../src/shared/week-plan';
 import { planDayText } from '../../src/tracking/ui/plan-text';
-import { activityText, doneDays, mergedActivities } from '../../src/tracking/ui/done-days';
+import { activitiesOn, activityText, doneDays, mergedActivities } from '../../src/tracking/ui/done-days';
 
 const original = process.env.TZ;
 afterAll(() => { if (original === undefined) delete process.env.TZ; else process.env.TZ = original; });
@@ -95,3 +95,18 @@ test('today with several parts keeps only the open parts', () => {
   expect(planDayText(both.plan!)).toBe('Rad · mittel + Kraft · mittel');
   expect(planDayText({ date: '2026-11-02', sport: 'gym', hardness: 'moderate', fixed: false, also: { sport: 'bike', hardness: 'easy', minutes: 15 } })).toBe('Kraft · mittel + Rad · locker · 15 Min.');
 });
+
+// activitiesOn
+const itemK = (key: string, startMs: number): ActivityItem => ({ key, kind: 'rad', title: null, sport: null, startMs, minutes: 30, distanceM: null, avgHr: null, ref: null });
+describe('activitiesOn', () => {
+  it('keeps only the date, oldest first', () => {
+    const merged = { known: true, items: [itemK('b', at(3, 18)), itemK('x', at(4, 8)), itemK('a', at(3, 7))] };
+    expect(activitiesOn(merged, '2026-11-03')!.map((i) => i.key)).toEqual(['a', 'b']);
+  });
+  it('is empty when known and nothing happened, null when unknown', () => {
+    expect(activitiesOn({ known: true, items: [] }, '2026-11-03')).toEqual([]);
+    expect(activitiesOn({ known: false, items: [itemK('x', at(4, 8))] }, '2026-11-03')).toBeNull();
+    expect(activitiesOn({ known: false, items: [itemK('a', at(3, 8))] }, '2026-11-03')!.length).toBe(1);
+  });
+});
+

@@ -37,3 +37,9 @@ export function dayHeading(ms: number, nowMs: number): string {
 
 /** "November 2026" */
 export const monthLabel = (ms: number): string => new Date(ms).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+
+/** "Mittwoch" from a YYYY-MM-DD key. */
+export const weekdayOfKey = (key: string): string => { const [y, m, d] = key.split('-').map(Number); return new Date(y!, m! - 1, d!, 12).toLocaleDateString('de-DE', { weekday: 'long' }); };
+
+/** "11. November" from a YYYY-MM-DD key (month in full). */
+export const dayMonthLongOfKey = (key: string): string => { const [y, m, d] = key.split('-').map(Number); return new Date(y!, m! - 1, d!, 12).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' }); };

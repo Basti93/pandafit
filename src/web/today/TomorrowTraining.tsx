@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { TrackedRecord } from '../../shared/records';
 import { hasSport, planFor } from '../../shared/week-plan';
-import { planDayLabel } from '../../tracking/ui/TodayCard';
+import { planDayLabel } from '../../tracking/ui/plan-text';
 
 /** Heute on Morgen: the planned training, no start button; without a plan one calm line. `gymNote` is the strength plan's name and exercises (muted), shown on a strength day. */
 export function TomorrowTraining({ weekplans, date, gymNote }: { weekplans: TrackedRecord[] | null; date: string; gymNote?: ReactNode }) {

@@ -1,20 +1,20 @@
 import { useState } from 'react';
 import { chatThread, waitingMessage } from '../../shared/chat';
-import { mondayOf, planOfWeek, addDays, SPORT_LABEL } from '../../shared/week-plan';
+import { SPORT_LABEL } from '../../shared/week-plan';
 import type { TrackingPort } from '../ports';
 import { readStats, STATS_ID } from '../../shared/stats';
 import { newestNotes } from '../../shared/change-notes';
 import { localDayKey, timeLabel } from '../../shared/dates';
-import { useTodayAdvice } from './frame-hooks';
+import { useWeekDays } from './week-days';
 import { CoachPrefs } from './CoachPrefs';
 import { CoachChat } from './CoachChat';
 import { GoalSheet, goalSummary, RulesSheet, useRuleList } from './GoalRules';
 import { ActivityHistory } from './ActivityHistory';
-import { activityText, doneDays, mergedActivities, planRows } from './done-days';
+import { activityText, mergedActivities, planRows } from './done-days';
 import { Week, dayName, runText } from './WeekList';
 import { openProposals } from './chat-open';
 import { useGoal, usePortRecords } from './hooks';
-import { dayText as runDay, runView } from './run-view';
+import { dayText as runDay } from './run-view';
 import { PageHead, Row, RowList } from './kit';
 import { LookBack } from './StatsScreen';
 import { WaitingProposal } from './WaitingProposal';
@@ -26,7 +26,6 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
   const plans = usePortRecords(port, 'weekplan').all;
   const changeRecs = usePortRecords(port, 'change').all;
   const ruleRecs = usePortRecords(port, 'rule').all;
-  const runRecords = usePortRecords(port, 'run').all;
   const activityRecords = usePortRecords(port, 'activities').all;
   const workoutRecords = usePortRecords(port, 'workout').all;
   const statsRecords = usePortRecords(port, 'stats').all;
@@ -37,21 +36,10 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
   // Until a goal was picked (or the coach changed it) the shown one is only the default.
   const goalChosen = (usePortRecords(port, 'goal').records ?? []).length > 0;
   const { rules, tasks } = useRuleList(port, now());
-  const fr = useTodayAdvice(port, now());
   const thread = chatThread(chat ?? []);
 
-  const today = localDayKey(now());
-  const monday = mondayOf(today);
-  const current = planOfWeek(plans ?? [], monday);
-  const next = planOfWeek(plans ?? [], addDays(monday, 7));
-  // The run coach's runs sit on their days; without a week plan they are listed on their own.
-  const runs = runView(runRecords ?? [], now()).week?.runs ?? [];
-  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
-  // Without a week plan (or in Spontan) the week still shows Monday to today, from what was done.
-  const spontaneous = fr.frame.mode === 'spontaneous';
-  const rowDates = current && !spontaneous ? weekDates : weekDates.filter((d) => d <= today);
+  const { today, monday, rows: dayRows, current, next, runs, spontaneous, frame: fr } = useWeekDays(port, now());
   const merged = mergedActivities(activityRecords, workoutRecords, true);
-  const dayRows = doneDays(rowDates, today, spontaneous ? null : current?.days ?? null, merged);
   const newestActivity = merged.items[0];
   const recent = Object.values(fr.ratings).filter((r) => r.sports?.length).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 4)
     .map((r) => `${dayName(r.date).slice(0, 2)} ${r.sports!.map((k) => SPORT_LABEL[k]).join(' + ')}`).join(' · ');

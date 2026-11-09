@@ -1,4 +1,4 @@
-import { HARDNESS_LABEL, SPORT_LABEL, dayParts, minutesText, type PlanDay } from '../../shared/week-plan';
+import { HARDNESS_LABEL, SPORT_LABEL, dayLabel, dayParts, minutesText, type PlanDay } from '../../shared/week-plan';
 import type { PlannedRun } from '../../shared/run';
 
 const RUN_KIND: Record<string, string> = { easy: 'locker', long: 'lang', test: 'Test' };
@@ -15,3 +15,11 @@ export function planDayText(d: PlanDay, opts: { legs?: boolean } = {}): string {
     return [SPORT_LABEL[p.sport], HARDNESS_LABEL[p.hardness], ...extra].join(' · ');
   }).join(' + ');
 }
+
+/** One session: "Kraft, mittel". Two sessions of the same hardness: "Kraft + Rad locker", else each with its own. */
+export const planDayLabel = (d: PlanDay) => {
+  if (!d.also || d.sport === 'rest') return dayLabel(d, (_, first) => (first && d.long ? ', lang' : ''));
+  const min = d.also.minutes ? ` ${minutesText(d.also)}` : '';
+  if (d.also.hardness === d.hardness) return `${SPORT_LABEL[d.sport]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.hardness]}`;
+  return `${SPORT_LABEL[d.sport]} ${HARDNESS_LABEL[d.hardness]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.also.hardness]}`;
+};

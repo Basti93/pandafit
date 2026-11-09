@@ -45,5 +45,6 @@ export { BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, Tag }
 export { BoScene } from './BoScene';
 export type { BoPlace } from './BoScene';
 export { RowCard, WordTile } from './RowCard';
+export { WeekPath } from './WeekPath';
 export { Icon } from './Icon';
 export type { IconName } from './Icon';
