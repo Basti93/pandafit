@@ -29,4 +29,19 @@ describe('Sensei wording', () => {
   it('takes the fixed Bo texts from one place', () => {
     expect(read('src/web/today/CoachLine.tsx')).toContain('BO.ask');
   });
+  it('tells every persona never to say Coach, and keeps the word out of prompt text', async () => {
+    const { CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT } = await import('../../src/coach/chat/chat-coach');
+    const { CHAT_SYSTEM_PROMPT: MEAL_CHAT } = await import('../../src/coach/meals/chat');
+    const { SYSTEM_PROMPT } = await import('../../src/coach/coach');
+    const { DEBRIEF_SYSTEM_PROMPT } = await import('../../src/coach/debrief');
+    const { GYM_SYSTEM_PROMPT } = await import('../../src/coach/gym/prompt');
+    const { RUN_SYSTEM_PROMPT } = await import('../../src/coach/run/prompt');
+    const { TASKS_GUIDE } = await import('../../src/coach/coach-tasks');
+    for (const p of [CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT, MEAL_CHAT, SYSTEM_PROMPT, DEBRIEF_SYSTEM_PROMPT, GYM_SYSTEM_PROMPT, RUN_SYSTEM_PROMPT]) {
+      expect(p).toContain('sag nie "Coach"');
+      // Only the instruction itself may name the word.
+      expect(p.replace(/sag nie "Coach"/g, '')).not.toMatch(/Coach/);
+    }
+    expect(TASKS_GUIDE('bike')).not.toMatch(/Coach/);
+  });
 });

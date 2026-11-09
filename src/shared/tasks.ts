@@ -50,5 +50,5 @@ export const openTasks = (records: readonly TrackedRecord[], nowMs: number): (Co
   records.flatMap((r) => { const t = r.kind === 'task' && !r.deleted ? readTask(r.body) : null; return t && t.doneMs === undefined && taskAlive(t, nowMs) ? [{ ...t, id: r.id }] : []; })
     .sort((a, b) => a.atMs - b.atMs || (a.id < b.id ? -1 : 1));
 
-export const TASK_FROM_LABEL: Record<TaskFrom, string> = { chat: 'Person über den Wochenchat', bike: 'Rad-Coach', gym: 'Kraft-Coach', run: 'Lauf-Coach' };
-export const COACH_LABEL: Record<CoachId, string> = { bike: 'Rad-Coach', gym: 'Kraft-Coach', run: 'Lauf-Coach' };
+export const TASK_FROM_LABEL: Record<TaskFrom, string> = { chat: 'Person über den Wochenchat', bike: 'Radplanung', gym: 'Kraftplanung', run: 'Laufplanung' };
+export const COACH_LABEL: Record<CoachId, string> = { bike: 'Radplanung', gym: 'Kraftplanung', run: 'Laufplanung' };
