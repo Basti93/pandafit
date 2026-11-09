@@ -58,7 +58,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Dojo 1 Fundament** | Die Web-App sieht überall nach „Abend im Dojo“ aus: Zen Kaku Gothic New, Bambus scrollt mit, Tabs mit verspielten Icons (Heute, Woche, Kraft, Essen, Ausdauer), Profil als Panda-Knopf, Bo heißt überall Sensai. | Panda-Design (Aussehen) |
 | ✅ | **Dojo 2 Heute, Woche, Sensai** | Heute und Woche geben sofort Orientierung (erledigt, heute, kommt noch); Bo sitzt im Bambusnest; Gesundheit steht sichtbar auf der Woche und hat eine eigene Seite; das Gespräch mit dem Sensai ist ein ruhiger Chat. | Woche-Seite, Rückblick-Gesundheit |
 | ✅ | **Dojo 3 Kraft und Ausdauer** | Kraft zeigt das nächste Training als Hauptkarte, das laufende Training den nächsten Satz groß; Ausdauer schaltet Rad und Laufen oben um. | Kraft-Umschalter Training/Routinen/Übungen |
-| ⬜ | **Dojo 4 Essen und Profil** | Essen zeigt die nächste Mahlzeit groß und die Woche ruhig; ein Rezept trägt man auf der Seite in den Plan ein; Profil ist nur noch Einstellungen. | Tage/Einkauf-Umschalter, „In den Plan“-Sheet |
+| ✅ | **Dojo 4 Essen und Profil** | Essen zeigt die nächste Mahlzeit groß und die Woche ruhig; ein Rezept trägt man auf der Seite in den Plan ein; Profil ist nur noch Einstellungen. | Tage/Einkauf-Umschalter, „In den Plan“-Sheet |
 | ⬜ | **Dojo 5 Bos Orte und Logo** | Hinter jeder Pose von Bo steht seine Szene; das App-Logo zeigt Bo als Teetrinker, im Dock, auf dem Handy und als Favicon. | Altes Logo (Panda und Maus auf dem Rad) |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
@@ -87,7 +87,7 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
 
 ## Dojo — Briefs
 
-Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`archive/plans/2026-11-09-dojo-1-fundament.md`](archive/plans/2026-11-09-dojo-1-fundament.md) (erledigt), Dojo 2: [`archive/plans/2026-11-09-dojo-2-heute-woche-sensai.md`](archive/plans/2026-11-09-dojo-2-heute-woche-sensai.md) (erledigt), Dojo 3: [`archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md`](archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md) (erledigt). Die Pläne für Dojo 4–5 entstehen jeweils nach Abnahme des vorigen.
+Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`archive/plans/2026-11-09-dojo-1-fundament.md`](archive/plans/2026-11-09-dojo-1-fundament.md) (erledigt), Dojo 2: [`archive/plans/2026-11-09-dojo-2-heute-woche-sensai.md`](archive/plans/2026-11-09-dojo-2-heute-woche-sensai.md) (erledigt), Dojo 3: [`archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md`](archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md) (erledigt), Dojo 4: [`archive/plans/2026-11-09-dojo-4-essen-profil.md`](archive/plans/2026-11-09-dojo-4-essen-profil.md) (erledigt). Der Plan für Dojo 5 entsteht nach Abnahme von Dojo 4.
 
 **Dojo 1 Fundament.** Ziel: Das neue Aussehen steckt in Tokens und Bausteinen, bevor ein Screen umgebaut wird.
 - Jede Seite der Web-App hat den Dojo-Hintergrund mit Bambus, der beim Scrollen mitwächst, hell und dunkel.
@@ -122,7 +122,10 @@ Fällt weg: Tage/Einkauf-Umschalter, „In den Plan“-Sheet. Nicht dabei: neue 
 Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 
 ## Parkplatz
-- Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen. Heute, Woche, Kraft, Ausdauer erledigt; Essen folgt in Dojo 4.
+- ~~Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen.~~ Erledigt mit Dojo 4.
+- Aus Dojo 4: Ein gemeinsamer Kit-Rahmen `SubPage` für Unterseiten (heute `SubPage` in `Training.tsx` und `EssenPage` in `src/web/essen/`).
+- Aus Dojo 4: Tippt man auf den Tab, während eine Unterseite offen ist (Mahlzeit von Heute, Kraft-Unterseiten), bleibt die Unterseite stehen.
+- Aus Dojo 4: „Essen heute“ auf Heute zeigt noch das Icon statt des Bilds.
 - ~~Aus Dojo 1: Die Mac-Oberfläche (`src/ui`) sagt noch „Coach“, z. B. HevyCard „Kraft-Coach“. `training-policy/rules.ts` sagt intern „Coach“, erreicht aber weder Screen noch Prompt.~~ Erledigt (Parkplatz Design).
 - ~~Aus Dojo 1: Im CSS steht teils font-weight 600.~~ Erledigt mit Dojo 2 (nur die Mac-Oberfläche hat noch 600, eigene Schrift).
 - ~~Aus Dojo 2: „Zurück“ im Chat, den man von Heute aus geöffnet hat, landet auf der Woche statt auf Heute (gehört zu Browser-Zurück, Entscheidung 10).~~ Erledigt (Parkplatz Design).
@@ -196,7 +199,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - ~~Datumsstil in Laufen/Entwicklung noch gemischt („ab 14. Sept.“ / „26.10. bis 1.11.“).~~ Erledigt.
   - Native Datums-/Zeitfelder folgen der Gerätesprache (im Test-Browser AM/PM).
   - Katalog: große Gruppen zeigen zuerst eingebaute/genutzte Übungen; ggf. später Untergruppen.
-  - Shot-Werkzeug erreicht „Haben wir“ auf der Einkaufsliste nicht.
+  - ~~Shot-Werkzeug erreicht „Haben wir“ auf der Einkaufsliste nicht.~~ Erledigt mit Dojo 4.
 - Aus Meilenstein O:
   - Eine harte Fahrt zählt nicht als „Beine müde“ (Server und Web gleich); nur die Regel „zwei harte Tage“ schützt. Prüfen, ob Fahrten die Beine belasten sollen.
   - ~~Umschalter „Rad | Laufen“ steht über dem Seitentitel (wie bei Laufen); unter den Titel nur mit Platz in `PageHead`.~~ Erledigt mit Dojo 3.
@@ -220,6 +223,6 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - ~~Die Start-Hinweise („Ohne Beine“, „Dazu heute“) haben keinen Oberflächentest.~~ Erledigt mit Dojo 3.
 - Aus Meilenstein X:
   - Ein neues Gerät kennt den Essensplan-Schalter erst nach der ersten Coach-Antwort (bis 30 s); ein synchronisierter Datensatz wäre sauberer (braucht Server).
-  - Browser-Zurück in verschachtelten Sheets schließt das ganze Sheet.
+  - Browser-Zurück in verschachtelten Sheets schließt das ganze Sheet. Für Essen erledigt mit Dojo 4 (Seiten statt Sheets); offen für Kraft und Woche.
   - ~~„Woche planen“ auf Heute führt zur Woche, dort braucht es einen zweiten Tipp bis zum Chat.~~ Erledigt mit Dojo 2.
   - ~~Der Rad-Verlauf zeigt Wattbereiche nur bei „bei N %“-Bezeichnungen.~~ Erledigt mit Dojo 3.
