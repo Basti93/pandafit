@@ -184,6 +184,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
   .pm-addline { grid-template-columns: 1fr; }
   .live-big { font-size: 5rem; }
   .live-pair b { font-size: var(--text-3xl); }
-  .tk-pgroup, .pm-group { padding-left: var(--space-3); padding-right: var(--space-3); }
+  .tk-pgroup { padding-left: var(--space-3); padding-right: var(--space-3); }
 }
 @media (max-width: 340px) { .web-nav button { letter-spacing: -.01em; } }

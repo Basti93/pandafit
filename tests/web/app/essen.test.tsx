@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
 import { addWeeks, dayIndex, itemKey, weekOf } from '../../../src/shared/meals';
 import type { LiveSocket } from '../../../src/web/live';
+import { ShoppingPage } from '../../../src/web/essen/ShoppingPage';
 import { NOW, DAY, json, boot, openMeal, pill } from './helpers';
 
 afterEach(cleanup);
@@ -220,6 +221,11 @@ describe('Essen on the phone', () => {
     expect(screen.getByText('Die Liste reicht für die ganze Woche und für zwei Personen.')).toBeTruthy();
     fireEvent.click(pill('Essen'));
     expect(await screen.findByRole('region', { name: 'Essen' })).toBeTruthy();
+  });
+
+  it('Einkauf without any plan says so instead of showing a list', () => {
+    render(<ShoppingPage weeks={[]} nowMs={NOW} change={async () => {}} onBack={() => {}} />);
+    expect(screen.getByText('Es gibt noch keinen Plan, also auch keine Liste.')).toBeTruthy();
   });
 
   it('the shopping list says for when and for whom, counts what is open, and keeps own items below the plan\'s', async () => {

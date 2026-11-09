@@ -85,8 +85,6 @@ function ChatSheet({ chat, onSend, onClose }: { chat: MealChat[]; onSend: (text:
   );
 }
 
-export const short = (k: string) => { const [d, s] = k.split('-'); return `${DAY_SHORT[Number(d)]}${s === 'mittag' ? '' : ` ${SLOT_LABEL[s as keyof typeof SLOT_LABEL]}`}`; };
-
 /** The account's meal records and everything written back to them (state, recipes, hearts, places), shared by Essen and Heute. */
 export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fetch) {
   const records = usePortRecords(port, 'mealplan').records;
