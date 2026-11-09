@@ -1,21 +1,16 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { logServerErrors, fastifyLogger } from '../src/shared/node/log';
+import { ACCOUNT_ID, BODY_LIMIT, installErrorHandler, tokenDigest, tokenMatches } from '../src/shared/node/server-kit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { openDb } from './db';
 import type { DatabaseSync } from 'node:sqlite';
 import { pushFor, type PushOptions } from './push';
-import { listRecords, pageOfQuery, putRecords, recordsOfBody } from './records';
+import { listRecords, pageOfQuery, putRecordsAndNotify, recordsOfBody } from './records';
 
 /** The internal listener's port, reached by the coach container over the internal network only. */
 export const INTERNAL_PORT = 8081;
-/** As large as a POST to the public app may be. */
-const BODY_LIMIT = 5 * 1024 * 1024;
-const ACCOUNT = /^[1-9][0-9]{0,15}$/;
 
 export const validInternalToken = (t: string): boolean => /^[0-9a-f]{64}$/i.test(t);
-/** Compares digests, so neither the length nor the content of the token leaks through the time taken. */
-const digest = (s: string): Buffer => createHash('sha256').update(s).digest();
 
 /**
  * The coach's way to an account's records: the same store and rules as the public /records routes, with the internal token in
@@ -34,13 +29,9 @@ export const buildInternal = (opts: { dbPath: string; db?: DatabaseSync; token: 
   logServerErrors(app);
   // No version announcement here: the public app does that once.
   const { push } = pushFor(db, opts.push && { ...opts.push, version: null }, now);
-  const expected = digest(`Bearer ${opts.token}`);
+  const expected = tokenDigest(`Bearer ${opts.token}`);
 
-  app.setErrorHandler((err: { statusCode?: number; name?: string }, req, reply) => {
-    const code = typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 500 ? err.statusCode : 500;
-    if (code === 500) console.error('internal error', req.method, req.url.split('?')[0], err.name ?? 'Error');
-    return reply.code(code).send({ error: code === 413 ? 'too large' : code === 500 ? 'error' : 'bad request' });
-  });
+  installErrorHandler(app, 'internal error');
   // With a peer name set, only the addresses it resolves to may talk to this listener (the name is the coach on the internal network).
   // A failed lookup refuses everyone. The answer is cached for 10 seconds.
   const peer = opts.peer;
@@ -59,12 +50,12 @@ export const buildInternal = (opts: { dbPath: string; db?: DatabaseSync; token: 
   app.addHook('onRequest', async (req, reply) => {
     if (peer && !(await peerAddresses()).has(bare(req.socket.remoteAddress ?? ''))) return reply.code(403).send({ error: 'forbidden' });
     const auth = req.headers.authorization;
-    if (typeof auth !== 'string' || !timingSafeEqual(digest(auth), expected)) return reply.code(401).send({ error: 'unauthorized' });
+    if (!tokenMatches(auth, expected)) return reply.code(401).send({ error: 'unauthorized' });
   });
 
   /** The account in the path, when it exists. */
   const accountOf = (raw: string): number | null => {
-    if (!ACCOUNT.test(raw)) return null;
+    if (!ACCOUNT_ID.test(raw)) return null;
     const id = Number(raw);
     return Number.isSafeInteger(id) && db.prepare('SELECT 1 FROM accounts WHERE id = ?').get(id) ? id : null;
   };
@@ -74,11 +65,7 @@ export const buildInternal = (opts: { dbPath: string; db?: DatabaseSync; token: 
     if (account === null) return reply.code(404).send({ error: 'not found' });
     const list = recordsOfBody(req.body);
     if (!list) return reply.code(400).send({ error: 'bad request' });
-    const { accepted, refused, newMealWeek, newRunWeek, newCoachNote } = putRecords(db, account, list, now());
-    if (newMealWeek) void push.notifyAccount(account, 'meal'); // fire and forget, after the data is safe
-    if (newRunWeek) void push.notifyAccount(account, 'run');
-    if (newCoachNote) void push.notifyAccount(account, 'coach');
-    return { accepted, refused };
+    return putRecordsAndNotify(db, push, account, list, now(), 'coach');
   });
 
   app.get<{ Params: { id: string }; Querystring: { since?: string; limit?: string } }>('/internal/accounts/:id/records', async (req, reply) => {

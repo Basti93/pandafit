@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { applyRecord, RECORD_KINDS, type RecordKind, type TrackedRecord } from '../src/shared/records';
 import { generationOf } from './db';
-import { mealWeekOf, runWeekOf } from './push';
+import { mealWeekOf, runWeekOf, type Push } from './push';
 
 /** The records of one account, shared by the public routes (login) and the internal ones (the coach). */
 const KINDS: readonly RecordKind[] = RECORD_KINDS;
@@ -108,4 +108,13 @@ export function listRecords(db: DatabaseSync, accountId: number, since: number, 
   const rows = db.prepare('SELECT * FROM records WHERE account_id = ? AND seq > ? ORDER BY seq LIMIT ?').all(accountId, since, n + 1) as Row[];
   const page = rows.slice(0, n);
   return { records: page.map(toRecord), cursor: page.length ? page[page.length - 1]!.seq : since, more: rows.length > n, reset, generation: generationOf(db) };
+}
+
+/** putRecords, then the pushes the new records call for. They are fire and forget and sent only after the data is safe. */
+export function putRecordsAndNotify(db: DatabaseSync, push: Push, accountId: number, list: unknown[], nowMs: number, from: 'client' | 'coach'): { accepted: number; refused: { kind: unknown; id: unknown; reason: string }[] } {
+  const { accepted, refused, newMealWeek, newRunWeek, newCoachNote } = putRecords(db, accountId, list, nowMs, from);
+  if (newMealWeek) void push.notifyAccount(accountId, 'meal');
+  if (newRunWeek) void push.notifyAccount(accountId, 'run');
+  if (newCoachNote) void push.notifyAccount(accountId, 'coach');
+  return { accepted, refused };
 }

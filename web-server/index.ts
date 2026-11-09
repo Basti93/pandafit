@@ -1,4 +1,5 @@
 import { logServerErrors, fastifyLogger } from '../src/shared/node/log';
+import { BODY_LIMIT, installErrorHandler } from '../src/shared/node/server-kit';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { existsSync, realpathSync, statSync, readFileSync } from 'node:fs';
 import type { IncomingMessage } from 'node:http';
@@ -11,11 +12,10 @@ import type { DatabaseSync } from 'node:sqlite';
 import { INTERNAL_PORT, startInternal, validInternalToken } from './internal';
 import { createRestAlarms, REST_MAX_AHEAD_MS } from './rest-alarm';
 import { announceVersion, buildVersion, MAX_SUBSCRIPTIONS, pushFor, rememberOrigin, validEndpoint, validKeys, type PushOptions } from './push';
-import { listRecords, pageOfQuery, putRecords, recordsOfBody } from './records';
+import { listRecords, pageOfQuery, putRecordsAndNotify, recordsOfBody } from './records';
 
 export type { PushOptions } from './push';
 
-const BODY_LIMIT = 5 * 1024 * 1024;
 const LOGIN_BODY_LIMIT = 8192;
 const PUSH_BODY_LIMIT = 4096;
 const IDLE_MS = 60_000;
@@ -76,11 +76,7 @@ export const buildServer = (opts: {
   });
   const cancelRest = (endpoint: string) => { restAlarms.cancel(endpoint); restOwner.delete(endpoint); };
 
-  app.setErrorHandler((err: { statusCode?: number; name?: string }, req, reply) => {
-    const code = typeof err.statusCode === 'number' && err.statusCode >= 400 && err.statusCode < 500 ? err.statusCode : 500;
-    if (code === 500) console.error('server error', req.method, req.url.split('?')[0], err.name ?? 'Error');
-    return reply.code(code).send({ error: code === 413 ? 'too large' : code === 500 ? 'error' : 'bad request' });
-  });
+  installErrorHandler(app, 'server error');
   app.addHook('onSend', async (_req, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff').header('Referrer-Policy', 'no-referrer').header('X-Frame-Options', 'DENY');
     if (!reply.hasHeader('Cache-Control')) reply.header('Cache-Control', 'no-store');
@@ -244,11 +240,7 @@ export const buildServer = (opts: {
     if (!list) return reply.code(400).send({ error: 'bad request' });
     const account = acct(req);
     // A linked Mac (device token) runs a coach and may send its messages with a push; a browser session may not.
-    const { accepted, refused, newMealWeek, newRunWeek, newCoachNote } = putRecords(db, account, list, now(), 'device' in (owners.get(req) ?? {}) ? 'coach' : 'client');
-    if (newMealWeek) void push.notifyAccount(account, 'meal'); // fire and forget, after the data is safe
-    if (newRunWeek) void push.notifyAccount(account, 'run');
-    if (newCoachNote) void push.notifyAccount(account, 'coach');
-    return { accepted, refused };
+    return putRecordsAndNotify(db, push, account, list, now(), 'device' in (owners.get(req) ?? {}) ? 'coach' : 'client');
   });
 
   app.get<{ Querystring: { since?: string; limit?: string } }>('/records', { onRequest: requireAuth }, async (req, reply) => {
