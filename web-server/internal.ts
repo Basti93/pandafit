@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { openDb } from './db';
+import type { DatabaseSync } from 'node:sqlite';
 import { pushFor, type PushOptions } from './push';
 import { listRecords, pageOfQuery, putRecords, recordsOfBody } from './records';
 
@@ -25,8 +26,8 @@ const PEER_TTL_MS = 10_000;
 export type PeerCheck = { host: string; lookup?: (host: string) => Promise<{ address: string }[]> };
 const bare = (ip: string): string => ip.replace(/^::ffff:/i, '').toLowerCase();
 
-export const buildInternal = (opts: { dbPath: string; token: string; push?: PushOptions; nowMs?: () => number; peer?: PeerCheck }): FastifyInstance => {
-  const db = openDb(opts.dbPath);
+export const buildInternal = (opts: { dbPath: string; db?: DatabaseSync; token: string; push?: PushOptions; nowMs?: () => number; peer?: PeerCheck }): FastifyInstance => {
+  const db = opts.db ?? openDb(opts.dbPath);
   const now = opts.nowMs ?? Date.now;
   const app = Fastify({ logger: false, bodyLimit: BODY_LIMIT, requestTimeout: 30000 });
   // No version announcement here: the public app does that once.
@@ -86,7 +87,7 @@ export const buildInternal = (opts: { dbPath: string; token: string; push?: Push
     return listRecords(db, account, page.since, page.limit);
   });
 
-  app.addHook('onClose', async () => { db.close(); });
+  app.addHook('onClose', async () => { if (!opts.db) db.close(); });
   return app;
 };
 

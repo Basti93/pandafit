@@ -71,13 +71,15 @@ export const revokeDevice = (db: DatabaseSync, id: number): boolean => db.prepar
 
 // --- rate limit, stored in the database so a restart does not reset it ---
 export const LIMIT = 10;
+/** Per account, only to slow down guessing spread over many addresses; a few tries must never lock the owner out. */
+export const ACCOUNT_LIMIT = 100;
 export const WINDOW_MS = 15 * 60 * 1000;
 
 export const isLimited = (db: DatabaseSync, now: number, ip: string, key: string): boolean => {
   db.prepare('DELETE FROM login_attempts WHERE at_ms <= ?').run(now - WINDOW_MS);
   const c = (col: string, v: string) =>
     (db.prepare(`SELECT COUNT(*) AS c FROM login_attempts WHERE ${col} = ?`).get(v) as { c: number }).c;
-  return c('ip', ip) >= LIMIT || c('account_key', key) >= LIMIT;
+  return c('ip', ip) >= LIMIT || c('account_key', key) >= ACCOUNT_LIMIT;
 };
 /** Counted before the password check, so parallel guesses cannot slip past the limit. Returns the row to drop again on success. */
 export const recordAttempt = (db: DatabaseSync, now: number, ip: string, key: string): number =>

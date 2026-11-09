@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { clientIp, createAccount, listDevices, revokeDevice } from '../../web-server/auth';
+import { clientIp, createAccount, isLimited, listDevices, recordAttempt, revokeDevice } from '../../web-server/auth';
 import { run } from '../../web-server/cli';
 import { openDb } from '../../web-server/db';
 import { login, NOW, PW_A, PW_B, setup } from './helpers';
@@ -47,24 +47,32 @@ describe('auth', () => {
     expect((await app.inject({ method: 'GET', url: '/me', headers: { cookie: cookie! } })).statusCode).toBe(401);
   });
 
-  it('10 failed logins per IP or account within 15 minutes are refused for 15 minutes, with the same answer for an unknown name', async () => {
+  it('10 failed logins per IP within 15 minutes are refused for 15 minutes, with the same answer for an unknown name', async () => {
     const { app, clock } = await setup();
     const bad = (name: string, ip: string) => app.inject({ method: 'POST', url: '/login', payload: { name, password: 'wrong password' }, remoteAddress: ip });
     const a = await bad('anna', '10.0.0.1'), u = await bad('nobody', '10.0.0.2');
     expect(a.statusCode).toBe(401); expect(u.statusCode).toBe(401);
     expect(a.body).toBe(u.body);
-    for (let i = 0; i < 9; i++) await bad('anna', `10.0.1.${i}`);
-    // account locked now (10 failures), even from a fresh IP and with the right password
-    expect((await bad('anna', '10.0.2.1')).statusCode).toBe(429);
-    expect((await login(app, 'anna', PW_A, '10.0.2.2')).res.statusCode).toBe(429);
-    // other account unaffected
-    expect((await login(app, 'ben', PW_B, '10.0.2.3')).res.statusCode).toBe(200);
-    clock.now += 15 * 60 * 1000 + 1;
+    // 10 failures from one IP lock that IP, the same account stays open from another IP
+    for (let i = 0; i < 10; i++) await bad('anna', '10.0.1.1');
+    expect((await bad('anna', '10.0.1.1')).statusCode).toBe(429);
+    expect((await login(app, 'anna', PW_A, '10.0.1.1')).res.statusCode).toBe(429);
     expect((await login(app, 'anna', PW_A, '10.0.2.2')).res.statusCode).toBe(200);
+    clock.now += 15 * 60 * 1000 + 1;
+    expect((await login(app, 'anna', PW_A, '10.0.1.1')).res.statusCode).toBe(200);
     // per IP, over many names
     for (let i = 0; i < 10; i++) await bad(`ghost${i}`, '10.9.9.9');
     expect((await bad('ghost99', '10.9.9.9')).statusCode).toBe(429);
     expect((await bad('ghost99', '10.9.9.8')).statusCode).toBe(401);
+  });
+
+  it('100 failed logins per account within 15 minutes lock the account across IPs', () => {
+    const db = openDb(':memory:');
+    for (let i = 0; i < 99; i++) recordAttempt(db, NOW, `10.1.${i % 250}.${Math.floor(i / 250)}`, 'anna');
+    expect(isLimited(db, NOW, '10.9.9.9', 'anna')).toBe(false);
+    recordAttempt(db, NOW, '10.8.8.8', 'anna');
+    expect(isLimited(db, NOW, '10.9.9.9', 'anna')).toBe(true);
+    expect(isLimited(db, NOW, '10.9.9.9', 'ben')).toBe(false);
   });
 
   it('the limit survives a restart', async () => {

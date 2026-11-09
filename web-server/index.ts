@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { clientIp, dropAttempt, hashToken, isLimited, MAX_PASSWORD, newToken, recordAttempt, safeEqual, verifyPassword } from './auth';
 import { registerCoachProxy } from './coach-proxy';
 import { openDb } from './db';
+import type { DatabaseSync } from 'node:sqlite';
 import { INTERNAL_PORT, startInternal, validInternalToken } from './internal';
 import { createRestAlarms, REST_MAX_AHEAD_MS } from './rest-alarm';
 import { announceVersion, buildVersion, MAX_SUBSCRIPTIONS, pushFor, rememberOrigin, validEndpoint, validKeys, type PushOptions } from './push';
@@ -34,7 +35,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 const str = (v: unknown, max: number): v is string => typeof v === 'string' && v.length > 0 && v.length <= max;
 
 export const buildServer = (opts: {
-  dbPath: string; staticDir?: string; nowMs?: () => number; trustProxyCidr?: string; push?: PushOptions;
+  dbPath: string; /** An already opened database (shared with the internal app); closed by its opener. */ db?: DatabaseSync; staticDir?: string; nowMs?: () => number; trustProxyCidr?: string; push?: PushOptions;
   /** The coach container on the internal network. Without it the /coach routes do not exist. */
   coach?: { url: string; token: string; pingMs?: number };
   /** How long a connection may stay silent, request body included, before it is cut. Shorter in tests. */
@@ -42,7 +43,7 @@ export const buildServer = (opts: {
   /** The total time limit of every request outside /coach. Shorter in tests. */
   requestLimitMs?: number;
 }): FastifyInstance => {
-  const db = openDb(opts.dbPath);
+  const db = opts.db ?? openDb(opts.dbPath);
   const now = opts.nowMs ?? Date.now;
   // No server-wide limit on a request's total time, so a slow but steady upload to the coach (up to 128 MiB) completes. A
   // connection that goes silent is cut instead; Node's headersTimeout still bounds the headers against slow senders.
@@ -277,7 +278,7 @@ export const buildServer = (opts: {
 
   const version = opts.push?.version;
   if (version) app.addHook('onReady', async () => { void announceVersion(db, push, version); });
-  app.addHook('onClose', async () => { restAlarms.clearAll(); restOwner.clear(); db.close(); });
+  app.addHook('onClose', async () => { restAlarms.clearAll(); restOwner.clear(); if (!opts.db) db.close(); });
   return app;
 };
 
@@ -295,8 +296,10 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const coachUrl = process.env.PANDAFIT_COACH_URL?.trim() || undefined;
   if (coachUrl && !token) console.warn('warning: PANDAFIT_COACH_URL is set without PANDAFIT_INTERNAL_TOKEN; the /coach routes stay off');
   const pushOpts: PushOptions | undefined = process.env.PANDAFIT_PUSH === 'off' ? undefined : { send: 'web', subject, version };
+  const dbPath = process.env.PANDAFIT_DB ?? 'pandafit.db';
+  const db = openDb(dbPath); // opened once; both apps share the handle
   const app = buildServer({
-    dbPath: process.env.PANDAFIT_DB ?? 'pandafit.db',
+    dbPath, db,
     staticDir,
     trustProxyCidr: process.env.PANDAFIT_TRUST_PROXY_CIDR,
     // PANDAFIT_PUSH=off sends nothing (the restore drill runs on a copy that holds real subscriptions).
@@ -306,6 +309,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   app.listen({ port: Number(process.env.PORT ?? 8080), host: process.env.HOST ?? '127.0.0.1' });
   // The internal records routes listen on the internal network only when the token is set; the public port never has them.
   if (token) {
-    void startInternal({ dbPath: process.env.PANDAFIT_DB ?? 'pandafit.db', token, push: pushOpts, host: '0.0.0.0', port: INTERNAL_PORT, peer: process.env.PANDAFIT_INTERNAL_PEER?.trim() ? { host: process.env.PANDAFIT_INTERNAL_PEER.trim() } : undefined });
+    void startInternal({ dbPath, db, token, push: pushOpts, host: '0.0.0.0', port: INTERNAL_PORT, peer: process.env.PANDAFIT_INTERNAL_PEER?.trim() ? { host: process.env.PANDAFIT_INTERNAL_PEER.trim() } : undefined });
   }
 }
