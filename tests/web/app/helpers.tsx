@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { vi } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
@@ -46,4 +46,18 @@ export async function boot(o: Opts = {}) {
     persist, ua: o.ua ?? 'Mozilla/5.0 Android', standalone: o.standalone ?? false, onWorkoutOpen, startTab: o.startTab, onOpenTab: o.onOpenTab, openLive: o.openLive,
   }} />);
   return { ...ui, factory, storage, calls, persist, onWorkoutOpen };
+}
+
+/** The pill (back button of a page): pill and tab both carry names like "Essen" or "Heute". */
+export function pill(name: string): HTMLElement {
+  const found = screen.getAllByRole('button', { name }).find((b) => b.className === 'tk-pill');
+  if (!found) throw new Error(`no pill named ${name}`);
+  return found;
+}
+
+/** Opens the meal with this title from the Essen start page: "Rezept ansehen" on the main card, or its row card. */
+export async function openMeal(title: string): Promise<void> {
+  const main = await screen.findByRole('region', { name: 'Nächste Mahlzeit' });
+  if (main.textContent?.includes(title)) fireEvent.click(within(main).getByRole('button', { name: 'Rezept ansehen' }));
+  else fireEvent.click(await screen.findByRole('button', { name: new RegExp(title) }));
 }

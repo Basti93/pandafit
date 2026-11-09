@@ -1,10 +1,14 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { apiFetch } from '../tracking/ui/data/api';
 import {
-  DAY_SHORT, dayDate, dayIndex, eatersOf, mealKey, placeAnswer, readPlaceRequest, recipeAmount, SLOT_LABEL, SLOTS, weekOf, type Meal, type MealPlan, type MealState,
-  type PlaceRequest, type RecipeDetail, type RecipePage, type RecipeSummary, type Slot,
+  DAY_SHORT, dayDate, dayIndex, mealKey, placeAnswer, readPlaceRequest, SLOT_LABEL, SLOTS, weekOf, type Meal, type MealPlan, type MealState,
+  type PlaceRequest, type RecipeDetail, type RecipePage as RecipeResults, type RecipeSummary, type Slot,
 } from '../shared/meals';
-import { ConfirmLink, Sheet } from '../tracking/ui/kit';
+import { Card, ConfirmLink, HeadCard, Kicker, PillButton, RoundButton } from '../tracking/ui/kit';
+import { EssenPage } from './essen/EssenPage';
+import { MealImage, recipeImageUrl } from './essen/MealImage';
+import { eaterNames, placeButton, placeDefault, placedSentence, placePrompt, recipeSentence } from './essen/meals-view';
+import { IngredientsCard, StepsCard } from './essen/RecipeParts';
 
 /** What the recipe screens need from the Essen page. */
 export type RecipeCtx = {
@@ -30,7 +34,7 @@ const readSummary = (x: unknown): RecipeSummary | null => {
     own: x.own === true, fav: x.fav === true, image: x.image === true, tags: Array.isArray(x.tags) ? x.tags.filter((t): t is string => typeof t === 'string') : [],
   };
 };
-const readPage = (x: unknown): RecipePage | null => (isObj(x) && Array.isArray(x.items) ? { items: x.items.flatMap((i) => readSummary(i) ?? []), more: x.more === true } : null);
+const readPage = (x: unknown): RecipeResults | null => (isObj(x) && Array.isArray(x.items) ? { items: x.items.flatMap((i) => readSummary(i) ?? []), more: x.more === true } : null);
 const readDetail = (x: unknown): RecipeDetail | null => {
   const s = readSummary(x);
   if (!s || !isObj(x) || !Array.isArray(x.ingredients) || !Array.isArray(x.steps)) return null;
@@ -43,21 +47,25 @@ async function getJson(fetchFn: typeof fetch, path: string): Promise<unknown> {
   } catch { return null; }
 }
 
-const imageUrl = (id: string) => `/coach/recipes/${id}/image`;
 /** A soft colour block from the id: the calm stand-in when there is no picture. */
 const hueOf = (id: string): number => [...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 17);
 
-/** The recipe's picture, or the colour block when it has none or cannot be loaded. `big` is the 16:9 picture of the recipe view. */
-export function RecipePicture({ id, has, big }: { id: string; has: boolean; big?: boolean }) {
+/** The recipe's picture in the list, or the colour block when it has none or cannot be loaded. */
+export function RecipePicture({ id, has }: { id: string; has: boolean }) {
   const [failed, setFailed] = useState(false);
-  const cls = big ? 'rc-hero' : 'rc-thumb';
-  if (has && !failed) return <img className={cls} src={imageUrl(id)} alt="" loading="lazy" onError={() => setFailed(true)} />;
+  const cls = 'rc-thumb';
+  if (has && !failed) return <img className={cls} src={recipeImageUrl(id)} alt="" loading="lazy" onError={() => setFailed(true)} />;
   return <span className={`${cls} rc-blank`} style={{ ['--rc-hue' as string]: String(hueOf(id)) }} aria-hidden="true" />;
 }
 
-/** The heart: small, one tap, labelled for screen readers. */
+/** The heart in a list row: small, one tap, labelled for screen readers. */
 export function Heart({ on, title, onToggle }: { on: boolean; title: string; onToggle: () => void }) {
   return <button type="button" className="link rc-heart" aria-pressed={on} aria-label={on ? `${title} aus den Favoriten nehmen` : `${title} zu den Favoriten`} onClick={onToggle}>{on ? '♥' : '♡'}</button>;
+}
+
+/** The heart on the recipe page: the round button in the head card. */
+export function RecipeHeart({ on, title, onToggle }: { on: boolean; title: string; onToggle: () => void }) {
+  return <RoundButton icon="favorit" pressed={on} name={on ? `${title} aus den Favoriten nehmen` : `${title} zu den Favoriten`} onClick={onToggle} />;
 }
 
 /** The one most useful fact besides the time: protein-rich, then quick, then meal-prep, else the first label (as the vocabulary writes it). */
@@ -71,8 +79,8 @@ const season = (ms: number): string => { const m = new Date(ms).getMonth() + 1; 
 const OTHER_CHIPS = [['schnell', 'schnell'], ['proteinreich', 'proteinreich'], ['saison', 'Saison']] as const;
 const PAGE = 20;
 
-/** "Rezepte": search and chips on top, the list below, 20 at a time. */
-export function RecipesSheet({ ctx, onClose, onAddLink }: { ctx: RecipeCtx; onClose: () => void; onAddLink?: () => void }) {
+/** "Rezepte": search and chips on top, the list below, 20 at a time. A recipe opens as a page over it; the list keeps its search, filters and entries. */
+export function RecipesPage({ ctx, onBack, onAddLink }: { ctx: RecipeCtx; onBack: () => void; onAddLink?: () => void }) {
   const [text, setText] = useState('');
   const [q, setQ] = useState('');
   const [chips, setChips] = useState<ReadonlySet<string>>(new Set());
@@ -119,7 +127,10 @@ export function RecipesSheet({ ctx, onClose, onAddLink }: { ctx: RecipeCtx; onCl
   const shown = (chips.has('fav') ? items.filter((i) => ctx.favs.has(i.id)) : items).filter((i) => !gone.has(i.id));
   const searchId = useId();
   return (
-    <Sheet title="Rezepte" onClose={onClose} actions={onAddLink ? <button type="button" className="secondary" onClick={onAddLink}>+ Rezept per Link</button> : undefined}>
+    <>
+    <EssenPage hidden={viewId !== null} title="Rezepte" back={{ label: 'Essen', onClick: onBack }}>
+      <div className="tk-screen">
+      {onAddLink && <div><PillButton icon="plus" label="Rezept per Link" onClick={onAddLink} /></div>}
       <label className="tk-field" htmlFor={searchId}><span className="tk-sr">Rezept suchen</span>
         <input id={searchId} type="search" aria-label="Rezept suchen" placeholder="Rezept oder Zutat suchen" maxLength={80} value={text} onChange={(e) => setText(e.target.value)} />
       </label>
@@ -147,92 +158,105 @@ export function RecipesSheet({ ctx, onClose, onAddLink }: { ctx: RecipeCtx; onCl
         </ul>
       )}
       {more && state === 'ok' && <button type="button" className="secondary" onClick={() => void load(items.length)}>Mehr anzeigen</button>}
-      {viewId && <RecipeView ctx={ctx} id={viewId} onClose={() => setViewId(null)} onDeleted={() => { setGone((g) => new Set(g).add(viewId)); setViewId(null); }} />}
-    </Sheet>
+      </div>
+    </EssenPage>
+    {viewId && <RecipePage ctx={ctx} id={viewId} backLabel="Rezepte" onBack={() => setViewId(null)} onDeleted={() => { setGone((g) => new Set(g).add(viewId)); setViewId(null); }} />}
+    </>
   );
 }
 
-const factsLine = (d: RecipeDetail): string => [`${d.minutes} Min`, ...(d.proteinG !== null && d.proteinG > 0 ? [`${d.proteinG} g Eiweiß`] : []), d.keepsDays > 0 ? `hält ${d.keepsDays} ${d.keepsDays === 1 ? 'Tag' : 'Tage'}` : 'am besten frisch'].join(' · ');
-
-/** One recipe in full: picture, facts, tags, portions, ingredients, steps, the original. */
-export function RecipeView({ ctx, id, onClose, onDeleted }: { ctx: RecipeCtx; id: string; onClose: () => void; onDeleted?: () => void }) {
+/** One recipe as a page: head card with picture, sentence and heart; ingredients with portions; steps; "In den Plan"; the original and delete. */
+export function RecipePage({ ctx, id, backLabel, onBack, onDeleted }: { ctx: RecipeCtx; id: string; backLabel: 'Rezepte' | 'Mahlzeit'; onBack: () => void; onDeleted?: () => void }) {
   const [d, setD] = useState<RecipeDetail | null | 'error'>(null);
   const [portions, setPortions] = useState(2);
-  const [planning, setPlanning] = useState(false);
   useEffect(() => {
     let live = true;
     void getJson(ctx.fetchFn, `/coach/recipes/${encodeURIComponent(id)}`).then((x) => { if (live) setD(readDetail(x) ?? 'error'); });
     return () => { live = false; };
   }, [ctx.fetchFn, id]);
   const fav = ctx.favs.has(id);
+  const back = { label: backLabel, onClick: onBack };
+  if (!d || d === 'error') {
+    return <EssenPage back={back}><div className="tk-screen"><Card><p className="muted" role="status">{d === null ? 'Einen Moment …' : 'Dieses Rezept ist gerade nicht zu öffnen.'}</p></Card></div></EssenPage>;
+  }
+  const placed = placedSentence(ctx.weeks, d.id, ctx.now());
+  const deletable = d.own && ctx.deleteOwn;
   return (
-    <Sheet title={d && d !== 'error' ? d.title : 'Rezept'} onClose={onClose}
-      actions={d && d !== 'error' ? <button type="button" onClick={() => setPlanning(true)}>In den Plan ›</button> : undefined}>
-      {d === null && <p className="muted" role="status">Einen Moment …</p>}
-      {d === 'error' && <p className="muted" role="status">Dieses Rezept ist gerade nicht zu öffnen.</p>}
-      {d && d !== 'error' && (
-        <div className="rc-view">
-          <RecipePicture id={d.id} has={d.image} big />
-          <div className="rc-headline"><p className="muted rc-facts">{factsLine(d)}</p><Heart on={fav} title={d.title} onToggle={() => ctx.toggleFav(id, !fav)} /></div>
-          {d.tags.length > 0 && <ul className="rc-tags" aria-label="Schlagwörter">{d.tags.map((t) => <li key={t}>{t.replace(' und ', ' & ')}</li>)}</ul>}
-          <div className="rc-portions" role="group" aria-label="Portionen">
-            <button type="button" className="tk-step-btn" aria-label="Eine Portion weniger" disabled={portions <= 1} onClick={() => setPortions(portions - 1)}>−</button>
-            <span aria-live="polite">{portions} {portions === 1 ? 'Portion' : 'Portionen'}</span>
-            <button type="button" className="tk-step-btn" aria-label="Eine Portion mehr" disabled={portions >= 4} onClick={() => setPortions(portions + 1)}>+</button>
+    <EssenPage back={back}>
+      <div className="tk-screen">
+        <HeadCard picture={<MealImage recipeId={d.id} has={d.image} slot="abend" size="big" />} kicker={d.own ? 'Von dir gesammelt' : 'Aus der Sammlung'} title={d.title} text={recipeSentence(d)}>
+          <div className="rc-headfoot">
+            {d.tags.length > 0 ? <ul className="rc-tags" aria-label="Schlagwörter">{d.tags.map((t) => <li key={t}>{t.replace(' und ', ' & ')}</li>)}</ul> : <span />}
+            <RecipeHeart on={fav} title={d.title} onToggle={() => ctx.toggleFav(d.id, !fav)} />
           </div>
-          <ul className="pm-ingredients">{d.ingredients.map((i, n) => <li key={n}><b>{recipeAmount(i, portions)}</b> {i.name}</li>)}</ul>
-          <ol className="pm-steps">{d.steps.map((s, n) => <li key={n}>{s}</li>)}</ol>
-          {d.sourceUrl && <p className="muted pm-meta"><a href={d.sourceUrl} target="_blank" rel="noopener noreferrer">Zum Originalrezept ↗</a></p>}
-          {d.own && ctx.deleteOwn && <p className="pm-meta"><ConfirmLink label="Rezept löschen" onConfirm={() => { ctx.deleteOwn!(d.id); onDeleted?.(); onClose(); }} /></p>}
-        </div>
-      )}
-      {planning && d && d !== 'error' && <PlaceSheet ctx={ctx} recipe={d} onClose={() => setPlanning(false)} />}
-    </Sheet>
+          {placed && <p className="tk-note">{placed}</p>}
+        </HeadCard>
+        <IngredientsCard portions={portions} onPortions={setPortions} ingredients={d.ingredients} />
+        <StepsCard steps={d.steps} />
+        <PlaceCard ctx={ctx} recipe={d} />
+        {(d.sourceUrl || deletable) && (
+          <Card soft label="Mehr zu diesem Rezept">
+            <Kicker>Mehr</Kicker>
+            {d.sourceUrl && <a className="secondary" href={d.sourceUrl} target="_blank" rel="noopener noreferrer">Originalrezept öffnen</a>}
+            {deletable && <p><ConfirmLink label="Rezept löschen" onConfirm={() => { ctx.deleteOwn!(d.id); (onDeleted ?? onBack)(); }} /></p>}
+          </Card>
+        )}
+      </div>
+    </EssenPage>
   );
 }
 
 /** "In den Plan": a day and a meal of this or next week; the dish there is replaced, checked by the coach like a swap. */
-function PlaceSheet({ ctx, recipe, onClose }: { ctx: RecipeCtx; recipe: RecipeSummary; onClose: () => void }) {
+function PlaceCard({ ctx, recipe }: { ctx: RecipeCtx; recipe: RecipeSummary }) {
   const t = ctx.now();
   const current = weekOf(t);
   const today = dayIndex(t);
-  const [weekKey, setWeekKey] = useState(ctx.weeks.find((w) => w.plan.week === current)?.plan.week ?? ctx.weeks[0]?.plan.week ?? null);
-  const week = ctx.weeks.find((w) => w.plan.week === weekKey);
-  const [day, setDay] = useState(Math.min(6, Math.max(week?.plan.week === current ? today : 0, 0)));
-  const [slot, setSlot] = useState<Slot>('abend');
+  // The default is read on each render until the person chooses, so plans that arrive after the card is shown still count.
+  const start = (() => {
+    const d = placeDefault(ctx.weeks, t);
+    if (d) return d;
+    const w = ctx.weeks.find((x) => x.plan.week === current) ?? ctx.weeks[0];
+    return w ? { week: w.plan.week, day: w.plan.week === current ? today : 0, slot: 'abend' as Slot } : null;
+  })();
+  const [chosenWeek, setWeekKey] = useState<string | null>(null);
+  const [chosenDay, setDay] = useState<number | null>(null);
+  const [chosenSlot, setSlot] = useState<Slot | null>(null);
+  const weekKey = chosenWeek ?? start?.week ?? null;
+  const day = chosenDay ?? start?.day ?? 0;
+  const slot = chosenSlot ?? start?.slot ?? 'abend';
   const [sentAt, setSentAt] = useState<number | null>(null);
+  const week = ctx.weeks.find((w) => w.plan.week === weekKey);
   const key = mealKey(day, slot);
   const meal: Meal | undefined = week?.plan.meals.find((m) => m.day === day && m.slot === slot);
-  const eaters = week ? (meal ? eatersOf(week.plan, week.state, key) : week.plan.people.map((p) => p.id)) : [];
-  const names = week ? week.plan.people.filter((p) => eaters.includes(p.id)).map((p) => p.name) : [];
+  const names = week ? (meal ? eaterNames(week, meal) : week.plan.people.map((p) => p.name)) : [];
   const answer = sentAt === null ? null : ctx.placements.find((p) => p.atMs >= sentAt && p.recipeId === recipe.id && p.week === weekKey && p.meal === key);
   const past = (d: number) => week?.plan.week === current && d < today;
   const send = () => { if (!week) return; setSentAt(ctx.now() - 1000); void ctx.place(week.plan.week, key, recipe.id); };
   return (
-    <Sheet title="In den Plan" size="small" onClose={onClose}
-      actions={answer?.result === 'placed' ? <button type="button" onClick={onClose}>Fertig</button> : <button type="button" disabled={!week || past(day) || (sentAt !== null && !answer?.result)} onClick={send}>Eintragen</button>}>
-      {!week ? <p className="muted">Es gibt noch keinen Essensplan, in den das Rezept passt.</p> : (
-        <div className="rc-place">
+    <Card label="In den Plan">
+      <Kicker>In den Plan</Kicker>
+      {!week ? <p>Es gibt noch keinen Essensplan, in den das Rezept passt.</p> : (
+        <>
+          <p>{placePrompt(names)}</p>
           {ctx.weeks.length > 1 && (
             <div className="tk-textseg" role="group" aria-label="Woche">
               {ctx.weeks.map((w) => <button key={w.plan.week} type="button" className="link" aria-pressed={w.plan.week === weekKey} onClick={() => { setWeekKey(w.plan.week); setDay(w.plan.week === current ? Math.max(day, today) : day); setSentAt(null); }}>{w.plan.week === current ? 'Diese Woche' : 'Nächste Woche'}</button>)}
             </div>
           )}
-          <div className="rc-daypick" role="group" aria-label="Tag">
+          <div className="tk-chips" role="group" aria-label="Tag">
             {DAY_SHORT.map((d, i) => (
-              <button key={d} type="button" aria-pressed={i === day} disabled={past(i)} onClick={() => { setDay(i); setSentAt(null); }}>
-                <b>{d}</b><span>{dayDate(week.plan.week, i).split('.')[0]}</span>
-              </button>
+              <button key={d} type="button" aria-pressed={i === day} disabled={past(i)} onClick={() => { setDay(i); setSentAt(null); }}>{d} {dayDate(week.plan.week, i).split('.')[0]}</button>
             ))}
           </div>
-          <div className="tk-chips rc-slotpick" role="group" aria-label="Mahlzeit">
+          <div className="tk-chips" role="group" aria-label="Mahlzeit">
             {SLOTS.map((s) => <button key={s} type="button" aria-pressed={s === slot} onClick={() => { setSlot(s); setSentAt(null); }}>{SLOT_LABEL[s]}</button>)}
           </div>
-          <p className="muted pm-meta">{meal ? (meal.dish.recipeId === recipe.id ? 'Schon eingetragen' : `Tauscht ${meal.dish.title} aus`) : 'Noch frei'}{names.length > 0 ? ` · isst mit: ${names.join(', ')}, für ${names.length} ${names.length === 1 ? 'Portion' : 'Portionen'}` : ''}</p>
+          <p className="muted">{meal ? (meal.dish.recipeId === recipe.id ? 'Schon eingetragen.' : `Tauscht ${meal.dish.title} aus.`) : 'Noch frei.'}</p>
+          <button type="button" className="primary" disabled={past(day) || (sentAt !== null && !answer?.result)} onClick={send}>{placeButton(day, slot, week.plan.week === current && day === today)}</button>
           {sentAt !== null && <p className={answer?.result ? 'pm-reply' : 'pm-reply pending'} role="status">{placeAnswer(answer?.result ?? null)}</p>}
-        </div>
+        </>
       )}
-    </Sheet>
+    </Card>
   );
 }
 

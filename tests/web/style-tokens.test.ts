@@ -18,7 +18,7 @@ function tsxFiles(dir: string, out: string[] = []): string[] {
 }
 
 // Custom properties that a component or a rule sets for its own children (not design tokens).
-const LOCAL = new Set(['--slot', '--rc-hue']);
+const LOCAL = new Set(['--rc-hue']);
 
 describe('style tokens', () => {
   it('uses only the weights Zen Kaku has', () => {
@@ -26,7 +26,7 @@ describe('style tokens', () => {
   });
   it('defines the Dojo 2 tokens in both schemes', () => {
     const [dark, light] = read(TOKENS).split('@media (prefers-color-scheme: light)');
-    for (const t of ['--tile', '--today-glow', '--bubble-me', '--bubble-me-line', '--good-wash', '--focus-glow']) {
+    for (const t of ['--tile', '--today-glow', '--bubble-me', '--bubble-me-line', '--good-wash', '--focus-glow', '--meal-shadow', '--meal-steam']) {
       expect(dark).toContain(`${t}:`);
       expect(light).toContain(`${t}:`);
     }

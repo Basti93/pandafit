@@ -9,6 +9,7 @@ import { shouldShowInstallHint } from '../logic';
 import type { OpenState } from '../register';
 import { type WebPort } from '../webPort';
 import { MealsScreen, mealWeeks } from '../MealsScreen';
+import type { MealAt } from '../essen/meals-view';
 import { CoachLink } from '../coachLink';
 import { LiveClient } from '../live';
 import { LiveRide } from '../LiveRide';
@@ -32,6 +33,8 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
   const [entry, setEntry] = useState<'resume' | 'plan' | null>(null);
   /** Set by a way into the coach from Heute: Woche opens with the chat open, once. */
   const [chatOnOpen, setChatOnOpen] = useState(false);
+  /** Set by a meal tapped on Heute: Essen opens on its page, once. */
+  const [mealEntry, setMealEntry] = useState<MealAt | null>(null);
   const [tab, setTab] = useState<Tab>(() => {
     if (env.startTab === 'rad' || env.startTab === 'laufen') saveEndurance(env, account, env.startTab);
     return tabFor(env.startTab) ?? 'heute';
@@ -137,9 +140,9 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           <Suspense fallback={<p className="muted" role="status">Wird geladen.</p>}>
-          {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
+          {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goProfile={() => setTab('profil')} goMeal={(m) => { setMealEntry(m); setTab('essen'); }} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
           {tab === 'training' && <Training entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} onLive={setLiveWorkout} />}
-          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
+          {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} entry={mealEntry} onEntryDone={() => setMealEntry(null)} onHeute={() => setTab('heute')} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} openChat={chatOnOpen} onChatClosed={() => { setChatOnOpen(false); setTab('heute'); }} />}
           {tab === 'profil' && <Profil link={link} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}

@@ -9,9 +9,9 @@ export function Card({ soft = false, focus = false, label, children }: { soft?: 
   return <section className={focus ? 'card focus' : soft ? 'card soft' : 'card'} aria-label={label}>{children}</section>;
 }
 
-/** The small amber line above a title. */
-export function Kicker({ children }: { children: ReactNode }) {
-  return <p className="tk-kicker">{children}</p>;
+/** The small amber line above a title. With `heading` it is a level-2 heading (the groups of Profil). */
+export function Kicker({ children, heading = false }: { children: ReactNode; heading?: boolean }) {
+  return heading ? <h2 className="tk-kicker">{children}</h2> : <p className="tk-kicker">{children}</p>;
 }
 
 /** A title in the display face with a brush stroke below it. */
@@ -27,10 +27,11 @@ export function BrushTitle({ children, level = 2 }: { children: ReactNode; level
 
 type Action = { label: string; onClick: () => void };
 
-/** "Jetzt dran": the one main card of a screen. The same look everywhere. `middle` sits between the text and the buttons (a band, a small figure); `more` holds quiet extras below the buttons. */
-export function MainCard({ kicker, title, text, primary, secondary, middle, more, label }: { kicker: string; title: string; text?: ReactNode; primary?: Action; secondary?: Action; middle?: ReactNode; more?: ReactNode; label?: string }) {
+/** "Jetzt dran": the one main card of a screen. The same look everywhere. `middle` sits between the text and the buttons (a band, a small figure); `more` holds quiet extras below the buttons; `picture` stands on top, centred (the meal of Essen). */
+export function MainCard({ kicker, title, text, primary, secondary, middle, more, label, picture }: { kicker: string; title: string; text?: ReactNode; primary?: Action; secondary?: Action; middle?: ReactNode; more?: ReactNode; picture?: ReactNode; label?: string }) {
   return (
     <Card label={label ?? kicker}>
+      {picture && <div className="tk-cardpicture">{picture}</div>}
       <Kicker>{kicker}</Kicker>
       <BrushTitle>{title}</BrushTitle>
       {text && <p className="tk-maintext">{text}</p>}
@@ -59,8 +60,12 @@ export function Bubble({ children, actions, tail = 'left', foot }: { children: R
 }
 
 /** The one round icon button: 44 px, card fill, thin line. `name` is what a screen reader says. */
-export function RoundButton({ icon, name, onClick }: { icon: IconName; name: string; onClick: () => void }) {
-  return <button type="button" className="tk-roundbtn" aria-label={name} onClick={onClick}><Icon name={icon} size={20} /></button>;
+export function RoundButton({ icon, name, onClick, pressed }: {
+  icon: IconName; name: string; onClick: () => void;
+  /** Toggle state (`aria-pressed`; the icon fills with the accent). Only for icons that read as filled when on (the heart). */
+  pressed?: boolean;
+}) {
+  return <button type="button" className="tk-roundbtn" aria-label={name} aria-pressed={pressed} onClick={onClick}><Icon name={icon} size={20} /></button>;
 }
 
 /** The one pill: a quiet side action with an icon on the left (and the back button of a page with a label). `name` is the screen reader name when the visible label is short. */
@@ -92,6 +97,33 @@ export function TimerCard({ label, skipName, onSkip, more, children }: { label: 
       <button type="button" className="tk-rest-main" aria-label={skipName} onClick={onSkip}>{children}</button>
       <button type="button" className="secondary" onClick={more.onClick}>{more.label}</button>
     </div>
+  );
+}
+
+/**
+ * The one head card of a page, with its title (Essen, a meal, a recipe, Profil): kicker, title, a muted sentence, then `children`.
+ * Two shapes: with `picture` the picture stands on top, centred (Essen, a meal, a recipe); with `icon` a round avatar
+ * (64 px, accent ring) stands left and the text beside it (Profil only). Not a MainCard: it has no main and side action.
+ */
+export function HeadCard({ kicker, title, level = 1, text, icon, picture, children }: { kicker?: string; title: string; level?: 1 | 2; text?: ReactNode; icon?: IconName; picture?: ReactNode; children?: ReactNode }) {
+  const head = (
+    <>
+      {kicker && <Kicker>{kicker}</Kicker>}
+      <BrushTitle level={level}>{title}</BrushTitle>
+      {text && <p className="tk-maintext">{text}</p>}
+    </>
+  );
+  return (
+    <Card label={title}>
+      {picture && <div className="tk-cardpicture">{picture}</div>}
+      {icon ? (
+        <div className="tk-headavatar">
+          <span className="tk-avatar" aria-hidden="true"><Icon name={icon} size={32} /></span>
+          <div className="tk-headtext">{head}</div>
+        </div>
+      ) : head}
+      {children}
+    </Card>
   );
 }
 

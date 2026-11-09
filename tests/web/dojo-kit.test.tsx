@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BackButton, BoBubble, Band, Bubble, Card, Icon, MainCard, MarkDot, PageHead, PillButton, RowCard, Segments, Sheet, StandCard } from '../../src/tracking/ui/kit';
+import { BackButton, BoBubble, Band, Bubble, Card, HeadCard, Icon, Kicker, MainCard, MarkDot, MealPicture, PageHead, PillButton, RoundButton, Row, RowCard, RowList, Segments, Sheet, StandCard, Switch } from '../../src/tracking/ui/kit';
 import { BO } from '../../src/tracking/ui/bo';
 
 afterEach(cleanup);
@@ -17,6 +17,50 @@ describe('Dojo kit', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Training starten' }));
     expect(go).toHaveBeenCalled();
   });
+  it('a head card names its region by the title and carries kicker, h1 and sentence', () => {
+    render(<HeadCard kicker="Montag, 9. November" title="Essen" text="Als Nächstes gibt es um 13 Uhr Skyr." />);
+    const card = screen.getByRole('region', { name: 'Essen' });
+    expect(within(card).getByRole('heading', { level: 1, name: 'Essen' })).toBeTruthy();
+    expect(card.textContent).toContain('Als Nächstes gibt es um 13 Uhr Skyr.');
+  });
+  it('a head card with an icon shows the round avatar and a level-2 title', () => {
+    render(<HeadCard icon="profil" level={2} title="anna" />);
+    expect(screen.getByRole('heading', { level: 2, name: 'anna' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'anna' }).querySelector('svg[data-icon="profil"]')).toBeTruthy();
+  });
+  it('a meal picture uses its symbol from brand/meals.svg', () => {
+    const { container } = render(<MealPicture slot="abend" size="big" />);
+    expect(container.querySelector('use')!.getAttribute('href')).toBe('/brand/meals.svg#abend');
+  });
+  it('a row card can carry a picture instead of an icon; a main card a picture on top', () => {
+    render(<><RowCard picture={<MealPicture slot="mittag" />} kicker="Mittagessen · 13 Uhr" title="Linsen-Bolognese" onClick={() => {}} /><MainCard kicker="Jetzt dran" title="Skyr" picture={<MealPicture slot="mittag" size="big" />} /></>);
+    expect(screen.getByRole('button', { name: /Linsen-Bolognese/ }).querySelector('use')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Jetzt dran' }).querySelector('svg.tk-meal.big')).toBeTruthy();
+  });
+  it('a row and a switch can carry an icon tile and a hint', () => {
+    render(<><RowList><Row icon="uhr" title="Garmin" hint="Ruhepuls und Läufe übernehmen" value="optional" onClick={() => {}} /></RowList><Switch icon="glocke" label="Benachrichtigungen" checked={false} onChange={() => {}} /></>);
+    expect(screen.getByRole('button', { name: /Garmin/ }).querySelector('svg[data-icon="uhr"]')).toBeTruthy();
+    expect(screen.getByRole('switch', { name: 'Benachrichtigungen' }).closest('label')!.querySelector('svg[data-icon="glocke"]')).toBeTruthy();
+  });
+  it('a row without onClick is a calm row without a button, and shows its hint', () => {
+    render(<RowList><Row icon="kraft" title="Kraftsatz" hint="Gewichte in Kilogramm" value="4" /></RowList>);
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByText('Gewichte in Kilogramm').className).toContain('tk-row-sub');
+    expect(document.querySelector('svg[data-icon="kraft"]')).toBeTruthy();
+  });
+  it('a kicker can be a heading', () => {
+    render(<Kicker heading>Nachrichten</Kicker>);
+    expect(screen.getByRole('heading', { level: 2, name: 'Nachrichten' }).className).toBe('tk-kicker');
+  });
+  it('a round button can be pressed', () => {
+    render(<RoundButton icon="favorit" name="Skyr aus den Favoriten nehmen" pressed onClick={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Skyr aus den Favoriten nehmen' }).getAttribute('aria-pressed')).toBe('true');
+  });
+  it('a page head without a title is only the back pill', () => {
+    render(<PageHead back={{ label: 'Rezepte', onClick: () => {} }} />);
+    expect(screen.queryByRole('heading')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rezepte' }).className).toBe('tk-pill');
+  });
   it('lets Bo speak in a bubble, with or without his portrait', () => {
     const { rerender } = render(<BoBubble actions={<button type="button">{BO.ask}</button>}>Heute kommt das dritte Training.</BoBubble>);
     expect(document.querySelector('.tk-bubble')?.textContent).toContain('Heute kommt das dritte Training.');
@@ -27,7 +71,7 @@ describe('Dojo kit', () => {
     expect(document.querySelector('.tk-bubble-tail')).toBeNull();
   });
   it('draws every registered icon with currentColor only', () => {
-    for (const name of ['heute', 'woche', 'kraft', 'essen', 'ausdauer', 'profil', 'lauf', 'herz', 'spross', 'mond', 'ziel', 'stift', 'sprechen', 'senden', 'zurueck', 'haken', 'rueckblick', 'regeln', 'aenderung', 'studio', 'wechsel', 'mehr', 'info', 'pause', 'plus', 'verkleinern', 'routinen', 'uebungen', 'entwicklung'] as const) {
+    for (const name of ['heute', 'woche', 'kraft', 'essen', 'ausdauer', 'profil', 'lauf', 'herz', 'spross', 'mond', 'ziel', 'stift', 'sprechen', 'senden', 'zurueck', 'haken', 'rueckblick', 'regeln', 'aenderung', 'studio', 'wechsel', 'mehr', 'info', 'pause', 'plus', 'verkleinern', 'routinen', 'uebungen', 'entwicklung', 'rezepte', 'einkauf', 'favorit', 'blatt', 'uhr', 'brief', 'glocke', 'laterne'] as const) {
       const { container, unmount } = render(<Icon name={name} />);
       const svg = container.querySelector(`svg[data-icon="${name}"]`)!;
       expect(svg.getAttribute('aria-hidden')).toBe('true');

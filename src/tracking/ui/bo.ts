@@ -14,6 +14,8 @@ export const BO_LINES = {
   sent: 'Angekommen. Ich antworte dir, sobald ich kann.',
   slow: 'Ich antworte dir, sobald ich wieder erreichbar bin.',
   stale: 'Darauf habe ich nicht mehr geantwortet. Schreib mir gern nochmal.',
+  /** The bubble at the bottom of Essen. */
+  mealsChange: 'Schmeckt dir etwas nicht, oder passt ein Tag nicht? Sag es mir, dann schlage ich dir eine Änderung vor.',
   subtitle: 'Dein Sensai kennt deinen Plan.',
   suggestions: ['Schlag mir eine Woche vor', 'Mir tut etwas weh', 'Diese Woche habe ich weniger Zeit'],
 } as const;

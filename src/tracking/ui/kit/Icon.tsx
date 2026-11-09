@@ -1,7 +1,8 @@
 /** The one icon registry. Stroke icons, 24 px grid, currentColor only. Later milestones add names here and nowhere else. */
 export type IconName = 'heute' | 'woche' | 'kraft' | 'essen' | 'ausdauer' | 'profil'
   | 'lauf' | 'herz' | 'spross' | 'mond' | 'ziel' | 'stift' | 'sprechen' | 'senden' | 'zurueck' | 'haken' | 'rueckblick' | 'regeln' | 'aenderung'
-  | 'studio' | 'wechsel' | 'mehr' | 'info' | 'pause' | 'plus' | 'verkleinern' | 'routinen' | 'uebungen' | 'entwicklung';
+  | 'studio' | 'wechsel' | 'mehr' | 'info' | 'pause' | 'plus' | 'verkleinern' | 'routinen' | 'uebungen' | 'entwicklung'
+  | 'rezepte' | 'einkauf' | 'favorit' | 'blatt' | 'uhr' | 'brief' | 'glocke' | 'laterne';
 
 const SCROLL = <><path d="M8 6 H25 Q27 6 27 8 V24 Q27 26 25 26 H10" /><path d="M8 6 Q5 6 5 9 V11 H11 V9 Q11 6 8 6 Z" /><path d="M10 26 Q7 26 7 23 V21 H13 V23 Q13 26 10 26 Z" /></>;
 
@@ -34,6 +35,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
   routinen: <><rect x="5" y="4" width="14" height="17" rx="3" /><rect x="9" y="2" width="6" height="4" rx="2" /><path d="M9 11 H15 M9 14.5 H15 M9 18 H12.5" /></>,
   uebungen: <><path d="M3 20 Q8 19 10 14 Q12 10 15 9 Q18 8 21 4" /><path d="M15 9 Q12.5 6 13.5 3 Q16 5.5 15 9 Z M10 14 Q6 13 5 10 Q9 10 10 14 Z" /></>,
   entwicklung: <><path d="M5 20 V16 M11 20 V12 M17 20 V14" strokeWidth="3" /><path d="M4 10 Q9 5 13 7 Q16.5 4.5 20 2.5" /><path d="M17.5 2.5 H20 V5" /></>,
+  rezepte: <><path d="M3.5 6 Q8 4.5 12 7 V20 Q8 17.5 3.5 19 Z" /><path d="M20.5 6 Q16 4.5 12 7 V20 Q16 17.5 20.5 19 Z" /><path d="M6 10.5 Q8 10 9.5 10.8 M14.5 10.8 Q16 10 18 10.5" /></>,
+  einkauf: <><path d="M3.5 10 H20.5 L19 19.5 Q18.8 20.5 17.8 20.5 H6.2 Q5.2 20.5 5 19.5 Z" /><path d="M8 10 Q8 4 12 4 Q16 4 16 10" /><path d="M9.5 13.5 V17 M14.5 13.5 V17" /></>,
+  favorit: <path d="M12 20 Q4 14.5 3.2 9.6 Q2.8 5.2 7 4.6 Q10.2 4.3 12 7.4 Q13.8 4.3 17 4.6 Q21.2 5.2 20.8 9.6 Q20 14.5 12 20 Z" />,
+  blatt: <><path d="M12 3 Q18 7 18 12.5 Q18 18 12 21 Q6 18 6 12.5 Q6 7 12 3 Z" /><path d="M12 7 V19 M12 11 L15 9 M12 14.5 L9 12.5" /></>,
+  uhr: <><path d="M9 7.5 L9.8 3 H14.2 L15 7.5 M9 16.5 L9.8 21 H14.2 L15 16.5" /><circle cx="12" cy="12" r="5.5" /><path d="M12 9 V12 L14 13.5" /></>,
+  brief: <><rect x="3" y="5.5" width="18" height="13" rx="2.5" /><path d="M3.8 7 L12 13 L20.2 7" /></>,
+  glocke: <><path d="M6 16.5 V11 Q6 5.5 12 5 Q18 5.5 18 11 V16.5 L20 18 H4 Z" /><path d="M12 3 V5 M10 20.5 Q12 22 14 20.5" /></>,
+  laterne: <><path d="M4 4 H20 M12 4 V6.5" /><path d="M7 8 H17 Q18.5 12 17 16.5 H7 Q5.5 12 7 8 Z" /><path d="M9 16.5 V19 M15 16.5 V19 M8.5 19 H15.5" /><circle cx="12" cy="12.3" r="1.8" /></>,
   aenderung: <g transform="scale(.75)" strokeWidth="2.667">{SCROLL}<path d="M14 13 L16 15 L20 10" /><path d="M14 20 H21" /></g>,
 };
 

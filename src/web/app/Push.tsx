@@ -77,7 +77,7 @@ export function PushCard({ push }: { push: PushState }) {
           <>
             <p>Pandafit sagt dir Bescheid, wenn eine neue Version da ist, wenn dein Essensplan für die Woche kommt und wenn dein Laufplan da ist. Sonst nichts.</p>
             <div className="tk-row">
-              <button type="button" disabled={push.busy} onClick={() => void push.enable()}>Einschalten</button>
+              <button type="button" className="primary" disabled={push.busy} onClick={() => void push.enable()}>Einschalten</button>
               <button type="button" className="link" onClick={push.closeCard}>Nicht jetzt</button>
             </div>
           </>
@@ -97,7 +97,7 @@ export function PushSettings({ push, now }: { push: PushState; now: () => number
       {p.support === 'none' && <p className="muted">In diesem Browser gibt es keine Benachrichtigungen.</p>}
       {p.support === 'ok' && (
         <>
-          <Switch label="Benachrichtigungen" hint="Für neue Essens- und Laufpläne, Antworten von Bo und neue Versionen." checked={push.on && granted} disabled={push.busy}
+          <Switch icon="glocke" label="Benachrichtigungen" hint="Für neue Essens- und Laufpläne, Antworten von Bo und neue Versionen." checked={push.on && granted} disabled={push.busy}
             onChange={(on) => void (on ? push.enable() : push.disable())} />
           {push.on && granted && <UpdatesSwitch port={port} now={now} />}
           {push.on && !granted && <p className="muted">{PUSH_DENIED}</p>}

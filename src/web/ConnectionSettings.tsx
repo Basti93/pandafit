@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DEFAULT_MEAL_SETTINGS, SLOT_LABEL, SLOTS, type Diet, type Habit, type MealSettings } from '../shared/meals';
 import type { GarminSyncInfo, HevyStatus } from '../coach/protocol';
-import { ChoiceRow, ConfirmLink, Row, RowList, Sheet, Switch } from '../tracking/ui/kit';
+import { Card, ChoiceRow, ConfirmLink, Kicker, Row, RowList, Sheet, Switch } from '../tracking/ui/kit';
 import type { CoachLink, CoachSettingsView } from './coachLink';
 
 const DIETS: { value: Diet; label: string }[] = [{ value: 'vegetarisch', label: 'Vegetarisch' }, { value: 'vegan', label: 'Vegan' }, { value: 'alles', label: 'Alles' }];
@@ -81,7 +81,7 @@ function GarminSheet({ v, send, onClose }: { v: CoachSettingsView; send: (m: { t
 
 const tags = (text: string): string[] => [...new Set(text.split(',').map((t) => t.trim()).filter(Boolean))];
 
-function MealsSheet({ settings, save, onClose }: { settings: MealSettings; save: (s: MealSettings) => void; onClose: () => void }) {
+function MealsSheet({ settings, recipes, save, onClose }: { settings: MealSettings; recipes?: { collection: number; unlock: number } | null; save: (s: MealSettings) => void; onClose: () => void }) {
   const [s, setS] = useState(settings);
   const [dislikes, setDislikes] = useState(settings.dislikes.join(', '));
   const [intolerances, setIntolerances] = useState(settings.intolerances.join(', '));
@@ -92,6 +92,7 @@ function MealsSheet({ settings, save, onClose }: { settings: MealSettings; save:
       <label className="tk-field">Abneigungen<input value={dislikes} placeholder="zum Beispiel Pilze, Oliven" onChange={(e) => setDislikes(e.target.value)} /></label>
       <label className="tk-field">Unverträglichkeiten<input value={intolerances} placeholder="zum Beispiel Laktose" onChange={(e) => setIntolerances(e.target.value)} /></label>
       <p className="muted">Bitte prüf die Zutaten bei Unverträglichkeiten trotzdem selbst.</p>
+      {recipes && <p className="muted" role="status">{collectionLine(recipes)}</p>}
     </Sheet>
   );
 }
@@ -101,47 +102,56 @@ const n = (x: number) => x.toLocaleString('de-DE');
 export const collectionLine = (r: { collection: number; unlock: number }): string =>
   r.collection >= r.unlock ? `Rezeptsammlung: ${n(r.collection)} ${r.collection === 1 ? 'Rezept' : 'Rezepte'}` : `Rezeptsammlung: ${n(r.collection)} von ${n(r.unlock)}`;
 
-/** A titled group of the profile: the title above, a thin line only between groups. */
+/** A group of the profile: a card whose name is a level-2 heading that looks like a kicker. */
 export function ProfileGroup({ title, children }: { title: string; children: ReactNode }) {
-  return <section className="tk-pgroup"><h2 className="tk-section">{title}</h2>{children}</section>;
+  return <Card label={title}><Kicker heading>{title}</Kicker>{children}</Card>;
 }
 
-const withHint = (title: string, hint: string) => <>{title}<small className="tk-row-sub muted">{hint}</small></>;
+/** The one place for the sentences about riding: the bike is ridden on the Mac. */
+export const bikeLine = (hasBike: boolean): string => (hasBike ? 'Rad fährst du am Mac.' : 'Rad geht mit der ersten Fahrt am Mac los.');
+export const planLine = (gymOn: boolean, hasBike: boolean): string => (gymOn ? `Dein Krafttraining wird immer geplant. ${bikeLine(hasBike)}` : bikeLine(hasBike));
 
-function CoachGroups({ link, plan }: { link: CoachLink; plan: ReactNode }) {
+const PLAN = 'Was Pandafit für dich plant';
+
+function CoachGroups({ link, plan, hasBike }: { link: CoachLink; plan: ReactNode; hasBike: boolean }) {
   const snap = useSyncExternalStore(link.subscribe, link.snapshot);
   const [sheet, setSheet] = useState<'hevy' | 'garmin' | 'meals' | null>(null);
   useEffect(() => { link.start(); return () => link.stop(); }, [link]);
   const v = snap.view;
-  if (!v) return <ProfileGroup title="Planen">{plan}</ProfileGroup>;
+  if (!v) return <PlanOnly plan={plan} hasBike={hasBike} />;
   const send = (m: Parameters<CoachLink['send']>[0]): boolean => link.send(m);
   const meals = v.meals ?? DEFAULT_MEAL_SETTINGS;
   return (
     <>
-      <ProfileGroup title="Planen">
+      <ProfileGroup title={PLAN}>
         {plan}
-        {v.gymOn ? <p className="muted">Krafttraining · wird geplant</p> : <Switch label="Krafttraining planen" hint="Auch ohne Hevy" checked={false} onChange={() => send({ type: 'gym-start' })} />}
-        <Switch label="Essensplan" hint="Wochenplan mit Einkaufsliste" checked={meals.on} onChange={(on) => send({ type: 'meals-settings', settings: { ...meals, on } })} />
-        {meals.on && <RowList><Row title={withHint('Essen anpassen', 'Vorlieben und Abneigungen')} onClick={() => setSheet('meals')} /></RowList>}
-        {meals.on && v.recipes && <p className="muted" role="status">{collectionLine(v.recipes)}</p>}
+        <Switch icon="essen" label="Essensplan" hint="Ein Wochenplan mit Einkaufsliste." checked={meals.on} onChange={(on) => send({ type: 'meals-settings', settings: { ...meals, on } })} />
+        {meals.on && <RowList><Row icon="blatt" title="Essen anpassen" hint="Vorlieben, Abneigungen und Unverträglichkeiten." onClick={() => setSheet('meals')} /></RowList>}
+        {!v.gymOn && <Switch icon="kraft" label="Krafttraining planen" hint="Auch ohne Hevy." checked={false} onChange={() => send({ type: 'gym-start' })} />}
+        <RowList><Row icon="ausdauer" title={planLine(v.gymOn, hasBike)} /></RowList>
       </ProfileGroup>
       <ProfileGroup title="Verbindungen">
         <RowList label="Verbindungen">
-          <Row title={withHint('Hevy', 'Krafttrainings übernehmen')} value={hevyValue(v.hevy)} onClick={() => setSheet('hevy')} />
-          <Row title={withHint('Garmin', 'Ruhepuls und Läufe übernehmen')} value={v.garmin.state === 'connected' ? 'verbunden' : 'optional'} onClick={() => setSheet('garmin')} />
+          <Row icon="kraft" title="Hevy" hint="Krafttrainings übernehmen" value={hevyValue(v.hevy)} onClick={() => setSheet('hevy')} />
+          <Row icon="uhr" title="Garmin" hint="Ruhepuls und Läufe übernehmen" value={v.garmin.state === 'connected' ? 'verbunden' : 'optional'} onClick={() => setSheet('garmin')} />
         </RowList>
       </ProfileGroup>
       {sheet === 'hevy' && <HevySheet v={v} send={send} onClose={() => setSheet(null)} />}
       {sheet === 'garmin' && <GarminSheet v={v} send={send} onClose={() => setSheet(null)} />}
-      {sheet === 'meals' && <MealsSheet settings={meals} save={(settings) => send({ type: 'meals-settings', settings })} onClose={() => setSheet(null)} />}
+      {sheet === 'meals' && <MealsSheet settings={meals} recipes={v.recipes} save={(settings) => send({ type: 'meals-settings', settings })} onClose={() => setSheet(null)} />}
     </>
   );
 }
 
+/** Without a coach on the server: only what works on this device. */
+function PlanOnly({ plan, hasBike }: { plan: ReactNode; hasBike: boolean }) {
+  return <ProfileGroup title={PLAN}>{plan}<RowList><Row icon="ausdauer" title={bikeLine(hasBike)} /></RowList></ProfileGroup>;
+}
+
 /**
- * The groups "Planen" (with what the caller puts first, the run switch) and "Verbindungen". What the Mac app used to hold and the server coach uses:
- * Hevy, Garmin, Krafttraining and the meal plan. Without a coach on the server, or while it is not reached, only the caller's part of "Planen" shows.
+ * The cards "Was Pandafit für dich plant" (with what the caller puts first, the run switch) and "Verbindungen". What the Mac app used to hold and the server coach uses:
+ * Hevy, Garmin, Krafttraining and the meal plan. Without a coach on the server, or while it is not reached, only the caller's part of the first card shows.
  */
-export function ConnectionSettings({ link, plan }: { link: CoachLink | null; plan: ReactNode }) {
-  return link ? <CoachGroups link={link} plan={plan} /> : <ProfileGroup title="Planen">{plan}</ProfileGroup>;
+export function ConnectionSettings({ link, plan, hasBike }: { link: CoachLink | null; plan: ReactNode; hasBike: boolean }) {
+  return link ? <CoachGroups link={link} plan={plan} hasBike={hasBike} /> : <PlanOnly plan={plan} hasBike={hasBike} />;
 }

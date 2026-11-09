@@ -36,10 +36,10 @@ describe('Essen on the phone with the coach on the Mac', () => {
     await mac.replan('pa', week);
     const a = await boot({ account: 'anna', seed: store.all('pb') });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Änderung wünschen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan ändern' }));
     fireEvent.change(await screen.findByLabelText('Nachricht an Bo'), { target: { value: 'Heute Abend lieber was mit Nudeln' } });
     fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
-    expect(await screen.findByText('Wunsch gesendet')).toBeTruthy();
+    expect(await screen.findByText('Dein Wunsch ist bei Bo angekommen.')).toBeTruthy();
     expect(await screen.findByText('Bo antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeTruthy();
     expect(screen.getByText(/Heute Abend lieber was mit Nudeln/)).toBeTruthy();
     // Through the account to the Mac, which answers at its next tick.
@@ -54,12 +54,12 @@ describe('Essen on the phone with the coach on the Mac', () => {
     cleanup();
     await boot({ account: 'anna', seed: store.all('pb') });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Änderung wünschen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan ändern' }));
     expect(await screen.findByText('Heute Abend gibt es Nudeln.')).toBeTruthy();
     expect(screen.queryByText('Bo antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     fireEvent.click(screen.getByRole('button', { name: /Nudeln mit Tomatensoße und Linsen/ }));
-    expect(screen.getByText('auf Wunsch von Lena')).toBeTruthy();
+    expect(await screen.findByText('Auf Wunsch von Lena.')).toBeTruthy();
     expect(store.all('pa').some((r) => r.id.startsWith('chat-'))).toBe(false);
   });
 

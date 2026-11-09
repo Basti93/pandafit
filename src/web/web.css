@@ -27,47 +27,14 @@ body { font-family: var(--font-text); padding: 0 env(safe-area-inset-right) env(
 /* Sticky pieces sit below the notch; the tab bar is at the bottom now. */
 .tk-picker { padding-top: calc(1rem + env(safe-area-inset-top)); padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
 
-/* Meal plan: one day at a time, the three meals as cards with a color per meal. */
-@media (prefers-color-scheme: light) {
-  .tk-screen.pm button.pm-person.on { background: var(--seg-on-screen); color: var(--text); }
-}
-.pm .slot-fruehstueck { --slot: var(--slot-fruehstueck); } .pm .slot-mittag { --slot: var(--slot-mittag); } .pm .slot-abend { --slot: var(--slot-abend); }
-.pm-head { display: flex; flex-direction: column; gap: .15rem; }
-.pm-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
-.tk-screen .pm-days button { display: flex; flex-direction: column; align-items: center; gap: .05rem; min-width: 0; min-height: 56px; padding: .35rem 0; border-radius: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--field-line); font-weight: 500; }
-.pm-days button b { color: var(--text); font-size: var(--text-m); }
-.pm-days button span { font-size: var(--text-xs); color: var(--day); }
-.tk-screen .pm-days button.past { opacity: .75; }
-.tk-screen .pm-days button.today { border-color: var(--accent); }
-.tk-screen .pm-days button[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--ink); opacity: 1; }
-.tk-screen .pm-days button[aria-selected='true'] b { color: var(--ink); }
-.tk-screen .pm-days button[aria-selected='true'] span { color: var(--ink); }
-.tk-screen h2.pm-dayname { font-size: var(--text-xl); margin-top: .2rem; }
-.pm-dayname small { color: var(--muted); font-size: var(--text-s); font-weight: 700; }
-.tk-screen .pm-meal { border-top: 4px solid var(--slot); gap: .45rem; }
-.tk-screen .pm-meal h2 { font-size: var(--text-l); line-height: 1.25; }
-.pm-empty { opacity: .6; }
-.pm-slot { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-.pm-slot b { color: var(--slot); }
-.pm-badge { align-self: flex-start; font-size: var(--text-xs); font-weight: 700; color: var(--slot); border: 1px dashed var(--slot); border-radius: var(--radius-pill); padding: .1rem .6rem; }
+/* Meal plan: the shopping list, the chat and the recipe parts. */
 .pm-meta { margin: 0; color: var(--muted); font-size: var(--text-s); }
 .pm-meta b { color: var(--text); }
-.pm-people { gap: .4rem; }
-.tk-screen button.pm-person { display: inline-flex; align-items: center; gap: .4rem; min-height: 40px; padding: var(--space-1) .8rem var(--space-1) .3rem; background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 700; text-decoration: line-through; }
-.tk-screen button.pm-person.on { background: var(--seg-on); color: var(--text); border-color: transparent; text-decoration: none; }
-.pm-avatar { display: inline-flex; align-items: center; justify-content: center; width: 1.7rem; height: 1.7rem; border-radius: var(--radius-round); font-size: var(--text-xs); font-weight: 800; color: var(--ink); }
-.pm-avatar.pc0 { background: var(--pc0); } .pm-avatar.pc1 { background: var(--pc1); } .pm-avatar.pc2 { background: var(--pc2); } .pm-avatar.pc3 { background: var(--pc3); }
-button.pm-person:not(.on) .pm-avatar { opacity: .45; }
-.pm-recipe summary { font-weight: 700; color: var(--accent-text); padding: .3rem 0; }
 .pm-ingredients { list-style: none; margin: .4rem 0; padding: 0; }
 .pm-ingredients li { padding: .35rem 0; border-top: 1px solid var(--line); }
 .pm-ingredients b { display: inline-block; min-width: 5rem; }
 .pm-steps { margin: var(--space-2) 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .4rem; line-height: 1.45; }
-.pm-keeps { font-size: var(--text-s); margin: 0; }
-.pm-summary { margin: 0; color: var(--muted); }
-.pm-summary b { color: var(--text); font-size: var(--text-l); }
-.pm-group { display: flex; flex-direction: column; gap: var(--space-1); }
-.pm-group ul { list-style: none; margin: 0; padding: 0; }
+.pm-list { list-style: none; margin: 0; padding: 0; }
 .pm-item { border-top: 1px solid var(--line); }
 .pm-item:first-child { border-top: 0; }
 .pm-itemline { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: var(--space-2); min-height: 52px; }
@@ -81,11 +48,7 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .pm-addline { display: grid; grid-template-columns: 1fr 9rem; gap: var(--space-2); }
 .tk-screen input::placeholder { color: var(--muted); opacity: .8; }
 .pm-addline input { min-width: 0; }
-.pm-rowtitle { display: block; }
-.pm-sidehint { display: block; color: var(--muted); font-size: var(--text-s); }
 .pm-side { margin: var(--space-2) 0 0; }
-.pm-dev { display: block; color: var(--accent-text); font-size: var(--text-s); }
-.pm-people[role="group"] { margin: var(--space-1) 0; }
 .tk-screen button.pm-check { width: 44px; height: 44px; min-width: 44px; padding: 0; border-radius: .7rem; background: transparent; border: 2px solid var(--muted); color: var(--ink); font-size: var(--text-l); }
 .pm-item.gekauft button.pm-check { background: var(--good); border-color: var(--good); }
 .pm-name { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
@@ -95,16 +58,12 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .pm-have-list { opacity: .75; }
 
 /* The chat with the coach about the plan */
-.pm-chat h3 { margin: 0 0 var(--space-2); font-size: var(--text-m); }
-.pm-chat input { flex: 1; min-width: 0; }
 .pm-chat-list { list-style: none; margin: .7rem 0 0; padding: 0; display: grid; gap: .7rem; }
 .pm-said { margin: 0; font-weight: 700; }
 .pm-said small { margin-left: .5rem; font-weight: 400; color: var(--muted); font-size: var(--text-xs); }
 .pm-reply { margin: .2rem 0 0; color: var(--muted); }
 .pm-reply.pending { font-style: italic; }
 .pm-chat-before summary { color: var(--muted); font-size: var(--text-s); padding-top: .6rem; }
-.pm-source a, .pm-rowtitle small a { color: var(--muted); }
-.pm-asked { margin: 0; color: var(--muted); font-size: var(--text-s); }
 
 /* The profile sits at the top right instead of taking a tab. */
 .web-main { position: relative; overflow: clip; background: var(--bamboo-shoot) left bottom / 40px 240px no-repeat; min-height: 100dvh; box-sizing: border-box; }
@@ -158,9 +117,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-screen .live-buttons button { min-height: 64px; font-size: var(--text-m); line-height: 1.2; }
 
 /* Recipes: pictures on meal cards, the browse list, the recipe view. Calm: one line per item, soft colour blocks instead of icons. */
-.pm-titleline { display: flex; align-items: center; gap: .6rem; min-width: 0; }
-.pm-thumb { display: flex; align-items: center; justify-content: center; font-size: var(--text-m); font-weight: 700; width: 40px; height: 40px; border-radius: var(--radius-xs); object-fit: cover; flex: none; background: var(--card); }
-.tk-screen button.pm-viewlink { align-self: flex-start; }
 .rc-list { list-style: none; margin: 0; padding: 0; }
 .rc-row { display: flex; align-items: center; gap: var(--space-1); border-top: 1px solid var(--line); }
 .rc-row:first-child { border-top: 0; }
@@ -173,25 +129,10 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .rc-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tk-screen button.rc-heart { flex: none; min-width: 44px; min-height: 44px; padding: 0; font-size: var(--text-2xl); line-height: 1; color: var(--muted); text-decoration: none; }
 .tk-screen button.rc-heart[aria-pressed='true'] { color: var(--accent-text); }
-.rc-view { display: flex; flex-direction: column; gap: var(--space-3); }
-.rc-hero { width: 100%; height: 80px; object-fit: cover; border-radius: 1rem; display: block; background: var(--card); }
-.rc-hero.rc-blank { font-size: var(--text-2xl); }
-@media (min-width: 720px) { .rc-hero { height: 200px; } }
-.rc-headline { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.rc-facts { margin: 0; }
 .rc-tags { list-style: none; display: flex; flex-wrap: wrap; gap: 0 .35rem; margin: 0; padding: 0; color: var(--muted); font-size: var(--text-s); }
 .rc-tags li + li::before { content: '· '; }
+.rc-headfoot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .rc-portions { display: flex; align-items: center; gap: var(--space-3); }
-.rc-place { display: flex; flex-direction: column; gap: var(--space-3); }
-.rc-daypick { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
-.tk-screen .rc-daypick button { display: flex; flex-direction: column; align-items: center; min-width: 0; min-height: 52px; padding: .3rem 0; border-radius: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; text-decoration: none; }
-.rc-daypick button b { color: var(--text); font-size: var(--text-m); } .rc-daypick button span { font-size: var(--text-xs); }
-.tk-screen .rc-daypick button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: var(--ink); }
-.tk-screen .rc-daypick button[aria-pressed='true'] b { color: var(--ink); }
-.tk-screen .rc-daypick button:disabled { opacity: .4; }
-.tk-chips.rc-slotpick { display: grid; grid-template-columns: repeat(3, 1fr); }
-.tk-screen .rc-slotpick button { padding-left: .4rem; padding-right: .4rem; }
-.tk-screen .rc-view a { color: var(--muted); text-decoration: underline; font-weight: 700; }
 
 /* Top bar: the wordmark on the left, the round profile button on the right (it is positioned on the same row). */
 .web-top { box-sizing: border-box; max-width: var(--content-max); margin: 0 auto; min-height: calc(44px + .55rem); padding: calc(.55rem + 6px) 4.6rem 0 var(--space-4); }
@@ -213,13 +154,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 /* Visible keyboard focus on every control, in the accent colour. */
 .web-main :is(button, a, summary, [role='tab'], [role='checkbox'], [role='switch']):focus-visible,
 .web-live-strip:focus-visible, .web-nav button:focus-visible, .tk-sheet :is(button, a, summary):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-/* Profil: each group is a card, like the cards on Heute. */
-.tk-pgroup { background: var(--card); border-radius: var(--radius-card); padding: .25rem var(--space-4) var(--space-3); margin-top: var(--space-3); }
-.tk-pgroup > .tk-section { margin-top: var(--space-3); }
-/* Essen: the shopping groups are cards; the list items stay plain, with 44 px targets. */
-.pm-group { background: var(--card); border-radius: var(--radius-card); padding: var(--space-2) var(--space-4) var(--space-1); margin-top: var(--space-2); }
-.pm-group > .tk-section { margin-top: var(--space-1); }
-.pm-days button { min-height: 44px; }
 /* Login: the still Panda sits over the wordmark. */
 .web-login .web-login-panda { width: 7rem; height: auto; align-self: flex-start; }
 /* Ride companion: the figures stay big and dark on light; the pairs and the interval sit on cards. */
@@ -232,6 +166,5 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
   .pm-addline { grid-template-columns: 1fr; }
   .live-big { font-size: 5rem; }
   .live-pair b { font-size: var(--text-3xl); }
-  .tk-pgroup, .pm-group { padding-left: var(--space-3); padding-right: var(--space-3); }
 }
 @media (max-width: 340px) { .web-nav button { letter-spacing: -.01em; } }

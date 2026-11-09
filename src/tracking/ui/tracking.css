@@ -359,11 +359,8 @@
 .tk-pins { max-height: none; overflow: visible; }
 .tk-week li { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); column-gap: .25rem; }
 .tk-pin .tk-week li { grid-template-columns: 5.4rem minmax(0, 1fr); }
-/* Profile groups: a thin line only between groups, none between the rows of one group. */
-.tk-pgroup { border-top: 1px solid var(--line); margin-top: .75rem; display: flex; flex-direction: column; }
-.tk-pgroup .tk-switchrow, .tk-pgroup .tk-rowitem, .tk-screen .tk-pgroup button.tk-choice { border-top: 0; }
-.tk-pgroup > .tk-section { margin: var(--space-3) 0 var(--space-1); }
-.tk-pgroup > p.muted { margin: var(--space-1) 0 var(--space-2); }
+/* A nested group inside a sheet needs no indent. */
+.tk-sheet .tk-indent { margin-left: 0; border-left: 0; padding-left: 0; }
 .tk-pagehead { gap: .2rem; }
 .tk-pagehead .tk-title { line-height: 1.25; }
 .tk-pagehead .tk-subtitle { line-height: 1.3; }
@@ -591,6 +588,25 @@
 .tk-datehead { min-height: 2.75rem; display: flex; align-items: center; padding-right: 3.4rem; }
 .tk-dateline { margin: 0; font-size: var(--text-s); font-weight: 700; color: var(--muted); }
 .tk-rowcards { display: flex; flex-direction: column; gap: var(--space-2); }
+/* Dojo 4 kit: pictures in cards, the head card, icon rows, a pressed round button, a link as a secondary button. */
+.tk-meal { flex: none; display: block; }
+.tk-meal.small { width: 100%; height: 100%; } /* tiles only: inside .tk-rowcard-tile it is 40 px (below) */
+.tk-meal.big { width: 196px; height: 154px; max-width: 100%; margin-inline: auto; }
+.tk-meal:is(img) { object-fit: cover; border-radius: var(--radius-m); }
+.tk-meal.big:is(img) { border-radius: var(--radius-card); }
+.tk-cardpicture { display: flex; justify-content: center; margin-bottom: var(--space-2); }
+.tk-headavatar { display: flex; align-items: center; gap: var(--space-3); }
+.tk-headtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.tk-avatar { flex: none; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-round); border: 2px solid var(--accent); background: var(--tile); color: var(--good-text); }
+.tk-switchrow > .tk-rowcard-tile + .tk-switchtext { flex: 1; }
+.tk-rowcard-tile > .tk-meal.small { width: 40px; height: 40px; }
+.tk-screen button.tk-eaters { display: inline-flex; align-items: center; gap: var(--space-2); align-self: flex-start; max-width: 100%; text-align: left; }
+.tk-eaters-dots { display: inline-flex; }
+.tk-eaters-dot { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; margin-right: -.3rem; border-radius: var(--radius-round); border: 2px solid var(--card); font-size: var(--text-xs); font-weight: 700; color: var(--ink); }
+.tk-eaters-dot.pc0 { background: var(--pc0); } .tk-eaters-dot.pc1 { background: var(--pc1); } .tk-eaters-dot.pc2 { background: var(--pc2); } .tk-eaters-dot.pc3 { background: var(--pc3); }
+.tk-screen button.tk-roundbtn[aria-pressed="true"] { color: var(--accent); }
+.tk-screen button.tk-roundbtn[aria-pressed="true"] svg { fill: var(--accent); }
+.tk-screen a.secondary { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius-button); background: transparent; color: var(--text); border: 1.5px solid var(--line); font-weight: 500; text-decoration: none; }
 
 
 /* ---- Sensai chat: bubbles, day pills, quiet footer ---- */

@@ -9,6 +9,7 @@ import { useOpenProposals } from '../../tracking/ui/proposals';
 import { useWeekDays } from '../../tracking/ui/week-days';
 import { SPORT_ICON } from '../../tracking/ui/week-path';
 import { planDayLabel, planGymLine } from '../../tracking/ui/plan-text';
+import { tomorrowTarget } from '../today/tomorrow';
 import { MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
 import { complaintsOpenIn, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
@@ -19,6 +20,7 @@ import { useApp } from '../AppContext';
 import { planKeyOf, readDraft } from '../../tracking/plan-draft';
 import { mobilityToShow, planIsStale, readPlan } from '../logic';
 import { DayMeals } from '../MealsScreen';
+import type { MealAt } from '../essen/meals-view';
 import { CoachLine } from '../today/CoachLine';
 import { dayClip } from '../../tracking/ui/panda-day';
 import { dayLine } from '../../shared/day-text';
@@ -31,7 +33,7 @@ export const sinceText = (ms: number, now: number): string => {
   return `${new Date(ms).toLocaleDateString('de-DE', { weekday: 'short' })}, ${timeLabel(ms)}`;
 };
 
-export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, planning }: { goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
+export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, meals, planning }: { goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; goMeal?: (at: MealAt) => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
   const { port, env, account } = useApp();
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
@@ -92,6 +94,16 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   const tomorrow = addDays(dayKey, 1);
   // In Spontan mode the plan rests, as on Woche: no Morgen card.
   const tomorrowPlan = week.spontaneous ? null : planFor(weekplans ?? [], tomorrow);
+  // Strength, a ride or a run: the card opens the training itself; rest and mobility keep the day sheet.
+  const openTomorrow = () => {
+    if (!tomorrowPlan) return;
+    const target = tomorrowTarget({ tomorrow: tomorrowPlan, planWorkout: !!p?.workout, canBike: !!goBike, canRun: !!goRun });
+    if (target === 'plan') goTraining('plan');
+    else if (target === 'kraft') goTraining();
+    else if (target === 'rad') goBike?.();
+    else if (target === 'lauf') goRun?.();
+    else setSheetDate(tomorrow);
+  };
   // Nothing planned and nothing switched on: the one card offers to plan.
   const setup = !open && weekplans !== null && plans !== null && !today && !planning && !p;
 
@@ -114,8 +126,8 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
             text="Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit Bo."
             primary={{ label: 'Woche planen', onClick: goCoach }} secondary={{ label: 'Im Profil auswählen', onClick: goProfile }} more={mobilityRow} />
         ) : <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} extra={mobilityRow} />}
-      {meals && <DayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
-      {tomorrowPlan && <RowCard icon={SPORT_ICON[tomorrowPlan.sport]} kicker="Morgen" title={planDayLabel(tomorrowPlan)} onClick={() => setSheetDate(tomorrow)} />}
+      {meals && goMeal && <DayMeals port={port} now={env.now} onOpen={goMeal} />}
+      {tomorrowPlan && <RowCard icon={SPORT_ICON[tomorrowPlan.sport]} kicker="Morgen" title={planDayLabel(tomorrowPlan)} onClick={openTomorrow} />}
       {sheetDate && <DaySheet port={port} date={sheetDate} now={env.now} spontaneous={week.spontaneous} onClose={() => setSheetDate(null)} />}
     </div>
   );

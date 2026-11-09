@@ -64,7 +64,9 @@ describe('web app', () => {
   it('Profil has the coach timing switches; the tab bar is the way out, no second back link', async () => {
     await boot({ account: 'anna', seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Wann sich der Sensai meldet/ }));
     expect(await screen.findByRole('switch', { name: /Wochengespräch/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Schließen|Zurück|×/ }));
     expect(screen.queryByRole('button', { name: /Zurück/ })).toBeNull();
     fireEvent.click(within(screen.getByRole('navigation')).getByRole('button', { name: 'Heute' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
@@ -89,7 +91,7 @@ describe('web app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
     const sw = await screen.findByRole('switch', { name: 'Wochenübersicht per E-Mail' }) as HTMLInputElement;
     expect(sw.disabled).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: /E-Mail\s*keine/ }));
+    fireEvent.click(screen.getByRole('button', { name: /E-Mail\s*noch keine/ }));
     const input = await screen.findByLabelText('E-Mail-Adresse');
     expect(input.getAttribute('type')).toBe('email');
     expect(input.getAttribute('autocomplete')).toBe('email');
@@ -111,7 +113,7 @@ describe('web app', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /E-Mail\s*a@example\.org/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Entfernen' }));
-    expect(await screen.findByRole('button', { name: /E-Mail\s*keine/ })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: /E-Mail\s*noch keine/ })).toBeTruthy();
     await waitFor(() => expect((screen.getByRole('switch', { name: 'Wochenübersicht per E-Mail' }) as HTMLInputElement).disabled).toBe(true));
     expect((screen.getByRole('switch', { name: 'Wochenübersicht per E-Mail' }) as HTMLInputElement).checked).toBe(false);
   });
@@ -123,7 +125,7 @@ describe('web app', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
     await waitFor(() => expect(a.persist).toHaveBeenCalled());
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
-    await screen.findByText(/Angemeldet als/);
+    await screen.findByRole('region', { name: 'anna' });
     expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
   });
 
@@ -245,11 +247,11 @@ describe('web app', () => {
     expect(screen.getByRole('button', { name: 'Woche planen' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Im Profil auswählen' }));
     expect(await screen.findByRole('heading', { name: 'Profil' })).toBeTruthy();
-    expect(screen.getByText('Rad · Es geht mit der ersten Fahrt am Mac los.')).toBeTruthy();
-    // Profil is ordered: Planen first (with the run switch), then Nachrichten; the e-mail waits under its switch.
+    expect(screen.getByText('Rad geht mit der ersten Fahrt am Mac los.')).toBeTruthy();
+    // Profil is ordered: the plan card first (with the run switch), then Nachrichten; the e-mail waits under its switch.
     const heads = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(heads.indexOf('Planen')).toBeGreaterThanOrEqual(0);
-    expect(heads.indexOf('Planen')).toBeLessThan(heads.indexOf('Nachrichten'));
+    expect(heads.indexOf('Was Pandafit für dich plant')).toBeGreaterThanOrEqual(0);
+    expect(heads.indexOf('Was Pandafit für dich plant')).toBeLessThan(heads.indexOf('Nachrichten'));
     expect(screen.getByRole('switch', { name: 'Wochenübersicht per E-Mail' }).getAttribute('aria-describedby')).toBeTruthy();
     expect(screen.getByText('Trag zuerst deine E-Mail ein.')).toBeTruthy();
     cleanup();
@@ -296,7 +298,7 @@ describe('web app', () => {
     expect([...nav.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Heute', 'Woche', 'Kraft']);
     expect(screen.queryByRole('button', { name: 'Abmelden' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
-    expect(await screen.findByText('Angemeldet als anna')).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'anna' })).toBeTruthy();
     expect(screen.getByText(/gesichert|Abgleich|Senden|Verbindung/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Abmelden' })).toBeTruthy();
   });
@@ -450,7 +452,7 @@ describe('web app', () => {
     await waitFor(() => expect(again.persist).toHaveBeenCalled());
     expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Profil' }));
-    await screen.findByText(/Angemeldet als/);
+    await screen.findByRole('region', { name: 'anna' });
     expect(screen.queryByText(/Browser kann Daten löschen/)).toBeNull();
   });
 

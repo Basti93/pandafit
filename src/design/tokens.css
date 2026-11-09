@@ -27,12 +27,13 @@
   --line: #405044;
   --field-line: #5c7160;
   --muted: #b7c5ae;
-  --day: #cbd6c2;
   --accent: #efab76; /* shared */
   --accent-text: #efab76; /* apricot as text colour; darker in the light scheme */
   --good: #b5cc8d; /* shared */
   --good-text: #b5cc8d;
   --tile: #2f4033; /* icon tile of a row card */
+  --meal-shadow: rgba(13, 20, 15, .45); /* shadow under a meal picture */
+  --meal-steam: #7f9180; /* steam of a meal picture */
   --today-glow: rgba(242, 189, 85, .55); /* glow around today on the week path */
   --bubble-me: #3a3a2a; /* the user's own chat bubble */
   --bubble-me-line: #7a5a3e;
@@ -52,9 +53,7 @@
   --danger: #e59585;
   --low: #f2bd55; /* shared */
 
-  /* Chosen person pill (meal plan), picked row. --seg-on stays dark in sheets; --seg-on-screen is the meal screen's own light value. */
-  --seg-on: #354734; /* shared */
-  --seg-on-screen: #354734;
+  /* Picked row. */
   --pick: #354734;
 
   /* Chips */
@@ -63,9 +62,6 @@
   --chip-drop: #8cc4f0;
 
   /* Meal plan: one colour per meal, one per person */
-  --slot-fruehstueck: #f2bd55;
-  --slot-mittag: #9ccb68;
-  --slot-abend: #7fb4e8;
   --pc0: #e8964a; /* shared */
   --pc1: #c9a0e8;
   --pc2: #9ccb68;
@@ -154,10 +150,11 @@
     --line: #d5d4bf;
     --field-line: var(--line);
     --muted: #536454;
-    --day: var(--muted);
     --good-text: #34513b;
     --accent-text: #8a4a17;
     --tile: rgba(34, 55, 43, .08);
+    --meal-shadow: rgba(80, 60, 30, .18);
+    --meal-steam: #a3a690;
     --today-glow: rgba(224, 168, 58, .45);
     --bubble-me: #f6e3cf;
     --bubble-me-line: #e0b48c;
@@ -172,16 +169,11 @@
     --scene-hollow: #d9ccab;
     --danger: #a8372a;
 
-    --seg-on-screen: #e1e8d3;
     --pick: #e1e8d3;
 
     --chip-warm: #9a6a00;
     --chip-fail: #b23a2a;
     --chip-drop: #2a6aa0;
-
-    --slot-fruehstueck: #c98a12;
-    --slot-mittag: #4f8a2a;
-    --slot-abend: #2f78bf;
     --pc1: #b98ad8;
     --pc2: #8cc05a;
     --pc3: #6aa6e0;

@@ -20,8 +20,8 @@ export function CoachPrefs({ port, now, nested = false }: { port: TrackingPort; 
     void port.put({ kind: 'coachprefs', id: COACH_PREFS_ID, updatedMs: nextUpdatedMs(now(), have), deleted: false, body: p }).catch(() => setError('Die Einstellung konnte nicht gespeichert werden.'));
   };
   return (
-    <section aria-label="Wann sich Bo meldet" className={nested ? 'tk-group tk-indent' : 'tk-group'}>
-      {!nested && <h2 className="tk-section">Wann sich Bo meldet</h2>}
+    <section aria-label="Wann sich der Sensai meldet" className={nested ? 'tk-group tk-indent' : 'tk-group'}>
+      {!nested && <h2 className="tk-section">Wann sich der Sensai meldet</h2>}
       <Switch label="Wochengespräch" hint="Bo schlägt dir dabei die nächste Woche vor." checked={prefs.week.on} onChange={(on) => save({ ...prefs, week: { ...prefs.week, on } })} />
       {prefs.week.on && (
         <>

@@ -31,5 +31,5 @@ export function RunSettingsCard({ port, now }: { port: TrackingPort; now: () => 
     void writeSettings(port, q.all, now(), (old) => ({ type: 'settings', on: !on, weekdays: old?.weekdays ?? null, answers: old?.answers ?? null }))
       .catch(() => {}).finally(() => setBusy(false));
   };
-  return <Switch label="Laufen planen" hint={on ? 'Pandafit plant dein Laufen mit.' : 'Deine Läufe zählen trotzdem bei der Belastung mit.'} checked={on} disabled={q.records === null || busy} onChange={toggle} />;
+  return <Switch icon="lauf" label="Laufen planen" hint={on ? 'Pandafit plant dein Laufen mit.' : 'Deine Läufe zählen trotzdem bei der Belastung mit.'} checked={on} disabled={q.records === null || busy} onChange={toggle} />;
 }
