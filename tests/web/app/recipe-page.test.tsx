@@ -2,7 +2,7 @@
 import 'fake-indexeddb/auto';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
 import { addWeeks, dayIndex, weekOf } from '../../../src/shared/meals';
@@ -95,6 +95,22 @@ describe('A recipe as a page', () => {
     expect(head.textContent).toContain('Steht schon im Plan: heute, Mittwoch, zum Mittagessen.');
   });
 
+  it('a page starts at the top and the list gets its scroll position back', async () => {
+    const spy = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    await boot({ account: 'anna', seed: [wedPlan()], now: WED, recipes: recipes() });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Rezepte/ }));
+    Object.defineProperty(window, 'scrollY', { value: 340, configurable: true });
+    fireEvent.click(await screen.findByRole('button', { name: /^Erfundener Topf 1\s?\d+ Min/ }));
+    await screen.findByRole('region', { name: 'Erfundener Topf 1' });
+    expect(spy).toHaveBeenLastCalledWith(0, 0);
+    fireEvent.click(pill('Rezepte'));
+    await screen.findByRole('searchbox');
+    expect(spy).toHaveBeenLastCalledWith(0, 340);
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+    spy.mockRestore();
+  });
+
   it('Back from a recipe returns to the list with its search; Back again to Essen', async () => {
     await boot({ account: 'anna', seed: [wedPlan()], now: WED, recipes: recipes() });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
@@ -107,12 +123,18 @@ describe('A recipe as a page', () => {
     expect((await screen.findByLabelText('Rezept suchen') as HTMLInputElement).value).toBe('Topf');
     expect(screen.getByRole('list', { name: 'Rezepte' })).toBeTruthy();
     // The browser's Back does the same from a recipe page.
-    fireEvent.click(screen.getByRole('button', { name: /^Erfundener Topf 1\s?\d+ Min/ }));
+    const row = screen.getByRole('button', { name: /^Erfundener Topf 1\s?\d+ Min/ });
+    row.focus(); // a real tap focuses the button; fireEvent does not
+    fireEvent.click(row);
     await screen.findByRole('region', { name: 'Erfundener Topf 1' });
     window.history.back();
     await waitFor(() => expect(screen.getByRole('searchbox')).toBeTruthy());
     expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('Topf');
-    fireEvent.click(pill('Essen'));
+    // The row that opened the recipe has the focus again.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /^Erfundener Topf 1\s?\d+ Min/ }));
+    // Back again, also with the browser's Back, leaves to Essen.
+    window.history.back();
     expect(await screen.findByRole('region', { name: 'Essen' })).toBeTruthy();
+    expect(screen.queryByRole('searchbox')).toBeNull();
   });
 });

@@ -59,6 +59,13 @@ describe('the meal page', () => {
     expect(screen.getByRole('region', { name: 'Linsen-Bolognese' })).toBeTruthy();
     fireEvent.click(pill('Mahlzeit'));
     expect(await screen.findByRole('button', { name: 'Ganzes Rezept ansehen' })).toBeTruthy();
+    // The browser's Back does the same, and the button that opened the recipe has the focus again.
+    const again = screen.getByRole('button', { name: 'Ganzes Rezept ansehen' });
+    again.focus(); // a real tap focuses the button; fireEvent does not
+    fireEvent.click(again);
+    await screen.findByRole('region', { name: 'Linsen-Bolognese' });
+    window.history.back();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ganzes Rezept ansehen' })));
   });
 
   it('two quick changes in Wer isst mit both land in the state record', async () => {
