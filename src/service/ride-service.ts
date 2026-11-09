@@ -212,6 +212,7 @@ export class RideService {
 
   private setActive(a: Active | null): void {
     this.active = a;
+    this.devices.setWatchdog(a !== null);
     // A ride needs the trainer, even if it was disconnected by hand before.
     if (a && this.devices.getStatus().trainer === 'off') this.devices.connect('trainer');
     this.guard(() => this.deps.onRideChange?.(a !== null));

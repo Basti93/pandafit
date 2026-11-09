@@ -269,6 +269,7 @@ test('a silent trainer is treated as lost after 10 s and reconnected', async () 
   const m = new DeviceManager(port, { retryMs: 2000 });
   const statuses: string[] = [];
   m.onStatus((s) => statuses.push(s.trainer));
+  m.setWatchdog(true);
   m.start();
   await settle();
   expect(m.getStatus().trainer).toBe('connected');
@@ -282,12 +283,26 @@ test('a silent trainer is treated as lost after 10 s and reconnected', async () 
   expect(m.getStatus().trainer).toBe('connected');
   m.stop();
 });
+test('without a ride a silent device is never dropped', async () => {
+  const port = new FakeBlePort();
+  const m = new DeviceManager(port, { retryMs: 2000 });
+  const statuses: string[] = [];
+  m.onStatus((s) => statuses.push(s.trainer));
+  m.start();
+  await settle();
+  statuses.length = 0;
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(statuses).not.toContain('searching');
+  expect(m.getStatus().trainer).toBe('connected');
+  m.stop();
+});
 test('readings keep the watchdog quiet, per device', async () => {
   const port = new FakeBlePort();
   const m = new DeviceManager(port, { retryMs: 2000 });
   const trainerSeen: string[] = [];
   const hrSeen: string[] = [];
   m.onStatus((st) => { trainerSeen.push(st.trainer); hrSeen.push(st.hr); });
+  m.setWatchdog(true);
   m.start();
   await settle();
   trainerSeen.length = 0;

@@ -71,6 +71,8 @@ export class DeviceManager {
     this.watchdog = null;
   }
 
+  private watchdogOn = false;
+
   private armWatchdog(): void {
     if (this.stopped) return;
     this.watchdog = setTimeout(() => {
@@ -79,8 +81,18 @@ export class DeviceManager {
     }, WATCHDOG_TICK_MS);
   }
 
+  /** The silence watchdog only matters during a ride; without one a quiet device is left alone. Default: off. */
+  setWatchdog(on: boolean): void {
+    if (on && !this.watchdogOn) {
+      const now = this.nowMs();
+      for (const kind of WATCHED) this.lastDataAt[kind] = now;
+    }
+    this.watchdogOn = on;
+  }
+
   /** Only connected devices count: one that is off, searching or still connecting is not silent. */
   private checkSilent(): void {
+    if (!this.watchdogOn) return;
     const now = this.nowMs();
     for (const kind of WATCHED) {
       if (this.status[kind] !== 'connected' || this.connecting.has(kind)) continue;
