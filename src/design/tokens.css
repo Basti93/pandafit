@@ -65,9 +65,6 @@
   --chip-drop: #8cc4f0;
 
   /* Meal plan: one colour per meal, one per person */
-  --slot-fruehstueck: #f2bd55;
-  --slot-mittag: #9ccb68;
-  --slot-abend: #7fb4e8;
   --pc0: #e8964a; /* shared */
   --pc1: #c9a0e8;
   --pc2: #9ccb68;
@@ -182,10 +179,6 @@
     --chip-warm: #9a6a00;
     --chip-fail: #b23a2a;
     --chip-drop: #2a6aa0;
-
-    --slot-fruehstueck: #c98a12;
-    --slot-mittag: #4f8a2a;
-    --slot-abend: #2f78bf;
     --pc1: #b98ad8;
     --pc2: #8cc05a;
     --pc3: #6aa6e0;

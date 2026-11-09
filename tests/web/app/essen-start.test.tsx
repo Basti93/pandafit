@@ -90,6 +90,17 @@ describe('Essen start page', () => {
     expect(screen.queryByRole('region', { name: 'Der Rest der Woche' })).toBeNull();
     expect(next.querySelectorAll('.tk-rowcard')).toHaveLength(7);
     expect(next.textContent).toContain('Nichts geplant');
+    expect(screen.getByRole('region', { name: 'Essen' }).textContent).toContain('Am Montag gibt es um 19 Uhr Tomatensuppe.');
+    expect(screen.getByRole('region', { name: 'Nächste Mahlzeit' }).textContent).toContain('Tomatensuppe');
+  });
+
+  it('a day with a plan but no meals today points to the next day with a meal', async () => {
+    const tue = at(12, 11);
+    await boot({ account: 'anna', seed: [planFor(tue, [meal(dayIndex(tue) + 2, 'mittag', 'Kichererbsen-Curry')])], now: tue });
+    await goEssen();
+    const head = await screen.findByRole('region', { name: 'Essen' });
+    expect(head.textContent).toContain('Heute ist nichts geplant. Am Donnerstag gibt es um 13 Uhr Kichererbsen-Curry.');
+    expect(screen.getByRole('region', { name: 'Nächste Mahlzeit' }).textContent).toContain('Donnerstag · Mittagessen um 13 Uhr');
   });
 
   it('Plan ändern opens the message sheet and writes for the week Einkauf shows first', async () => {

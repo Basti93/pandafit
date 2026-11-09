@@ -39,7 +39,7 @@ describe('the meal page', () => {
     expect(screen.getByRole('region', { name: "So geht's" }).textContent).toContain('Verrühren.');
     expect(screen.queryByRole('dialog')).toBeNull();
     fireEvent.click(pill('Essen'));
-    expect(await screen.findByRole('region', { name: 'Nächste Mahlzeit' })).toBeTruthy();
+    expect((await screen.findByRole('region', { name: 'Nächste Mahlzeit' })).textContent).toContain('Skyr mit Beeren');
   });
 
   it('a meal with a recipe shows its photo, falls back to the drawing when it fails, and leads to the whole recipe', async () => {
@@ -142,7 +142,7 @@ describe('the meal page', () => {
     await openMeal('Skyr mit Beeren');
     await screen.findByRole('region', { name: 'Zutaten' });
     window.history.back();
-    expect(await screen.findByRole('region', { name: 'Nächste Mahlzeit' })).toBeTruthy();
+    expect((await screen.findByRole('region', { name: 'Nächste Mahlzeit' })).textContent).toContain('Skyr mit Beeren');
     expect(screen.queryByRole('region', { name: 'Zutaten' })).toBeNull();
   });
 });

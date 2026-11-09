@@ -578,7 +578,7 @@ async function main() {
   await fresh('Essen');
   await shot('essen');
   await step('essen-mahlzeit-offen', async () => { await page.getByRole('region', { name: 'Nächste Mahlzeit' }).getByRole('button', { name: 'Rezept ansehen' }).click(); await shot('essen-tage-mahlzeit-offen'); await page.getByRole('button', { name: 'Essen', exact: true }).and(page.locator('.tk-pill')).click(); });
-  await step('essen-gericht-quelle', async () => { await page.locator('.tk-rowcards .tk-rowcard').nth(1).click(); await shot('essen-gericht-quelle'); await page.getByRole('button', { name: 'Essen', exact: true }).and(page.locator('.tk-pill')).click(); });
+  await step('essen-gericht-quelle', async () => { await page.locator('.tk-screen > .tk-rowcards').getByRole('button').first().click(); await shot('essen-gericht-quelle'); await page.getByRole('button', { name: 'Essen', exact: true }).and(page.locator('.tk-pill')).click(); });
   await step('essen-wunsch', async () => { await page.getByRole('button', { name: 'Plan ändern' }).click(); await shot('essen-aenderung-wuenschen'); await page.keyboard.press('Escape'); });
   await step('essen-rezepte', async () => {
     await page.getByRole('button', { name: /^Rezepte/ }).click();
