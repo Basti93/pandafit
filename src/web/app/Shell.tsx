@@ -142,7 +142,7 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
         {tabs.map(([t, label]) => (
-          <button key={t} type="button" aria-current={tab === t ? 'page' : undefined} aria-pressed={tab === t} onClick={() => { setEntry(null); setChatOnOpen(false); setTab(t); }}>{label}</button>
+          <button key={t} type="button" aria-current={tab === t ? 'page' : undefined} onClick={() => { setEntry(null); setChatOnOpen(false); setTab(t); }}>{label}</button>
         ))}
       </nav>
     </>

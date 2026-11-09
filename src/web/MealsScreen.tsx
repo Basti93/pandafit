@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, useState } from 'react';
+import { nextUpdatedMs } from '../tracking/ui/run-view';
 import type { TrackedRecord } from '../shared/records';
 import {
   addWeeks, changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealPlan, readMealState, recipeAmount,
@@ -242,7 +243,7 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
     queue.current = queue.current.then(async () => {
       const at = now();
       const have = (await port.list('mealplan')).find((r) => r.id === id);
-      await port.put({ kind: 'mealplan', id, updatedMs: Math.max(at, (have?.updatedMs ?? 0) + 1), deleted: false, body: f(readMealState(have?.deleted ? undefined : have?.body), at) });
+      await port.put({ kind: 'mealplan', id, updatedMs: nextUpdatedMs(at, have), deleted: false, body: f(readMealState(have?.deleted ? undefined : have?.body), at) });
     }).catch(() => { /* shown as before; nothing lost */ });
     return queue.current;
   };
@@ -252,7 +253,7 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
       const rid = favRecordId(id);
       const have = (await port.list('mealplan')).find((r) => r.id === rid);
       const at = now();
-      await port.put({ kind: 'mealplan', id: rid, updatedMs: Math.max(at, (have?.updatedMs ?? 0) + 1), deleted: !on, body: { atMs: at } }).catch(() => { /* the heart stays as it was */ });
+      await port.put({ kind: 'mealplan', id: rid, updatedMs: nextUpdatedMs(at, have), deleted: !on, body: { atMs: at } }).catch(() => { /* the heart stays as it was */ });
     })();
   };
   /** "In den Plan": a record the coach answers, like a link. */
@@ -346,7 +347,7 @@ export function MealsScreen({ port, now, fetchFn, account }: { port: WebPort; no
     const id = `recipe-${recipeId}`;
     const have = (await port.list('mealplan')).find((r) => r.id === id);
     if (!have) return;
-    await port.put({ ...have, updatedMs: Math.max(now(), have.updatedMs + 1), deleted: true }).catch(() => { /* still there; try again */ });
+    await port.put({ ...have, updatedMs: nextUpdatedMs(now(), have), deleted: true }).catch(() => { /* still there; try again */ });
   };
   /** A new record of its own: only the Mac writes it again, with the reply. */
   const say = async (text: string) => {
