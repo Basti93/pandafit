@@ -55,6 +55,11 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Training ansehen und anpassen** | Das nächste Krafttraining lässt sich vor dem Start im Detail ansehen und ändern (Kilo, Wiederholungen, Sätze, Übung tauschen, entfernen, hinzufügen); „Training starten“ nimmt die angepasste Version. Entwurf nur auf dem Gerät. | Wunsch 08.11.2026 |
 | ✅ | **Panda-Design** | Neues Aussehen nach dem Entwurf von Codex auf allen Seiten und am Mac: warmes Papier, Waldgrün, Apricot, Karten. Schriftzug und Überschriften in Shojumaru. Der Panda heißt Bo („Frag Bo, deinen Coach“) und bewegt sich ruhig auf Heute und im Chat (eigener Canvas-Player, zehn Gesten, kein Rive zur Laufzeit). Plan: `docs/archive/plans/2026-11-08-pandafit-redesign.md`. | Wunsch 08.11.2026 |
 | ✅ | **Fundament** | Die App ist leichter zu warten und zu erweitern: ein Weg für sicheres Schreiben, Prüfung aller Eingaben, lokale Verbindungen nur mit Token, klare Modulgrenzen (Test), aufgeteilte Gottdateien, eine Datenschicht in der Web-App, gemeinsame Design-Tokens, ESLint und mehr CI. Für Nutzer fühlt sich nichts anders an. Plan: `docs/archive/plans/2026-11-09-fundament-technical-debt.md`. | Architektur-Audit 09.11.2026 |
+| ⬜ | **Dojo 1 Fundament** | Die Web-App sieht überall nach „Abend im Dojo“ aus: Zen Kaku Gothic New, Bambus scrollt mit, Tabs mit verspielten Icons (Heute, Woche, Kraft, Essen, Ausdauer), Profil als Panda-Knopf, Bo heißt überall Sensei. | Panda-Design (Aussehen) |
+| ⬜ | **Dojo 2 Heute, Woche, Sensei** | Heute und Woche geben sofort Orientierung (erledigt, heute, kommt noch); Bo sitzt im Bambusnest; Gesundheit steht sichtbar auf der Woche und hat eine eigene Seite; das Gespräch mit dem Sensei ist ein ruhiger Chat. | Woche-Seite, Rückblick-Gesundheit |
+| ⬜ | **Dojo 3 Kraft und Ausdauer** | Kraft zeigt das nächste Training als Hauptkarte, das laufende Training den nächsten Satz groß; Ausdauer schaltet Rad und Laufen oben um. | Kraft-Umschalter Training/Routinen/Übungen |
+| ⬜ | **Dojo 4 Essen und Profil** | Essen zeigt die nächste Mahlzeit groß und die Woche ruhig; ein Rezept trägt man auf der Seite in den Plan ein; Profil ist nur noch Einstellungen. | Tage/Einkauf-Umschalter, „In den Plan“-Sheet |
+| ⬜ | **Dojo 5 Bos Orte und Logo** | Hinter jeder Pose von Bo steht seine Szene; das App-Logo zeigt Bo als Teetrinker, im Dock, auf dem Handy und als Favicon. | Altes Logo (Panda und Maus auf dem Rad) |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -79,6 +84,42 @@ Die Briefs der fertigen Meilensteine stehen in [`docs/archive/milestone-briefs.m
 
 Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht nach „eine Beinübung = hart“ (`src/coach/day-load.ts`). Die 48-Stunden-Beinsperre (`LEG_WINDOW_MS` in `src/coach/gym/history.ts`) greift nur nach echter Beinbelastung. „Zwei harte Tage“, „sechs Tage ohne Pause“ und die 18-Uhr-Regel werden dagegen geprüft. Die 48-Stunden-Regel nach einer harten Radfahrt bleibt. Hintergrund: Bei gleichem Wochenumfang bringt höhere Frequenz keinen klaren Vorteil; Muskelkater ist kein Wachstumsmaß; Versagen ist optional. Passt zu den Parkplatz-Punkten aus F („nur Beine“) und O (harte Fahrt und müde Beine).
 
+
+## Dojo — Briefs
+
+Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`superpowers/plans/2026-11-09-dojo-1-fundament.md`](superpowers/plans/2026-11-09-dojo-1-fundament.md). Die Pläne für Dojo 2–5 entstehen jeweils nach Abnahme des vorigen.
+
+**Dojo 1 Fundament.** Ziel: Das neue Aussehen steckt in Tokens und Bausteinen, bevor ein Screen umgebaut wird.
+- Jede Seite der Web-App hat den Dojo-Hintergrund mit Bambus, der beim Scrollen mitwächst, hell und dunkel.
+- Fließtext und Knöpfe stehen in Zen Kaku Gothic New, auch ohne Netz (selbst gehostet).
+- Die Tab-Leiste zeigt Heute, Woche, Kraft, Essen, Ausdauer mit Icons; Profil ist ein runder Panda-Knopf oben rechts.
+- Nirgends in der Web-App steht „Coach“; Bo heißt Sensei („Frag Bo, deinen Sensei“).
+- Bausteine Karte, Kicker, Pinseltitel, Hauptknopf, Bo-Sprechblase gibt es einmal und werden von den Screens benutzt.
+Fällt weg: die Textlabels ohne Icon in der Tab-Leiste. Nicht dabei: Umbau einzelner Screens, Mac-App.
+
+**Dojo 2 Heute, Woche, Sensei.** Ziel: Die zwei meistgenutzten Seiten sind nicht mehr überladen und geben Orientierung.
+- Heute: Wochenweg oben, Bo im Bambusnest mit Sprechblase und „Frag Bo, deinen Sensei“, eine Hauptkarte „Jetzt dran“, darunter nur Essen und Morgen.
+- Woche: eine Karte Erledigt / Heute / Kommt noch, das Ziel in einem Satz, Details erst beim Tippen auf einen Tag.
+- Gesundheit: Karte auf der Woche (ein Satz, Ruhepuls, Fitness, Bewegung als Wörter) und eigene Seite; Schlaf/HRV nur als Hinweis ohne Daten.
+- Sensei: Chat mit Sprechblasen, Bos Wochenvorschlag mit „Übernehmen“ und „Nein danke“ direkt in der Blase.
+Fällt weg: Gesundheit im Rückblick-Sheet. Nicht dabei: neue Coach-Funktionen.
+
+**Dojo 3 Kraft und Ausdauer.** Ziel: Vor und während des Trainings ist klar, was jetzt dran ist.
+- Kraft: nächstes Training als Hauptkarte, Studio und „Anderes Training“ als ruhige Knöpfe, Routinen und Übungen als zwei Kacheln.
+- Laufendes Training: nächster Satz groß mit „Satz geschafft“, Pause schmal, weitere Übungen ruhig darunter; Tab-Leiste ausgeblendet.
+- Ausdauer: Rad/Laufen-Umschalter oben, nächste Einheit als Hauptkarte, Entwicklung als ein Satz.
+Fällt weg: Umschalter Training/Routinen/Übungen. Nicht dabei: Änderungen an Progression oder Planung.
+
+**Dojo 4 Essen und Profil.** Ziel: Essen macht Lust, Profil ist aufgeräumt.
+- Essen: nächste Mahlzeit groß mit Bild nach Mahlzeit-Typ, die übrigen Mahlzeiten des Tages klein, die Woche als ruhige Liste, Rezepte und Einkauf als zwei Kacheln, „Plan ändern“ über Bos Sprechblase.
+- Rezept: „In den Plan“ als Karte auf der Seite mit vorgewähltem Tag.
+- Profil: Kopfkarte und vier Gruppen (Planen, Verbindungen, Nachrichten, Darstellung), keine Gesundheit.
+Fällt weg: Tage/Einkauf-Umschalter, „In den Plan“-Sheet. Nicht dabei: neue Rezeptfunktionen.
+
+**Dojo 5 Bos Orte und Logo.** Ziel: Bo hat zu jeder Pose seinen Ort, und die App erkennt man am Logo.
+- Jede Pose aus `dayClip` erscheint mit ihrer Szene aus `DESIGN.md` (Tabelle „Bos Orte“), auch bei reduzierter Bewegung als Standbild.
+- Neues Logo „Bo als Teetrinker“: zuerst zwei bis drei Entwürfe im Moodboard, nach Abnahme als `resources/icon.svg`, Mac-Icon, PWA-Icons und Favicon.
+Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 
 ## Parkplatz
 - Anpassungen am nächsten Training liegen nur auf dem Gerät; eine Übernahme zwischen Geräten wäre ein eigener Record. Ein Vorschlag, der zwischen Anpassen und Start übernommen wird, fehlt im Entwurf.
