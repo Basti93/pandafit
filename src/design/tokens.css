@@ -2,11 +2,22 @@
    Colours are named by role. The Mac app always sets data-theme="dark" on <html>.
    A token on :root without a light value carries "shared" on its line: it is the same in both schemes. */
 @font-face { font-family: 'Shojumaru'; src: url('/brand/shojumaru.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Zen Kaku Gothic New'; src: url('/brand/zen-kaku-gothic-new-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Zen Kaku Gothic New'; src: url('/brand/zen-kaku-gothic-new-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Zen Kaku Gothic New'; src: url('/brand/zen-kaku-gothic-new-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
 :root {
   color-scheme: dark light;
 
   /* Surfaces, text and lines */
-  --bg: #1c2820;
+  --bg: #18231b;
+  --bg-top: #2a3d2e;
+  --card-soft: rgba(245, 236, 216, .06);
+  --kicker: #f2bd55;
+  --brush: #f2bd55;
+  --glow: rgba(239, 171, 118, .38);
+  --bamboo-tile: url('/brand/bamboo-tile-dark.svg');
+  --bamboo-shoot: url('/brand/bamboo-shoot-dark.svg');
+  --page-bg: radial-gradient(120% 600px at 50% 0, var(--bg-top), transparent) no-repeat, var(--bg); /* shared */
   --text: #f5ecd8;
   --ink: #302417; /* shared */
   --field: #17211a;
@@ -81,10 +92,12 @@
 
   /* Type: the display face is only for the wordmark, Panda's name and short headings; numbers and data keep the UI face. */
   --font-ui: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-text: 'Zen Kaku Gothic New', var(--font-ui);
   --font-display: 'Shojumaru', var(--font-ui);
+  --font-data: var(--font-ui); /* shared: numbers in cockpit views keep the UI face */
 
   /* Sizes */
-  --web-nav-h: 3.6rem;
+  --web-nav-h: 4.1rem; /* tab bar: 56 px button (icon + label) + 2 x .3rem padding; web.css derives the button from this */
   --space-1: .25rem;
   --space-2: .5rem;
   --space-3: .75rem;
@@ -92,7 +105,9 @@
   --radius-s: .5rem;
   --radius-xs: .6rem;
   --radius-m: .8rem;
-  --radius-card: 1.1rem;
+  --radius-card: 1.125rem;
+  --radius-button: .75rem; /* shared */
+  --content-max: 640px; /* shared */
   --radius-pill: 999px;
   --radius-round: 50%;
   /* Type scale. Larger display numbers (hero values, rides cockpit) are sized where they are used. */
@@ -110,6 +125,13 @@
 @media (prefers-color-scheme: light) {
   :root {
     --bg: #fbf8ef;
+    --bg-top: #fffaf0;
+    --bamboo-tile: url('/brand/bamboo-tile-light.svg');
+    --bamboo-shoot: url('/brand/bamboo-shoot-light.svg');
+    --card-soft: rgba(34, 55, 43, .05);
+    --kicker: #9a6a00;
+    --brush: #e0a83a;
+    --glow: rgba(239, 171, 118, .30);
     --text: #22372b;
     --field: #ffffff;
     --card: #f1ecd9;

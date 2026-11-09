@@ -47,8 +47,8 @@ describe('Gestern', () => {
     await waitFor(() => expect(card.textContent).toContain('Rad 45 Min'));
     expect(card.textContent).not.toContain('Min · ');
     expect(card.textContent!.match(/45 Min/g)).toHaveLength(1);
-    expect(screen.queryByLabelText('Satz vom Coach')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Frag Bo, deinen Coach' })).toBeNull();
+    expect(screen.queryByLabelText('Satz von Bo')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Frag Bo, deinen Sensei' })).toBeNull();
     expect(screen.queryByText('Dein Körper')).toBeNull();
     expect(screen.queryByRole('button', { name: /Gemeinsam/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Zum Krafttraining' })).toBeNull();
@@ -104,8 +104,8 @@ describe('Morgen', () => {
     expect(card.textContent).toContain('Rad');
     expect(screen.queryByRole('button', { name: /starten|Weitermachen|Zum Krafttraining/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Etwas anderes heute?' })).toBeNull();
-    expect(screen.queryByLabelText('Satz vom Coach')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Frag Bo, deinen Coach' })).toBeNull();
+    expect(screen.queryByLabelText('Satz von Bo')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Frag Bo, deinen Sensei' })).toBeNull();
   });
   it('says calmly that nothing is planned yet without a plan', async () => {
     await boot([]);

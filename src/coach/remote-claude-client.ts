@@ -7,11 +7,11 @@ export const remoteTimeoutMs = (timeoutMs: number | undefined): number => (timeo
 
 const KINDS: Record<string, [ClaudeErrorKind, string]> = {
   plan_limit: ['limit', 'Das Plan-Limit ist erreicht.'],
-  client_limit: ['failed', 'Tageslimit des Coaches im KI-Dienst erreicht.'],
+  client_limit: ['failed', 'Tageslimit von Bo im KI-Dienst erreicht.'],
   busy: ['timeout', 'Der KI-Dienst ist gerade belegt.'],
   timeout: ['timeout', 'claude hat nicht rechtzeitig geantwortet.'],
   invalid: ['invalid', 'Claude lieferte keine gültigen Daten.'],
-  unauthorized: ['failed', 'Der KI-Dienst kennt das Token des Coaches nicht.'],
+  unauthorized: ['failed', 'Der KI-Dienst kennt das Token von Bo nicht.'],
 };
 
 /** A reset time as the service may give it: epoch seconds or milliseconds, or an ISO date. */

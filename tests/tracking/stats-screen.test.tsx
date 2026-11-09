@@ -81,7 +81,7 @@ test('Zeit pro Woche opens the chart with bars and dates only, the sport minutes
 test('without a stats record: the note, and still the muscle part', async () => {
   const { container } = await show(workouts);
   const time = openDetails();
-  expect(within(time).getByText('Minuten und harte Tage erscheinen nach dem nächsten Lauf des Coaches.')).toBeTruthy();
+  expect(within(time).getByText('Minuten und harte Tage erscheinen nach dem nächsten Lauf von Bo.')).toBeTruthy();
   expect(within(time).queryByText(/^Stand:/)).toBeNull();
   fireEvent.click(within(time).getByRole('button', { name: 'Schließen' }));
   const muscles = openMuscles();

@@ -57,24 +57,24 @@ describe('Heute as a day page', () => {
     const page = coach.closest('.tk-daypage')!;
     expect(page.lastElementChild!.contains(tg)).toBe(true);
   });
-  it('"Frag Bo, deinen Coach" on Heute opens the real coach composer', async () => {
+  it('"Frag Bo, deinen Sensei" on Heute opens the real coach composer', async () => {
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW })]);
-    const card = screen.getByLabelText('Satz vom Coach');
+    const card = screen.getByLabelText('Satz von Bo');
     expect(card.textContent).toContain('Bo');
-    expect(card.textContent).toContain('Dein Coach');
+    expect(card.textContent).toContain('Sensei');
     expect(card.querySelector('img')?.getAttribute('alt')).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Coach' }));
-    expect(await screen.findByLabelText('Nachricht an den Coach')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensei' }));
+    expect(await screen.findByLabelText('Nachricht an Bo')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 1, name: 'Heute' })).toBeNull();
     // The same chat sheet as the "Coach" row on Woche: one dialog named Coach that holds the composer.
-    expect(within(screen.getByRole('dialog', { name: 'Bo, dein Coach' })).getByLabelText('Nachricht an den Coach')).toBeTruthy();
+    expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensei' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
   });
   it('an open synced workout comes first: "Weitermachen" opens it, no "Ansehen und anpassen", Panda stays below', async () => {
     const open = rec('workout', 'w-open', { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] });
     await boot([open]);
     const go = await screen.findByRole('button', { name: 'Weitermachen' });
     expect(screen.queryByRole('button', { name: 'Ansehen und anpassen' })).toBeNull();
-    expect(before(go, screen.getByLabelText('Satz vom Coach'))).toBe(true);
+    expect(before(go, screen.getByLabelText('Satz von Bo'))).toBe(true);
     expect(go.closest('.tk-daypage')!.querySelector('section')!.contains(go)).toBe(true);
     fireEvent.click(go);
     expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();
@@ -82,7 +82,7 @@ describe('Heute as a day page', () => {
   it("a daytext of yesterday shows a saying", async () => {
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-03', text: 'Gestriger Satz.', atMs: NOW - DAY })]);
     expect(screen.queryByText('Gestriger Satz.')).toBeNull();
-    const card = screen.getByLabelText('Satz vom Coach');
+    const card = screen.getByLabelText('Satz von Bo');
     expect(SAYINGS).toContain(card.querySelector('p')!.textContent);
   });
   it('the arrows go to Morgen and Gestern and are disabled at the ends', async () => {
@@ -97,14 +97,14 @@ describe('Heute as a day page', () => {
   });
   it('a swipe to the left goes on one day, and does nothing from inside a field', async () => {
     await boot([]);
-    const root = screen.getByLabelText('Satz vom Coach').parentElement!;
+    const root = screen.getByLabelText('Satz von Bo').parentElement!;
     fireEvent.pointerDown(root, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
     fireEvent.pointerUp(root, { clientX: 100, clientY: 105, isPrimary: true, pointerType: 'touch' });
     expect(screen.getByRole('heading', { level: 1, name: 'Morgen' })).toBeTruthy();
   });
   it('a swipe from inside a field or a dialog does not change the day', async () => {
     await boot([]);
-    const page = screen.getByLabelText('Satz vom Coach').parentElement!;
+    const page = screen.getByLabelText('Satz von Bo').parentElement!;
     const input = document.createElement('input'); page.appendChild(input);
     fireEvent.pointerDown(input, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
     fireEvent.pointerUp(input, { clientX: 100, clientY: 100, isPrimary: true, pointerType: 'touch' });
@@ -115,14 +115,14 @@ describe('Heute as a day page', () => {
   });
   it('a mouse drag does not change the day', async () => {
     await boot([]);
-    const page = screen.getByLabelText('Satz vom Coach').parentElement!;
+    const page = screen.getByLabelText('Satz von Bo').parentElement!;
     fireEvent.pointerDown(page, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'mouse' });
     fireEvent.pointerUp(page, { clientX: 100, clientY: 100, isPrimary: true, pointerType: 'mouse' });
     expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
   });
   it('a short swipe does not change the day', async () => {
     await boot([]);
-    const page = screen.getByLabelText('Satz vom Coach').parentElement!;
+    const page = screen.getByLabelText('Satz von Bo').parentElement!;
     fireEvent.pointerDown(page, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
     fireEvent.pointerUp(page, { clientX: 160, clientY: 100, isPrimary: true, pointerType: 'touch' });
     expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
@@ -153,7 +153,7 @@ describe('Heute as a day page', () => {
     expect(toCoach.className).toBe('secondary'); // a jump is an outline button, not a text link
     fireEvent.click(toCoach);
     // Straight into the chat, not only onto the week page.
-    expect(await screen.findByRole('dialog', { name: 'Bo, dein Coach' })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensei' })).toBeTruthy();
   });
   it('without a health record there is no Dein Körper', async () => {
     await boot([]);

@@ -861,7 +861,7 @@ describe('Zuletzt geändert on the week page', () => {
     const { port } = fakePort([stats([1, 2, 3].map((i) => note(i)))]);
     render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
     const line = await screen.findByText(/Zuletzt geändert: Bankdrücken 3/);
-    expect(line.closest('button')!.textContent).toMatch(/^Coach/);
+    expect(line.closest('button')!.textContent).toMatch(/^Bo/);
     expect(line.textContent).toContain(', weil du');
   });
   it('without notes the Coach row has no such line', async () => {
@@ -927,7 +927,7 @@ describe('Zuletzt geändert in the chat', () => {
     const { port } = fakePort([stats]);
     render(<CoachScreen port={port} now={() => at(8)} newId={() => 'x'} />);
     expect((await screen.findByText(/Zuletzt geändert: Bankdrücken 7/)).textContent).toContain(', Grund 7');
-    fireEvent.click(screen.getByRole('button', { name: /^Coach/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Bo/ }));
     fireEvent.click(await screen.findByRole('button', { name: /^Zuletzt geändert/ }));
     const lines = within(screen.getByRole('list', { name: 'Zuletzt geändert' })).getAllByRole('listitem');
     expect(lines).toHaveLength(5);

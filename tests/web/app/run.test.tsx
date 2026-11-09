@@ -42,7 +42,7 @@ describe('Laufen on the phone', () => {
     // The switch is on, the coach has not answered yet: the tab is there and says what comes.
     await boot({ account: 'anna', seed: [settings(true)] });
     fireEvent.click(await screen.findByRole('button', { name: 'Ausdauer' }));
-    expect(await screen.findByText('Laufen ist an. Dein Laufplan erscheint hier, sobald der Coach ihn angelegt hat.')).toBeTruthy();
+    expect(await screen.findByText('Laufen ist an. Dein Laufplan erscheint hier, sobald Bo ihn angelegt hat.')).toBeTruthy();
   });
 
   it('switching "Laufen planen" on in Profil shows Ausdauer at once', async () => {

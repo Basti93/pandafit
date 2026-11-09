@@ -37,8 +37,8 @@ const TAG_MAX = 40;
 const TRAINING_WINDOW_DAYS = 28;
 const TRAINING_MIN_SESSIONS = 2;
 
-export const NOTICE_NO_AI = 'Der Coach war gerade nicht erreichbar. Der Plan kommt aus Pandafits Rezeptliste.';
-const noticeReplaced = (n: number) => (n === 1 ? 'Ein Gericht vom Coach passte nicht zu allen Angaben und kommt aus der Rezeptliste.' : `${n} Gerichte vom Coach passten nicht zu allen Angaben und kommen aus der Rezeptliste.`);
+export const NOTICE_NO_AI = 'Bo war gerade nicht erreichbar. Der Plan kommt aus Pandafits Rezeptliste.';
+const noticeReplaced = (n: number) => (n === 1 ? 'Ein Gericht von Bo passte nicht zu allen Angaben und kommt aus der Rezeptliste.' : `${n} Gerichte von Bo passten nicht zu allen Angaben und kommen aus der Rezeptliste.`);
 
 type Ask = (input: { prompt: string; systemPrompt: string; schema: object; timeoutMs?: number }) => Promise<unknown>;
 type Deps = {

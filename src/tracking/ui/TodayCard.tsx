@@ -50,7 +50,7 @@ function Other({ a, date }: { a?: Advice; date: string }) {
       <button type="button" className="secondary tk-other" aria-haspopup="dialog" onClick={() => setOpen(true)}>Etwas anderes heute?</button>
       {open && (
         <Sheet size="small" title="Etwas anderes heute?" onClose={() => setOpen(false)}>
-          <p className="muted">Der Coach schlägt dir dann etwas für diese Zeit vor.</p>
+          <p className="muted">Bo schlägt dir dann etwas für diese Zeit vor.</p>
           <TodayOnly frame={a.frame} date={date} onChange={(m) => { setOpen(false); void a.setToday(m).catch(() => {}); }} />
         </Sheet>
       )}

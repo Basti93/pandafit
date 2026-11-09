@@ -36,7 +36,7 @@ describe('week chat', () => {
     const { port } = fakePort([msg('a', 'rider', 'Alt', at(5, 8, 30)), msg('b', 'coach', 'Gestern Antwort', at(1, 19, 45)), msg('c', 'rider', 'Heute Frage', at(0, 13, 7))]);
     render(<CoachScreen port={port} {...env} />);
     await openChat();
-    const chat = within(await screen.findByRole('region', { name: 'Unterhaltung mit dem Coach' }));
+    const chat = within(await screen.findByRole('region', { name: 'Unterhaltung mit Bo' }));
     await chat.findByText('Heute Frage');
     expect(chat.getAllByRole('separator').map((e) => e.textContent)).toEqual([dayHeading(at(5, 8), NOW), 'Gestern', 'Heute']);
     expect(chat.getByText('08:30')).toBeTruthy();
@@ -49,7 +49,7 @@ describe('week chat', () => {
     const { port } = fakePort(rows);
     render(<CoachScreen port={port} {...env} />);
     await openChat();
-    const chat = within(await screen.findByRole('region', { name: 'Unterhaltung mit dem Coach' }));
+    const chat = within(await screen.findByRole('region', { name: 'Unterhaltung mit Bo' }));
     await chat.findByText('Nachricht 74');
     expect(chat.getAllByText(/^Nachricht \d+$/)).toHaveLength(30);
     expect(chat.queryByText('Nachricht 44')).toBeNull();
@@ -68,7 +68,7 @@ describe('forwarded requests on the week page', () => {
   it('lists open tasks with the coach and the end, removes with a tombstone, hides expired ones', async () => {
     const { port, map } = fakePort([rec('chat', 'gym', 'Nur eine Trizepsübung', false, NOW - DAY), rec('bike', 'run', 'Beine schonen', true, NOW - 2 * DAY), rec('chat', 'gym', 'Uralt', false, NOW - 29 * DAY)]);
     render(<CoachScreen port={port} {...env} />);
-    fireEvent.click(await screen.findByRole('button', { name: /^Was der Coach beachtet/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Was Bo beachtet/ }));
     const list = within(await screen.findByRole('list', { name: 'Regeln' }));
     const row = (re: RegExp) => list.getByRole('button', { name: re });
     expect(row(/Nur eine Trizepsübung/).textContent).toContain('Kraft · aktiv');

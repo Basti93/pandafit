@@ -26,7 +26,7 @@ export function GymOutlook({ outlook }: { outlook: Outlook | null | undefined })
           ))}
         </ul>
       )}
-      <p className="muted">Das ist eine Skizze. Der Coach plant jedes Training neu, mit dem, was wirklich passiert ist.</p>
+      <p className="muted">Das ist eine Skizze. Bo plant jedes Training neu, mit dem, was wirklich passiert ist.</p>
     </section>
   );
 }

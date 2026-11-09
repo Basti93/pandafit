@@ -56,7 +56,7 @@ export function CatalogScreen({ port, now = Date.now, newId = () => crypto.rando
         {fam !== 'other' && <p className="muted tk-family">Gleiche Übungsart: {familyLabel(fam)}</p>}
         {isOut ? (
           <>
-            <p className="muted">Der Coach schlägt sie nicht mehr vor. Du kannst das unter Woche &gt; Regeln zurücknehmen.</p>
+            <p className="muted">Bo schlägt sie nicht mehr vor. Du kannst das unter Woche &gt; Regeln zurücknehmen.</p>
             {fromChat.length > 0 && <p className="muted tk-note">Ausgeschlossen durch die Regel „{fromChat[0].text}“. Du findest sie unter Woche.</p>}
             {own.length > 0 && <div className="tk-cat-actions"><button type="button" className="secondary" onClick={() => void allow(e)}>Wieder erlauben</button></div>}
           </>

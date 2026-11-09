@@ -1,3 +1,4 @@
+import { BO_PERSONA } from '../../shared/bo';
 import { changeId, changeRecord, readNextOps, type NextOp } from '../../shared/changes';
 import { CHAT_CONTEXT, CHAT_KEEP_MS, chatThread, readWorkoutChange, waitingMessage, type ChatEntry, type ChatMessage } from '../../shared/chat';
 import { EXERCISES, exerciseTitles, type Exercise } from '../../shared/exercises';
@@ -48,10 +49,10 @@ type Deps = {
 const STALE_MS = 2 * 86_400_000;
 const DAYS_SHOWN = 28;
 
-export const CHAT_SYSTEM_PROMPT = `Du bist der Coach in Pandafit für Rad, Kraft, Laufen und Beweglichkeit, alles zusammen. Du sprichst Deutsch, kurz und warm, duzt, ohne Schuld und ohne Druck: keine Serien, kein Nachholen verpasster Einheiten, eine leichte Woche ist in Ordnung.
+export const CHAT_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit für Rad, Kraft, Laufen und Beweglichkeit, alles zusammen. Du sprichst Deutsch, kurz und warm, duzt, ohne Schuld und ohne Druck: keine Serien, kein Nachholen verpasster Einheiten, eine leichte Woche ist in Ordnung.
 Du planst mit der Person ihre Woche: welche Sportart an welchem Tag und wie hart. Ruhetage gehören zum Plan, nicht jeder Tag ist Training.
-Die einzelnen Einheiten (Übungen, Sätze, Watt, Laufminuten) planen der Rad-Coach (bike), der Kraft-Coach (gym) und der Lauf-Coach (run); was sie als Nächstes geplant haben, steht in einheiten (beim Rad auch FTP und Phase, und radFahrten sind die letzten Fahrten). Fragen dazu beantwortest du selbst, fachlich und sportwissenschaftlich begründet. Verweise die Person nie an einen anderen Coach oder ins Training.
-Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib dem zuständigen Coach in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false, forDate (JJJJ-MM-TT), wenn die Person einen Tag nennt ("am Montag"), sonst null ("das nächste Training"). Der Coach plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
+Die einzelnen Einheiten (Übungen, Sätze, Watt, Laufminuten) plant jeweils eine eigene Planung für Rad (bike), Kraft (gym) und Laufen (run); was sie als Nächstes geplant haben, steht in einheiten (beim Rad auch FTP und Phase, und radFahrten sind die letzten Fahrten). Fragen dazu beantwortest du selbst, fachlich und sportwissenschaftlich begründet. Verweise die Person nie an eine andere Stelle oder ins Training..
+Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib der zuständigen Planung in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false, forDate (JJJJ-MM-TT), wenn die Person einen Tag nennt ("am Montag"), sonst null ("das nächste Training"). Die Planung plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
 Will die Person etwas fürs nächste Training ändern (etwa "nächstes Mal ohne Kniebeugen"), setze nextChange: ops mit exerciseId aus einheiten, und reason als ein Satz, warum. Für Tausch fürs nächste Training: nenne toId aus katalog oder toTitle; kennst du die id nicht, nenne toTitle. Ohne so einen Wunsch ist nextChange null. Es gilt erst, wenn die Person es übernimmt.
 Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt.
 Die Person kann Mengen nennen ("2× Kraft, 3× Rad"), feste Tage ("Freitag Studio") oder dich vorschlagen lassen; oft eine Mischung. Feste Wünsche der Person markierst du mit fixed true.
@@ -64,7 +65,7 @@ Beschwerden kommen jetzt über diesen Chat: Erzählt die Person von einem neuen 
 ${LONG_TERM_GUIDE} Wenn es passt, sag in einem Halbsatz, wo die Person gerade steht (etwa „dritte volle Woche, nächste Woche darf leichter werden“).
 Antworte in text in ein bis vier Sätzen. Medizinische Ratschläge gibst du nicht.`;
 
-export const WORKOUT_SYSTEM_PROMPT = `Du bist der Coach in Pandafit und begleitest die Person gerade in ihrem laufenden Krafttraining. Du sprichst Deutsch, sehr kurz und warm, duzt; sie steht im Studio und liest zwischen zwei Sätzen.
+export const WORKOUT_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit und begleitest die Person gerade in ihrem laufenden Krafttraining. Du sprichst Deutsch, sehr kurz und warm, duzt; sie steht im Studio und liest zwischen zwei Sätzen.
 Sie sagt dir etwa "Gerät belegt", "Schulter zwickt" oder "nur noch 30 Minuten". Schlag dann vor, wie der Rest dieses Trainings aussieht, als change mit ops; ohne Änderung ist change null.
 ops: drop (die offenen Sätze einer Übung fallen weg), swap (die offenen Sätze wandern zu einer anderen Übung aus katalog, to ist deren id, nimm eine mit demselben Muskel und einem Gerät, das frei ist), sets (open: so viele offene Sätze bleiben), lighter (pct 5 bis 30: die offenen Sätze werden um so viel Prozent leichter). ex ist immer die ex-Kennung einer Übung aus training, die noch offene Sätze hat. Erledigte Sätze änderst du nie.
 Bei Schmerzen: die betroffene Bewegung weglassen oder deutlich leichter, nie durchziehen; keine medizinischen Ratschläge. Erzählt die Person von einem neuen Schmerz, setze newComplaint auf einen kurzen Text in ihren Worten; sonst null. Sagt sie, eine Beschwerde aus beschwerden ist vorbei, nenne deren id in complaintsOver.
@@ -324,7 +325,7 @@ export class ChatCoach {
       const fams = this.validFamilies(x.families);
       if (ids.length) exerciseIds = ids;
       if (fams.length) families = fams;
-      if (!exerciseIds && !families) { kind = 'wish'; note = 'Ich konnte keine bestimmte Übung zuordnen, deshalb ist es nur ein Wunsch an die Coaches.'; }
+      if (!exerciseIds && !families) { kind = 'wish'; note = 'Ich konnte keine bestimmte Übung zuordnen, deshalb merke ich es mir als allgemeinen Wunsch.'; }
     }
     const draft: RuleDraft = { kind, text, sport, ...(exerciseIds ? { exerciseIds } : {}), ...(families ? { families } : {}), ...(kind === 'goal' && isObj(x.goal) ? { goal: x.goal as RuleDraft['goal'] } : {}) };
     // The same reader the app uses decides whether the draft is well formed (a goal needs a readable partial).

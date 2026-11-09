@@ -160,7 +160,7 @@ describe('Rezepte on the phone', () => {
     expect(screen.getByText(/Tauscht Skyr mit Beeren aus/)).toBeTruthy();
     expect(screen.getByText(/isst mit: Max, Lena/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Eintragen' }));
-    expect(await screen.findByText('Der Coach trägt es gleich ein.')).toBeTruthy();
+    expect(await screen.findByText('Bo trägt es gleich ein.')).toBeTruthy();
     const sent = await records(a, 'place-');
     expect(sent).toHaveLength(1);
     expect(sent[0]!.body).toMatchObject({ week, meal: `${today}-fruehstueck`, recipeId: RID(1), result: null });

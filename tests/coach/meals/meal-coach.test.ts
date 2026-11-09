@@ -99,7 +99,7 @@ describe('the AI answer is checked dish by dish', () => {
     for (const k of ['0-mittag', '1-abend', '2-abend', '3-abend']) expect(by(k).dish.source, k).toBe('liste');
     expect(by('4-abend').dish).toMatchObject({ source: 'coach', title: 'Gericht 4 abend' });
     expect(w.plan.source).toBe('gemischt');
-    expect(w.notice).toBe('4 Gerichte vom Coach passten nicht zu allen Angaben und kommen aus der Rezeptliste.');
+    expect(w.notice).toBe('4 Gerichte von Bo passten nicht zu allen Angaben und kommen aus der Rezeptliste.');
     for (const m of w.plan.meals) expect(JSON.stringify(m.dish).toLowerCase()).not.toMatch(/koriander|hähnchen|kcal/);
   });
 

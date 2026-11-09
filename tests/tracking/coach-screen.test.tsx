@@ -19,10 +19,10 @@ test('Woche shows the week and the rows Mein Ziel, Regeln and Coach; the old for
   const { port } = fakePort([riderMsg, coachMsg, { kind: 'weekplan', id: '2026-11-02', updatedMs: 1, deleted: false, body: { ...proposal, fromMessage: 'c1', acceptedMs: 1 } }]);
   render(<CoachScreen port={port} {...env} />);
   expect(await screen.findByRole('list', { name: 'Wochenplan diese Woche' })).toBeTruthy();
-  for (const name of [/^Ziel und Planung/, /^Was der Coach beachtet/, /^Coach/]) expect(screen.getByRole('button', { name })).toBeTruthy();
+  for (const name of [/^Ziel und Planung/, /^Was Bo beachtet/, /^Bo/]) expect(screen.getByRole('button', { name })).toBeTruthy();
   expect(screen.getByRole('button', { name: /^Ziel und Planung/ }).textContent).toContain('Muskeln aufbauen');
-  expect(screen.getByRole('button', { name: /^Was der Coach beachtet/ }).textContent).toContain('nichts');
-  expect(screen.queryByLabelText('Nachricht an den Coach')).toBeNull();
+  expect(screen.getByRole('button', { name: /^Was Bo beachtet/ }).textContent).toContain('nichts');
+  expect(screen.queryByLabelText('Nachricht an Bo')).toBeNull();
   expect(screen.queryByLabelText('Neue Regel')).toBeNull();
   expect(screen.queryByLabelText('Planung')).toBeNull();
 });
@@ -30,11 +30,11 @@ test('Woche shows the week and the rows Mein Ziel, Regeln and Coach; the old for
 test('the Coach row previews the last message and shows no second "waiting" while the card does', async () => {
   const { port } = fakePort([riderMsg, { ...coachMsg, body: { ...(coachMsg.body as object), proposal: undefined, text: 'Alles klar.' } }]);
   render(<CoachScreen port={port} {...env} />);
-  expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).toContain('Alles klar.');
+  expect((await screen.findByRole('button', { name: /^Bo/ })).textContent).toContain('Alles klar.');
   cleanup();
   const waiting = fakePort([riderMsg, coachMsg]);
   render(<CoachScreen port={waiting.port} {...env} />);
-  expect((await screen.findByRole('button', { name: /^Coach/ })).textContent).not.toContain('Ein Vorschlag wartet auf dich');
+  expect((await screen.findByRole('button', { name: /^Bo/ })).textContent).not.toContain('Ein Vorschlag wartet auf dich');
   expect(screen.getAllByText('Ein Vorschlag wartet auf dich')).toHaveLength(1);
 });
 
@@ -42,7 +42,7 @@ test('the chat opens as a sheet with the input in it, and closes on × and on Es
   const { port } = fakePort([riderMsg]);
   render(<CoachScreen port={port} {...env} />);
   const chat = await openChat();
-  expect(within(chat).getByLabelText('Nachricht an den Coach')).toBeTruthy();
+  expect(within(chat).getByLabelText('Nachricht an Bo')).toBeTruthy();
   fireEvent.click(within(chat).getByRole('button', { name: 'Schließen' }));
   expect(screen.queryByRole('dialog')).toBeNull();
   await openChat();
@@ -82,10 +82,10 @@ test('sends a message and shows that the coach is thinking', async () => {
   render(<CoachScreen port={port} {...env} />);
   expect(await screen.findByText(/Es gibt noch keinen Wochenplan/)).toBeTruthy();
   await openChat();
-  fireEvent.change(screen.getByLabelText('Nachricht an den Coach'), { target: { value: '  3× Rad bitte ' } });
+  fireEvent.change(screen.getByLabelText('Nachricht an Bo'), { target: { value: '  3× Rad bitte ' } });
   fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
   await waitFor(() => expect(records(map, 'chat').map((r) => r.body)).toEqual([{ role: 'rider', text: '3× Rad bitte', atMs: NOW }]));
-  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Gesendet. Der Coach antwortet, sobald er kann.');
+  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Gesendet. Bo antwortet, sobald er kann.');
 });
 
 test('taking a proposal writes the week plan and shows it; then it cannot be taken twice', async () => {
@@ -145,7 +145,7 @@ test('without a week plan: one "Woche planen" button, no empty day list, no seco
   render(<CoachScreen port={port} {...env} />);
   expect(await screen.findByRole('button', { name: 'Woche planen' })).toBeTruthy();
   expect(screen.queryByRole('list', { name: 'Wochenplan diese Woche' })).toBeNull();
-  expect(screen.queryByRole('button', { name: /^Coach/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Bo/ })).toBeNull();
   expect(screen.getByRole('button', { name: /^Ziel und Planung/ }).textContent).toContain('Vorschlag: Muskeln aufbauen');
   await openChat();
 });
@@ -155,7 +155,7 @@ test('a waiting proposal gets a card under the week with Ansehen, which opens th
   render(<CoachScreen port={port} {...env} />);
   const card = await screen.findByRole('region', { name: 'Ein Vorschlag wartet auf dich' });
   fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));
-  expect(await screen.findByRole('dialog', { name: 'Bo, dein Coach' })).toBeTruthy();
+  expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensei' })).toBeTruthy();
 });
 
 test('Escape in the proposal sheet closes only that sheet: the chat and its composer stay open and no plan changes', async () => {
@@ -165,6 +165,6 @@ test('Escape in the proposal sheet closes only that sheet: the chat and its comp
   await openProposals();
   fireEvent.keyDown(document, { key: 'Escape' });
   await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Vorschl(ag|äge)$/ })).toBeNull());
-  expect(within(screen.getByRole('dialog', { name: 'Bo, dein Coach' })).getByLabelText('Nachricht an den Coach')).toBeTruthy();
+  expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensei' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
   expect(records(map, 'weekplan')).toHaveLength(0); // looking is not taking
 });

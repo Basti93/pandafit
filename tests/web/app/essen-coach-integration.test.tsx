@@ -37,10 +37,10 @@ describe('Essen on the phone with the coach on the Mac', () => {
     const a = await boot({ account: 'anna', seed: store.all('pb') });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Änderung wünschen' }));
-    fireEvent.change(await screen.findByLabelText('Nachricht an den Coach'), { target: { value: 'Heute Abend lieber was mit Nudeln' } });
+    fireEvent.change(await screen.findByLabelText('Nachricht an Bo'), { target: { value: 'Heute Abend lieber was mit Nudeln' } });
     fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
     expect(await screen.findByText('Wunsch gesendet')).toBeTruthy();
-    expect(await screen.findByText('Der Coach antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeTruthy();
+    expect(await screen.findByText('Bo antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeTruthy();
     expect(screen.getByText(/Heute Abend lieber was mit Nudeln/)).toBeTruthy();
     // Through the account to the Mac, which answers at its next tick.
     const phone = await openIdb('anna', a.factory);
@@ -56,7 +56,7 @@ describe('Essen on the phone with the coach on the Mac', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Änderung wünschen' }));
     expect(await screen.findByText('Heute Abend gibt es Nudeln.')).toBeTruthy();
-    expect(screen.queryByText('Der Coach antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeNull();
+    expect(screen.queryByText('Bo antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     fireEvent.click(screen.getByRole('button', { name: /Nudeln mit Tomatensoße und Linsen/ }));
     expect(screen.getByText('auf Wunsch von Lena')).toBeTruthy();

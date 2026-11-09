@@ -26,6 +26,19 @@ describe('web app', () => {
     expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual(['Heute', 'Woche', 'Kraft']);
   });
 
+  it('shows every tab with its icon and the profile as a panda button', async () => {
+    const status = { kind: 'run', id: 'status', updatedMs: NOW - 1000, deleted: false, body: {
+      type: 'status', atMs: NOW - 1000, on: true, suggest: false, needsAnswers: false, garmin: false, suggestedDays: [1, 3, 5], hrCap: 150, complaint: null,
+      numbers: { easyPace: { now: null, weeks4: null, weeks12: null, trend: [] }, weeks: [], longest: { blockKm: null, lastBlockKm: null }, tests: [] }, card: null } } as TrackedRecord;
+    await boot({ account: 'anna', flags: { 'pandafit.essensplan.anna': 'on' }, seed: [status] });
+    const nav = await screen.findByRole('navigation', { name: 'Seiten' });
+    await waitFor(() => expect(within(nav).getAllByRole('button').length).toBe(5));
+    const buttons = within(nav).getAllByRole('button');
+    expect(buttons.map((b) => b.textContent)).toEqual(['Heute', 'Woche', 'Kraft', 'Essen', 'Ausdauer']);
+    expect(buttons.map((b) => b.querySelector('svg')?.getAttribute('data-icon'))).toEqual(['heute', 'woche', 'kraft', 'essen', 'ausdauer']);
+    expect(screen.getByRole('button', { name: 'Profil' }).querySelector('svg[data-icon="profil"]')).not.toBeNull();
+  });
+
   it('the login says where an account comes from', async () => {
     await boot({ me: 401 });
     expect(await screen.findByText('Ein Konto bekommst du von der Person, die Pandafit eingerichtet hat.')).toBeTruthy();
@@ -168,10 +181,10 @@ describe('web app', () => {
     expect(within(sheet).getByText(/^Plan vom /)).toBeTruthy();
     expect(within(sheet).getByText('Beine sind dran')).toBeTruthy();
     expect(within(sheet).getByText('Gut gemacht diese Woche')).toBeTruthy();
-    expect(screen.queryByText(/Coach macht einen neuen/)).toBeNull();
+    expect(screen.queryByText(/Bo macht einen neuen/)).toBeNull();
     cleanup();
     await boot({ seed: [plan(NOW - 9 * DAY)] });
-    expect(await screen.findByText(/Coach macht einen neuen/)).toBeTruthy();
+    expect(await screen.findByText(/Bo macht einen neuen/)).toBeTruthy();
   });
 
   it('the plan sheet from Heute opens once; an adjusted plan says "Angepasst" on Heute', async () => {
@@ -267,7 +280,7 @@ describe('web app', () => {
     await boot({ seed: [] });
     fireEvent.click(await screen.findByRole('button', { name: 'Woche' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
-    const field = await screen.findByLabelText('Nachricht an den Coach');
+    const field = await screen.findByLabelText('Nachricht an Bo');
     const nav = screen.getByRole('navigation', { name: 'Seiten' });
     fireEvent.focusIn(field);
     expect(nav.className).toContain('web-nav-away');
@@ -372,7 +385,7 @@ describe('web app', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
     await waitFor(() => expect(storage.get('pandafit.account')).toBe('ben'));
     // The shell rebuilds after the login: open the chat until Ben's record shows there.
-    await waitFor(() => { fireEvent.click(screen.getByRole('button', { name: 'Woche' })); fireEvent.click(screen.getByRole('button', { name: /^Coach/ })); expect(screen.getByText('Nur Ben')).toBeTruthy(); });
+    await waitFor(() => { fireEvent.click(screen.getByRole('button', { name: 'Woche' })); fireEvent.click(screen.getByRole('button', { name: /^Bo/ })); expect(screen.getByText('Nur Ben')).toBeTruthy(); });
     expect(posts.filter((p) => p.user === 'ben' && p.ids.includes('a-only'))).toEqual([]);
     const a = await openIdb('anna', factory);
     expect((await a.list('chat')).map((r) => r.id)).toEqual(['a-only']);

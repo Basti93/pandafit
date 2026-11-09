@@ -1,3 +1,4 @@
+import { BO_PERSONA } from '../shared/bo';
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
@@ -72,7 +73,7 @@ const NOTES_KEEP = 50;
 const NOTE_MAX = 500;
 export const answerJsonSchema: object = answerProps;
 
-export const SYSTEM_PROMPT = `Du bist Radsport-Coach für eine freizeitfahrende Person auf einem Indoor-Trainer.
+export const SYSTEM_PROMPT = `${BO_PERSONA} und Radsport-Trainer für eine freizeitfahrende Person auf einem Indoor-Trainer.
 Ziel: regelmäßig und gern fahren, Fitness langsam steigern. Es gibt keinen Kalender. Verpasste Tage werden nie nachgeholt und nie als Versäumnis formuliert.
 Plane die nächste Einheit und den Stand des Langzeitplans.
 Name der Einheit: ein schlichtes Wort plus Dauer, zum Beispiel „Locker, 30 Minuten“, „Grundlage, 55 Minuten“, „Intervalle, 45 Minuten“ oder „Steigung, 40 Minuten“. Keine Bilder und Ausschmückungen wie „sanfte Wellen“ oder „flottere Blöcke“. Das gilt auch für alternatives. Begründe auf Deutsch in ein bis zwei freundlichen Sätzen.

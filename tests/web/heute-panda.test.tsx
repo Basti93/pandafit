@@ -53,9 +53,9 @@ describe('Bo on Heute', () => {
     await waitFor(() => expect(log.last.pose).toBe('bike'));
     expect(log.mounts).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: 'Tag zurück' }));
-    expect(screen.queryByLabelText('Satz vom Coach')).toBeNull();
+    expect(screen.queryByLabelText('Satz von Bo')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Tag vor' }));
-    expect(await screen.findByLabelText('Satz vom Coach')).toBeTruthy();
+    expect(await screen.findByLabelText('Satz von Bo')).toBeTruthy();
     expect(log.mounts).toBe(2);
   });
   it('a strength day gives flex, and a day without a plan gives the greeting pose', async () => {

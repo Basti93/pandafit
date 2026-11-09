@@ -97,7 +97,7 @@ export function PushSettings({ push, now }: { push: PushState; now: () => number
       {p.support === 'none' && <p className="muted">In diesem Browser gibt es keine Benachrichtigungen.</p>}
       {p.support === 'ok' && (
         <>
-          <Switch label="Benachrichtigungen" hint="Für neue Essens- und Laufpläne, Antworten vom Coach und neue Versionen." checked={push.on && granted} disabled={push.busy}
+          <Switch label="Benachrichtigungen" hint="Für neue Essens- und Laufpläne, Antworten von Bo und neue Versionen." checked={push.on && granted} disabled={push.busy}
             onChange={(on) => void (on ? push.enable() : push.disable())} />
           {push.on && granted && <UpdatesSwitch port={port} now={now} />}
           {push.on && !granted && <p className="muted">{PUSH_DENIED}</p>}

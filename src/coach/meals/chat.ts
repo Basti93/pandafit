@@ -1,3 +1,4 @@
+import { BO_PERSONA } from '../../shared/bo';
 import { z } from 'zod';
 import {
   DAY_LONG, eatersOf, mealKey, SECTIONS, SLOT_LABEL, SLOTS, UNITS, type Dish, type Ingredient, type Meal, type MealChat, type MealPlan,
@@ -42,7 +43,7 @@ export type ChatAnswer = z.infer<typeof chatAnswerSchema>;
 const { $schema: _ignored, ...answerProps } = z.toJSONSchema(chatAnswerSchema);
 export const chatAnswerJsonSchema: object = answerProps;
 
-export const CHAT_SYSTEM_PROMPT = `Du bist der Coach im Essensplan eines Haushalts. Eine Person sagt dir in eigenen Worten, was sie am Wochenplan ändern möchte, und du änderst den Plan. Du schreibst auf Deutsch, ruhig, freundlich und kurz, in der Du-Form.
+export const CHAT_SYSTEM_PROMPT = `${BO_PERSONA}, im Essensplan eines Haushalts. Eine Person sagt dir in eigenen Worten, was sie am Wochenplan ändern möchte, und du änderst den Plan. Du schreibst auf Deutsch, ruhig, freundlich und kurz, in der Du-Form.
 antwort: ein oder zwei kurze Sätze, was du geändert hast. Keine Rückfragen, keine Aufzählung der Zutaten. Gemerkte Abneigungen und Dinge, die nicht geklappt haben, ergänzt die App selbst; erwähne sie nicht.
 aenderungen: nur, worum die Person bittet, höchstens ${MAX_CHANGES}. Nur Mahlzeiten mit aenderbar true.
 - art "gericht": die Mahlzeit bekommt ein neues Gericht (gericht ausgefüllt, Mengen pro Portion, Schritte kurz, höchstens fünf). Etwa "Mittwoch lieber was mit Nudeln" oder "das Rezept am Freitag ist zu aufwendig" (dann ein schnelleres Gericht).
@@ -232,4 +233,4 @@ export function putDish(plan: MealPlan, state: MealState, members: Member[], key
 
 export const REPLY_NO_AI = 'Das kann ich gerade nicht ändern. Versuch es mit „Tauschen“ beim Gericht.';
 export const REPLY_NO_PLAN = 'Für diese Woche gibt es keinen Plan mehr, den ich ändern kann.';
-export const replySwapped = (m: Pick<Meal, 'day' | 'slot'>, title: string) => `Der Coach ist gerade nicht erreichbar. Ich habe ${DAY_LONG[m.day]}, ${SLOT_LABEL[m.slot]} aus der Rezeptliste getauscht: ${title}.`;
+export const replySwapped = (m: Pick<Meal, 'day' | 'slot'>, title: string) => `Bo ist gerade nicht erreichbar. Ich habe ${DAY_LONG[m.day]}, ${SLOT_LABEL[m.slot]} aus der Rezeptliste getauscht: ${title}.`;

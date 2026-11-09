@@ -470,7 +470,7 @@ test('a change asked for in the week chat goes to the coach in charge, who plans
   const prompts: { system: string; prompt: string }[] = [];
   const ask = vi.fn(async (input: { prompt: string; systemPrompt: string }) => {
     prompts.push({ system: input.systemPrompt, prompt: input.prompt });
-    if (input.systemPrompt === WEEK_CHAT_PROMPT) return { text: 'Gebe ich an den Rad-Coach weiter.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], tasks: [{ coach: 'bike', text: 'Nächste Fahrt kürzer', lasting: false }] };
+    if (input.systemPrompt === WEEK_CHAT_PROMPT) return { text: 'Gebe ich an die Planung weiter.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], tasks: [{ coach: 'bike', text: 'Nächste Fahrt kürzer', lasting: false }] };
     return answer;
   });
   const { root, runtime } = make({ ask: ask as never });
