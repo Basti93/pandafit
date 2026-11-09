@@ -114,3 +114,14 @@ describe('dojo fundament', () => {
     for (const f of [WEB, TRACKING]) expect(read(f).replace(/\/\*[\s\S]*?\*\//g, '')).not.toContain('640px');
   });
 });
+
+describe('main button role', () => {
+  it('gives the glow and 50 px height only to the filled role', () => {
+    const css = readFileSync(join(__dirname, '../../src/tracking/ui/tracking.css'), 'utf8');
+    const glow = css.split('\n').filter((l) => l.includes('box-shadow: 0 6px 20px var(--glow)'));
+    expect(glow).toHaveLength(1);
+    expect(glow[0]).toContain('button.primary');
+    expect(glow[0]).not.toMatch(/link|secondary|chips|day/);
+    expect(css).not.toMatch(/\.tk-screen button, \.tk-picker button \{[^}]*(glow|min-height: 50px)/);
+  });
+});
