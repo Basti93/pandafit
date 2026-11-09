@@ -57,7 +57,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Fundament** | Die App ist leichter zu warten und zu erweitern: ein Weg für sicheres Schreiben, Prüfung aller Eingaben, lokale Verbindungen nur mit Token, klare Modulgrenzen (Test), aufgeteilte Gottdateien, eine Datenschicht in der Web-App, gemeinsame Design-Tokens, ESLint und mehr CI. Für Nutzer fühlt sich nichts anders an. Plan: `docs/archive/plans/2026-11-09-fundament-technical-debt.md`. | Architektur-Audit 09.11.2026 |
 | ✅ | **Dojo 1 Fundament** | Die Web-App sieht überall nach „Abend im Dojo“ aus: Zen Kaku Gothic New, Bambus scrollt mit, Tabs mit verspielten Icons (Heute, Woche, Kraft, Essen, Ausdauer), Profil als Panda-Knopf, Bo heißt überall Sensei. | Panda-Design (Aussehen) |
 | ✅ | **Dojo 2 Heute, Woche, Sensei** | Heute und Woche geben sofort Orientierung (erledigt, heute, kommt noch); Bo sitzt im Bambusnest; Gesundheit steht sichtbar auf der Woche und hat eine eigene Seite; das Gespräch mit dem Sensei ist ein ruhiger Chat. | Woche-Seite, Rückblick-Gesundheit |
-| ⬜ | **Dojo 3 Kraft und Ausdauer** | Kraft zeigt das nächste Training als Hauptkarte, das laufende Training den nächsten Satz groß; Ausdauer schaltet Rad und Laufen oben um. | Kraft-Umschalter Training/Routinen/Übungen |
+| ✅ | **Dojo 3 Kraft und Ausdauer** | Kraft zeigt das nächste Training als Hauptkarte, das laufende Training den nächsten Satz groß; Ausdauer schaltet Rad und Laufen oben um. | Kraft-Umschalter Training/Routinen/Übungen |
 | ⬜ | **Dojo 4 Essen und Profil** | Essen zeigt die nächste Mahlzeit groß und die Woche ruhig; ein Rezept trägt man auf der Seite in den Plan ein; Profil ist nur noch Einstellungen. | Tage/Einkauf-Umschalter, „In den Plan“-Sheet |
 | ⬜ | **Dojo 5 Bos Orte und Logo** | Hinter jeder Pose von Bo steht seine Szene; das App-Logo zeigt Bo als Teetrinker, im Dock, auf dem Handy und als Favicon. | Altes Logo (Panda und Maus auf dem Rad) |
 
@@ -87,7 +87,7 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
 
 ## Dojo — Briefs
 
-Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`archive/plans/2026-11-09-dojo-1-fundament.md`](archive/plans/2026-11-09-dojo-1-fundament.md) (erledigt), Dojo 2: [`archive/plans/2026-11-09-dojo-2-heute-woche-sensei.md`](archive/plans/2026-11-09-dojo-2-heute-woche-sensei.md) (erledigt). Die Pläne für Dojo 3–5 entstehen jeweils nach Abnahme des vorigen.
+Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`archive/plans/2026-11-09-dojo-1-fundament.md`](archive/plans/2026-11-09-dojo-1-fundament.md) (erledigt), Dojo 2: [`archive/plans/2026-11-09-dojo-2-heute-woche-sensei.md`](archive/plans/2026-11-09-dojo-2-heute-woche-sensei.md) (erledigt), Dojo 3: [`archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md`](archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md) (erledigt). Die Pläne für Dojo 4–5 entstehen jeweils nach Abnahme des vorigen.
 
 **Dojo 1 Fundament.** Ziel: Das neue Aussehen steckt in Tokens und Bausteinen, bevor ein Screen umgebaut wird.
 - Jede Seite der Web-App hat den Dojo-Hintergrund mit Bambus, der beim Scrollen mitwächst, hell und dunkel.
@@ -122,7 +122,7 @@ Fällt weg: Tage/Einkauf-Umschalter, „In den Plan“-Sheet. Nicht dabei: neue 
 Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 
 ## Parkplatz
-- Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen. Heute und Woche sind mit Dojo 2 umgestellt; Kraft, Ausdauer, Essen folgen in Dojo 3–4.
+- Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen. Heute, Woche, Kraft, Ausdauer erledigt; Essen folgt in Dojo 4.
 - ~~Aus Dojo 1: Die Mac-Oberfläche (`src/ui`) sagt noch „Coach“, z. B. HevyCard „Kraft-Coach“. `training-policy/rules.ts` sagt intern „Coach“, erreicht aber weder Screen noch Prompt.~~ Erledigt (Parkplatz Design).
 - ~~Aus Dojo 1: Im CSS steht teils font-weight 600.~~ Erledigt mit Dojo 2 (nur die Mac-Oberfläche hat noch 600, eigene Schrift).
 - ~~Aus Dojo 2: „Zurück“ im Chat, den man von Heute aus geöffnet hat, landet auf der Woche statt auf Heute (gehört zu Browser-Zurück, Entscheidung 10).~~ Erledigt (Parkplatz Design).
@@ -184,7 +184,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - Chat-Nachrichten werden weiter nach 90 Tagen gelöscht (alte Regel, bewusst beibehalten).
   - ~~Läufe haben keine eigene Rückfrage nach dem Training.~~ Erledigt mit I.
 - Aus Meilenstein I:
-  - Ausblenden/Entfernen eines Studios nur auf dem Startbildschirm, nicht im laufenden Training.
+  - ~~Ausblenden/Entfernen eines Studios nur auf dem Startbildschirm, nicht im laufenden Training.~~ Erledigt mit Dojo 3 (bewusst so, Entscheidung 5).
   - Eine schwere Laufwoche hält nur, wenn es eine Basis gibt; ohne Läufe der letzten Wochen wirkt sie nicht.
 - Aus Meilenstein J:
   - Bilder der Übungsbasis machen App und Server-Paket ~50 MB größer; ggf. kleiner rechnen.
@@ -199,7 +199,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - Shot-Werkzeug erreicht „Haben wir“ auf der Einkaufsliste nicht.
 - Aus Meilenstein O:
   - Eine harte Fahrt zählt nicht als „Beine müde“ (Server und Web gleich); nur die Regel „zwei harte Tage“ schützt. Prüfen, ob Fahrten die Beine belasten sollen.
-  - Umschalter „Rad | Laufen“ steht über dem Seitentitel (wie bei Laufen); unter den Titel nur mit Platz in `PageHead`.
+  - ~~Umschalter „Rad | Laufen“ steht über dem Seitentitel (wie bei Laufen); unter den Titel nur mit Platz in `PageHead`.~~ Erledigt mit Dojo 3.
   - ~~Sechs Tabs: auf Handys schmaler als 390 px nicht geprüft.~~ Überholt mit Dojo 1.
 - Aus Meilenstein P:
   - Nach „Intervall überspringen“ ordnen `onTargetPct` und die Intervallwerte (`src/coach/metrics.ts`) Fahrzeit den Schritten ohne die übersprungenen Sekunden zu; Fix: übersprungene Sekunden an `summarizeRide` geben. „Geschafft“ zählt Übersprungenes als nicht gefahren (gewollt).
@@ -217,9 +217,9 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - Ändern sich die Befunde zweimal am selben Tag, bleibt bis zur nächsten Änderung der feste Text ohne KI stehen.
   - Rad + Kraft als zweite Einheit mit Minuten: das Kraft-Zeitbudget nimmt die Minuten nicht, nur der Prompt kennt sie.
   - Manuelle Läufe ohne Lauf-Einstellungen und ohne Garmin fehlen der Mobilität (selten).
-  - Die Start-Hinweise („Ohne Beine“, „Dazu heute“) haben keinen Oberflächentest.
+  - ~~Die Start-Hinweise („Ohne Beine“, „Dazu heute“) haben keinen Oberflächentest.~~ Erledigt mit Dojo 3.
 - Aus Meilenstein X:
   - Ein neues Gerät kennt den Essensplan-Schalter erst nach der ersten Coach-Antwort (bis 30 s); ein synchronisierter Datensatz wäre sauberer (braucht Server).
   - Browser-Zurück in verschachtelten Sheets schließt das ganze Sheet.
   - ~~„Woche planen“ auf Heute führt zur Woche, dort braucht es einen zweiten Tipp bis zum Chat.~~ Erledigt mit Dojo 2.
-  - Der Rad-Verlauf zeigt Wattbereiche nur bei „bei N %“-Bezeichnungen.
+  - ~~Der Rad-Verlauf zeigt Wattbereiche nur bei „bei N %“-Bezeichnungen.~~ Erledigt mit Dojo 3.
