@@ -534,6 +534,9 @@
 .tk-plan-ex .tk-ex-head h2, .tk-plan-ex h2 { overflow-wrap: anywhere; }
 @media (max-width: 360px) { .tk-live .tk-ex.tk-ex-current { padding-inline: var(--space-2); } .tk-sheet-head .tk-pandahead-mini { width: 2.8rem; } }
 
+/* Cockpit numbers keep the UI face (DESIGN.md: Zahlen und Daten in Cockpit-Ansichten). */
+.tk-screen :is(.tk-rest-main, .tk-elapsed, .tk-pace dd, .tk-stack-col, .tk-spark-scale) { font-family: var(--font-data); }
+
 /* Dojo kit (see kit/Dojo.tsx): kicker, brush title, main card, Bo's bubble. */
 .tk-kicker { margin: 0; font-size: var(--text-s); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--kicker); }
 .tk-brush { display: flex; flex-direction: column; gap: var(--space-1); color: var(--brush); }

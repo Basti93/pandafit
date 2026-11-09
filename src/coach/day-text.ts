@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { BO_PERSONA } from '../shared/bo';
 import path from 'node:path';
 import { z } from 'zod';
 import { DAY_TEXT_MAX, PRESSURE_WORDS, hashOf } from '../shared/day-text';
@@ -21,7 +22,7 @@ const answerSchema = z.object({ text: z.string() });
 const { $schema: _ignored, ...schemaProps } = z.toJSONSchema(answerSchema);
 const dayTextJsonSchema: object = schemaProps;
 
-export const DAY_SYSTEM_PROMPT = `Du schreibst für eine freizeitsportliche Person den Satz des Tages, auf Deutsch, in der Du-Form.
+export const DAY_SYSTEM_PROMPT = `${BO_PERSONA}. Du schreibst für eine freizeitsportliche Person den Satz des Tages, auf Deutsch, in der Du-Form.
 Schreibe 1 bis 2 kurze Sätze, motivierend, ruhig und ehrlich. Beziehe dich auf echten Fortschritt oder auf die Woche, wenn die Daten ihn zeigen.
 Ist heute ein Ruhetag, lobe die Erholung. Ist "vorsicht" wahr, sei sanft und treibe nicht an.
 Ist "ueber" gesetzt, beziehe dich genau auf dieses Training und auf nichts anderes.

@@ -97,6 +97,12 @@ describe('dojo fundament', () => {
     expect(read(WEB)).toMatch(/body\s*\{[^}]*font-family:\s*var\(--font-text\)/);
     expect(read(TRACKING)).toMatch(/\.tk-screen\s*\{[^}]*font-family:\s*var\(--font-text\)/);
   });
+  it('sets cockpit numbers in the data face', () => {
+    expect(read(TOKENS)).toMatch(/--font-data:\s*var\(--font-ui\)/);
+    expect(read(TRACKING)).toMatch(/\.tk-rest-main[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(read(WEB)).toMatch(/\.live-big\s*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(read(WEB)).toMatch(/\.live-pair b\s*\{[^}]*font-family:\s*var\(--font-data\)/);
+  });
   it('defines the Dojo tokens in both schemes, light only under the media query', () => {
     const css = read(TOKENS);
     const [dark, light] = css.split('@media (prefers-color-scheme: light)');

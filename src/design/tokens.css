@@ -94,6 +94,7 @@
   --font-ui: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-text: 'Zen Kaku Gothic New', var(--font-ui);
   --font-display: 'Shojumaru', var(--font-ui);
+  --font-data: var(--font-ui); /* shared: numbers in cockpit views keep the UI face */
 
   /* Sizes */
   --web-nav-h: 4.1rem; /* tab bar: 56 px button (icon + label) + 2 x .3rem padding; web.css derives the button from this */

@@ -133,7 +133,7 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .gm-stack li { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
 .gm-stack li span { text-align: left; }
 /* The profile sits at the top right instead of taking a tab. */
-.web-main { position: relative; background: var(--bamboo-shoot) left bottom / 40px 240px no-repeat, var(--bamboo-tile) min(100%, calc(50% + var(--content-max) / 2 - 195px)) top / 390px 900px repeat-y; min-height: 100dvh; }
+.web-main { position: relative; background: var(--bamboo-shoot) left bottom / 40px 240px no-repeat, var(--bamboo-tile) min(100%, calc(50% + var(--content-max) / 2 - 195px)) top / 390px 900px repeat-y; min-height: 100dvh; box-sizing: border-box; }
 .web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .55rem); right: max(calc(env(safe-area-inset-right) + 1rem), calc((100% - var(--content-max)) / 2 + 1rem)); width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--field-line); background: var(--card); color: var(--text); display: grid; place-items: center; cursor: pointer; }
 .web-profile[aria-current='page'] { color: var(--text); border-color: var(--accent); }
 /* Sub pages of a tab (Kraft, Ausdauer, Essen Tage/Einkauf): one pill with segments, not loose buttons. One look everywhere. */
@@ -162,14 +162,14 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .live-body { display: flex; flex-direction: column; justify-content: center; flex: 1; gap: 1.5rem; padding-bottom: 2rem; transition: opacity .3s; }
 .live-gone { opacity: .35; }
 .live-power { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: .4rem; text-align: center; }
-.live-big { font-size: 6.5rem; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.live-big { font-family: var(--font-data); font-size: 6.5rem; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
 .live-unit { font-size: var(--text-2xl); color: var(--muted); font-weight: 600; }
 .live-target { flex-basis: 100%; margin: var(--space-1) 0 0; font-size: var(--text-xl); color: var(--text); font-weight: 600; }
 .live-zone { font-weight: 500; color: var(--muted); }
 .live-big.live-ok { color: var(--good-text); }
 .live-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); text-align: center; }
 .live-pair div { display: flex; flex-direction: column; gap: .1rem; }
-.live-pair b { font-size: 2.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.live-pair b { font-family: var(--font-data); font-size: 2.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .live-pair span { color: var(--muted); font-size: var(--text-s); }
 .live-step { text-align: center; display: flex; flex-direction: column; gap: var(--space-1); }
 .live-step p { margin: 0; }

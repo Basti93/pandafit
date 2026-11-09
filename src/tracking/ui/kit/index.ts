@@ -3,12 +3,12 @@
  *
  * Dojo pieces (Dojo.tsx): Card (the one .card; `soft` for a quieter group), Kicker, BrushTitle, MainCard, Bubble, BoBubble.
  *   MainCard is the only "Jetzt dran" card: every screen shows its main next thing through it, never a hand-built copy.
- *   Bo speaks only through Bubble or BoBubble (name, role and ask text come from ../bo.ts). Icons come only through Icon.
+ *   Role, ask and title come only from ../bo.ts; sentences may name Bo directly. Chat moves to Bubble in Dojo 2. Icons come only through Icon.
  *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Reserved for Dojo 2: RowCard, WeekPath.
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
  * Buttons (plain <button> classes), one look per role:
- *   (none) or "primary"  filled accent: the one main action of a card or sheet (start, resume, save, take a proposal).
+ *   "primary"            filled accent, 50 px, glow: the one main action of a card or sheet (start, resume, save, take a proposal). Unclassed buttons are filled, 44 px, no glow (old screens; Dojo 2-5 add class="primary").
  *   "secondary"          outline: every other real action and every jump to another place ("Bo fragen", "Ansehen", "Woche planen").
  *   "link"               text: only quiet, optional or dismissing actions ("Heute nicht", "Abbrechen", "Details", "Später"). No side padding: it lines up with the text.
  *   ".tk-textseg"        a text switch between two views ("Diese Woche" / "Nächste Woche"): link look with aria-pressed; the pressed one is bold.

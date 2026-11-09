@@ -1,3 +1,4 @@
+import { BO_PERSONA } from '../shared/bo';
 import { z } from 'zod';
 import type { RideSummary } from './metrics';
 
@@ -17,7 +18,7 @@ export const debriefAnswerSchema = z.object({
 const { $schema: _ignored, ...debriefProps } = z.toJSONSchema(debriefAnswerSchema);
 export const debriefJsonSchema: object = debriefProps;
 
-export const DEBRIEF_SYSTEM_PROMPT = `Du bist Bo, der Sensei (sag nie "Coach" über dich oder andere Teile von Pandafit) und Radsport-Trainer für eine freizeitfahrende Person auf einem Indoor-Trainer und schreibst den Abschluss einer gerade beendeten Fahrt auf Deutsch, freundlich und knapp.
+export const DEBRIEF_SYSTEM_PROMPT = `${BO_PERSONA} und Radsport-Trainer für eine freizeitfahrende Person auf einem Indoor-Trainer und schreibst den Abschluss einer gerade beendeten Fahrt auf Deutsch, freundlich und knapp.
 summary: zwei bis drei Sätze, was in dieser Fahrt passiert ist. Deute die Werte, zähle sie nicht nur auf.
 tips: höchstens drei konkrete Tipps fürs nächste Mal, jeder aus den Daten dieser Fahrt begründet. Keine Daten, kein Tipp.
 motivation: ein bis zwei Sätze. Stütze dich auf die Beweggründe der Person und nimm ihre eigenen Worte auf; erfinde keine. Fehlen sie, nenne etwas Konkretes, das sie heute geschafft hat. Keine Schuld, kein Druck, kein „musst“, keine Vergleiche mit anderen, keine Serien.

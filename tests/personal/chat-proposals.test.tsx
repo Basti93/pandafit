@@ -77,7 +77,7 @@ test('unknown ids are dropped; without any valid id the exclude rule becomes a w
   expect(prompts[1]).toContain('"id":"pf-squat"');
   expect(recs.get('rule:rule-m1')!.body).toMatchObject({ kind: 'wish', state: 'proposed', text: 'Kein Bankdrücken' });
   expect((recs.get('rule:rule-m1')!.body as { exerciseIds?: unknown }).exerciseIds).toBeUndefined();
-  expect((recs.get('chat:m1')!.body as { text: string }).text).toContain('nur ein Wunsch');
+  expect((recs.get('chat:m1')!.body as { text: string }).text).toContain('allgemeinen Wunsch');
 });
 
 test('the catalog is asked for once: ids named in the first answer need no second try', async () => {

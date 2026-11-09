@@ -52,7 +52,7 @@ export function Bubble({ children, actions, tail = 'left' }: { children: ReactNo
 
 /** Bo speaks: his portrait in a soft glow, and a bubble next to it. */
 export function BoBubble({ children, actions, pose, portrait = 'full' }: { children: ReactNode; actions?: ReactNode; pose?: PandaGesture | null; portrait?: 'full' | 'mini' | 'none' }) {
-  if (portrait === 'none') return <div className="tk-bo"><Bubble actions={actions} tail="left">{children}</Bubble></div>;
+  if (portrait === 'none') return <div className="tk-bo"><Bubble actions={actions} tail="none">{children}</Bubble></div>;
   return (
     <div className={`tk-bo ${portrait}`}>
       <span className="tk-bo-portrait"><PandaPortrait pose={pose} /></span>

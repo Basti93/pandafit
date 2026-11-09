@@ -1,2 +1,2 @@
-/** Bo's name and role in one place; every screen takes them from here. */
-export const BO = { name: 'Bo', role: 'Sensei', ask: 'Frag Bo, deinen Sensei', title: 'Bo, dein Sensei' } as const;
+/** Bo's name and role live in src/shared/bo.ts; this re-export keeps the UI imports short. */
+export { BO } from '../../shared/bo';

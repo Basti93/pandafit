@@ -45,3 +45,19 @@ describe('Sensei wording', () => {
     expect(TASKS_GUIDE('bike')).not.toMatch(/Coach/);
   });
 });
+
+describe('Bo persona in one place', () => {
+  it('starts every prompt in Bo\'s voice from BO_PERSONA', async () => {
+    const { BO_PERSONA } = await import('../../src/shared/bo');
+    const { CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT } = await import('../../src/coach/chat/chat-coach');
+    const { CHAT_SYSTEM_PROMPT: MEAL_CHAT } = await import('../../src/coach/meals/chat');
+    const { SYSTEM_PROMPT } = await import('../../src/coach/coach');
+    const { DEBRIEF_SYSTEM_PROMPT } = await import('../../src/coach/debrief');
+    const { GYM_SYSTEM_PROMPT } = await import('../../src/coach/gym/prompt');
+    const { RUN_SYSTEM_PROMPT } = await import('../../src/coach/run/prompt');
+    const { DAY_SYSTEM_PROMPT } = await import('../../src/coach/day-text');
+    const all = [CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT, MEAL_CHAT, SYSTEM_PROMPT, DEBRIEF_SYSTEM_PROMPT, GYM_SYSTEM_PROMPT, RUN_SYSTEM_PROMPT, DAY_SYSTEM_PROMPT];
+    expect(all).toHaveLength(8);
+    for (const p of all) expect(p.startsWith(BO_PERSONA)).toBe(true);
+  });
+});

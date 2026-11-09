@@ -24,7 +24,7 @@ describe('Dojo kit', () => {
     expect(document.querySelector('.tk-panda')).not.toBeNull();
     rerender(<BoBubble portrait="none">Nur die Blase.</BoBubble>);
     expect(document.querySelector('.tk-panda')).toBeNull();
-    expect(document.querySelector('.tk-bubble-tail')).not.toBeNull();
+    expect(document.querySelector('.tk-bubble-tail')).toBeNull();
   });
   it('draws every registered icon with currentColor only', () => {
     for (const name of ['heute', 'woche', 'kraft', 'essen', 'ausdauer', 'profil'] as const) {
