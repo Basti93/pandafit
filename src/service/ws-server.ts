@@ -9,11 +9,12 @@ type Options = { port?: number; devOrigin?: string; retryMs?: number; token: str
 
 /**
  * Only our own UI and local scripts (without an Origin) may talk to it, so that no foreign web page can end a running ride.
- * Origin `null` (sandboxed frames, data: pages) is never allowed. A connection also needs the machine's token in `?t=`.
+ * The machine's token in `?t=` is the real guard: a foreign page cannot read it. Origin `null` passes only with the token,
+ * because a file:// page in Electron may report it.
  * An occupied port is retried; recording continues even without a UI.
  */
 export const originAllowed = (devOrigin?: string) => {
-  const allowed = new Set<string | undefined>([undefined, 'file://', devOrigin]);
+  const allowed = new Set<string | undefined>([undefined, 'file://', 'null', devOrigin]);
   return ({ origin }: { origin?: string }): boolean => allowed.has(origin);
 };
 

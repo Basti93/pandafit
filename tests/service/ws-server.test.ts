@@ -22,14 +22,16 @@ test('foreign web pages are rejected, app and scripts accepted', async () => {
   expect(await opens(7611, 'http://localhost:5173')).toBe(true);
   srv.close();
 });
-test('a wrong or missing token is rejected, origin null never passes', async () => {
+test('a wrong or missing token is rejected, origin null only passes with the token', async () => {
   const srv = startWsServer(fakeService(), { port: 7613, token: TOKEN });
   await sleep(30);
   expect(await opens(7613, undefined, null)).toBe(false);
   expect(await opens(7613, undefined, 'b'.repeat(64))).toBe(false);
   expect(await opens(7613, undefined, 'a')).toBe(false);
   expect(await opens(7613, 'file://', null)).toBe(false);
-  expect(await opens(7613, 'null')).toBe(false);
+  expect(await opens(7613, 'null', null)).toBe(false);
+  expect(await opens(7613, 'null', 'f'.repeat(64))).toBe(false);
+  expect(await opens(7613, 'https://evil.example')).toBe(false);
   expect(await opens(7613, 'file://')).toBe(true);
   expect(await opens(7613)).toBe(true);
   srv.close();
