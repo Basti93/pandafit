@@ -146,3 +146,14 @@ test('closing before the still is taken calls onTake never', async () => {
   await wait(5000);
   expect(took).not.toHaveBeenCalled();
 });
+
+test('after a load failure a later pose change keeps the still of the first pose', async () => {
+  m.mount.mockRejectedValue(new Error('no canvas'));
+  const took = vi.fn();
+  const { container, rerender } = render(<PandaPortrait pose="run" onTake={took} />);
+  await settle(); await wait(800);
+  rerender(<PandaPortrait pose="yoga" onTake={took} />);
+  await wait(5000);
+  expect(container.querySelector('img')!.getAttribute('src')).toBe('/brand/bo-pose-run.svg');
+  expect(took).toHaveBeenCalledTimes(1);
+});

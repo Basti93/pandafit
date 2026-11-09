@@ -46,7 +46,7 @@ export function PandaPortrait({ pose, className = '', onTake }: { pose?: PandaGe
       told.current?.(p);
     }, wait);
     return () => { alive = false; clearTimeout(timer); };
-  }, [standing]);
+  }, [standing, openedAt]);
 
   useEffect(() => {
     if (still) return;
