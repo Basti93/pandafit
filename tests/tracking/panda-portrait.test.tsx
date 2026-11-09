@@ -95,3 +95,65 @@ test('closing during the settle pause disposes and holds nothing', async () => {
   expect(f.dispose).toHaveBeenCalledTimes(1);
   expect(f.hold).not.toHaveBeenCalled();
 });
+
+test('reduced motion shows the still of the pose and keeps it, telling which pose Bo took', async () => {
+  setReduced(true);
+  const took = vi.fn();
+  const { container, rerender } = render(<PandaPortrait pose="bike" onTake={took} />);
+  expect(container.querySelector('img')!.getAttribute('src')).toBe('/brand/bo-pose-bike.svg');
+  await wait(800);
+  expect(took).toHaveBeenCalledWith('bike');
+  rerender(<PandaPortrait pose="run" onTake={took} />);
+  await wait(5000);
+  expect(container.querySelector('img')!.getAttribute('src')).toBe('/brand/bo-pose-bike.svg');
+  expect(took).toHaveBeenCalledTimes(1);
+  expect(m.mount).not.toHaveBeenCalled(); // the factory count is shared with earlier tests
+});
+
+test('when the player fails, Bo stands as the still of his pose', async () => {
+  m.mount.mockRejectedValue(new Error('Panda needs vector paths'));
+  const took = vi.fn();
+  const { container } = render(<PandaPortrait pose="run" onTake={took} />);
+  await settle(); await wait(800);
+  expect(container.querySelector('img')!.getAttribute('src')).toBe('/brand/bo-pose-run.svg');
+  expect(took).toHaveBeenCalledWith('run');
+});
+
+test('with motion the rest still lies under the canvas and onTake comes with the glide', async () => {
+  const f = fake(); m.mount.mockResolvedValue(f);
+  const took = vi.fn();
+  const { container } = render(<PandaPortrait pose="flex" onTake={took} />);
+  expect(container.querySelector('img')!.getAttribute('src')).toBe('/brand/panda-still.svg');
+  await settle(); await wait(800);
+  expect(f.hold).toHaveBeenCalledWith('flex', expect.any(Number));
+  expect(took).toHaveBeenCalledWith('flex');
+});
+
+test('with no pose when it settles, Bo takes nothing', async () => {
+  setReduced(true);
+  const took = vi.fn();
+  render(<PandaPortrait onTake={took} />);
+  await wait(5000);
+  expect(took).toHaveBeenCalledTimes(1);
+  expect(took).toHaveBeenCalledWith(null);
+});
+
+test('closing before the still is taken calls onTake never', async () => {
+  setReduced(true);
+  const took = vi.fn();
+  const { unmount } = render(<PandaPortrait pose="yoga" onTake={took} />);
+  unmount();
+  await wait(5000);
+  expect(took).not.toHaveBeenCalled();
+});
+
+test('after a load failure a later pose change keeps the still of the first pose', async () => {
+  m.mount.mockRejectedValue(new Error('no canvas'));
+  const took = vi.fn();
+  const { container, rerender } = render(<PandaPortrait pose="run" onTake={took} />);
+  await settle(); await wait(800);
+  rerender(<PandaPortrait pose="yoga" onTake={took} />);
+  await wait(5000);
+  expect(container.querySelector('img')!.getAttribute('src')).toBe('/brand/bo-pose-run.svg');
+  expect(took).toHaveBeenCalledTimes(1);
+});

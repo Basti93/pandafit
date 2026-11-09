@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" aria-hidden="true">
+<symbol id="back" viewBox="0 0 116 176" overflow="hidden">
+<rect width="116" height="176" style="fill: var(--scene-wall)"></rect><rect y="132" width="116" height="44" style="fill: var(--scene-floor)"></rect><g fill="none" stroke-width="1.2" style="stroke: var(--scene-floor-line)"><path d="M0 144 H116"></path><path d="M0 156 H116"></path><path d="M0 168 H116"></path><path d="M20 132 v12"></path><path d="M52 144 v12"></path><path d="M84 156 v12"></path><path d="M36 168 v12"></path><path d="M96 132 v12"></path><path d="M8 144 v12"></path><path d="M60 156 v12"></path><path d="M100 168 v12"></path></g><path d="M0 132 H116" style="stroke: var(--scene-floor-line)" stroke-width="2"></path><circle cx="22" cy="38" r="18" style="fill: var(--scene-moon-glow)"></circle><circle cx="22" cy="38" r="9" style="fill: var(--scene-moon)" opacity=".9"></circle><g><rect x="90" y="128" width="12" height="4" rx="1.5" style="fill: var(--scene-lantern-cap)"></rect><path d="M96 128 V108" style="stroke: var(--scene-wood-deep)" stroke-width="1.4" fill="none"></path><path d="M96 108 q-5 -8 1 -15 q6 -7 0 -15 q-4 -6 1 -12" style="stroke: var(--scene-smoke)" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".55"></path></g><g><rect x="10" y="148" width="96" height="18" rx="3" style="fill: var(--scene-mat)"></rect><path d="M16 154 H100 M16 160 H100" style="stroke: var(--scene-wood-deep)" stroke-width="1" fill="none" opacity=".5"></path></g>
+</symbol>
+<symbol id="front" viewBox="0 0 116 176" overflow="hidden">
+<path d="M10 166 H106 V170 Q106 173 103 173 H13 Q10 173 10 170 Z" style="fill: var(--scene-wood-deep)"></path>
+</symbol>
+</svg>

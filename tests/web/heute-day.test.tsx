@@ -52,13 +52,13 @@ const coachMsgWithProposal = rec('chat', 'c1', { role: 'coach', text: 'Wie wäre
 const daytext = rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW });
 
 describe('Heute in the Dojo', () => {
-  it('shows the week path, Bo in his nest, one Jetzt dran card, then only meals and tomorrow', async () => {
+  it('shows the week path, Bo at his place, one Jetzt dran card, then only meals and tomorrow', async () => {
     await boot([daytext, weekplanWithGymToday, planRecord]);
     const path = await screen.findByRole('list', { name: 'Wochenweg' });
     const bo = screen.getByLabelText('Satz von Bo');
     const now = screen.getByRole('region', { name: /^Heute/ });
     expect(before(path, bo) && before(bo, now)).toBe(true);
-    expect(bo.querySelector('.tk-scene[data-place="nest"]')).toBeTruthy();
+    expect(bo.querySelector('.tk-scene[data-place="dojo"]')).toBeTruthy();
     expect(screen.getAllByText('Jetzt dran')).toHaveLength(1);
     expect(within(now).getByRole('heading').textContent).toBe('Oberkörper A');
     expect(now.textContent).toContain('Krafttraining, etwa');

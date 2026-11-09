@@ -9,6 +9,7 @@ import {
 import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { RowCard, Sheet } from '../tracking/ui/kit';
+import { MealImage } from './essen/MealImage';
 import { mealDayOf, mealWeeks, shoppingWeek, WISH_SENT, type MealAt, type Week } from './essen/meals-view';
 import { KeptPage } from './essen/EssenPage';
 import { EssenStart } from './essen/EssenStart';
@@ -151,7 +152,7 @@ export function DayMeals({ port, now, onOpen }: { port: WebPort; now: () => numb
       <div className="tk-rowcards" role="list" aria-label={heading}>
         {meals.map((m) => (
           <div role="listitem" key={m.slot}>
-            <RowCard icon="essen" kicker={SLOT_LABEL[m.slot]} title={m.dish.side ? `${m.dish.title} + ${m.dish.side.name}` : m.dish.title} sub={label(m)} onClick={() => onOpen({ week: week.plan.week, meal: mealKey(m.day, m.slot) })} />
+            <RowCard picture={<MealImage recipeId={m.dish.recipeId} slot={m.slot} />} kicker={SLOT_LABEL[m.slot]} title={m.dish.side ? `${m.dish.title} + ${m.dish.side.name}` : m.dish.title} sub={label(m)} onClick={() => onOpen({ week: week.plan.week, meal: mealKey(m.day, m.slot) })} />
           </div>
         ))}
       </div>

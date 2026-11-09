@@ -2,7 +2,7 @@ import { AskBoButton, BoBubble, SeeProposalButton } from '../../tracking/ui/kit'
 import type { PandaGesture } from '../../tracking/ui/PandaPortrait';
 
 /**
- * Bo on Heute: he sits in his nest, the coach sentence of the day in his bubble. `onAsk` opens the real coach chat.
+ * Bo on Heute: he stands at the place of his pose (DESIGN.md, Bos Orte), the coach sentence of the day in his bubble. `onAsk` opens the real coach chat.
  * With `onProposal` a waiting proposal adds the main button SeeProposalButton; AskBoButton stays beside it.
  * `pose` is the one pose Bo glides into when Heute opens and keeps until it opens again.
  */
@@ -15,7 +15,7 @@ export function CoachLine({ text, onAsk, pose, onProposal }: { text: string; onA
   );
   return (
     <section className="tk-coachline" aria-label="Satz von Bo">
-      <BoBubble place="nest" pose={pose} actions={actions}>
+      <BoBubble place="own" pose={pose} actions={actions}>
         <p className="tk-coachtext">{text}</p>
       </BoBubble>
     </section>
