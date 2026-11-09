@@ -55,7 +55,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Training ansehen und anpassen** | Das nächste Krafttraining lässt sich vor dem Start im Detail ansehen und ändern (Kilo, Wiederholungen, Sätze, Übung tauschen, entfernen, hinzufügen); „Training starten“ nimmt die angepasste Version. Entwurf nur auf dem Gerät. | Wunsch 08.11.2026 |
 | ✅ | **Panda-Design** | Neues Aussehen nach dem Entwurf von Codex auf allen Seiten und am Mac: warmes Papier, Waldgrün, Apricot, Karten. Schriftzug und Überschriften in Shojumaru. Der Panda heißt Bo („Frag Bo, deinen Coach“) und bewegt sich ruhig auf Heute und im Chat (eigener Canvas-Player, zehn Gesten, kein Rive zur Laufzeit). Plan: `docs/archive/plans/2026-11-08-pandafit-redesign.md`. | Wunsch 08.11.2026 |
 | ✅ | **Fundament** | Die App ist leichter zu warten und zu erweitern: ein Weg für sicheres Schreiben, Prüfung aller Eingaben, lokale Verbindungen nur mit Token, klare Modulgrenzen (Test), aufgeteilte Gottdateien, eine Datenschicht in der Web-App, gemeinsame Design-Tokens, ESLint und mehr CI. Für Nutzer fühlt sich nichts anders an. Plan: `docs/archive/plans/2026-11-09-fundament-technical-debt.md`. | Architektur-Audit 09.11.2026 |
-| ⬜ | **Dojo 1 Fundament** | Die Web-App sieht überall nach „Abend im Dojo“ aus: Zen Kaku Gothic New, Bambus scrollt mit, Tabs mit verspielten Icons (Heute, Woche, Kraft, Essen, Ausdauer), Profil als Panda-Knopf, Bo heißt überall Sensei. | Panda-Design (Aussehen) |
+| ✅ | **Dojo 1 Fundament** | Die Web-App sieht überall nach „Abend im Dojo“ aus: Zen Kaku Gothic New, Bambus scrollt mit, Tabs mit verspielten Icons (Heute, Woche, Kraft, Essen, Ausdauer), Profil als Panda-Knopf, Bo heißt überall Sensei. | Panda-Design (Aussehen) |
 | ⬜ | **Dojo 2 Heute, Woche, Sensei** | Heute und Woche geben sofort Orientierung (erledigt, heute, kommt noch); Bo sitzt im Bambusnest; Gesundheit steht sichtbar auf der Woche und hat eine eigene Seite; das Gespräch mit dem Sensei ist ein ruhiger Chat. | Woche-Seite, Rückblick-Gesundheit |
 | ⬜ | **Dojo 3 Kraft und Ausdauer** | Kraft zeigt das nächste Training als Hauptkarte, das laufende Training den nächsten Satz groß; Ausdauer schaltet Rad und Laufen oben um. | Kraft-Umschalter Training/Routinen/Übungen |
 | ⬜ | **Dojo 4 Essen und Profil** | Essen zeigt die nächste Mahlzeit groß und die Woche ruhig; ein Rezept trägt man auf der Seite in den Plan ein; Profil ist nur noch Einstellungen. | Tage/Einkauf-Umschalter, „In den Plan“-Sheet |
@@ -87,7 +87,7 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
 
 ## Dojo — Briefs
 
-Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`superpowers/plans/2026-11-09-dojo-1-fundament.md`](superpowers/plans/2026-11-09-dojo-1-fundament.md). Die Pläne für Dojo 2–5 entstehen jeweils nach Abnahme des vorigen.
+Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`archive/plans/2026-11-09-dojo-1-fundament.md`](archive/plans/2026-11-09-dojo-1-fundament.md) (erledigt). Die Pläne für Dojo 2–5 entstehen jeweils nach Abnahme des vorigen.
 
 **Dojo 1 Fundament.** Ziel: Das neue Aussehen steckt in Tokens und Bausteinen, bevor ein Screen umgebaut wird.
 - Jede Seite der Web-App hat den Dojo-Hintergrund mit Bambus, der beim Scrollen mitwächst, hell und dunkel.
@@ -122,6 +122,11 @@ Fällt weg: Tage/Einkauf-Umschalter, „In den Plan“-Sheet. Nicht dabei: neue 
 Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 
 ## Parkplatz
+- Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen; Dojo 2–5 stellen sie auf `MainCard` um.
+- Aus Dojo 1: Die Mac-Oberfläche (`src/ui`) sagt noch „Coach“, z. B. HevyCard „Kraft-Coach“. `training-policy/rules.ts` sagt intern „Coach“, erreicht aber weder Screen noch Prompt.
+- Aus Dojo 1: Im CSS steht teils font-weight 600; Zen Kaku hat nur 400/500/700, also zeigt der Browser 700. In Dojo 2 auf 500 oder 700 festlegen.
+- `npm run dev:web`: Der Proxy-Präfix `/push` fängt auch das Modul `/push.ts` ab, ohne laufenden Server bleibt die Seite leer. Präfix enger fassen (`/push/`).
+
 - Anpassungen am nächsten Training liegen nur auf dem Gerät; eine Übernahme zwischen Geräten wäre ein eigener Record. Ein Vorschlag, der zwischen Anpassen und Start übernommen wird, fehlt im Entwurf.
 
 - ~~Export nach Hevy wählt bei zwei verknüpften Hevy-Vorlagen derselben Übung die zuerst gelistete (aus Review Meilenstein 0).~~ Erledigt mit K.
