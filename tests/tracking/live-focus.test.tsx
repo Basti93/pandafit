@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { vi } from 'vitest';
 import type { LoggedWorkout } from '../../src/shared/records';
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
 import { fakePort } from './fake-port';
@@ -250,5 +251,68 @@ describe('the focus card', () => {
     fireEvent.click(within(info).getByRole('button', { name: 'Schließen' }));
     fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Mehr zu Bankdrücken' }));
     expect(screen.getByRole('list', { name: 'Menü Bankdrücken' })).toBeTruthy();
+  });
+});
+
+describe('holding an exercise opens Reihenfolge with it lifted', () => {
+  const down = (el: Element, y = 100) => fireEvent.pointerDown(el, { clientX: 10, clientY: y, pointerId: 1, button: 0, pointerType: 'touch' });
+  const orderList = () => screen.queryByRole('list', { name: 'Reihenfolge der Übungen' });
+  const start = async () => {
+    const { port, map } = fakePort([rec(open2())]); // Bankdrücken (focus), Rudern (Danach)
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    return map;
+  };
+  afterEach(() => { vi.useRealTimers(); });
+  const danach = () => within(screen.getByRole('list', { name: 'Danach' })).getByRole('button', { name: /Rudern/ });
+  const title = () => focusOf('Bankdrücken').getByRole('heading', { name: 'Bankdrücken' });
+
+  it('a long press on a row under Danach opens it; a short tap does not', async () => {
+    await start();
+    down(danach());
+    act(() => { vi.advanceTimersByTime(200); });
+    fireEvent.pointerUp(danach());
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(orderList()).toBeNull();
+    down(danach());
+    act(() => { vi.advanceTimersByTime(460); });
+    expect(orderList()).toBeTruthy();
+    expect(within(orderList()!).getAllByRole('listitem').find((li) => li.className.includes('lifted'))?.textContent).toContain('Rudern');
+  });
+
+  it('a long press on the title of the focus exercise opens it too', async () => {
+    await start();
+    down(title());
+    act(() => { vi.advanceTimersByTime(460); });
+    expect(orderList()).toBeTruthy();
+  });
+
+  it('moving more than 8 px before the timer is a scroll, not a hold', async () => {
+    await start();
+    down(title());
+    act(() => { vi.advanceTimersByTime(200); });
+    fireEvent.pointerMove(title(), { clientX: 10, clientY: 120, pointerId: 1 });
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(orderList()).toBeNull();
+  });
+
+  it('the same finger drags on: release higher up writes the new order', async () => {
+    const map = await start();
+    const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const i = Number((this as HTMLElement).dataset.i ?? -1);
+      return { top: i * 50, height: 50, bottom: i * 50 + 50, left: 0, right: 0, width: 0, x: 0, y: i * 50, toJSON: () => ({}) };
+    });
+    down(danach(), 75);
+    act(() => { vi.advanceTimersByTime(460); });
+    const list = orderList()!;
+    [...list.children].forEach((el, i) => (el as HTMLElement).setAttribute('data-i', String(i)));
+    // rects are read when a drag begins: grab the grip again so they are measured with the marks
+    fireEvent.pointerDown(within(list.children[1] as HTMLElement).getByText('⋮⋮'), { clientX: 10, clientY: 75, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(window, { clientX: 10, clientY: 5, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 10, clientY: 5, pointerId: 1 });
+    spy.mockRestore();
+    vi.useRealTimers();
+    await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises.map((e) => e.title).join(',')).toBe('Rudern,Bankdrücken'));
   });
 });

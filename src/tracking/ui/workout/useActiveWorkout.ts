@@ -12,6 +12,7 @@ import { useCatalog, useExcluded, usePortRecords, useStoreView, useTick, useWake
 import { effortQuestionsOn } from '../EffortQuestion';
 import type { DragStart } from '../ReorderSheet';
 import { markUsed } from './markUsed';
+import { useHold } from './useHold';
 import { useLatest } from './useLatest';
 
 export type Picker = { mode: 'add' } | { mode: 'swap'; ex: string } | null;
@@ -71,6 +72,8 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
   const askCoach = useCallback(() => dispatch({ t: 'askCoach' }), []);
   const setNotice = useCallback((notice: string | null) => dispatch({ t: 'set', patch: { notice } }), []);
+  // Holding an exercise opens Reihenfolge with that exercise lifted; the same finger drags on.
+  const { holdProps, wasHeld, release: releaseHold } = useHold((reorder) => set({ reorder }));
 
   const ending = useRef(false);
   const leaving = useRef(false);
@@ -213,7 +216,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const known = knownStudios([...history, w], studios.renames, studios.picks, studios.hidden);
 
   return {
-    port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown,
+    port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown, holdProps, wasHeld, releaseHold,
     catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, remaining, currentRid, known, act, end, discard,
   };
 }

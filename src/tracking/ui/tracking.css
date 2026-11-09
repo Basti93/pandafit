@@ -379,6 +379,8 @@
 .tk-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
 
 /* Reihenfolge: drag an exercise in a compact list */
+/* Holding an exercise (focus title, a row under Danach) starts the drag: no text selection, no callout. */
+.tk-hold, .tk-hold .tk-row-title, .tk-hold h2 { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .tk-reorder { list-style: none; margin: 0; padding: 0; }
 .tk-reorder.dragging { touch-action: none; user-select: none; -webkit-user-select: none; }
 .tk-reorder-block { background: var(--card); border-bottom: 1px solid var(--line); position: relative; transition: transform .15s ease; }
