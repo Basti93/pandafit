@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import WebSocket from 'ws';
-import { QUEUEABLE, type CoachClientMessage, type CoachHome, type CoachServerMessage, type CoachStateMessage } from '../../shared/coach-protocol';
+import { QUEUEABLE, type CoachClientMessage, type CoachHome, type CoachServerMessage, type CoachStateMessage } from '../protocol';
 import type { LiveMessage } from '../../shared/live';
 import { ruleBasedSession } from '../rules';
 import { loadState, type CoachState } from '../state';

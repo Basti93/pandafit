@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { uploadSettings, type GarminUploadSettings, type UploadMode } from '../../coach/garmin-upload';
-import type { CoachClientMessage, GarminStatus, GarminSyncInfo } from '../../shared/coach-protocol';
+import type { CoachClientMessage, GarminStatus, GarminSyncInfo } from '../../coach/protocol';
 
 const REASON: Record<string, string> = {
   credentials: 'Die Anmeldung wurde abgelehnt. Bitte E-Mail und Passwort prüfen.',

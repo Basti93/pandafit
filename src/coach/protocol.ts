@@ -1,16 +1,16 @@
-import type { CoachState } from '../coach/state';
-import type { Together } from '../coach/together';
-import type { GarminReadiness } from './garmin';
-import type { GarminSuggestion } from './garmin-profile';
-import type { GymPublic } from '../coach/gym/public';
-import type { GymWorkout } from './gym/types';
-import type { StrengthHealth } from '../coach/strength';
-import type { MobilityView } from '../coach/mobility/mobility';
-import type { RecordKind, TrackedRecord } from './records';
-import type { MealsView } from '../coach/meals/meal-coach';
-import type { Profile } from './profiles';
-import type { LiveMessage } from './live';
-import type { CoachClientMessage } from './coach-messages';
+import type { CoachState } from './state';
+import type { Together } from './together';
+import type { GarminReadiness } from '../shared/garmin';
+import type { GarminSuggestion } from '../shared/garmin-profile';
+import type { GymPublic } from './gym/public';
+import type { GymWorkout } from '../shared/gym/types';
+import type { StrengthHealth } from './strength';
+import type { MobilityView } from './mobility/mobility';
+import type { RecordKind, TrackedRecord } from '../shared/records';
+import type { MealsView } from './meals/meal-coach';
+import type { Profile } from '../shared/profiles';
+import type { LiveMessage } from '../shared/live';
+import type { CoachClientMessage } from '../shared/coach-messages';
 
 export type GarminStatus =
   | { state: 'idle' | 'connecting' | 'needs-mfa' | 'connected' }
@@ -28,7 +28,7 @@ export type AccountStatus = { state: 'idle' | 'linking' | 'linked' | 'rejected' 
   /** The origin of the linked server's web app (https only), for "Web-App öffnen". Absent without a link or on an old coach. */
   webOrigin?: string | null };
 
-export type { CoachClientMessage } from './coach-messages';
+export type { CoachClientMessage } from '../shared/coach-messages';
 
 /** What a client may queue while offline: writes a person made, never a login, a key, an upload or a request that wants an answer. */
 export const QUEUEABLE: ReadonlySet<CoachClientMessage['type']> = new Set<CoachClientMessage['type']>([
@@ -58,4 +58,3 @@ export type GymConfirmResult = 'written' | 'stale' | 'failed';
 /** queued-ack: the queued entry was handled (applied, skipped as stale or ignored as invalid) and may leave the client's queue. */
 export type CoachServerMessage = LiveMessage | { type: 'queued-ack'; qid: string } | { type: 'records'; requestId: string; kind: RecordKind; records: TrackedRecord[] } | { type: 'records-put-result'; requestId: string; ok: boolean; refused?: boolean; kept?: boolean; updatedMs?: number } | { type: 'records-changed'; profileId: string } | { type: 'gym-preview'; preview: { workout: GymWorkout; edited: boolean; leftOut?: string[] } | null } | { type: 'gym-confirm-result'; result: GymConfirmResult } | { type: 'ride-detail'; detail: RideDetail } | { type: 'coach-state'; state: CoachState; thinking: boolean; debriefing?: boolean; together: Together; hevy?: HevyStatus; garmin?: GarminStatus; garminSync?: GarminSyncInfo; garminReadiness?: GarminReadiness | null; garminSuggestion?: GarminSuggestion | null; gym?: GymPublic | null; strengthHealth?: StrengthHealth | null; mobility?: MobilityView | null; account?: AccountStatus; meals?: MealsView | null; profile?: Profile; coachHome?: CoachHome };
 export type CoachStateMessage = Extract<CoachServerMessage, { type: 'coach-state' }>;
-export const COACH_PORT = 7411;

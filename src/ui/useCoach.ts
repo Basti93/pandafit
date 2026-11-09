@@ -7,7 +7,8 @@ import type { GarminReadiness } from '../shared/garmin';
 import type { GarminSuggestion } from '../shared/garmin-profile';
 import type { StrengthHealth } from '../coach/strength';
 import { localSocketUrl } from './local-token';
-import { COACH_PORT, type CoachClientMessage, type AccountStatus, type GarminStatus, type GarminSyncInfo, type HevyStatus, type RideDetail, type CoachHome } from '../shared/coach-protocol';
+import { COACH_PORT } from '../shared/protocol';
+import { type CoachClientMessage, type AccountStatus, type GarminStatus, type GarminSyncInfo, type HevyStatus, type RideDetail, type CoachHome } from '../coach/protocol';
 
 const IDLE_ACCOUNT: AccountStatus = { state: 'idle', name: null, reason: null, refused: 0, offline: false, lastSyncMs: null };
 

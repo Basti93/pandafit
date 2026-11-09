@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { DEFAULT_MEAL_SETTINGS, SLOT_LABEL, SLOTS, type Diet, type Habit, type MealSettings } from '../shared/meals';
-import type { GarminSyncInfo, HevyStatus } from '../shared/coach-protocol';
+import type { GarminSyncInfo, HevyStatus } from '../coach/protocol';
 import { ChoiceRow, ConfirmLink, Row, RowList, Sheet, Switch } from '../tracking/ui/kit';
 import type { CoachLink, CoachSettingsView } from './coachLink';
 

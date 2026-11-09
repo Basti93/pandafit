@@ -8,7 +8,7 @@ import { rampTest } from '../../../src/coach/rules';
 import { homeOf, markMealsMoved, markMoved, mealFile, mealPeople, mealsDue } from '../../../src/coach/remote/home';
 import { RemoteCoach, ruleFallback } from '../../../src/coach/remote/remote-coach';
 import { createRouter, mealsStayLocal } from '../../../src/coach/remote/router';
-import type { CoachServerMessage } from '../../../src/shared/coach-protocol';
+import type { CoachServerMessage } from '../../../src/coach/protocol';
 import { DEFAULT_MEAL_SETTINGS } from '../../../src/shared/meals';
 import type { Profile } from '../../../src/shared/profiles';
 import type { TrackedRecord } from '../../../src/shared/records';

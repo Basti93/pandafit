@@ -1,5 +1,5 @@
 import type { GarminUploadSettings } from '../coach/garmin-upload';
-import type { CoachClientMessage, CoachStateMessage, GarminStatus, GarminSyncInfo, HevyStatus } from '../shared/coach-protocol';
+import type { CoachClientMessage, CoachStateMessage, GarminStatus, GarminSyncInfo, HevyStatus } from '../coach/protocol';
 import type { MealSettings } from '../shared/meals';
 import type { LiveSocket } from './live';
 

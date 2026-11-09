@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CoachState } from '../../coach/state';
-import type { CoachClientMessage } from '../../shared/coach-protocol';
+import type { CoachClientMessage } from '../../coach/protocol';
 import { DUTCH_WORDS, nextWord, type Word } from '../../shared/language';
 
 const ASK_MS = 6000;

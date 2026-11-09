@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { hrMaxFor } from '../../shared/hr-zones';
 import type { CoachState } from '../../coach/state';
 import { CoachHomeNote } from './CoachHomeNote';
-import type { CoachHome, CoachClientMessage, GarminStatus, GarminSyncInfo } from '../../shared/coach-protocol';
+import type { CoachHome, CoachClientMessage, GarminStatus, GarminSyncInfo } from '../../coach/protocol';
 import type { Profile } from '../../shared/profiles';
 import type { ClientMessage } from '../../shared/protocol';
 import type { Session } from '../../shared/session';

@@ -1,4 +1,4 @@
-import type { CoachClientMessage, CoachHome, CoachServerMessage, CoachStateMessage } from '../../shared/coach-protocol';
+import type { CoachClientMessage, CoachHome, CoachServerMessage, CoachStateMessage } from '../protocol';
 import type { CoachRuntime } from '../runtime';
 import { clearMoved, driftOf, mealsMoved } from './home';
 import type { RemoteCoach } from './remote-coach';

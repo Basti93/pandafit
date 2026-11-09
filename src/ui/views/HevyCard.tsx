@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { CoachClientMessage, HevyStatus } from '../../shared/coach-protocol';
+import type { CoachClientMessage, HevyStatus } from '../../coach/protocol';
 
 const REASON = {
   invalid: 'Dieser Schlüssel funktioniert nicht. Bitte prüfen, ob er vollständig ist und ob Hevy Pro aktiv ist.',

@@ -3,7 +3,7 @@ import { createLogger } from '../shared/node/log';
 import { guardChild } from './child-guard';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { GarminSyncInfo } from '../shared/coach-protocol';
+import type { GarminSyncInfo } from './protocol';
 import { plainTokens, TokensUnopenable, type GarminTokens, type TokenCheckout } from './secrets/garmin-tokens';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 

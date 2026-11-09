@@ -13,7 +13,7 @@ import { createWebPort } from '../../src/web/webPort';
 import { createWorkoutStore } from '../../src/tracking/store';
 import type { TrackingPort } from '../../src/tracking/ports';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
-import type { CoachClientMessage, CoachServerMessage } from '../../src/shared/coach-protocol';
+import type { CoachClientMessage, CoachServerMessage } from '../../src/coach/protocol';
 
 const wk = (sets: number) => ({
   id: 'w1', title: 'T', startMs: 1000, endMs: null, source: 'pandafit' as const, rest: null,

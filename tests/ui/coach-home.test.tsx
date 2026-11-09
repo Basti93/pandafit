@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import type { CoachState } from '../../src/coach/state';
-import type { CoachHome } from '../../src/shared/coach-protocol';
+import type { CoachHome } from '../../src/coach/protocol';
 import type { Profile } from '../../src/shared/profiles';
 import { settleServerProfile, useServerProfile } from '../../src/ui/useServerProfile';
 import { AccountCard } from '../../src/ui/views/AccountCard';

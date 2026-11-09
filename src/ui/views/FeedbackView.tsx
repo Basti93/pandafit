@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import type { RideSummary } from '../../coach/metrics';
 import { progressText, rideProgress } from '../../coach/progress';
 import type { Together } from '../../coach/together';
-import type { CoachClientMessage, RideDetail } from '../../shared/coach-protocol';
+import type { CoachClientMessage, RideDetail } from '../../coach/protocol';
 import type { RideDebrief } from '../../coach/debrief';
 import type { CoachState } from '../../coach/state';
 import { DebriefCard, debriefHandlers } from './DebriefCard';

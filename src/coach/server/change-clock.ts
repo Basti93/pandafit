@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { CoachClientMessage } from '../../shared/coach-protocol';
+import type { CoachClientMessage } from '../protocol';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 /** The most keys a clock keeps; past that the oldest stamps go first. */

@@ -16,7 +16,14 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const STATIC_RE = /(?:^|\n)\s*(import|export)\s+(type\s+)?(?:[^'";]*?\sfrom\s+)?['"]([^'"]+)['"]/g;
+const STATIC_RE = /(?:^|\n)\s*(import|export)\s+(type\s+)?([^'";]*?\sfrom\s+)?['"]([^'"]+)['"]/g;
+/** `import { type A, type B }` is erased like `import type`. */
+const allInlineTypes = (clause: string | undefined): boolean => {
+  const m = clause?.match(/^\{([^}]*)\}\s+from\s+$/);
+  if (!m) return false;
+  const names = m[1].split(',').map((x) => x.trim()).filter(Boolean);
+  return names.length > 0 && names.every((x) => x.startsWith('type '));
+};
 const DYNAMIC_RE = /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
 
 export function edgesOf(file: string, text: string): Edge[] {
@@ -25,7 +32,7 @@ export function edgesOf(file: string, text: string): Edge[] {
     if (!spec.startsWith('.')) return;
     edges.push({ from: file, to: posix.normalize(posix.join(dirname(file), spec)), typeOnly });
   };
-  for (const m of text.matchAll(STATIC_RE)) add(m[3], m[2] !== undefined);
+  for (const m of text.matchAll(STATIC_RE)) add(m[4], m[2] !== undefined || allInlineTypes(m[3]));
   for (const m of text.matchAll(DYNAMIC_RE)) add(m[1], false);
   return edges;
 }
@@ -73,15 +80,11 @@ const rules: Rule[] = [
 
 // Known violations with a reason. Goal: empty.
 const exceptions: { rule: string; from: string; reason: string }[] = [
-  { rule: 'shared imports only shared and ride-format', from: 'src/shared/changes.ts', reason: 'to move (task 8)' },
-  { rule: 'shared imports only shared and ride-format', from: 'src/shared/coach-protocol.ts', reason: 'to move (task 8)' },
-  { rule: 'shared imports only shared and ride-format', from: 'src/shared/protocol.ts', reason: 'to move (task 8)' },
   { rule: 'ui and web import coach only as types', from: 'src/ui/views/CoachView.tsx', reason: 'to move (task 8)' },
   { rule: 'ui and web import coach only as types', from: 'src/ui/views/FeedbackView.tsx', reason: 'to move (task 8)' },
   { rule: 'ui and web import coach only as types', from: 'src/ui/views/GarminCard.tsx', reason: 'to move (task 8)' },
   { rule: 'ui and web import coach only as types', from: 'src/ui/views/GarminUploadButton.tsx', reason: 'to move (task 8)' },
   { rule: 'ui and web import coach only as types', from: 'src/ui/views/TrainingCard.tsx', reason: 'to move (task 8)' },
-  { rule: 'ui and web import coach only as types', from: 'src/web/logic.ts', reason: 'to move (task 8)' },
 ];
 
 describe('architecture boundaries', () => {

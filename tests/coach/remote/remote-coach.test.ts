@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, vi } from 'vitest';
 import { coachSocketUrl, MAX_QUEUE, RemoteCoach, ruleFallback, type RemoteCoachOptions } from '../../../src/coach/remote/remote-coach';
 import type { CoachState } from '../../../src/coach/state';
-import type { CoachServerMessage, CoachStateMessage } from '../../../src/shared/coach-protocol';
+import type { CoachServerMessage, CoachStateMessage } from '../../../src/coach/protocol';
 import { fakeSockets } from './fake-socket';
 
 const NOW = Date.UTC(2026, 10, 3, 12);

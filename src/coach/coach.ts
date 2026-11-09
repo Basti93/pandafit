@@ -3,7 +3,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import { readMeta, readRide } from '../ride-format/read';
 import type { Profile } from '../shared/profiles';
-import type { RideDetail } from '../shared/coach-protocol';
+import type { RideDetail } from './protocol';
 import { DUTCH_WORDS, recordAnswer } from '../shared/language';
 import { PASSES } from '../shared/passes';
 import type { Session } from '../shared/session';

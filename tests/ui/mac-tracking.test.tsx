@@ -5,7 +5,7 @@ import path from 'node:path';
 import { cleanup } from '@testing-library/react';
 import { handleRecords } from '../../src/coach/tracking/records-api';
 import { RecordStore } from '../../src/coach/tracking/store';
-import type { CoachServerMessage } from '../../src/shared/coach-protocol';
+import type { CoachServerMessage } from '../../src/coach/protocol';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 
 afterEach(cleanup);

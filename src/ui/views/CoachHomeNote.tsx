@@ -1,4 +1,4 @@
-import type { CoachHome } from '../../shared/coach-protocol';
+import type { CoachHome } from '../../coach/protocol';
 
 const hhmm = (ms: number): string => new Date(ms).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 

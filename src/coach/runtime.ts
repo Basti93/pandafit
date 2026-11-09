@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createLogger } from '../shared/node/log';
 import type { Profile } from '../shared/profiles';
-import type { CoachClientMessage, CoachServerMessage, CoachStateMessage } from '../shared/coach-protocol';
+import type { CoachClientMessage, CoachServerMessage, CoachStateMessage } from './protocol';
 import { suggestProfile } from '../shared/garmin-profile';
 import { Coach } from './coach';
 import { readRide } from '../ride-format/read';

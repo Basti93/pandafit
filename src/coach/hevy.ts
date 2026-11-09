@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { HevyStatus } from '../shared/coach-protocol';
+import type { HevyStatus } from './protocol';
 import { PLAIN_CODEC, type SecretCodec } from './secrets/secret-box';
 
 const API = 'https://api.hevyapp.com';

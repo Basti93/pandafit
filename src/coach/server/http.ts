@@ -6,7 +6,7 @@ import { logServerErrors, fastifyLogger } from '../../shared/node/log';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
 import { parseCoachClientMessage } from '../../shared/coach-messages';
-import { QUEUEABLE, type CoachClientMessage, type CoachServerMessage, type CoachStateMessage } from '../../shared/coach-protocol';
+import { QUEUEABLE, type CoachClientMessage, type CoachServerMessage, type CoachStateMessage } from '../protocol';
 import { ChangeClock, changeKey, isHouseholdKey } from './change-clock';
 import { HandledQids } from './handled-qids';
 import { RIDE_ID } from '../ride-upload-format';

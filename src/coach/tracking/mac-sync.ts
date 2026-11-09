@@ -1,5 +1,5 @@
 import { webOrigin } from '../../shared/web-origin';
-import type { AccountStatus } from '../../shared/coach-protocol';
+import type { AccountStatus } from '../protocol';
 import type { RecordKind, TrackedRecord } from '../../shared/records';
 import { syncRecords, type Refusal } from '../../tracking/sync';
 import type { Coach } from '../coach';

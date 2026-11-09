@@ -1,4 +1,4 @@
-import type { CoachClientMessage, CoachServerMessage } from '../../src/shared/coach-protocol';
+import type { CoachClientMessage, CoachServerMessage } from '../../src/coach/protocol';
 import { applyRecord, type RecordKind, type TrackedRecord } from '../../src/shared/records';
 import type { TrackingPort } from '../../src/tracking/ports';
 

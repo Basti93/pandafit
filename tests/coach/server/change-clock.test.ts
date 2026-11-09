@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ChangeClock, changeKey } from '../../../src/coach/server/change-clock';
-import type { CoachClientMessage } from '../../../src/shared/coach-protocol';
+import type { CoachClientMessage } from '../../../src/coach/protocol';
 
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'clock-'));
 const P = 'pa';

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MovingNote } from './CoachHomeNote';
-import type { AccountStatus, CoachClientMessage, CoachHome } from '../../shared/coach-protocol';
+import type { AccountStatus, CoachClientMessage, CoachHome } from '../../coach/protocol';
 
 const REASON = {
   invalid: 'Name oder Passwort stimmen nicht. Bitte noch einmal prüfen.',

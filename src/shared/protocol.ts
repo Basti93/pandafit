@@ -12,3 +12,4 @@ export type StateMessage = {
 };
 export type ServerMessage = StateMessage | RecoveryOffer | { type: 'click'; dir: 'up' | 'down' } | { type: 'error'; message: string } | { type: 'report-saved'; path: string };
 export const SERVICE_PORT = 7410;
+export const COACH_PORT = 7411;

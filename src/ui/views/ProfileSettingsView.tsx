@@ -1,6 +1,6 @@
 import { ZoneChip } from '../hr-zone-style';
 import { useState, type ReactNode } from 'react';
-import type { CoachClientMessage, CoachHome } from '../../shared/coach-protocol';
+import type { CoachClientMessage, CoachHome } from '../../coach/protocol';
 import type { ClientMessage } from '../../shared/protocol';
 import { hrMaxFor, zoneBounds, ZONES } from '../../shared/hr-zones';
 import type { Profile } from '../../shared/profiles';

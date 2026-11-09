@@ -9,7 +9,7 @@ import { AccountLinks } from '../../src/coach/tracking/link';
 import { RecordStore } from '../../src/coach/tracking/store';
 import { rampTest } from '../../src/coach/rules';
 import type { Profile } from '../../src/shared/profiles';
-import type { CoachServerMessage } from '../../src/shared/coach-protocol';
+import type { CoachServerMessage } from '../../src/coach/protocol';
 import { sealedTokens } from '../../src/coach/secrets/garmin-tokens';
 import { sealedCodec } from '../../src/coach/secrets/secret-box';
 import { CHAT_SYSTEM_PROMPT } from '../../src/coach/meals/chat';

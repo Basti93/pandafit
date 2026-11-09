@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { CoachHome } from '../../shared/coach-protocol';
+import type { CoachHome } from '../protocol';
 import { remoteDir } from './home';
 import type { MigrateResult } from './migrate';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';

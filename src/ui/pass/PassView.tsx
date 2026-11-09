@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CoachClientMessage } from '../../shared/coach-protocol';
+import type { CoachClientMessage } from '../../coach/protocol';
 import type { Pass } from '../../shared/passes';
 import { beep, soundEnabled } from '../countdown';
 import { heightAt, nextPosition, topOf } from './riding';
