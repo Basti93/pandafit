@@ -2,21 +2,23 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { nextUpdatedMs } from '../tracking/ui/run-view';
 import type { TrackedRecord } from '../shared/records';
 import {
-  changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, mealKey, readMealState,
-  shoppingList, sideText, SLOT_LABEL, SLOTS, stateRecordId, weekOf, withItem,
+  changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, isChatRecordId, newChatId, readMealChat, DAY_SHORT, mealKey, readMealState,
+  shoppingList, SLOT_LABEL, SLOTS, stateRecordId, weekOf, withItem,
   type ItemState, type LinkRequest, type Meal, type MealChat, type MealState, type ShopItem,
 } from '../shared/meals';
 import { weekRangeOfKey } from '../shared/dates';
 import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
-import { ConfirmLink, PageHead, Row, RowCard, RowList, Segments, Sheet } from '../tracking/ui/kit';
-import { listAnd, mealDayOf, mealWeeks, type MealAt, type Week } from './essen/meals-view';
+import { ConfirmLink, RowCard, Sheet } from '../tracking/ui/kit';
+import { mealDayOf, mealWeeks, shoppingWeek, type MealAt, type Week } from './essen/meals-view';
+import { EssenPage } from './essen/EssenPage';
+import { EssenStart } from './essen/EssenStart';
 import { MealPage } from './essen/MealPage';
 import { placements, RecipesSheet, type RecipeCtx } from './RecipesScreen';
 
 export type { Week };
 export type MealData = ReturnType<typeof useMealData>;
-type Page = { name: 'start' } | { name: 'meal'; at: MealAt; from: 'essen' | 'heute' };
+type Page = { name: 'start' } | { name: 'shopping' } | { name: 'meal'; at: MealAt; from: 'essen' | 'heute' };
 export { mealDayOf, mealWeeks };
 
 /** This person's messages to the coach about the plan, oldest first. */
@@ -58,7 +60,7 @@ const ChatRow = ({ c }: { c: MealChat }) => (
   </li>
 );
 
-/** "Änderung wünschen": written as a record, answered by the Mac at its next sync with no ride open. */
+/** "Plan ändern": written as a record, answered by the Mac at its next sync with no ride open. */
 function ChatSheet({ chat, onSend, onClose }: { chat: MealChat[]; onSend: (text: string) => Promise<void>; onClose: () => void }) {
   const [text, setText] = useState('');
   const [sent, setSent] = useState(false);
@@ -66,7 +68,7 @@ function ChatSheet({ chat, onSend, onClose }: { chat: MealChat[]; onSend: (text:
   const [last, ...before] = [...chat].reverse();
   const submit = () => { const t = text.trim(); if (!t) return; setText(''); setSent(true); void onSend(t); };
   return (
-    <Sheet title="Änderung wünschen" onClose={onClose} actions={<button type="submit" form={formId} disabled={!text.trim()}>Senden</button>}>
+    <Sheet title="Plan ändern" onClose={onClose} actions={<button type="submit" className="primary" form={formId} disabled={!text.trim()}>Senden</button>}>
       <form id={formId} className="tk-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <label className="tk-field"><span>Sag Bo, was du ändern willst. Bo schlägt eine Änderung vor. Du bestätigst sie.</span>
           <input autoFocus aria-label="Nachricht an Bo" maxLength={CHAT_MAX_CHARS} placeholder="z. B. Mittwoch lieber Nudeln" value={text} onChange={(e) => { setText(e.target.value); setSent(false); }} />
@@ -86,18 +88,6 @@ function ChatSheet({ chat, onSend, onClose }: { chat: MealChat[]; onSend: (text:
 
 export const short = (k: string) => { const [d, s] = k.split('-'); return `${DAY_SHORT[Number(d)]}${s === 'mittag' ? '' : ` ${SLOT_LABEL[s as keyof typeof SLOT_LABEL]}`}`; };
 const NEXT: Record<ItemState, ItemState> = { offen: 'gekauft', gekauft: 'offen', da: 'offen' };
-
-/** One meal as a row; a tap opens its page. A deviation from the plan shows under the title. */
-function MealRow({ week, meal, onOpen }: { week: Week; meal: Meal; onOpen: () => void }) {
-  const eaters = eatersOf(week.plan, week.state, mealKey(meal.day, meal.slot));
-  const away = week.plan.people.filter((p) => !eaters.includes(p.id));
-  const note = eaters.length === 0 ? 'Niemand isst mit' : away.length > 0 ? `${listAnd(away.map((p) => p.name))} ${away.length > 1 ? 'essen' : 'isst'} nicht mit` : null;
-  return (
-    <Row
-      title={<span><span className="pm-rowtitle"><b>{SLOT_LABEL[meal.slot]}</b> · {meal.dish.title}</span>{meal.dish.side && <small className="pm-sidehint">dazu: {sideText(meal.dish.side)}</small>}{note && <small className="pm-dev">{note}</small>}</span>}
-      value={meal.reuseOf ? 'Rest' : `${meal.dish.minutes} Min`} onClick={onOpen} />
-  );
-}
 
 /** The stored section stays "Vorrat" (server data); the list says what the shelf is. */
 const SECTION_LABEL: Record<string, string> = { Sonstiges: 'Weiteres', Vorrat: 'Trockenware' };
@@ -225,7 +215,7 @@ export function DayMeals({ port, now, onOpen }: { port: WebPort; now: () => numb
   );
 }
 
-/** The meal plan on the phone: one day at a time with a day picker, and the shopping list. Ticks and who eats go back to the Mac. */
+/** Essen: the start page, and its sub pages (a meal, the shopping list) in local state. Ticks and who eats go back to the Mac. */
 export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, onHeute }: { port: WebPort; now: () => number; fetchFn: typeof fetch; account?: string; /** Heute asked for a meal: the page opens on it, once. */ entry?: MealAt | null; onEntryDone?: () => void; onHeute?: () => void }) {
   const data = useMealData(port, now, fetchFn);
   const { records, weeks, change: changeWeek, recipeCtx } = data;
@@ -233,15 +223,10 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
   useEffect(() => { if (entry) onEntryDone?.(); }, [entry, onEntryDone]);
   const t = now();
   const current = weekOf(t);
-  const today = dayIndex(t);
-  const first = (today >= 5 && weeks.find((w) => w.plan.week !== current)) || weeks.find((w) => w.plan.week === current) || weeks[0];
+  const first = shoppingWeek(weeks, t); // the week Einkauf shows first, also the one "Plan ändern" writes for
   // Records arrive after the first render: nothing chosen yet means the default, decided once they are there.
   const [weekKey, setWeekKey] = useState<string | null>(null);
   const week = weeks.find((w) => w.plan.week === weekKey) ?? first;
-  const isCurrent = week?.plan.week === current;
-  const [dayPick, setDay] = useState<number | null>(null);
-  const day = dayPick ?? (isCurrent ? today : 0);
-  const [tab, setTab] = useState<'tage' | 'einkauf'>('tage');
   const [chatOpen, setChatOpen] = useState(false);
   const [recipesOpen, setRecipesOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -251,9 +236,23 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
     const from = page.from;
     return <MealPage data={data} at={page.at} me={account} backLabel={from === 'heute' ? 'Heute' : 'Essen'} onBack={() => { if (from === 'heute') onHeute?.(); else setPage({ name: 'start' }); }} />;
   }
-  if (!week) return <div className="tk-screen"><PageHead title="Essen" /><p className="muted">Noch kein Essensplan. Er kommt am Samstagmorgen für die nächste Woche.</p></div>;
+  if (page.name === 'shopping' && week) {
+    const isCurrent = week.plan.week === current;
+    return (
+      <EssenPage back={{ label: 'Essen', onClick: () => setPage({ name: 'start' }) }} title="Einkauf">
+        <div className="tk-screen pm">
+          <p className="muted pm-meta">{isCurrent ? 'Diese Woche' : 'Nächste Woche'}, {weekRangeOfKey(week.plan.week)}</p>
+          {weeks.length > 1 && (
+            <div className="tk-textseg" role="group" aria-label="Woche">
+              {weeks.map((w) => <button key={w.plan.week} type="button" className="link" aria-pressed={w === week} onClick={() => setWeekKey(w.plan.week)}>{w.plan.week === current ? 'Diese Woche' : 'Nächste Woche'}</button>)}
+            </div>
+          )}
+          <Shopping key={week.plan.week} week={week} onSet={(item, state) => void changeWeek(week.plan.week, (s, at) => withItem(s, item, state, at))} onOwn={(f) => void changeWeek(week.plan.week, f)} />
+        </div>
+      </EssenPage>
+    );
+  }
 
-  const change = (f: (s: MealState, at: number) => MealState) => changeWeek(week.plan.week, f);
   /** A link to add: a record of its own, answered by the coach on the server. */
   const addLink = async (url: string) => {
     const at = now();
@@ -266,50 +265,17 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
     if (!have) return;
     await port.put({ ...have, updatedMs: nextUpdatedMs(now(), have), deleted: true }).catch(() => { /* still there; try again */ });
   };
-  /** A new record of its own: only the Mac writes it again, with the reply. */
+  /** A new record of its own: only the Mac writes it again, with the reply. The week is the one Einkauf shows first. */
   const say = async (text: string) => {
     const at = now();
-    await port.put({ kind: 'mealplan', id: newChatId(at), updatedMs: at, deleted: false, body: { week: week.plan.week, text, atMs: at, reply: null, answeredMs: null, changed: [] } }).catch(() => { /* the field stays empty; nothing else is lost */ });
+    await port.put({ kind: 'mealplan', id: newChatId(at), updatedMs: at, deleted: false, body: { week: first?.plan.week, text, atMs: at, reply: null, answeredMs: null, changed: [] } }).catch(() => { /* the field stays empty; nothing else is lost */ });
   };
-  const list = shoppingList(week.plan, week.state);
-  const openCount = list.open + list.own.filter((o) => o.state === 'offen').length;
-  const pick = (w: Week) => { setWeekKey(w.plan.week); setDay(w.plan.week === current ? today : 0); };
   return (
-    <div className="tk-screen pm">
-      <PageHead title="Essen" subtitle={`${isCurrent ? 'Diese Woche' : 'Nächste Woche'}, ${weekRangeOfKey(week.plan.week)}`} />
-      {weeks.length > 1 && (
-        <div className="tk-textseg" role="group" aria-label="Woche">
-          {weeks.map((w) => <button key={w.plan.week} type="button" className="link" aria-pressed={w === week} onClick={() => pick(w)}>{w.plan.week === current ? 'Diese Woche' : 'Nächste Woche'}</button>)}
-        </div>
-      )}
-      <Segments label="Ansicht" value={tab} onChange={setTab} options={[{ value: 'tage', label: 'Tage' }, { value: 'einkauf', label: `Einkauf${openCount > 0 ? ` · ${openCount} offen` : ''}` }]} />
-      {tab === 'tage' ? (
-        <>
-          <div className="pm-days" role="tablist" aria-label="Tag">
-            {DAY_SHORT.map((d, i) => (
-              <button key={d} type="button" role="tab" aria-selected={i === day} className={`${isCurrent && i === today ? 'today' : ''}${isCurrent && i < today ? ' past' : ''}`} onClick={() => { setDay(i); }}>
-                <b>{d}</b><span>{dayDate(week.plan.week, i).split('.')[0]}</span>
-              </button>
-            ))}
-          </div>
-          <h2 className="pm-dayname">{isCurrent && day === today ? 'Heute' : DAY_LONG[day]}{week.plan.trainingDays.includes(day) && <small> · Trainingstag</small>}</h2>
-          <RowList label="Mahlzeiten">
-            {SLOTS.map((slot) => {
-              const m = week.plan.meals.find((x) => x.day === day && x.slot === slot);
-              if (!m) return <Row key={slot} title={SLOT_LABEL[slot]} value="Frei" />;
-              const k = mealKey(m.day, m.slot);
-              return <MealRow key={slot} week={week} meal={m} onOpen={() => setPage({ name: 'meal', at: { week: week.plan.week, meal: k }, from: 'essen' })} />;
-            })}
-          </RowList>
-          {chatOpen && <ChatSheet chat={chat} onSend={say} onClose={() => setChatOpen(false)} />}
-          <RowList label="Rezepte">
-            <Row title="Rezepte" value={recipeCtx.favs.size > 0 ? `${recipeCtx.favs.size} Favoriten` : undefined} onClick={() => setRecipesOpen(true)} />
-            <Row title="Änderung wünschen" onClick={() => setChatOpen(true)} />
-          </RowList>
-          {recipesOpen && <RecipesSheet ctx={{ ...recipeCtx, deleteOwn: (id) => void deleteRecipe(id) }} onAddLink={() => setAddOpen(true)} onClose={() => setRecipesOpen(false)} />}
-          {addOpen && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setAddOpen(false)} />}
-        </>
-      ) : <Shopping key={week.plan.week} week={week} onSet={(item, state) => void change((s, at) => withItem(s, item, state, at))} onOwn={(f) => void change(f)} />}
-    </div>
+    <>
+      <EssenStart data={data} nowMs={t} me={account} onMeal={(at) => setPage({ name: 'meal', at, from: 'essen' })} onShopping={() => setPage({ name: 'shopping' })} onRecipes={() => setRecipesOpen(true)} onChat={() => setChatOpen(true)} />
+      {chatOpen && <ChatSheet chat={chat} onSend={say} onClose={() => setChatOpen(false)} />}
+      {recipesOpen && <RecipesSheet ctx={{ ...recipeCtx, deleteOwn: (id) => void deleteRecipe(id) }} onAddLink={() => setAddOpen(true)} onClose={() => setRecipesOpen(false)} />}
+      {addOpen && <AddRecipeSheet requests={requests} onAdd={addLink} onClose={() => setAddOpen(false)} />}
+    </>
   );
 }

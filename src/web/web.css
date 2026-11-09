@@ -27,19 +27,7 @@ body { font-family: var(--font-text); padding: 0 env(safe-area-inset-right) env(
 /* Sticky pieces sit below the notch; the tab bar is at the bottom now. */
 .tk-picker { padding-top: calc(1rem + env(safe-area-inset-top)); padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
 
-/* Meal plan: one day at a time, the three meals as cards with a color per meal. */
-.pm .slot-fruehstueck { --slot: var(--slot-fruehstueck); } .pm .slot-mittag { --slot: var(--slot-mittag); } .pm .slot-abend { --slot: var(--slot-abend); }
-.pm-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; }
-.tk-screen .pm-days button { display: flex; flex-direction: column; align-items: center; gap: .05rem; min-width: 0; min-height: 56px; padding: .35rem 0; border-radius: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--field-line); font-weight: 500; }
-.pm-days button b { color: var(--text); font-size: var(--text-m); }
-.pm-days button span { font-size: var(--text-xs); color: var(--day); }
-.tk-screen .pm-days button.past { opacity: .75; }
-.tk-screen .pm-days button.today { border-color: var(--accent); }
-.tk-screen .pm-days button[aria-selected='true'] { background: var(--accent); border-color: var(--accent); color: var(--ink); opacity: 1; }
-.tk-screen .pm-days button[aria-selected='true'] b { color: var(--ink); }
-.tk-screen .pm-days button[aria-selected='true'] span { color: var(--ink); }
-.tk-screen h2.pm-dayname { font-size: var(--text-xl); margin-top: .2rem; }
-.pm-dayname small { color: var(--muted); font-size: var(--text-s); font-weight: 700; }
+/* Meal plan: the shopping list, the chat and the recipe parts. */
 .pm-meta { margin: 0; color: var(--muted); font-size: var(--text-s); }
 .pm-meta b { color: var(--text); }
 .pm-ingredients { list-style: none; margin: .4rem 0; padding: 0; }
@@ -61,10 +49,7 @@ body { font-family: var(--font-text); padding: 0 env(safe-area-inset-right) env(
 .pm-addline { display: grid; grid-template-columns: 1fr 9rem; gap: var(--space-2); }
 .tk-screen input::placeholder { color: var(--muted); opacity: .8; }
 .pm-addline input { min-width: 0; }
-.pm-rowtitle { display: block; }
-.pm-sidehint { display: block; color: var(--muted); font-size: var(--text-s); }
 .pm-side { margin: var(--space-2) 0 0; }
-.pm-dev { display: block; color: var(--accent-text); font-size: var(--text-s); }
 .tk-screen button.pm-check { width: 44px; height: 44px; min-width: 44px; padding: 0; border-radius: .7rem; background: transparent; border: 2px solid var(--muted); color: var(--ink); font-size: var(--text-l); }
 .pm-item.gekauft button.pm-check { background: var(--good); border-color: var(--good); }
 .pm-name { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
@@ -191,7 +176,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 /* Essen: the shopping groups are cards; the list items stay plain, with 44 px targets. */
 .pm-group { background: var(--card); border-radius: var(--radius-card); padding: var(--space-2) var(--space-4) var(--space-1); margin-top: var(--space-2); }
 .pm-group > .tk-section { margin-top: var(--space-1); }
-.pm-days button { min-height: 44px; }
 /* Login: the still Panda sits over the wordmark. */
 .web-login .web-login-panda { width: 7rem; height: auto; align-self: flex-start; }
 /* Ride companion: the figures stay big and dark on light; the pairs and the interval sit on cards. */

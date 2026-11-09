@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { vi } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
@@ -55,7 +55,9 @@ export function pill(name: string): HTMLElement {
   return found;
 }
 
-/** Taps the meal row with this title on the Essen start page. */
+/** Opens the meal with this title from the Essen start page: "Rezept ansehen" on the main card, or its row card. */
 export async function openMeal(title: string): Promise<void> {
-  fireEvent.click(await screen.findByRole('button', { name: new RegExp(title) }));
+  const main = await screen.findByRole('region', { name: 'Nächste Mahlzeit' });
+  if (main.textContent?.includes(title)) fireEvent.click(within(main).getByRole('button', { name: 'Rezept ansehen' }));
+  else fireEvent.click(await screen.findByRole('button', { name: new RegExp(title) }));
 }

@@ -36,7 +36,7 @@ describe('Essen on the phone with the coach on the Mac', () => {
     await mac.replan('pa', week);
     const a = await boot({ account: 'anna', seed: store.all('pb') });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Änderung wünschen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan ändern' }));
     fireEvent.change(await screen.findByLabelText('Nachricht an Bo'), { target: { value: 'Heute Abend lieber was mit Nudeln' } });
     fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
     expect(await screen.findByText('Wunsch gesendet')).toBeTruthy();
@@ -54,7 +54,7 @@ describe('Essen on the phone with the coach on the Mac', () => {
     cleanup();
     await boot({ account: 'anna', seed: store.all('pb') });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Änderung wünschen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan ändern' }));
     expect(await screen.findByText('Heute Abend gibt es Nudeln.')).toBeTruthy();
     expect(screen.queryByText('Bo antwortet gleich. Ist der Mac aus, dauert es, bis er wieder an ist.')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));

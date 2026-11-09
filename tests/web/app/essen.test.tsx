@@ -80,7 +80,7 @@ describe('Essen on the phone', () => {
     // The last value seen counts from the start, before the coach is asked again; the page says when the first plan comes.
     await boot({ account: 'anna', seed: [], flags: { 'pandafit.essensplan.anna': 'on' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    expect(await screen.findByText('Noch kein Essensplan. Er kommt am Samstagmorgen für die nächste Woche.')).toBeTruthy();
+    expect(await screen.findByText('Noch gibt es keinen Essensplan. Der nächste Plan kommt am Samstagmorgen.')).toBeTruthy();
   });
 
   describe('on Heute', () => {
@@ -127,7 +127,7 @@ describe('Essen on the phone', () => {
   it('today first with its meals, and a tick or a person off goes into the state record', async () => {
     const a = await boot({ account: 'anna', seed: [mealPlan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    expect(await screen.findByRole('heading', { name: 'Heute' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Nächste Mahlzeit' })).toBeTruthy();
     // A meal is one row; a tap opens its page, where Wer isst mit sits.
     await openMeal('Skyr mit Beeren');
     expect(screen.getByText('Verrühren.')).toBeTruthy();
@@ -135,8 +135,8 @@ describe('Essen on the phone', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lena isst mit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Schließen' }));
     fireEvent.click(pill('Essen'));
-    // Only a deviation shows on the closed row.
-    expect(await screen.findByText('Lena isst nicht mit')).toBeTruthy();
+    // Who eats shows on the main card.
+    await waitFor(() => expect(screen.getByRole('region', { name: 'Nächste Mahlzeit' }).textContent).toContain('Max isst mit'));
     fireEvent.click(screen.getByRole('button', { name: /^Einkauf/ }));
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Skyr gekauft' }));
     await waitFor(async () => {
@@ -207,7 +207,7 @@ describe('Essen on the phone', () => {
   it('the shopping list says for when and for whom, counts what is open, and keeps own items below the plan\'s', async () => {
     await boot({ account: 'anna', seed: [mealPlan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    fireEvent.click(await screen.findByRole('button', { name: /^Einkauf · \d+ offen$/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Einkauf.*(Dinge? offen|Alles ist erledigt)$/ }));
     expect(screen.getByText(/für Mo–So, 2 Personen/)).toBeTruthy();
     // The field to add comes first; "Menge (optional)" says it may stay empty.
     const add = screen.getByLabelText('Etwas dazuschreiben');
