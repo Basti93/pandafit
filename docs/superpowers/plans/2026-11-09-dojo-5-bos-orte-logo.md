@@ -37,8 +37,8 @@ Zur Abnahme durch den Nutzer:
 8. **Alle Szenenfarben sind Tokens** (`--scene-*`), wie beim Nest. Was auf dem Boden liegt (Hügel, Boden, Wand, Wasser, Mond), hat einen hellen Wert; Dinge, die in beiden Schemata gleich aussehen (Bücher, Wolle, Kissen, Hantel, Porträt), sind `/* shared */`. Gibt es eine Farbe schon als Token, wird es genutzt (Gold der Wolle = `--low`). Das Arnold-Porträt wird für 116 px auf Rahmen, Papier, Linie und Hautton vereinfacht.
 9. **Jede Szene nutzt den Rahmen des Nests** (116 × 176, `back` hinter dem Lichtschein, `front` vor Bo, Bo unten links 12 px, unten 9 px, 94 px breit). Die Moodboard-Szenen (390 × 240) werden für das hohe Format neu angeordnet (Mond, Laterne, Porträt rücken nach oben in den Rahmen), nicht 1 : 1 verkleinert.
 10. **Der Chat-Kopf bleibt ohne Ort** (kleines `PandaPortrait` mit `listen` und rundem Lichtschein).
-11. **Logo: drei Entwürfe in `docs/design/moodboard/logo.html`** (A „Tasse am Kinn“, B „Über den Tassenrand“, C „Im Laternenlicht“), je in 1024 (Dock), 180 (Handy), 32 und 16 (Tab), hell und dunkel, mit kleiner Fassung für 32/16. **Empfehlung: B**, weil die große Tasse auch bei 16 px als Form bleibt und sich von den runden Panda-Köpfen anderer Apps abhebt. Der Controller fragt den Nutzer (kein Subagent); Task 8 wartet darauf und prüft es in Step 0.
-12. **Logo-Dateien:** `resources/icon.svg` (macOS-Raster: 824 von 1024, Radius 185, wie heute), `src/web/public/icons/icon.svg` (randlos, für PWA, Apple-Touch und maskable; alles Wichtige in den mittleren 80 %), `src/web/public/icons/favicon.svg` (die kleine Fassung). Die PNG-Namen bleiben (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`; die Benachrichtigungen nutzen `icon-192.png`), neu ist `favicon-32.png` für Browser ohne SVG-Favicon. `icons/panda.svg` fällt weg. Das Logo hat in beiden Schemata seinen dunkelgrünen Grund (DESIGN.md „Logo“), keine helle Fassung.
+11. **Logo: drei einfache Entwürfe in `docs/design/moodboard/logo.html`**, nur Bos Gesicht mit Stirnband, flach, höchstens vier Farben, ein Grund ohne Verlauf, ein Bild für alle Größen (keine kleine Fassung): D „Das bisherige Gesicht, aufgeräumt“ (das heutige Panda-Logo ohne Brauen und Schweißtropfen; der Rückfall des Nutzers), E „Mit einer kleinen Tasse“ (geschlossene Augen wie Bo, kleine Tasse mit Dampf unten rechts), F „Aprikose“ (größeres Gesicht auf apricotfarbenem Grund, Stirnband grün; weicht vom dunkelgrünen Grund in DESIGN.md ab). Je in 1024 (Dock), 180 (Handy), 32 und 16 (Tab), hell und dunkel. Die erste Runde A, B, C war zu verspielt und ist verworfen. **Empfehlung: E**, weil es so einfach bleibt wie D, aber als einziges den Tee aus „Bo als Teetrinker“ zeigt; D ist der sichere Rückfall. Der Controller fragt den Nutzer (kein Subagent); Task 8 wartet darauf und prüft es in Step 0.
+12. **Logo-Dateien:** `resources/icon.svg` (macOS-Raster: 824 von 1024, Radius 185, wie heute), `src/web/public/icons/icon.svg` (randlos, für PWA, Apple-Touch, maskable und als SVG-Favicon; alles Wichtige in den mittleren 80 %). Die PNG-Namen bleiben (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`; die Benachrichtigungen nutzen `icon-192.png`), neu ist `favicon-32.png` für Browser ohne SVG-Favicon. `icons/panda.svg` fällt weg. Das Logo hat in beiden Schemata seinen eigenen Grund (dunkelgrün, bei F apricot), keine helle Fassung.
 13. **Aus dem Parkplatz mitgenommen: „Essen heute“ auf Heute zeigt das Bild der Mahlzeit** (`MealImage`, Rezeptfoto oder Zeichnung nach Mahlzeit-Typ) statt des Icons. Klein und auf derselben Seite wie Bo; die Zeile bleibt sonst gleich.
 
 **Aus dem Parkplatz übernommen:** „`BoBubble` mit `portrait="mini"` und `place`“ (Entscheidung 7, Task 4) und „‚Essen heute‘ auf Heute zeigt noch das Icon statt des Bilds“ (Entscheidung 13, Task 7). Nicht übernommen: `SubPage` als Kit-Rahmen, Tab bei offener Unterseite, „‹ Zurück“ in Sheets aus dem Übungsmenü, Pausen-Wecker beim Verkleinern (alle nicht Bo oder Logo).
@@ -59,11 +59,11 @@ Zur Abnahme durch den Nutzer:
 - Create: `docs/design/moodboard/logo.html` (schon gezeichnet beim Schreiben dieses Plans; im Browser öffnen)
 
 **Interfaces:**
-- Produces: drei Entwürfe als `<symbol id="a|b|c">` (randlos, `viewBox="0 0 1024 1024"`) und je eine kleine Fassung `<symbol id="a-s|b-s|c-s">` für 32/16 px. Task 8 übernimmt die Pfade des gewählten Entwurfs wörtlich.
+- Produces: drei Entwürfe als `<symbol id="d|e|f">` (randlos, `viewBox="0 0 1024 1024"`, ein Bild für alle Größen). Task 8 übernimmt die Formen des gewählten Entwurfs wörtlich.
 
-- [ ] **Step 1:** `docs/design/moodboard/logo.html` im Browser öffnen und prüfen: drei Karten A, B, C; je Dock (verkleinert), Handy 180, Tab 32 und 16 (kleine Fassung und einfach verkleinert), hell und dunkel. Keine verworfene Richtung (Ensō, Nest, Panda und Maus, Monogramm).
-- [ ] **Step 2: Commit** `docs(design): logo drafts Bo als Teetrinker`.
-- [ ] **Step 3: Gate (nur der Controller).** Der Controller fragt den Nutzer nach dem Entwurf (Entscheidung 11); ein Implementierungs-Subagent fragt nie selbst, er endet nach Step 2. Seine Wahl und jede Änderung in `logo.html` nachziehen (nur in diesem Moodboard), dann in `DESIGN.md` unter „Logo“ einen Satz ergänzen: „Gewählt: Entwurf X (`moodboard/logo.html`).“ Commit `docs(design): logo chosen`. Tasks 2–7 laufen bis dahin weiter; Task 8 startet erst danach, Task 9 nach Task 8.
+- [x] **Step 1:** `docs/design/moodboard/logo.html` im Browser öffnen und prüfen: drei Karten D, E, F; je Dock (verkleinert), Handy 180, Tab 32 und 16, hell und dunkel. Keine verworfene Richtung (Ensō, Nest, Panda und Maus, Monogramm, die erste Runde A, B, C).
+- [x] **Step 2: Commit** — schon beim Planen erledigt (`docs: simpler logo drafts`, zusammen mit diesem Plan).
+- [ ] **Step 3: Gate (nur der Controller).** Der Controller fragt den Nutzer nach dem Entwurf (Entscheidung 11); ein Implementierungs-Subagent fragt nie selbst, er endet nach Step 2. Seine Wahl und jede Änderung in `logo.html` nachziehen (nur in diesem Moodboard), dann in `DESIGN.md` unter „Logo“ die Beschreibung an den gewählten Entwurf anpassen (heute steht dort „Kopf und Tasse, warmer Lichtschein“; D hat keine Tasse, F keinen grünen Grund), A, B, C bei den verworfenen Entwürfen ergänzen und einen Satz anfügen: „Gewählt: Entwurf X (`moodboard/logo.html`).“ Commit `docs(design): logo chosen`. Tasks 2–7 laufen bis dahin weiter; Task 8 startet erst danach, Task 9 nach Task 8.
 
 ### Task 2: Bos Standbilder pro Pose
 
@@ -338,18 +338,18 @@ it('Essen heute shows the picture of each meal, not the icon', async () => {
 
 **Files:**
 - Modify: `resources/icon.svg`, `resources/icon.png`, `resources/icon.icns`, `scripts/web-icons.sh`, `src/web/index.html`, `src/web/public/icons/{icon-192.png,icon-512.png,apple-touch-icon.png}`, `docs/design/DESIGN.md` („Logo“)
-- Create: `src/web/public/icons/icon.svg`, `src/web/public/icons/favicon.svg`, `src/web/public/icons/favicon-32.png`
+- Create: `src/web/public/icons/icon.svg`, `src/web/public/icons/favicon-32.png`
 - Delete: `src/web/public/icons/panda.svg`
 - Test: `tests/web/logo.test.ts` (neu)
 
 **Interfaces:**
-- Consumes: Symbole `X` und `X-s` des gewählten Entwurfs aus `docs/design/moodboard/logo.html`.
+- Consumes: das Symbol `d`, `e` oder `f` des gewählten Entwurfs aus `docs/design/moodboard/logo.html`.
 - Produces:
-  - **Gemeinsame Zeichnung:** Die Zeichnung des Entwurfs steht in jeder Datei in genau einem markierten Block `<!-- bo-logo -->…<!-- /bo-logo -->`, der die `<defs>` (Grund-Verlauf, Lichtschein; feste IDs `bo-ground`, `bo-glow`) **und** die Gruppe `<g id="bo-logo">` enthält; der Block ist in beiden Dateien Zeichen für Zeichen gleich. `resources/icon.svg`: Kommentar „macOS-Raster: 824 von 1024“ bleibt, `<clipPath>` mit `rect x=100 y=100 width=824 height=824 rx=185`, darin `<g transform="translate(100 100) scale(.8047)">` + `bo-logo`. `icons/icon.svg`: randlos `viewBox="0 0 1024 1024"` + `bo-logo`, alles Wichtige in den mittleren 80 % (maskable). `icons/favicon.svg`: die kleine Fassung `X-s` im Block `<!-- bo-logo-small -->…<!-- /bo-logo-small -->`.
-  - `scripts/web-icons.sh` rendert aus `icons/icon.svg` `icon-512.png`, `icon-192.png`, `apple-touch-icon.png` (wie heute) und aus `icons/favicon.svg` `favicon-32.png`. Kopfkommentar anpassen.
+  - **Gemeinsame Zeichnung:** Die Zeichnung des Entwurfs steht in jeder Datei in genau einem markierten Block `<!-- bo-logo -->…<!-- /bo-logo -->`, der die `<defs>` (die Clip-Form des Gesichts für das Stirnband, feste ID `bo-face`) **und** die Gruppe `<g id="bo-logo">` mit Grund und Gesicht enthält; der Block ist in beiden Dateien Zeichen für Zeichen gleich. `resources/icon.svg`: Kommentar „macOS-Raster: 824 von 1024“ bleibt, `<clipPath>` mit `rect x=100 y=100 width=824 height=824 rx=185`, darin `<g transform="translate(100 100) scale(.8047)">` + `bo-logo`. `icons/icon.svg`: randlos `viewBox="0 0 1024 1024"` + `bo-logo`, alles Wichtige in den mittleren 80 % (maskable); dieselbe Datei ist das SVG-Favicon.
+  - `scripts/web-icons.sh` rendert aus `icons/icon.svg` `icon-512.png`, `icon-192.png`, `apple-touch-icon.png` (wie heute) und `favicon-32.png`. Kopfkommentar anpassen.
   - Mac: `npx electron scripts/icon/render.cjs` schreibt `resources/icon.png` und `icon.icns` (Skript unverändert).
-  - `src/web/index.html`: `<link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />`, `<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />`, Apple-Touch wie heute. Manifest unverändert (Namen bleiben).
-  - `DESIGN.md` „Logo“: Satz zu den Dateien (die drei SVGs, wofür jede) und dass `npm run app` das Dock-Icon erst bei der nächsten Installation übernimmt.
+  - `src/web/index.html`: `<link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />`, `<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />`, Apple-Touch wie heute. Manifest unverändert (Namen bleiben).
+  - `DESIGN.md` „Logo“: Satz zu den Dateien (die zwei SVGs, wofür jede) und dass `npm run app` das Dock-Icon erst bei der nächsten Installation übernimmt.
 
 - [ ] **Step 0: Gate prüfen.** `grep -n "Gewählt: Entwurf" docs/design/DESIGN.md` — Expected: ein Treffer. Fehlt er, nichts bauen, sondern stoppen und dem Controller melden: „Logo noch nicht gewählt (Task 1, Step 3).“
 - [ ] **Step 1: Write the failing test** `tests/web/logo.test.ts`:
@@ -369,7 +369,6 @@ it('links only icons that exist, in the sizes they claim', () => {
 it('draws the same Bo in the Mac icon and the web icon, and the old logo is gone', () => {
   expect(art('resources/icon.svg', 'bo-logo')).toBeTruthy();
   expect(art('resources/icon.svg', 'bo-logo')).toBe(art('src/web/public/icons/icon.svg', 'bo-logo'));
-  expect(art('src/web/public/icons/favicon.svg', 'bo-logo-small')).toBeTruthy();
   expect(existsSync('src/web/public/icons/panda.svg')).toBe(false);
 });
 ```
@@ -377,8 +376,8 @@ it('draws the same Bo in the Mac icon and the web icon, and the old logo is gone
 (Der Vergleich schließt die `<defs>` ein, so können Verläufe von Mac- und Web-Icon nicht auseinanderlaufen.)
 - [ ] **Step 2: Run** `npx vitest run tests/web/logo.test.ts` — Expected: FAIL.
 - [ ] **Step 3: Implement** die drei SVGs, dann `bash scripts/web-icons.sh` und `npx electron scripts/icon/render.cjs`; `index.html`, `panda.svg` löschen, `DESIGN.md`.
-- [ ] **Step 4:** Die PNGs ansehen (`resources/icon.png`, `apple-touch-icon.png`, `favicon-32.png`) und mit `logo.html` vergleichen: gleiche Formen, keine Ränder, Favicon mit der kleinen Fassung. `grep -rn "icons/panda.svg" src scripts tests` — Expected: keine Treffer.
-- [ ] **Step 5: Run** die Tests, `npx vitest run tests/web/sw.test.ts` und `npm run build:web` — Expected: PASS, `out/web/icons/favicon.svg` vorhanden.
+- [ ] **Step 4:** Die PNGs ansehen (`resources/icon.png`, `apple-touch-icon.png`, `favicon-32.png`) und mit `logo.html` vergleichen: gleiche Formen, keine Ränder, das Favicon mit 16 und 32 px noch als Panda lesbar. `grep -rn "icons/panda.svg" src scripts tests` — Expected: keine Treffer.
+- [ ] **Step 5: Run** die Tests, `npx vitest run tests/web/sw.test.ts` und `npm run build:web` — Expected: PASS, `out/web/icons/icon.svg` und `favicon-32.png` vorhanden.
 - [ ] **Step 6: Commit** `feat(brand): new logo Bo als Teetrinker for Dock, phone and tab`.
 
 ### Task 9: Abschluss (nach Task 8)
