@@ -1,10 +1,9 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import type { ClaudeErrorKind } from '../claude-client';
 import type { GymWorkout } from '../../shared/gym/types';
 import type { GymOutlook } from '../../shared/gym-outlook';
 import { readKeyedNotes, type KeyedNote } from '../../shared/change-notes';
-import { writeJsonAtomic } from '../../shared/node/atomic-write';
+import { createStateFile, legacyRuleTexts, profileStateFile } from '../state-file';
 
 export type GymState = {
   profileId: string;
@@ -40,47 +39,31 @@ export type GymState = {
   changeNotes: KeyedNote[];
 };
 
-const file = (dir: string, profileId: string) => path.join(dir, `${encodeURIComponent(profileId)}.json`);
+const file = profileStateFile;
 
 export const initialGymState = (profileId: string): GymState => ({
   profileId, next: null, outlook: null, emptyReason: null, lastNote: null, notes: [], answers: [], seenWorkoutIds: [],
   routine: null, planned: false, complaintsFingerprint: '', gymAsked: false, dirty: false, attempts: 0, attemptKey: null, lastError: null, lastAttemptMs: null, templatesFailedMs: null, localStart: false, links: {}, changeNotes: [],
 });
 
-export const loadGymState = (dir: string, profileId: string): GymState => {
-  const f = file(dir, profileId);
-  if (!fs.existsSync(f)) return initialGymState(profileId);
-  try {
-    const parsed = JSON.parse(fs.readFileSync(f, 'utf8')) as GymState;
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('not a state');
-    const { rules: _old, goal: _goal, ...rest } = parsed as GymState & { rules?: unknown; goal?: unknown };
-    return { ...initialGymState(profileId), ...rest, profileId, changeNotes: readKeyedNotes(rest.changeNotes) };
-  } catch {
-    try { fs.copyFileSync(f, `${f}.broken`); } catch { /* starting fresh matters more */ }
-    return initialGymState(profileId);
-  }
-};
+export const loadGymState = (dir: string, profileId: string): GymState =>
+  createStateFile<GymState>(file(dir, profileId), {
+    empty: () => initialGymState(profileId),
+    migrate: (parsed) => {
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('not a state');
+      // `rules` moved to records, `goal` is gone.
+      const { rules: _old, goal: _goal, ...rest } = parsed as GymState & { rules?: unknown; goal?: unknown };
+      return { ...initialGymState(profileId), ...rest, profileId, changeNotes: readKeyedNotes(rest.changeNotes) };
+    },
+  }).load();
 
 /** Writes the state. Legacy `rules` already in the file stay there until `dropLegacy` says they were migrated into records. */
-export const saveGymState = (dir: string, state: GymState, dropLegacy = false): void => {
-  fs.mkdirSync(dir, { recursive: true });
-  const f = file(dir, state.profileId);
-  const keep = dropLegacy ? undefined : legacyField(f);
-  writeJsonAtomic(f, keep === undefined ? state : { ...state, rules: keep });
-};
+export const saveGymState = (dir: string, state: GymState, dropLegacy = false): void =>
+  createStateFile<GymState>(file(dir, state.profileId), { empty: () => state }).save(state, { keepRules: !dropLegacy });
 
 export const removeGymState = (dir: string, profileId: string): void => {
   fs.rmSync(file(dir, profileId), { force: true });
 };
 
 /** The free-text rules older versions kept in the state file (moved to `rule` records, see tracking/personal). */
-export const legacyGymRules = (dir: string, profileId: string): string[] => {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(file(dir, profileId), 'utf8')) as { rules?: unknown };
-    return Array.isArray(parsed.rules) ? parsed.rules.flatMap((r: unknown) => (typeof (r as { text?: unknown })?.text === 'string' ? [(r as { text: string }).text] : [])) : [];
-  } catch { return []; }
-};
-
-const legacyField = (f: string): unknown => {
-  try { const r = (JSON.parse(fs.readFileSync(f, 'utf8')) as { rules?: unknown }).rules; return Array.isArray(r) && r.length ? r : undefined; } catch { return undefined; }
-};
+export const legacyGymRules = (dir: string, profileId: string): string[] => legacyRuleTexts(file(dir, profileId));

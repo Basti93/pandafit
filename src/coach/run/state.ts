@@ -1,9 +1,7 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import type { ClaudeErrorKind } from '../claude-client';
 import type { PaceCache } from './garmin-runs';
 import { readKeyedNotes, type KeyedNote } from '../../shared/change-notes';
-import { writeJsonAtomic } from '../../shared/node/atomic-write';
+import { createStateFile, profileStateFile } from '../state-file';
 
 /** A disposable cache per profile (Ruling 3): the records are the truth, so a lost file only costs a recomputation. */
 export type RunCache = {
@@ -26,7 +24,7 @@ export type RunCache = {
   changeNotes: KeyedNote[];
 };
 
-const file = (dir: string, profileId: string) => path.join(dir, `${encodeURIComponent(profileId)}.json`);
+const file = profileStateFile;
 
 export const initialRunCache = (profileId: string): RunCache => ({
   profileId, paceCache: {}, attempts: 0, lastAttemptMs: null, lastError: null, planKey: {}, planDays: {}, reviewed: [], onSinceMs: null, lastPhase: null, changeNotes: [],
@@ -34,21 +32,15 @@ export const initialRunCache = (profileId: string): RunCache => ({
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
-export const loadRunCache = (dir: string, profileId: string): RunCache => {
-  const f = file(dir, profileId);
-  if (!fs.existsSync(f)) return initialRunCache(profileId);
-  try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(f, 'utf8'));
-    if (!isObj(parsed) || !isObj(parsed.paceCache) || !isObj(parsed.planKey) || !Array.isArray(parsed.reviewed)) throw new Error('not a cache');
-    const c: RunCache = { ...initialRunCache(profileId), ...(parsed as Partial<RunCache>), profileId };
-    return { ...c, planDays: isObj(c.planDays) ? c.planDays : {}, lastPhase: c.lastPhase === 1 || c.lastPhase === 2 ? c.lastPhase : null, changeNotes: readKeyedNotes(c.changeNotes) };
-  } catch {
-    return initialRunCache(profileId);
-  }
-};
+export const loadRunCache = (dir: string, profileId: string): RunCache =>
+  createStateFile<RunCache>(file(dir, profileId), {
+    empty: () => initialRunCache(profileId),
+    migrate: (parsed) => {
+      if (!isObj(parsed) || !isObj(parsed.paceCache) || !isObj(parsed.planKey) || !Array.isArray(parsed.reviewed)) throw new Error('not a cache');
+      const c: RunCache = { ...initialRunCache(profileId), ...(parsed as Partial<RunCache>), profileId };
+      return { ...c, planDays: isObj(c.planDays) ? c.planDays : {}, lastPhase: c.lastPhase === 1 || c.lastPhase === 2 ? c.lastPhase : null, changeNotes: readKeyedNotes(c.changeNotes) };
+    },
+  }).load();
 
-export const saveRunCache = (dir: string, cache: RunCache): void => {
-  fs.mkdirSync(dir, { recursive: true });
-  const f = file(dir, cache.profileId);
-  writeJsonAtomic(f, cache);
-};
+export const saveRunCache = (dir: string, cache: RunCache): void =>
+  createStateFile<RunCache>(file(dir, cache.profileId), { empty: () => cache }).save(cache);
