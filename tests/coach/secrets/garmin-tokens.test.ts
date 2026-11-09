@@ -100,6 +100,7 @@ test('sealed checkout writes garmin_tokens.json under runDir with mode 0600; che
 });
 
 test('the sealed file is flushed to disk before it replaces the old one', () => {
+  vi.stubEnv('PANDAFIT_UNSAFE_NO_FSYNC', '0'); // durability is what this test checks
   const { tokens } = sealedSetup();
   const fsync = vi.spyOn(fs, 'fsyncSync');
   try {
@@ -391,3 +392,5 @@ test('stopping a profile kills its sync and upload and seals nothing of theirs b
   expect(sync.info('p1')).toMatchObject({ running: false, problem: null });
   expect(results).toHaveLength(1);
 });
+
+afterEach(() => { vi.unstubAllEnvs(); });

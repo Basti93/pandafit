@@ -1,3 +1,3 @@
 import { defineConfig } from 'vitest/config';
-// 20 s: every atomic write fsyncs file and folder, which is slow when hundreds of test files write at once.
-export default defineConfig({ test: { globals: true, include: ['tests/**/*.test.{ts,tsx}'], testTimeout: 20_000 } });
+// Atomic writes skip fsync in tests (see src/shared/node/atomic-write.ts); durability tests turn it back on.
+export default defineConfig({ test: { globals: true, include: ['tests/**/*.test.{ts,tsx}'], env: { PANDAFIT_UNSAFE_NO_FSYNC: '1' } } });

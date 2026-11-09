@@ -136,6 +136,7 @@ describe('RecordStore', () => {
   });
 
   it('syncs the temp file to disk before the rename', () => {
+    vi.stubEnv('PANDAFIT_UNSAFE_NO_FSYNC', '0'); // durability is what this test checks
     const order: string[] = [];
     const fsync = fs.fsyncSync, rename = fs.renameSync;
     vi.spyOn(fs, 'fsyncSync').mockImplementation(fd => { order.push('fsync'); return fsync(fd); });
@@ -190,3 +191,5 @@ describe('RecordStore', () => {
     expect(fs.readdirSync(dir).filter(f => f.startsWith('a.json.broken')).length).toBe(2);
   });
 });
+
+afterEach(() => { vi.unstubAllEnvs(); });

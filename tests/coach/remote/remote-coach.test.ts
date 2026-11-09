@@ -275,6 +275,7 @@ test('a 401 on the upgrade rejects the link; without a token no socket is opened
 });
 
 test('queue.json is written with fsync of the file and of its folder', () => {
+  vi.stubEnv('PANDAFIT_UNSAFE_NO_FSYNC', '0'); // durability is what this test checks
   const { coach, ws, dir } = make();
   coach.start();
   ws.last().end(1013);
@@ -307,3 +308,5 @@ test('an unreadable queue.json is moved aside, never overwritten, and logged', (
   expect(fs.readFileSync(path.join(dir, `queue.corrupt-${NOW}.json`), 'utf8')).toBe('[{"qid":"a","atMs":1,"mess');
   log.mockRestore();
 });
+
+afterEach(() => { vi.unstubAllEnvs(); });

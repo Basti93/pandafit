@@ -33,3 +33,15 @@ test('mode 0600 gives owner-only permissions', () => {
   writeFileAtomic(f, 'secret', { mode: 0o600 });
   expect(fs.statSync(f).mode & 0o777).toBe(0o600);
 });
+test('fsyncs the file and its folder unless the test-only switch is set', () => {
+  vi.stubEnv('PANDAFIT_UNSAFE_NO_FSYNC', '0');
+  const spy = vi.spyOn(fs, 'fsyncSync');
+  writeFileAtomic(path.join(dir, 'a.json'), 'x');
+  expect(spy).toHaveBeenCalledTimes(2);
+  spy.mockClear();
+  vi.stubEnv('PANDAFIT_UNSAFE_NO_FSYNC', '1');
+  writeFileAtomic(path.join(dir, 'b.json'), 'x');
+  expect(spy).not.toHaveBeenCalled();
+  spy.mockRestore();
+  vi.unstubAllEnvs();
+});
