@@ -14,6 +14,7 @@ export type HealthSeries = { label: string; values: (number | null)[]; unit?: st
 export type HealthRow = {
   key: HealthRowKey; title: string; /** The short name for a tile: Ruhepuls, Fitness, Bewegung, Schlaf. */ short: string; icon: IconName;
   /** One word: how it stands. */ word: string; /** "note" for "beachten" and "Hinweis", otherwise "calm". */ tone: 'calm' | 'note'; sentence: string; series: HealthSeries[]; facts: string[];
+  /** The finding behind word and sentence, or null when the row speaks from its own calm default. */ finding: HealthFinding | null;
 };
 
 /** Shown instead of the sleep card when there is no sleep or HRV data. Not wearing the watch at night is normal, never a lack. */
@@ -47,7 +48,7 @@ export function cardText(h: HealthBody): { doctor: string | null; line: string }
   const d = doctorFinding(h);
   let doctor: string | null = null;
   if (d) {
-    const area = healthRows(h).find((r) => r.sentence === d.text)?.short;
+    const area = healthRows(h).find((r) => r.finding === d)?.short;
     doctor = clean(d.text) ?? `${area ? `Dein Wert für ${area} fällt` : 'Ein Wert fällt'} gerade auf. Lass das am besten ärztlich abklären.`;
   }
   const line = clean(h.coachText?.text) ?? h.findings.filter((f) => f.tone !== 'arzt').map((f) => clean(f.text)).find((t) => t !== null) ?? (h.findings.some((f) => f.tone !== 'arzt') || h.coachText ? MORE : 'Gerade gibt es nichts Besonderes zu sagen.');
@@ -66,7 +67,7 @@ export function healthRows(h: HealthBody): HealthRow[] {
     const now = last(rhrDays) ?? last(rhrWeeks);
     const f = findingOf(h.findings, 'health.rhr-high', 'health.rhr-persist', 'health.rhr-raised', 'health.rhr-longterm');
     out.push({
-      key: 'rhr', title: 'Ruhepuls', short: 'Ruhepuls', icon: 'herz', word: wordOf(f, 'ruhig'), tone: toneOf(f),
+      key: 'rhr', title: 'Ruhepuls', short: 'Ruhepuls', icon: 'herz', word: wordOf(f, 'ruhig'), tone: toneOf(f), finding: f,
       sentence: f?.text ?? 'Im Ruhepuls fällt gerade nichts auf.',
       series: [{ label: 'Letzte 28 Tage', values: rhrDays }, { label: 'Letzte 52 Wochen', values: rhrWeeks }],
       facts: now === null ? [] : [`Zuletzt ${de(now)} Schläge pro Minute in Ruhe.`],
@@ -76,7 +77,7 @@ export function healthRows(h: HealthBody): HealthRow[] {
   if (has(vo2)) {
     const f = findingOf(h.findings, 'health.vo2-trend');
     out.push({
-      key: 'vo2', title: 'Fitness', short: 'Fitness', icon: 'spross', word: wordOf(f, f ? 'steigt' : 'stabil'), tone: toneOf(f),
+      key: 'vo2', title: 'Fitness', short: 'Fitness', icon: 'spross', word: wordOf(f, f ? 'steigt' : 'stabil'), tone: toneOf(f), finding: f,
       sentence: f?.text ?? 'Deine geschätzte Ausdauerfitness hat sich noch nicht klar verändert.',
       series: [{ label: 'Letzte 52 Wochen', values: vo2 }],
       facts: ['Die Uhr schätzt diesen Wert nur grob. Wichtig ist der Verlauf über Wochen.'],
@@ -87,7 +88,7 @@ export function healthRows(h: HealthBody): HealthRow[] {
     const week = h.weeks.at(-2);
     const f = findingOf(h.findings, 'health.steps-band', 'health.activity-minutes');
     out.push({
-      key: 'move', title: 'Bewegung im Alltag', short: 'Bewegung', icon: 'lauf', word: wordOf(f, f ? 'im Richtwert' : 'offen'), tone: toneOf(f),
+      key: 'move', title: 'Bewegung im Alltag', short: 'Bewegung', icon: 'lauf', word: wordOf(f, f ? 'im Richtwert' : 'offen'), tone: toneOf(f), finding: f,
       sentence: f?.text ?? 'Für einen Vergleich mit den Empfehlungen gibt es noch zu wenig Daten.',
       series: [...(has(steps) ? [{ label: 'Schritte pro Tag, 52 Wochen', values: steps }] : []), ...(has(minutes) ? [{ label: 'Aktive Minuten pro Woche, 52 Wochen', values: minutes }] : [])],
       facts: [
@@ -101,7 +102,7 @@ export function healthRows(h: HealthBody): HealthRow[] {
   if (has(sleep) || has(hrv)) {
     const s = last(sleep);
     out.push({
-      key: 'sleep', title: 'Schlaf & HRV', short: 'Schlaf', icon: 'mond', word: 'Verlauf', tone: 'calm',
+      key: 'sleep', title: 'Schlaf & HRV', short: 'Schlaf', icon: 'mond', word: 'Verlauf', tone: 'calm', finding: null,
       sentence: s !== null ? 'Hier siehst du Schlaf und HRV als Verlauf, ohne Bewertung.' : 'Hier siehst du die HRV als Verlauf, ohne Bewertung.',
       series: [...(has(sleep) ? [{ label: 'Schlaf in Stunden, 52 Wochen', values: sleep }] : []), ...(has(hrv) ? [{ label: 'HRV, 52 Wochen', values: hrv }] : [])],
       facts: s !== null ? [`Zuletzt im Schnitt ${de(s, 1)} Stunden pro Nacht.`] : [],

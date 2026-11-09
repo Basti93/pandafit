@@ -17,7 +17,7 @@ const f = (rule: string, text: string, tone: HealthFinding['tone']): HealthFindi
 const arzt = f('health.rhr-high', 'Dein Ruhepuls lag an mehreren der letzten Tage über 100. Das lässt du am besten ärztlich abklären.', 'arzt');
 const weeks = Array.from({ length: 12 }, (_, i) => ({ week: `2026-${i < 6 ? '08' : '09'}-${String(1 + (i % 6) * 4).padStart(2, '0')}`, rhr: 55 + (i % 3), vo2: 50 + i * 0.1, steps: 8000, activeMin: 160, strengthDays: 2, sleepH: 7, hrv: 50 }));
 const body = (over: Partial<HealthBody> = {}): HealthBody => ({
-  type: 'health', atMs: NOW - 1000, today: { level: 'normal', reasons: [] }, findings: [f('health.vo2-trend', 'Deine geschätzte Ausdauerfitness hat sich noch nicht klar verändert.', 'gut')],
+  type: 'health', atMs: NOW - 1000, today: { level: 'normal', reasons: [] }, findings: [f('health.vo2-trend', 'Deine geschätzte Ausdauerfitness ist in den letzten Wochen etwas gestiegen.', 'gut')],
   weeks, days: Array.from({ length: 10 }, (_, i) => ({ date: `2026-10-${String(20 + i)}`, rhr: 56, steps: 7000 })), ...over,
 });
 const healthRec = (b: HealthBody): TrackedRecord => ({ kind: 'health', id: HEALTH_ID, updatedMs: 1, deleted: false, body: b });
@@ -46,6 +46,7 @@ it('a doctor finding leads the card and the page, never hidden behind the calm s
   expect(page).toBeTruthy();
   expect(document.querySelector('.tk-note')!.textContent).toContain('ärztlich abklären');
   expect(document.body.textContent).not.toMatch(/ruhige Woche/);
+  expect(document.body.textContent!.split(arzt.text).length - 1).toBe(1);
 });
 
 it('only present areas get tiles; without sleep data the page shows the calm hint', async () => {
@@ -113,4 +114,17 @@ it('the card never prints a digit, even with the real finding texts; the page ke
   expect(card.querySelector('.tk-note')!.textContent).toBe('Dein Wert für Ruhepuls fällt gerade auf. Lass das am besten ärztlich abklären.');
   fireEvent.click(within(card).getByRole('button', { name: /Gesundheit ansehen/ }));
   expect(document.body.textContent).toMatch(/über 100/);
+});
+
+it('the word of an area and its sentence always agree, for every vo2 finding the real builder writes', () => {
+  const mondays = Array.from({ length: 9 }, (_, i) => new Date(2026, 8, 7 + i * 7)).map((d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  const fitness = (from: number, to: number) => {
+    const w = mondays.map((week, i) => ({ week, vo2: from + ((to - from) * i) / (mondays.length - 1) }));
+    const found = findingsOf([], w as never, { birthDate: null }, NOW);
+    return healthRows(body({ findings: found, weeks: w, days: [] })).find((r) => r.key === 'vo2')!;
+  };
+  const up = fitness(44, 48), down = fitness(48, 44), flat = fitness(45, 45.5);
+  expect([up.word, up.sentence]).toEqual(['steigt', expect.stringContaining('gestiegen')]);
+  expect([down.word, down.sentence]).toEqual(['beachten', expect.stringContaining('gesunken')]);
+  expect([flat.word, flat.sentence]).toEqual(['stabil', expect.stringContaining('nicht klar verändert')]);
 });

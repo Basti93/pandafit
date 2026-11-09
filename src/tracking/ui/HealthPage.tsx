@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import type { HealthBody } from '../../shared/health';
+import type { HealthBody, HealthFinding } from '../../shared/health';
 import { cardText, doctorFinding, firstLine, healthRows, healthSources, SLEEP_HINT, standLine, type HealthRow, type HealthRowKey, type HealthSeries } from './health-view';
-import { Card, Icon, Kicker, PageHead, Row, RowList, Sheet, WordTile } from './kit';
+import { Card, Kicker, PageHead, Row, RowCard, RowList, Sheet, WordTile } from './kit';
 
 const W = 300, H = 48;
 
@@ -69,18 +69,13 @@ export function HealthCard({ health, onOpen }: { health: HealthBody; onOpen: () 
   );
 }
 
-function AreaCard({ row, doctorText, onOpen }: { row: HealthRow; doctorText?: string; onOpen: () => void }) {
+/** One area: icon, name and word as a row card, then the sentence. The doctor hint replaces the row sentence when it is the same finding. */
+function AreaCard({ row, doctor, onOpen }: { row: HealthRow; doctor?: HealthFinding | null; onOpen: () => void }) {
   return (
     <Card label={row.title}>
-      <div className="tk-health-area">
-        <span className="tk-rowcard-tile" aria-hidden="true"><Icon name={row.icon} size={24} /></span>
-        <div className="tk-health-area-text">
-          <Kicker>{row.title}</Kicker>
-          <p className={`tk-wordtile-word tk-health-word ${row.tone}`}>{row.word}</p>
-        </div>
-      </div>
-      {doctorText && <p className="tk-note">{doctorText}</p>}
-      <p>{row.sentence}</p>
+      <RowCard flat end="none" icon={row.icon} kicker={row.title} title={row.word} tone={row.tone} />
+      {doctor && <p className="tk-note">{doctor.text}</p>}
+      {(!doctor || row.finding !== doctor) && <p>{row.sentence}</p>}
       <div className="tk-mainactions"><button type="button" className="secondary" onClick={onOpen}>Verlauf</button></div>
     </Card>
   );
@@ -103,13 +98,10 @@ export function HealthPage({ health, onBack }: { health: HealthBody; onBack: () 
         {doctor ? hasRhr && <p className="tk-health-line">Hier siehst du, wie es in den einzelnen Bereichen aussieht.</p> : <p className="tk-health-line">{firstLine(health)}</p>}
         {doctor && !hasRhr && <p className="tk-note">{doctor.text}</p>}
       </Card>
-      {rows.map((r) => <AreaCard key={r.key} row={r} doctorText={r.key === 'rhr' ? doctor?.text : undefined} onOpen={() => setOpen(r.key)} />)}
+      {rows.map((r) => <AreaCard key={r.key} row={r} doctor={r.key === 'rhr' ? doctor : undefined} onOpen={() => setOpen(r.key)} />)}
       {!rows.some((r) => r.key === 'sleep') && (
         <Card label="Schlaf & HRV">
-          <div className="tk-health-area">
-            <span className="tk-rowcard-tile" aria-hidden="true"><Icon name="mond" size={24} /></span>
-            <div className="tk-health-area-text"><Kicker>Schlaf & HRV</Kicker></div>
-          </div>
+          <RowCard flat end="none" icon="mond" title="Schlaf & HRV" />
           <p>{SLEEP_HINT}</p>
         </Card>
       )}
