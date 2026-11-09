@@ -22,8 +22,8 @@ import { isRest, KIND_ICON, SPORT_ICON, restDaysText, shortDay, weekRangeText, w
 import { TogetherPage, togetherOf } from './TogetherScreen';
 
 /** Woche is the week: the week card, the days (Erledigt, Heute, Kommt noch), health, Bo's bubble and three quiet tiles. */
-/** `openChat`: the page opens with the chat already open ("Bo fragen" on Heute leads straight there). */
-export function CoachScreen({ port, now, newId, openChat = false }: { port: TrackingPort; now: () => number; newId: () => string; openChat?: boolean }) {
+/** `openChat`: the page opens with the chat already open ("Bo fragen" on Heute leads straight there); `onChatClosed` then runs when that chat closes, to go back where it came from. */
+export function CoachScreen({ port, now, newId, openChat = false, onChatClosed }: { port: TrackingPort; now: () => number; newId: () => string; openChat?: boolean; onChatClosed?: () => void }) {
   const chat = usePortRecords(port, 'chat').all;
   const activityRecords = usePortRecords(port, 'activities').all;
   const workoutRecords = usePortRecords(port, 'workout').all;
@@ -152,7 +152,7 @@ export function CoachScreen({ port, now, newId, openChat = false }: { port: Trac
       )}
       {sheet === 'history' && <ActivityHistory port={port} now={now} onClose={() => setSheet('look')} />}
       {sheet === 'proposals' && <ProposalsSheet port={port} now={now} newId={newId} entries={proposals} onClose={() => setSheet(null)} />}
-      {sheet === 'chat' && <CoachChat port={port} now={now} newId={newId} onClose={() => setSheet(null)} />}
+      {sheet === 'chat' && <CoachChat port={port} now={now} newId={newId} onClose={() => { setSheet(null); if (openChat) onChatClosed?.(); }} />}
     </div>
   );
 }
