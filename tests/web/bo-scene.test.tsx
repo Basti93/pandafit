@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { BoBubble } from '../../src/tracking/ui/kit';
+import { poseIn } from '../../src/tracking/ui/kit/BoScene';
 
 describe('Bo scene', () => {
   it('sets Bo into his nest, with the scene behind and the basket rim in front', () => {
@@ -29,5 +30,10 @@ describe('Bo scene', () => {
     render(<BoBubble portrait="mini">Alles gut.</BoBubble>);
     expect(document.querySelector('.tk-bo img')).toBeTruthy();
     expect(document.querySelector('canvas')).toBeNull();
+  });
+  it('lets Bo take only poses that fit his place: in the nest he sits, standing poses fall back to the greeting', () => {
+    for (const p of ['greet', 'nod', 'flex', 'read', 'knit'] as const) expect(poseIn('nest', p)).toBe(p);
+    for (const p of ['bike', 'run', 'yoga'] as const) expect(poseIn('nest', p)).toBe('greet');
+    expect(poseIn('nest', null)).toBe('greet');
   });
 });
