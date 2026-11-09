@@ -1,5 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { mountPanda, type PandaGesture } from '../../src/tracking/ui/panda-canvas';
+import { heldPoses, mountPanda, type PandaGesture } from '../../src/tracking/ui/panda-canvas';
+import { pandaMotion } from '../../src/tracking/ui/panda-motion';
+import { STILL_POSES } from '../../src/tracking/ui/panda-still-url';
 
 function canvasFrames() {
   const painted: unknown[][][] = [];
@@ -133,4 +135,10 @@ test('an activity loop runs forth and back over its span, so it never jumps', as
   expect(pingPong(10, 10, 20)).toBe(20);
   expect(pingPong(15, 10, 20)).toBe(15);
   expect(pingPong(20, 10, 20)).toBe(10);
+});
+
+test('every gesture has its own held pose', () => {
+  const held = STILL_POSES.map((g) => JSON.stringify([...heldPoses(pandaMotion, g)]));
+  for (const h of held) expect(h).not.toBe('[]');
+  expect(new Set(held).size).toBe(STILL_POSES.length);
 });

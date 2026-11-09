@@ -8,11 +8,11 @@ export type PandaHandle = {
   dispose(): void;
 };
 
-type Pose = [x: number, y: number, rotation: number, scaleX: number, scaleY: number, opacity: number];
+export type Pose = [x: number, y: number, rotation: number, scaleX: number, scaleY: number, opacity: number];
 type Key = [frame: number, value: number, easing: 0 | 1 | 2];
 type Track = [node: number, property: 0 | 1 | 2 | 3 | 4 | 5, keys: Key[]];
 type Clip = { frames: number; fps: number; tracks: Track[] };
-type Paint = { path: string; fill?: string; stroke?: [string, number, CanvasLineCap, CanvasLineJoin] };
+export type Paint = { path: string; fill?: string; stroke?: [string, number, CanvasLineCap, CanvasLineJoin] };
 
 export type PandaMotion = {
   width: number;
@@ -72,29 +72,59 @@ export function holdFrame(clip: Clip, nodes: PandaMotion['nodes']): number {
   return best;
 }
 
+/** The poses of the nodes a clip moves at `frame`; nodes it does not move are left out and keep their rest pose. */
+export function posesAt(motion: PandaMotion, clip: Clip | undefined, frame: number): Map<number, Pose> {
+  const poses = new Map<number, Pose>();
+  for (const [index, prop, keys] of clip?.tracks ?? []) {
+    const pose: Pose = poses.get(index) ?? [...motion.nodes[index]!.pose];
+    pose[prop] = valueAt(keys, frame);
+    poses.set(index, pose);
+  }
+  return poses;
+}
+
+/** The pose `hold` glides into: the clip's strongest moment, or the start of the span for an activity. */
+export function heldPoses(motion: PandaMotion, gesture: PandaGesture): Map<number, Pose> {
+  const clip = motion.clips[gesture];
+  const span = ACTIVITY_SPANS[gesture];
+  return posesAt(motion, clip, span ? span[0] : holdFrame(clip, motion.nodes));
+}
+
+export type NodeVisit = {
+  enter(x: number, y: number, rotation: number, sx: number, sy: number): void;
+  /** `alpha` is the product of the opacities down to this node. */
+  shape(paint: Paint, alpha: number): void;
+  leave(): void;
+};
+
+/** Visit the node tree in drawing order. A node with opacity 0 or less is skipped with its children. One walk for the canvas and the stills. */
+export function walkNodes(motion: PandaMotion, poses: Map<number, Pose>, visit: NodeVisit): void {
+  function walk(index: number, parentAlpha: number): void {
+    const node = motion.nodes[index]!;
+    const [x, y, rotation, sx, sy, opacity] = poses.get(index) ?? node.pose;
+    if (opacity <= 0) return;
+    const alpha = parentAlpha * opacity;
+    visit.enter(x, y, rotation, sx, sy);
+    if (node.paint) visit.shape(node.paint, alpha);
+    for (const child of node.children ?? []) walk(child, alpha);
+    visit.leave();
+  }
+  for (const root of motion.roots) walk(root, 1);
+}
+
 /** Draw the rest pose immediately, then ask the browser for frames only while a gesture plays. */
 export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle> {
   if (typeof Path2D === 'undefined') throw new Error('Panda needs vector paths');
   const context = canvas.getContext('2d');
   if (!context) throw new Error('Panda needs a 2D canvas');
   const ctx = context;
-  const { width, height, roots, nodes, clips } = pandaMotion;
-  const paths = nodes.map(({ paint }) => paint && new Path2D(paint.path));
+  const { width, height, nodes, clips } = pandaMotion;
+  const paths = new Map<Paint, Path2D>(nodes.flatMap(({ paint }) => (paint ? [[paint, new Path2D(paint.path)] as const] : [])));
   let pending: number | null = null;
   let disposed = false;
 
-  function posesAt(clip: Clip | undefined, frame: number): Map<number, Pose> {
-    const poses = new Map<number, Pose>();
-    for (const [index, prop, keys] of clip?.tracks ?? []) {
-      const pose: Pose = poses.get(index) ?? [...nodes[index]!.pose];
-      pose[prop] = valueAt(keys, frame);
-      poses.set(index, pose);
-    }
-    return poses;
-  }
-
   function draw(clip?: Clip, frame = 0): void {
-    paint(posesAt(clip, frame));
+    paint(posesAt(pandaMotion, clip, frame));
   }
 
   function paint(poses: Map<number, Pose>): void {
@@ -104,18 +134,18 @@ export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle
     const fit = Math.min(canvas.width / width, canvas.height / height);
     ctx.setTransform(fit, 0, 0, fit, (canvas.width - width * fit) / 2, (canvas.height - height * fit) / 2);
 
-    function drawNode(index: number): void {
-      const node = nodes[index]!;
-      const [x, y, rotation, sx, sy, opacity] = poses.get(index) ?? node.pose;
-      if (opacity <= 0) return;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(rotation);
-      ctx.scale(sx, sy);
-      ctx.globalAlpha *= opacity;
-      const path = paths[index];
-      if (node.paint && path) {
-        const { fill, stroke } = node.paint;
+    walkNodes(pandaMotion, poses, {
+      enter(x, y, rotation, sx, sy) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotation);
+        ctx.scale(sx, sy);
+      },
+      shape(paint, alpha) {
+        const path = paths.get(paint);
+        if (!path) return;
+        const { fill, stroke } = paint;
+        ctx.globalAlpha = alpha;
         if (fill) {
           ctx.fillStyle = fill;
           ctx.fill(path);
@@ -124,12 +154,9 @@ export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle
           [ctx.strokeStyle, ctx.lineWidth, ctx.lineCap, ctx.lineJoin] = stroke;
           ctx.stroke(path);
         }
-      }
-      for (const child of node.children ?? []) drawNode(child);
-      ctx.restore();
-    }
-
-    for (const root of roots) drawNode(root);
+      },
+      leave: () => ctx.restore(),
+    });
   }
 
   function cancel(): void {
@@ -162,7 +189,7 @@ export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle
       cancel();
       const clip = clips[gesture];
       const span = ACTIVITY_SPANS[gesture];
-      const target = posesAt(clip, span ? span[0] : holdFrame(clip, nodes));
+      const target = heldPoses(pandaMotion, gesture);
       let start: number | undefined;
       function advance(now: number): void {
         start ??= now;

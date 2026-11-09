@@ -66,3 +66,5 @@ rive design/panda-rive --publish=local --output-dir=.
 ```
 
 See the [CLI documentation](https://rive.app/docs/cli/overview) for account and export options.
+
+After every export of `panda-motion.ts`: `npm run panda:stills` (Bo's still pictures).

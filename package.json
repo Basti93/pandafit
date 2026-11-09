@@ -16,6 +16,7 @@
     "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "coach:check": "tsx scripts/coach-check.ts",
     "ui:shots": "tsx scripts/ui-shots/run.ts",
+    "panda:stills": "tsx scripts/panda-stills.ts",
     "live:adjust": "tsx scripts/live-adjust.ts",
     "live:mark": "tsx scripts/live-mark.ts",
     "live:undo": "tsx scripts/live-undo.ts",
