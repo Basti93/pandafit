@@ -1,6 +1,7 @@
 import { checkSession, type CoachContext } from '../../src/coach/session-limits';
 import type { RideSummary } from '../../src/coach/metrics';
-import { adjustSession, ftpFromRamp, rampTest, ruleBasedSession } from '../../src/coach/rules';
+import { adjustSession, ftpFromRamp, ruleBasedSession } from '../../src/coach/rules';
+import { rampTest } from '../../src/shared/ramp';
 import type { Session } from '../../src/shared/session';
 
 const DAY = 86_400_000;

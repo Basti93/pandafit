@@ -5,9 +5,9 @@ import { CoachHomeNote } from './CoachHomeNote';
 import type { CoachHome, CoachClientMessage, GarminStatus, GarminSyncInfo } from '../../coach/protocol';
 import type { Profile } from '../../shared/profiles';
 import type { ClientMessage } from '../../shared/protocol';
-import type { Session } from '../../shared/session';
+import { RAMP_ID, type Session } from '../../shared/session';
 import { STARTER_SESSIONS } from '../../shared/starter-sessions';
-import { rampTest } from '../../coach/rules';
+import { rampTest } from '../../shared/ramp';
 import { GarminProfileBanner } from './GarminProfileReview';
 import type { GarminSuggestion } from '../../shared/garmin-profile';
 import { PandaMark } from './PandaMark';
@@ -56,7 +56,7 @@ export const CoachView = ({ coachHome, webOrigin, profile, state, thinking, coac
   const reauth = garmin?.state === 'connected' && garminSync?.problem === 'reauth';
   const start = (session: Session) => sendRide({ type: 'start', profileId: profile.id, session, ftpW, ...(profile.maxHrBpm ? { maxHrBpm: profile.maxHrBpm } : {}), ...(hrMax ? { hrMaxBpm: hrMax.bpm } : {}) });
   const next = state?.next;
-  const isRamp = next?.session.id === 'ramp-test';
+  const isRamp = next?.session.id === RAMP_ID;
   const adjust = (how: 'easier' | 'harder' | 'shorter') => sendCoach({ type: 'adjust', profileId: profile.id, how });
   const library: Choice[] = [
     ...(state?.alternatives ?? []).map((a) => ({ session: a.session, why: a.why, tag: 'Vom Coach' })),
@@ -64,7 +64,7 @@ export const CoachView = ({ coachHome, webOrigin, profile, state, thinking, coac
     ...(isRamp ? [] : [{ session: rampTest(ftpW), why: 'Misst deine FTP genauer als die Schätzung. Bis du nicht mehr kannst.', tag: 'Test' }]),
   ];
   const shown = picked ?? (next ? { session: next.session, why: next.reason, tag: '' } : null);
-  const shownRamp = shown?.session.id === 'ramp-test';
+  const shownRamp = shown?.session.id === RAMP_ID;
   return (
     <main className="home">
       <div className="top">

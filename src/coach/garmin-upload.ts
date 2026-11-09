@@ -1,4 +1,4 @@
-import { RAMP_ID } from './session-limits';
+import { RAMP_ID } from '../shared/session';
 import type { RideSummary } from './metrics';
 import type { CoachState } from './state';
 

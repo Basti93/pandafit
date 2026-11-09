@@ -7,7 +7,7 @@ import { onTestFinished, vi } from 'vitest';
 import { createCoachRuntime, type RuntimeOptions } from '../../src/coach/runtime';
 import { AccountLinks } from '../../src/coach/tracking/link';
 import { RecordStore } from '../../src/coach/tracking/store';
-import { rampTest } from '../../src/coach/rules';
+import { rampTest } from '../../src/shared/ramp';
 import type { Profile } from '../../src/shared/profiles';
 import type { CoachServerMessage } from '../../src/coach/protocol';
 import { sealedTokens } from '../../src/coach/secrets/garmin-tokens';

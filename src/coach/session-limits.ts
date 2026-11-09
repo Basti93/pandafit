@@ -1,8 +1,7 @@
-import { parseSession, stepFtpFraction, type Session, type Step } from '../shared/session';
+import { estimateTss, parseSession, RAMP_ID, stepFtpFraction, type Session } from '../shared/session';
 import { loadModel, type RideSummary } from './metrics';
 
 export type CoachContext = { ftpW: number; summaries: RideSummary[]; nowMs: number; careful?: boolean; complaint?: boolean };
-export const RAMP_ID = 'ramp-test';
 
 export const LIMITS = {
   minTotalS: 10 * 60, maxTotalS: 120 * 60, minWarmupS: 5 * 60, maxWarmupFraction: 0.6, maxWarmupGrade: 3,
@@ -14,8 +13,6 @@ export const LIMITS = {
 } as const;
 
 const DAY_MS = 86_400_000;
-export const estimateTss = (session: Session): number =>
-  session.steps.reduce((sum, s) => sum + (s.durationS / 3600) * stepFtpFraction(s) ** 2 * 100, 0);
 
 /** Gentle program: after a hard ride, a long break or with no history at all. */
 export const mustBeEasy = (ctx: CoachContext): boolean => {

@@ -7,7 +7,7 @@ import { internalLinks } from '../../../src/coach/server/internal-links';
 import { MEAL_SYSTEM_PROMPT } from '../../../src/coach/meals/prompt';
 import { CHAT_SYSTEM_PROMPT } from '../../../src/coach/meals/chat';
 import { sealedCodec } from '../../../src/coach/secrets/secret-box';
-import { rampTest } from '../../../src/coach/rules';
+import { rampTest } from '../../../src/shared/ramp';
 import { DEFAULT_MEAL_SETTINGS, readMealChat } from '../../../src/shared/meals';
 import type { Profile } from '../../../src/shared/profiles';
 

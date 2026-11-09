@@ -4,7 +4,7 @@ import type { StrengthWorkout } from './hevy';
 import type { GymWorkout } from '../shared/gym/types';
 import type { TrainingWeek } from './all-training';
 import { LEG_MUSCLES } from './gym/history';
-import { RAMP_ID } from './session-limits';
+import { RAMP_ID } from '../shared/session';
 import { stepFtpFraction } from '../shared/session';
 import { gymMinutes } from '../shared/duration';
 

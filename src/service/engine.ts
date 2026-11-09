@@ -1,6 +1,6 @@
 import { clampTargetW } from '../shared/target-power';
 import type { RideEvent, Sample } from '../shared/sample';
-import { stepFtpFraction, type Session, type Step } from '../shared/session';
+import { RAMP_ID, stepFtpFraction, type Session, type Step } from '../shared/session';
 import { zoneBounds } from '../shared/hr-zones';
 import type { Reading } from './ble/device-manager';
 

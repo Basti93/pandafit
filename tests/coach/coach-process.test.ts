@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { WebSocket } from 'ws';
-import { rampTest } from '../../src/coach/rules';
+import { rampTest } from '../../src/shared/ramp';
 import { TOKEN, connect, hardKill, rideId, send, session, sleep, startService, waitForSamples, type Svc } from '../chaos/helpers';
 import { readRide } from '../../src/ride-format/read';
 

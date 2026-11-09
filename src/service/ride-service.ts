@@ -7,7 +7,7 @@ import type { RideEvent } from '../shared/sample';
 import { parseSession, type Session } from '../shared/session';
 import { DeviceManager, type DeviceStatus, type Reading } from './ble/device-manager';
 import type { BlePort } from './ble/device-port';
-import { RideEngine } from './engine';
+import { GAP_THRESHOLD_MS, RideEngine } from './engine';
 import type { Diagnostics } from './diagnostics';
 import { exportFit } from '../ride-format/export/fit';
 import { RideRecorder } from './recorder';

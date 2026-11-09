@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { createCoachRuntime } from '../../../src/coach/runtime';
 import { AccountLinks } from '../../../src/coach/tracking/link';
-import { rampTest } from '../../../src/coach/rules';
+import { rampTest } from '../../../src/shared/ramp';
 import { homeOf, markMealsMoved, markMoved, mealFile, mealPeople, mealsDue } from '../../../src/coach/remote/home';
 import { RemoteCoach, ruleFallback } from '../../../src/coach/remote/remote-coach';
 import { createRouter, mealsStayLocal } from '../../../src/coach/remote/router';
