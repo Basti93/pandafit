@@ -240,7 +240,7 @@ export const buildServer = (opts: {
     const list = recordsOfBody(req.body);
     if (!list) return reply.code(400).send({ error: 'bad request' });
     const account = acct(req);
-    const { accepted, refused, newMealWeek, newRunWeek, newCoachNote } = putRecords(db, account, list, now());
+    const { accepted, refused, newMealWeek, newRunWeek, newCoachNote } = putRecords(db, account, list, now(), 'client');
     if (newMealWeek) void push.notifyAccount(account, 'meal'); // fire and forget, after the data is safe
     if (newRunWeek) void push.notifyAccount(account, 'run');
     if (newCoachNote) void push.notifyAccount(account, 'coach');

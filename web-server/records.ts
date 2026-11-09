@@ -17,6 +17,12 @@ const toRecord = (r: Row): TrackedRecord => ({ kind: r.kind as RecordKind, id: r
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown, max: number): v is string => typeof v === 'string' && v.length > 0 && v.length <= max;
 
+/** A coach message that sends a push. Only the coach itself writes one; a client's copy is refused. */
+const isCoachPush = (r: Record<string, unknown>): boolean => {
+  const b = r.body;
+  return r.kind === 'chat' && isObj(b) && b.role === 'coach' && b.push === true;
+};
+
 /** The list of a POST body, or null when the body is not `{ records: [...] }` within the limit. */
 export const recordsOfBody = (body: unknown): unknown[] | null => {
   const list = isObj(body) ? body.records : undefined;
@@ -32,7 +38,7 @@ export const pageOfQuery = (q: { since?: string; limit?: string }): { since: num
 };
 
 /** Stores what is newer, keeps what lost, in one transaction. A new meal or run week is reported so its push goes out after the commit. */
-export function putRecords(db: DatabaseSync, accountId: number, list: unknown[], nowMs: number): { accepted: number; refused: { kind: unknown; id: unknown; reason: string }[]; newMealWeek: boolean; newRunWeek: boolean; newCoachNote: boolean } {
+export function putRecords(db: DatabaseSync, accountId: number, list: unknown[], nowMs: number, from: 'client' | 'coach' = 'coach'): { accepted: number; refused: { kind: unknown; id: unknown; reason: string }[]; newMealWeek: boolean; newRunWeek: boolean; newCoachNote: boolean } {
   const account = accountId, t = nowMs;
   const refused: { kind: unknown; id: unknown; reason: string }[] = [];
   let accepted = 0, newMealWeek = false, newRunWeek = false, newCoachNote = false;
@@ -60,6 +66,7 @@ export function putRecords(db: DatabaseSync, accountId: number, list: unknown[],
         : r.updatedMs > t + MAX_AHEAD_MS ? 'updatedMs too far ahead'
         : typeof r.deleted !== 'boolean' ? 'bad deleted'
         : r.body === undefined ? 'missing body'
+        : from === 'client' && isCoachPush(r) ? 'coach push message from a client'
         : Buffer.byteLength(JSON.stringify(r.body)) > RECORD_BODY_LIMIT ? 'body too large'
         : null;
       if (reason) { refused.push({ ...ref, reason }); continue; }

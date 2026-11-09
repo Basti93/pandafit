@@ -65,6 +65,9 @@ export const answerSchema = z.object({
 });
 // `claude` rejects the $schema field that zod adds automatically.
 const { $schema: _ignored, ...answerProps } = z.toJSONSchema(answerSchema);
+/** A profile keeps its latest notes only, each cut to this length. */
+const NOTES_KEEP = 50;
+const NOTE_MAX = 500;
 export const answerJsonSchema: object = answerProps;
 
 export const SYSTEM_PROMPT = `Du bist Radsport-Coach für eine freizeitfahrende Person auf einem Indoor-Trainer.
@@ -255,7 +258,8 @@ export class Coach {
   note(profileId: string, text: string, complaintText = text): void {
     this.update(profileId, (s) => {
       const now = this.deps.nowMs();
-      s.notes.push({ atMs: now, text });
+      s.notes.push({ atMs: now, text: text.slice(0, NOTE_MAX) });
+      if (s.notes.length > NOTES_KEEP) s.notes.splice(0, s.notes.length - NOTES_KEEP);
       if (this.addComplaint(s, complaintText, now)) {
         // Safe immediately, even if the AI is not answering right now.
         s.next = { ...ruleBasedSession(this.context(s)), source: 'rules' };

@@ -46,3 +46,23 @@ test('occupied port is retried instead of crashing', async () => {
   expect(await opens(7612)).toBe(true);
   srv.close();
 });
+test('an invalid message gets an error answer, never reaches the service, and the connection stays open', async () => {
+  const service = fakeService();
+  const srv = startWsServer(service, { port: 7614, token: TOKEN });
+  await sleep(30);
+  const ws = new WebSocket(`ws://127.0.0.1:7614?t=${TOKEN}`);
+  const got: string[] = [];
+  ws.on('message', (d) => got.push(String(d)));
+  await new Promise((r) => ws.once('open', r));
+  ws.send('{"type":"adjust","deltaPct":"x"}');
+  ws.send('{"type":"adjust","deltaPct":1e9}');
+  ws.send('{"type":"nope"}');
+  ws.send('garbage');
+  ws.send('{"type":"adjust","deltaPct":5}');
+  await sleep(100);
+  expect(got.map((g) => JSON.parse(g).type)).toEqual(['error', 'error', 'error', 'error']);
+  expect(service.handle).toHaveBeenCalledTimes(1);
+  expect(service.handle).toHaveBeenCalledWith({ type: 'adjust', deltaPct: 5 });
+  expect(ws.readyState).toBe(WebSocket.OPEN);
+  ws.close(); srv.close();
+});

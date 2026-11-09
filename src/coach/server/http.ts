@@ -4,6 +4,7 @@ import type { IncomingMessage } from 'node:http';
 import path from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
+import { parseCoachClientMessage } from '../../shared/coach-messages';
 import { QUEUEABLE, type CoachClientMessage, type CoachServerMessage, type CoachStateMessage } from '../../shared/coach-protocol';
 import { ChangeClock, changeKey, isHouseholdKey } from './change-clock';
 import { HandledQids } from './handled-qids';
@@ -359,6 +360,7 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
           const inner = m.message;
           if (typeof m.atMs !== 'number' || !Number.isFinite(m.atMs) || !isObj(inner)) return;
           if (typeof inner.type !== 'string' || !QUEUEABLE.has(inner.type as CoachClientMessage['type'])) return;
+          if (parseCoachClientMessage(inner) === null) return;
           // A clock running ahead on the client never makes a change newer than now.
           apply(c, a, inner, Math.min(m.atMs, now), true);
         } finally {
@@ -373,6 +375,7 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
       }
       if (m.type === 'live-watch') { c.watching = true; live.hello(a.accountId, c); return; }
       if (typeof m.type === 'string' && LIVE_TYPES.has(m.type)) { live.handle(a.accountId, a.profileId, c, m); return; }
+      if (parseCoachClientMessage(m) === null) return;
       apply(c, a, m, now, false);
     } catch { /* an invalid message changes nothing */ }
   };

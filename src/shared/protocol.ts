@@ -5,21 +5,7 @@ import type { RideMeta } from '../service/recorder';
 import type { Profile } from './profiles';
 import type { Session } from './session';
 
-export type ClientMessage =
-  | { type: 'start'; profileId: string; session: Session; ftpW: number; maxHrBpm?: number; hrMaxBpm?: number }
-  | { type: 'device-connect'; kind: DeviceKind }
-  | { type: 'device-disconnect'; kind: DeviceKind }
-  | { type: 'adjust'; deltaPct: number }
-  | { type: 'mark'; note?: string }
-  | { type: 'skip' }
-  | { type: 'stop' }
-  | { type: 'discard' }
-  | { type: 'resume'; rideId: string }
-  | { type: 'discard-resume'; rideId: string }
-  | { type: 'export-fit'; rideId: string }
-  | { type: 'save-profile'; profile: Profile }
-  | { type: 'delete-profile'; profileId: string }
-  | { type: 'problem-report'; note: string };
+export type { ClientMessage } from './ride-messages';
 
 export type RecoveryOffer = { type: 'recovery-offer'; rideId: string; profileId: string; sessionName: string; rideElapsedS: number };
 export type StateMessage = {

@@ -6,6 +6,7 @@ import { localClientAllowed } from '../service/ws-server';
 import { coachPort, requireLocalToken, servicePort } from '../shared/node/local-token';
 import { findOpenRides } from '../service/recovery';
 import type { Profile } from '../shared/profiles';
+import { parseCoachClientMessage } from '../shared/coach-messages';
 import { COACH_PORT, type CoachClientMessage, type CoachHome, type CoachServerMessage } from '../shared/coach-protocol';
 import { askClaude, findClaude } from './claude-client';
 import { computeTogether } from './together';
@@ -197,7 +198,8 @@ function fromServer(profileId: string, m: CoachServerMessage): void {
 wss.on('connection', (socket) => {
   socket.on('message', (raw) => {
     try {
-      const m = JSON.parse(String(raw)) as CoachClientMessage;
+      const m = parseCoachClientMessage(JSON.parse(String(raw)));
+      if (!m) return;
       if (m.type === 'subscribe') subs.set(socket, m.profileId);
       router.handle(m, (msg) => {
         if (msg.type === 'coach-state') { sendView(socket, msg); return; }

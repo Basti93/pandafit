@@ -1,4 +1,4 @@
-import type { CoachState, Rating } from '../coach/state';
+import type { CoachState } from '../coach/state';
 import type { Together } from '../coach/together';
 import type { GarminReadiness } from './garmin';
 import type { GarminSuggestion } from './garmin-profile';
@@ -8,9 +8,9 @@ import type { StrengthHealth } from '../coach/strength';
 import type { MobilityView } from '../coach/mobility/mobility';
 import type { RecordKind, TrackedRecord } from './records';
 import type { MealsView } from '../coach/meals/meal-coach';
-import type { ItemState } from './meals';
 import type { Profile } from './profiles';
 import type { LiveMessage } from './live';
+import type { CoachClientMessage } from './coach-messages';
 
 export type GarminStatus =
   | { state: 'idle' | 'connecting' | 'needs-mfa' | 'connected' }
@@ -28,61 +28,7 @@ export type AccountStatus = { state: 'idle' | 'linking' | 'linked' | 'rejected' 
   /** The origin of the linked server's web app (https only), for "Web-App öffnen". Absent without a link or on an old coach. */
   webOrigin?: string | null };
 
-export type CoachClientMessage =
-  | { type: 'account-link'; profileId: string; url: string; name: string; password: string }
-  | { type: 'account-unlink'; profileId: string }
-  | { type: 'hevy-connect'; profileId: string; key: string }
-  | { type: 'hevy-disconnect'; profileId: string }
-  | { type: 'garmin-login'; profileId: string; email: string; password: string }
-  | { type: 'garmin-mfa'; profileId: string; code: string }
-  | { type: 'garmin-disconnect'; profileId: string }
-  | { type: 'set-ftp'; profileId: string; ftpW: number }
-  | { type: 'subscribe'; profileId: string }
-  | { type: 'feedback'; profileId: string; rideId: string; rating: Rating }
-  | { type: 'skip-feedback'; profileId: string } | { type: 'skip-ramp'; profileId: string }
-  | { type: 'note'; profileId: string; text: string }
-  | { type: 'complaint-update'; profileId: string; id: string; status: 'active' | 'healing' | 'over' }
-  | { type: 'answer-question'; profileId: string; questionId: string; text: string }
-  | { type: 'skip-question'; profileId: string }
-  | { type: 'debrief-seen'; profileId: string }
-  | { type: 'garmin-upload-settings'; profileId: string; mode: 'off' | 'ask' }
-  | { type: 'garmin-upload'; profileId: string; rideId: string; repoLink?: boolean }
-  | { type: 'debrief-answer'; profileId: string; rideId: string; question: string; text: string }
-  | { type: 'debrief-skip-question'; profileId: string; rideId: string; question: string }
-  | { type: 'remove-motive'; profileId: string; atMs: number }
-  | { type: 'ride-detail'; profileId: string; rideId: string }
-  | { type: 'word-result'; profileId: string; nl: string; knew: boolean }
-  | { type: 'adjust'; profileId: string; how: 'easier' | 'harder' | 'shorter' }
-  | { type: 'pass-select'; profileId: string; passId: string }
-  | { type: 'pass-progress'; profileId: string; passId: string; distanceM: number }
-  | { type: 'pass-summit'; profileId: string; passId: string }
-  | { type: 'gym-adjust'; profileId: string; how: 'easier' | 'harder' | 'shorter' }
-  | { type: 'gym-note'; profileId: string; text: string }
-  | { type: 'gym-answer'; profileId: string; question: string; text: string }
-  | { type: 'gym-skip-question'; profileId: string; question: string }
-  | { type: 'gym-start'; profileId: string }
-  | { type: 'gym-forget'; profileId: string }
-  | { type: 'gym-preview'; profileId: string }
-  | { type: 'gym-confirm'; profileId: string; name: string }
-  | { type: 'mobility-done'; profileId: string; sessionId: string }
-  | { type: 'mobility-feel'; profileId: string; text: string }
-  | { type: 'meals-settings'; profileId: string; settings: unknown }
-  | { type: 'meals-replan'; profileId: string; week: string }
-  | { type: 'meals-swap'; profileId: string; week: string; meal: string; ai: boolean }
-  | { type: 'meals-chat'; profileId: string; week: string; text: string }
-  | { type: 'meals-eater'; profileId: string; week: string; meal: string; person: string; on: boolean }
-  | { type: 'meals-item'; profileId: string; week: string; item: string; state: ItemState }
-  | { type: 'records-put'; requestId: string; profileId: string; record: TrackedRecord; seenMs?: number }
-  | { type: 'records-list'; requestId: string; profileId: string; kind: RecordKind }
-  /** The profile's values (name, FTP, weight ...) as changed on a client. The server coach keeps them per account. */
-  | { type: 'profile-update'; profileId: string; profile: Profile }
-  /**
-   * A change made while the server was unreachable or a ride was open, with the time it was made. Only QUEUEABLE messages count.
-   * qid is the client's id for the entry: the server answers every queued message with a queued-ack carrying it.
-   */
-  | { type: 'queued'; qid: string; atMs: number; message: CoachClientMessage }
-  /** The running ride (Mac to server), a phone's command or the Mac's answer to it. Never queued, never stored. */
-  | LiveMessage;
+export type { CoachClientMessage } from './coach-messages';
 
 /** What a client may queue while offline: writes a person made, never a login, a key, an upload or a request that wants an answer. */
 export const QUEUEABLE: ReadonlySet<CoachClientMessage['type']> = new Set<CoachClientMessage['type']>([

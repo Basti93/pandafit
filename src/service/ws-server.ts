@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { WebSocketServer } from 'ws';
-import type { ClientMessage } from '../shared/protocol';
+import { parseClientMessage } from '../shared/ride-messages';
 import { SERVICE_PORT } from '../shared/protocol';
 import { tokenMatches } from '../shared/node/local-token';
 import type { RideService } from './ride-service';
@@ -39,7 +39,10 @@ export const startWsServer = (service: RideService, opts: Options): Server => {
   wss.on('connection', (socket) => {
     const unsubscribe = service.subscribe((m) => socket.send(JSON.stringify(m)));
     socket.on('message', (raw) => {
-      try { service.handle(JSON.parse(String(raw)) as ClientMessage); } catch { /* ignore invalid message */ }
+      // A rejected message only gets an error answer: it never touches a running ride.
+      const msg = parseClientMessage(String(raw));
+      if (!msg) { try { socket.send(JSON.stringify({ type: 'error', message: 'Ungültige Nachricht.' })); } catch { /* connection gone */ } return; }
+      try { service.handle(msg); } catch { /* ignore a failing message */ }
     });
     socket.on('close', unsubscribe);
     socket.on('error', unsubscribe);
