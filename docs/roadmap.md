@@ -59,7 +59,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Dojo 2 Heute, Woche, Sensai** | Heute und Woche geben sofort Orientierung (erledigt, heute, kommt noch); Bo sitzt im Bambusnest; Gesundheit steht sichtbar auf der Woche und hat eine eigene Seite; das Gespräch mit dem Sensai ist ein ruhiger Chat. | Woche-Seite, Rückblick-Gesundheit |
 | ✅ | **Dojo 3 Kraft und Ausdauer** | Kraft zeigt das nächste Training als Hauptkarte, das laufende Training den nächsten Satz groß; Ausdauer schaltet Rad und Laufen oben um. | Kraft-Umschalter Training/Routinen/Übungen |
 | ✅ | **Dojo 4 Essen und Profil** | Essen zeigt die nächste Mahlzeit groß und die Woche ruhig; ein Rezept trägt man auf der Seite in den Plan ein; Profil ist nur noch Einstellungen. | Tage/Einkauf-Umschalter, „In den Plan“-Sheet |
-| ⬜ | **Dojo 5 Bos Orte und Logo** | Hinter jeder Pose von Bo steht seine Szene; das App-Logo zeigt Bo als Teetrinker, im Dock, auf dem Handy und als Favicon. | Altes Logo (Panda und Maus auf dem Rad) |
+| ✅ | **Dojo 5 Bos Orte und Logo** | Hinter jeder Pose von Bo steht seine Szene; das App-Logo zeigt Bos Gesicht mit Stirnband und Schweißtropfen, im Dock, auf dem Handy und als Favicon. | Altes Logo (Panda und Maus auf dem Rad) |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -87,7 +87,7 @@ Ein Krafttag wird nach Muskelgruppe, Satzzahl und Anstrengung bewertet, nicht na
 
 ## Dojo — Briefs
 
-Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`archive/plans/2026-11-09-dojo-1-fundament.md`](archive/plans/2026-11-09-dojo-1-fundament.md) (erledigt), Dojo 2: [`archive/plans/2026-11-09-dojo-2-heute-woche-sensai.md`](archive/plans/2026-11-09-dojo-2-heute-woche-sensai.md) (erledigt), Dojo 3: [`archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md`](archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md) (erledigt), Dojo 4: [`archive/plans/2026-11-09-dojo-4-essen-profil.md`](archive/plans/2026-11-09-dojo-4-essen-profil.md) (erledigt). Der Plan für Dojo 5 entsteht nach Abnahme von Dojo 4.
+Grundlage für alle fünf: [`docs/design/DESIGN.md`](design/DESIGN.md), Bilder in `docs/design/moodboard/` (im Browser öffnen). Plan nur für Dojo 1: [`archive/plans/2026-11-09-dojo-1-fundament.md`](archive/plans/2026-11-09-dojo-1-fundament.md) (erledigt), Dojo 2: [`archive/plans/2026-11-09-dojo-2-heute-woche-sensai.md`](archive/plans/2026-11-09-dojo-2-heute-woche-sensai.md) (erledigt), Dojo 3: [`archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md`](archive/plans/2026-11-09-dojo-3-kraft-ausdauer.md) (erledigt), Dojo 4: [`archive/plans/2026-11-09-dojo-4-essen-profil.md`](archive/plans/2026-11-09-dojo-4-essen-profil.md) (erledigt). Dojo 5: [`archive/plans/2026-11-09-dojo-5-bos-orte-logo.md`](archive/plans/2026-11-09-dojo-5-bos-orte-logo.md) (erledigt).
 
 **Dojo 1 Fundament.** Ziel: Das neue Aussehen steckt in Tokens und Bausteinen, bevor ein Screen umgebaut wird.
 - Jede Seite der Web-App hat den Dojo-Hintergrund mit Bambus, der beim Scrollen mitwächst, hell und dunkel.
@@ -118,20 +118,21 @@ Fällt weg: Tage/Einkauf-Umschalter, „In den Plan“-Sheet. Nicht dabei: neue 
 
 **Dojo 5 Bos Orte und Logo.** Ziel: Bo hat zu jeder Pose seinen Ort, und die App erkennt man am Logo.
 - Jede Pose aus `dayClip` erscheint mit ihrer Szene aus `DESIGN.md` (Tabelle „Bos Orte“), auch bei reduzierter Bewegung als Standbild.
-- Neues Logo „Bo als Teetrinker“: zuerst zwei bis drei Entwürfe im Moodboard, nach Abnahme als `resources/icon.svg`, Mac-Icon, PWA-Icons und Favicon.
+- Neues Logo: Bos Gesicht mit Fitness-Stirnband und Schweißtropfen (Entwurf D im Moodboard), als `resources/icon.svg`, Mac-Icon, PWA-Icons und Favicon.
 Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 
 ## Parkplatz
 - ~~Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen.~~ Erledigt mit Dojo 4.
 - Aus Dojo 4: Ein gemeinsamer Kit-Rahmen `SubPage` für Unterseiten (heute `SubPage` in `Training.tsx` und `EssenPage` in `src/web/essen/`).
 - Aus Dojo 4: Tippt man auf den Tab, während eine Unterseite offen ist (Mahlzeit von Heute, Kraft-Unterseiten), bleibt die Unterseite stehen.
-- Aus Dojo 4: „Essen heute“ auf Heute zeigt noch das Icon statt des Bilds.
+- ~~Aus Dojo 4: „Essen heute“ auf Heute zeigt noch das Icon statt des Bilds.~~ Erledigt mit Dojo 5.
 - ~~Aus Dojo 1: Die Mac-Oberfläche (`src/ui`) sagt noch „Coach“, z. B. HevyCard „Kraft-Coach“. `training-policy/rules.ts` sagt intern „Coach“, erreicht aber weder Screen noch Prompt.~~ Erledigt (Parkplatz Design).
 - ~~Aus Dojo 1: Im CSS steht teils font-weight 600.~~ Erledigt mit Dojo 2 (nur die Mac-Oberfläche hat noch 600, eigene Schrift).
 - ~~Aus Dojo 2: „Zurück“ im Chat, den man von Heute aus geöffnet hat, landet auf der Woche statt auf Heute (gehört zu Browser-Zurück, Entscheidung 10).~~ Erledigt (Parkplatz Design).
 - ~~Aus Dojo 2: Gesundheit und Gemeinsam sind Unterseiten der Woche ohne Browser-Zurück.~~ Erledigt (Parkplatz Design).
 - ~~Aus Dojo 2: `TogetherScreen` baut seine Karten noch von Hand (`section.card`); beim nächsten Anfassen auf Kit-Bausteine umstellen.~~ Erledigt (Parkplatz Design).
-- Aus Dojo 2: `BoBubble` mit `portrait="mini"` und `place` verkleinert die Szene; in Dojo 5 prüfen, sobald es einen Aufruf gibt.
+- ~~Aus Dojo 2: `BoBubble` mit `portrait="mini"` und `place` verkleinert die Szene; in Dojo 5 prüfen, sobald es einen Aufruf gibt.~~ Erledigt mit Dojo 5: Ein kleiner Bo zeigt nie einen Ort.
+- Aus Dojo 5: Die Orte für „listen“ (Laternen und Tee) und „breathe“ (am Wasser unter dem Mond) sind noch nicht gebaut; bis dahin sitzt Bo dafür im Nest oder im Dojo.
 - Aus Dojo 3: Sheets, die aus dem Übungsmenü geöffnet werden (Sätze bearbeiten, Tauschen, Reihenfolge ändern), zeigen „‹ Zurück“ statt ×; einmal im Kit lösen.
 - Aus Dojo 3: Der Pausen-Wecker (`port.restAlarm`) endet beim Verkleinern des Trainings wie beim Tab-Wechsel. Die Pause selbst läuft im Record weiter und steht nach „Weitermachen“ wieder da; nur der Ton am Ende fehlt dann.
 - ~~`npm run dev:web`: Der Proxy-Präfix `/push` fängt auch das Modul `/push.ts` ab, ohne laufenden Server bleibt die Seite leer. Präfix enger fassen (`/push/`).~~ Erledigt (Parkplatz Design).
