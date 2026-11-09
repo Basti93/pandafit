@@ -7,7 +7,7 @@ import type { HevyRoutines } from '../../../src/coach/gym/hevy-routines';
 import { availableExercises, isRepBased } from '../../../src/coach/gym/history';
 import { gymPublic } from '../../../src/coach/gym/public';
 import { initialGymState } from '../../../src/coach/gym/state';
-import type { ExerciseTemplate, GymWorkout } from '../../../src/coach/gym/types';
+import type { ExerciseTemplate, GymWorkout } from '../../../src/shared/gym/types';
 import type { StrengthWorkout } from '../../../src/coach/hevy';
 import { RecordStore } from '../../../src/coach/tracking/store';
 import { EXERCISES } from '../../../src/shared/exercises';

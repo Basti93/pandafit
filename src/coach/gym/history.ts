@@ -1,6 +1,6 @@
 import type { Effort } from '../../shared/records';
 import type { StrengthWorkout } from '../hevy';
-import type { ExerciseTemplate } from './types';
+import type { ExerciseTemplate } from '../../shared/gym/types';
 import { ruleNumber } from '../../shared/training-policy';
 import { extendDown, ladderFrom, nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
 import { LEG_MUSCLES } from '../../shared/legs';

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ClaudeErrorKind } from '../claude-client';
-import type { GymWorkout } from './types';
+import type { GymWorkout } from '../../shared/gym/types';
 import type { GymOutlook } from '../../shared/gym-outlook';
 import { readKeyedNotes, type KeyedNote } from '../../shared/change-notes';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';

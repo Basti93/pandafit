@@ -7,7 +7,7 @@ const MOBILITY_WINDOW_MS = DAY;
 const MOBILITY_PAUSE_MS = 2 * DAY;
 
 export type PlanBody = {
-  workout: import('../coach/gym/types').GymWorkout | null; reason: string | null; source: string | null; note: string | null;
+  workout: import('../shared/gym/types').GymWorkout | null; reason: string | null; source: string | null; note: string | null;
   questions: string[]; atMs: number; mobility: MobilitySession | null; outlook: GymOutlook | null;
 };
 export type MobilitySession = { id: string; forSession: 'bike' | 'strength' | 'run'; minutes: number; exercises: { id: string; title: string; howTo: string; area: string }[]; reason: string };

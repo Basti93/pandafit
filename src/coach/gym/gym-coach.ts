@@ -20,7 +20,7 @@ import { hevyRecord } from '../tracking/hevy-import';
 import { historyFromLogged, mergeHistory } from '../tracking/merge';
 import type { RecordStore } from '../tracking/store';
 import { legacyGymRules, loadGymState, removeGymState, saveGymState, type GymState } from './state';
-import type { ExerciseTemplate, GymExercise, GymWorkout } from './types';
+import type { ExerciseTemplate, GymExercise, GymWorkout } from '../../shared/gym/types';
 import { readTasks, type GivenTask, type CoachId } from '../coach-tasks';
 import { readOutlook, type GymOutlook } from '../../shared/gym-outlook';
 import type { LoadStepOverrides } from '../../shared/loads';

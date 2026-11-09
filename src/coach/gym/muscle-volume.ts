@@ -2,7 +2,7 @@ import type { Exercise } from '../../shared/exercises';
 import type { MuscleGroup } from '../../shared/muscle-targets';
 import { muscleBalance, type BalanceExercise, type BalanceItem, type GroupBalance } from '../../shared/muscle-balance';
 import type { StrengthWorkout } from '../hevy';
-import type { ExerciseTemplate } from './types';
+import type { ExerciseTemplate } from '../../shared/gym/types';
 
 /**
  * Thin adapter from Hevy-shaped workouts to the shared balance. An exercise is resolved by its template id through the

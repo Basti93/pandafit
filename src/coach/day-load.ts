@@ -1,7 +1,7 @@
 import type { RideSummary } from './metrics';
 import type { Session } from '../shared/session';
 import type { StrengthWorkout } from './hevy';
-import type { GymWorkout } from './gym/types';
+import type { GymWorkout } from '../shared/gym/types';
 import type { TrainingWeek } from './all-training';
 import { LEG_MUSCLES } from './gym/history';
 import { RAMP_ID } from './guardrails';

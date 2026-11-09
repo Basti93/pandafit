@@ -1,6 +1,6 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { LoggedWorkout } from '../shared/records';
-import type { GymWorkout } from '../coach/gym/types';
+import type { GymWorkout } from '../shared/gym/types';
 import { durationNote } from '../shared/duration';
 import { openStoreCount } from '../tracking/registry';
 import { PageHead, Row, RowList, Switch } from '../tracking/ui/kit';

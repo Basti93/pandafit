@@ -1,6 +1,4 @@
-import type { DeviceStatus, Reading } from '../service/ble/device-manager';
-import type { DeviceKind } from '../service/ble/device-port';
-import type { EngineState } from '../service/engine';
+import type { DeviceKind, DeviceStatus, EngineState, Reading } from './device-types';
 import type { RideMeta } from '../ride-format/read';
 import type { Profile } from './profiles';
 import type { Session } from './session';

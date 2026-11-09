@@ -1,7 +1,7 @@
 import { restOf, restChoices } from '../../shared/rest';
 import { needsWarmup, warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { GymWorkout } from '../../coach/gym/types';
+import type { GymWorkout } from '../../shared/gym/types';
 import type { Exercise } from '../../shared/exercises';
 import { readStats, STATS_ID } from '../../shared/stats';
 import { excludedIds } from '../../shared/personal';

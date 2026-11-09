@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { GymExercise, GymWorkout } from '../../coach/gym/types';
+import type { GymExercise, GymWorkout } from '../../shared/gym/types';
 import type { TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
 import { ExercisePicker } from './ExercisePicker';

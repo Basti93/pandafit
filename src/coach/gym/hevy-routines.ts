@@ -3,7 +3,7 @@ import { restOf } from '../../shared/rest';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Exercise } from '../../shared/exercises';
-import type { ExerciseTemplate, GymWorkout } from './types';
+import type { ExerciseTemplate, GymWorkout } from '../../shared/gym/types';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
 import { createLogger } from '../../shared/node/log';
 

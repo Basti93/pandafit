@@ -2,7 +2,7 @@ import { readWorkoutChange } from '../../src/shared/chat';
 import { EXERCISES } from '../../src/shared/exercises';
 import { applyWorkoutChange, validOps } from '../../src/tracking/workout-change';
 import { confirmSet, startFromPlan, type TrackedWorkout } from '../../src/tracking/session';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 
 const plan: GymWorkout = { name: 'P', exercises: [
   { templateId: 'pf-bench-press', title: 'Bankdrücken', restS: null, supersetId: null, notes: '', sets: [1, 2, 3].map(() => ({ type: 'normal' as const, weightKg: 60, reps: 8 })) },

@@ -10,7 +10,7 @@ import { validBody } from '../../src/web/validate';
 import { startFromPlan } from '../../src/tracking/session';
 import { ChatCoach } from '../../src/coach/chat/chat-coach';
 import { takenChangesOf } from '../../src/coach/tracking/changes';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 import { fakePort } from './fake-port';
 
 afterEach(cleanup);

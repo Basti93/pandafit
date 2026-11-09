@@ -2,7 +2,7 @@ import { restOf, restAfterSet } from '../../src/shared/rest';
 import { gymMinutes } from '../../src/shared/duration';
 import { policyRule, ruleNumber } from '../../src/shared/training-policy';
 import { currentSet, confirmSet, extendRest, setRest, startFromPlan } from '../../src/tracking/session';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 
 const sets = (reps: number | null, n = 3, type: 'normal' | 'warmup' = 'normal') => Array.from({ length: n }, () => ({ type, weightKg: 20, reps }));
 const ex = (id: string, restS: number | null, reps: number | null = 10, supersetId: number | null = null, n = 3) =>

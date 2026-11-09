@@ -1,6 +1,6 @@
 import { contiguousGroups } from '../../shared/superset';
 import type { StrengthWorkout } from '../hevy';
-import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from './types';
+import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from '../../shared/gym/types';
 import { MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
 import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext } from './history';
 import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';

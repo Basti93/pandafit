@@ -7,7 +7,7 @@ import { studioRecord, studioStateOf } from '../../src/shared/studio';
 import { stepHere } from '../../src/tracking/steps';
 import { mergeCatalog } from '../../src/shared/catalog';
 import { EXERCISES } from '../../src/shared/exercises';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 
 const done = (weightKg: number | null, reps: number | null, doneMs: number | null = 1000, type: 'normal' | 'warmup' = 'normal') => ({ type, weightKg, reps, durationS: null, doneMs });
 const past = (id: string, endMs: number, exerciseId: string, sets: ReturnType<typeof done>[], extra: Partial<LoggedWorkout> = {}): LoggedWorkout => ({

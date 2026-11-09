@@ -3,7 +3,7 @@ import { policyRule } from '../../src/shared/training-policy';
 import { addWarmup, confirmSet, startFromPlan } from '../../src/tracking/session';
 import type { Ladder } from '../../src/shared/loads';
 import type { StrengthWorkout } from '../../src/coach/hevy';
-import type { ExerciseTemplate } from '../../src/coach/gym/types';
+import type { ExerciseTemplate } from '../../src/shared/gym/types';
 import { ruleWorkout } from '../../src/coach/gym/rules';
 
 const L = (stepKg: number, anchorKg = stepKg): Ladder => ({ stepKg, anchorKg, learned: true });

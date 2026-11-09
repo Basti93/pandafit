@@ -26,11 +26,8 @@ const HOLD_CEILING_FRACTION = 0.8;
 const PAUSE_AFTER_S = 4;
 const RESUME_ABOVE_W = 40;
 
-export type EngineState = {
-  stepIndex: number; stepRemainingS: number; rideElapsedS: number;
-  targetW: number | null; gradePct: number | null; gear: number | null;
-  label: string; nextLabel: string | null; secondsToNext: number; autoReducedPct: number; paused: boolean;
-};
+import type { EngineState } from '../shared/device-types';
+export type { EngineState };
 export type TrainerCommand = { targetW: number };
 export type EngineOptions = {
   session: Session; ftpW: number; resumeAtS?: number; skippedS?: number; startSeq?: number; nowMs: () => number; maxHrBpm?: number; hrMaxBpm?: number;

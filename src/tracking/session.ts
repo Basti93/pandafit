@@ -10,7 +10,7 @@ import { tidyGroups, contiguousGroups } from '../shared/superset';
 import { warmupRamp, workingWeightOf } from '../shared/warmup';
 import { restAfterSet, restChoices, restExtendS } from '../shared/rest';
 import { applyNextChanges, LIGHTER_PCT, listedIds, type NextChange } from '../shared/changes';
-import type { GymExercise, GymWorkout } from '../coach/gym/types';
+import type { GymExercise, GymWorkout } from '../shared/gym/types';
 
 /** Pure workout logic. No browser, Node or Electron APIs, so the Mac app and the web app share it. */
 /**

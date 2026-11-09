@@ -7,7 +7,7 @@ import { WorkoutDetail } from '../../src/tracking/ui/HistoryScreen';
 import { ExercisesScreen } from '../../src/tracking/ui/ExercisesScreen';
 import { ExercisePicker } from '../../src/tracking/ui/ExercisePicker';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 import { fakePort } from './fake-port';
 import { EQUIPMENT, MUSCLES, TYPES } from '../../src/tracking/ui/labels';
 

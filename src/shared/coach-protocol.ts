@@ -3,7 +3,7 @@ import type { Together } from '../coach/together';
 import type { GarminReadiness } from './garmin';
 import type { GarminSuggestion } from './garmin-profile';
 import type { GymPublic } from '../coach/gym/public';
-import type { GymWorkout } from '../coach/gym/types';
+import type { GymWorkout } from './gym/types';
 import type { StrengthHealth } from '../coach/strength';
 import type { MobilityView } from '../coach/mobility/mobility';
 import type { RecordKind, TrackedRecord } from './records';

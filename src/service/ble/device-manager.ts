@@ -3,8 +3,8 @@ import { encodeRequestControl, encodeSimulation, encodeTargetPower, parseIndoorB
 import { parseClick } from './click-codec';
 import { parseHeartRate } from './hr-codec';
 
-export type Reading = { powerW?: number; cadenceRpm?: number; speedKph?: number; hrBpm?: number };
-export type DeviceStatus = Record<DeviceKind, 'connected' | 'searching' | 'off'>;
+import type { DeviceStatus, Reading } from '../../shared/device-types';
+export type { DeviceStatus, Reading };
 type TrainerCommand = { kind: 'power'; w: number } | { kind: 'grade'; pct: number };
 
 const KINDS: DeviceKind[] = ['trainer', 'hr', 'clicker'];

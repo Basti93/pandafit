@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StrengthWorkout } from '../../src/coach/hevy';
-import type { ExerciseTemplate } from '../../src/coach/gym/types';
+import type { ExerciseTemplate } from '../../src/shared/gym/types';
 import { checkWorkout, reasonPhrase, type GymContext } from '../../src/coach/gym/guardrails';
 import { ruleWorkout } from '../../src/coach/gym/rules';
 import { buildGymPrompt } from '../../src/coach/gym/prompt';

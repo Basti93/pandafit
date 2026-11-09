@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { GymWorkout } from '../../src/coach/gym/types';
+import type { GymWorkout } from '../../src/shared/gym/types';
 import { ruleRecord } from '../../src/shared/personal';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import { planKeyOf, readDraft, writeDraft, type DraftStorage } from '../../src/tracking/plan-draft';

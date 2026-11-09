@@ -1,4 +1,5 @@
-export type DeviceKind = 'trainer' | 'hr' | 'clicker';
+import type { DeviceKind } from '../../shared/device-types';
+export type { DeviceKind };
 export interface BlePort {
   connect(kind: DeviceKind): Promise<void>;
   disconnect(kind: DeviceKind): Promise<void>;
