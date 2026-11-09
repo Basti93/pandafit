@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createLogger } from '../../shared/node/log';
-import { guardChild } from '../python-runner';
+import { guardChild } from '../child-guard';
 import { TokensUnopenable, type GarminTokens, type TokenCheckout } from '../secrets/garmin-tokens';
 
 const SAFE_ID = /^[A-Za-z0-9-]+$/;

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createLogger } from '../shared/node/log';
-import { guardChild } from './python-runner';
+import { guardChild } from './child-guard';
 import type { GarminStatus } from '../shared/coach-protocol';
 import { plainTokens, TokensUnopenable, type GarminTokens, type TokenCheckout } from './secrets/garmin-tokens';
 

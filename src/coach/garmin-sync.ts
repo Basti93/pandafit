@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createLogger } from '../shared/node/log';
-import { guardChild } from './python-runner';
+import { guardChild } from './child-guard';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { GarminSyncInfo } from '../shared/coach-protocol';
