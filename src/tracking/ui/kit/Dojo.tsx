@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { PandaPortrait, type PandaGesture } from '../PandaPortrait';
-import { BoScene, type BoPlace } from './BoScene';
+import { BoScene, poseIn, type BoPlace } from './BoScene';
 import { Icon, type IconName } from './Icon';
 import { BO, BO_LINES } from '../bo';
 
@@ -84,7 +84,7 @@ export function Tag({ children }: { children: ReactNode }) {
 /** Bo speaks: his portrait (in a scene when `place` is set) and a bubble next to it. `mini` is the still picture only; a moving mini Bo is a PandaPortrait set by the caller. */
 export function BoBubble({ children, actions, pose, portrait = 'full', place, foot }: { children: ReactNode; actions?: ReactNode; foot?: ReactNode; pose?: PandaGesture | null; portrait?: 'full' | 'mini' | 'none'; place?: BoPlace }) {
   if (portrait === 'none') return <div className="tk-bo"><Bubble actions={actions} foot={foot} tail="none">{children}</Bubble></div>;
-  const bo = portrait === 'mini' ? <img className="tk-bo-still" src="/brand/panda-still.svg" alt="" /> : <PandaPortrait pose={pose} />;
+  const bo = portrait === 'mini' ? <img className="tk-bo-still" src="/brand/panda-still.svg" alt="" /> : <PandaPortrait pose={place ? poseIn(place, pose) : pose} />;
   return (
     <div className={`tk-bo ${portrait}`}>
       <span className="tk-bo-portrait">{place ? <BoScene place={place}>{bo}</BoScene> : bo}</span>
