@@ -40,5 +40,7 @@ describe('Bo scene', () => {
     const css = readFileSync('src/tracking/ui/tracking.css', 'utf8');
     expect(css).toMatch(/\.tk-scene-glow \{[^}]*background: var\(--bo-glow\)/);
     expect(css).toMatch(/\.tk-bo-portrait:not\(:has\(\.tk-scene\)\), \.tk-pandahead-mini \{[^}]*background: var\(--bo-glow\)/);
+    // No later rule takes the light away again (the chat once set its small portraits to none).
+    expect(css).not.toMatch(/\.tk-bo-portrait \{[^}]*background: none/);
   });
 });

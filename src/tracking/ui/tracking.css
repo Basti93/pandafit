@@ -596,7 +596,7 @@
 .tk-sheet-titles h2 { flex: none; }
 .tk-sheet-sub { margin: 0; font-size: var(--text-s); color: var(--muted); }
 .tk-chat .tk-bo { padding-right: var(--space-4); }
-.tk-chat .tk-bo .tk-bo-portrait { width: 2.4rem; align-self: flex-end; background: none; }
+.tk-chat .tk-bo .tk-bo-portrait { width: 2.4rem; align-self: flex-end; }
 .tk-chat .tk-bubble.right { margin-left: 3rem; }
 .tk-screen p.tk-msgtext { white-space: pre-wrap; overflow-wrap: anywhere; }
 .tk-screen p.tk-daypill { align-self: center; margin: 0; padding: .1rem var(--space-3); border-radius: var(--radius-pill); background: var(--card); font-size: var(--text-xs); color: var(--muted); }
