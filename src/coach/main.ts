@@ -1,3 +1,4 @@
+import { removeStaleTemps } from '../shared/node/atomic-write';
 import fs from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
@@ -34,6 +35,7 @@ const port = coachPort(COACH_PORT);
 const localToken = requireLocalToken();
 const SCAN_MS = Number(process.env.BIKE_COACH_SCAN_MS ?? 10_000);
 const WAIT_MS = Number(process.env.BIKE_COACH_WAIT_MS ?? 5 * 60_000);
+removeStaleTemps(coachDir); // leftovers of a crash during a write
 const workDir = path.join(coachDir, 'work');
 fs.mkdirSync(workDir, { recursive: true });
 // The runtime keeps rides/, coach/, garmin/, hevy/ and accounts/ side by side, as the Mac always has.

@@ -1,3 +1,4 @@
+import { removeStaleTemps } from '../../shared/node/atomic-write';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -81,7 +82,7 @@ export type RunningCoachServer = { app: FastifyInstance; household: Household; s
 
 /** Listens, then scans at once and every `scanMs` (never in the dry run). stop() ends the scan and closes every socket. */
 export const startCoachServer = async (config: CoachServerConfig, opts: { scanMs?: number } = {}): Promise<RunningCoachServer> => {
-  if (!config.dry) fs.mkdirSync(path.join(config.root, 'work'), { recursive: true, mode: 0o700 });
+  if (!config.dry) { removeStaleTemps(config.root); fs.mkdirSync(path.join(config.root, 'work'), { recursive: true, mode: 0o700 }); }
   const household = new Household(householdOptions(config));
   const app = buildCoachServer({ household, internalToken: config.internalToken });
   await app.listen({ port: config.port, host: config.host });

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { writeFileAtomic, writeJsonAtomic } from '../../src/shared/node/atomic-write';
+import { removeStaleTemps, writeFileAtomic, writeJsonAtomic } from '../../src/shared/node/atomic-write';
 
 let dir: string;
 beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'atomic-')); });
@@ -44,4 +44,18 @@ test('fsyncs the file and its folder unless the test-only switch is set', () => 
   expect(spy).not.toHaveBeenCalled();
   spy.mockRestore();
   vi.unstubAllEnvs();
+});
+
+test('removeStaleTemps deletes only old files named like the helper temp files', () => {
+  fs.mkdirSync(path.join(dir, 'ride-1'));
+  const old = [path.join(dir, 'a.json.123.deadbeef.tmp'), path.join(dir, 'ride-1', 'meta.json.9.0123abcd.tmp')];
+  const young = path.join(dir, 'b.json.123.deadbeef.tmp');
+  const foreign = [path.join(dir, 'c.tmp'), path.join(dir, 'd.json.1.xyz.tmp'), path.join(dir, 'keep.json')];
+  for (const f of [...old, young, ...foreign]) fs.writeFileSync(f, 'x');
+  const past = new Date(Date.now() - 2 * 3_600_000);
+  for (const f of [...old, ...foreign]) fs.utimesSync(f, past, past);
+  removeStaleTemps(dir);
+  expect(old.map((f) => fs.existsSync(f))).toEqual([false, false]);
+  expect([young, ...foreign].map((f) => fs.existsSync(f))).toEqual([true, true, true, true]);
+  expect(() => removeStaleTemps(path.join(dir, 'missing'))).not.toThrow();
 });
