@@ -128,3 +128,21 @@ it('the word of an area and its sentence always agree, for every vo2 finding the
   expect([down.word, down.sentence]).toEqual(['beachten', expect.stringContaining('gesunken')]);
   expect([flat.word, flat.sentence]).toEqual(['stabil', expect.stringContaining('nicht klar verändert')]);
 });
+
+it('Gesundheit takes one history entry: the browser Back returns to Woche, the page button gives the entry back', async () => {
+  await showWeek([healthRec(body())]);
+  const start = history.state;
+  const open = async () => {
+    fireEvent.click(within(await screen.findByRole('region', { name: 'Gesundheit' })).getByRole('button', { name: /Gesundheit ansehen/ }));
+    await screen.findByRole('heading', { level: 1, name: 'Gesundheit' });
+  };
+  await open();
+  expect((history.state as { sheet?: string } | null)?.sheet).toBeTruthy();
+  history.back();
+  expect(await screen.findByRole('heading', { level: 1, name: 'Deine Woche' })).toBeTruthy();
+  await open();
+  fireEvent.click(screen.getByRole('button', { name: /Woche/ }));
+  expect(await screen.findByRole('heading', { level: 1, name: 'Deine Woche' })).toBeTruthy();
+  await new Promise((r) => setTimeout(r, 50));
+  expect(history.state).toBe(start);
+});

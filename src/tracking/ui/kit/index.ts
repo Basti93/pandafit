@@ -36,7 +36,7 @@
  * Spacing is a 8 px grid (.5rem steps), headings are one title (.tk-title) and small section headings (.tk-section). Dates: ../../shared/dates.ts (de-DE).
  */
 export { ExpandMark, Row, RowList } from './Row';
-export { Sheet } from './Sheet';
+export { Sheet, useBackEntry } from './Sheet';
 export { PageHead } from './PageHead';
 export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
