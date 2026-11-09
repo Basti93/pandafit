@@ -90,7 +90,7 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, extra, a }: Props & { 
   const start = isGym && gym ? { label: 'Training starten', onClick: gym.start } : undefined;
   const viewGym = isGym && gym?.view ? { label: 'Ansehen und anpassen', onClick: gym.view } : undefined;
   const primary = start ?? toRun;
-  const secondary = start ? (viewGym ?? toRun ?? toBike) : toBike;
+  const secondary = start ? (toRun ?? viewGym ?? toBike) : toBike;
   return (
     <MainCard kicker="Jetzt dran" title={title} text={lines.filter(Boolean).join(' ') || undefined} primary={primary} secondary={secondary}
       label={useAdvice ? 'Heute' : 'Heute laut Wochenplan'} more={more(isGym && gym?.notes)} />

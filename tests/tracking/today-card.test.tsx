@@ -74,3 +74,9 @@ test('a bike day offers Ansehen and says the ride starts on the Mac, with no mai
   fireEvent.click(screen.getByRole('button', { name: 'Ansehen' }));
   expect(looked).toBe(true);
 });
+const alsoRun = (() => { const r = plan(['rest', 'rest', 'gym']); const b = r.body as { days: { sport: string; also?: unknown }[] }; b.days[2]!.also = { sport: 'run', hardness: 'easy' }; return r; })();
+test('a strength day with a run keeps Zum Laufen as the side button', () => {
+  render(<TodayCard weekplans={[alsoRun]} runs={[runWeek]} nowMs={NOW} gym={{ name: 'Beine', line: null, start: () => {}, view: () => {} }} onRun={() => {}} />);
+  expect(screen.getByRole('button', { name: 'Training starten' }).className).toBe('primary');
+  expect(screen.getByRole('button', { name: 'Zum Laufen' }).className).toBe('secondary');
+});

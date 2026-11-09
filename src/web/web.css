@@ -240,12 +240,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-panda[data-drawn='true'] .tk-pandastill { visibility: hidden; }
 .tk-pandahead-mini { flex: none; width: 4.2rem; }
 
-/* On wide screens the top bar spans the wide Heute columns: the wordmark and the profile button sit at its outer edges. */
-@media (min-width: 1024px) {
-  .web-top { max-width: 1040px; }
-  .web-profile { right: calc((100% - 1040px) / 2 + 1rem); }
-}
-
 /* ---- Task 4: Essen, Ausdauer, Profil, login, ride companion ---- */
 /* Visible keyboard focus on every control, in the accent colour. */
 .web-main :is(button, a, summary, [role='tab'], [role='checkbox'], [role='switch']):focus-visible,

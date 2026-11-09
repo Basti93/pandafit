@@ -293,7 +293,6 @@
 .tk-screen .tk-chips button[aria-pressed='true'] { background: var(--card); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700; }
 .tk-today-only { display: flex; flex-direction: column; gap: var(--space-2); }
 
-.tk-today-card .tk-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tk-details { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-details summary { cursor: pointer; color: var(--muted); min-height: 36px; display: flex; align-items: center; }
 /* The mobility row also sits outside .tk-screen (on the Mac): it needs the row-button look on its own. */
@@ -488,9 +487,7 @@
 .tk-info-btn[aria-expanded='true'] span { color: var(--text); background: var(--card, transparent); }
 
 /* ---- Zum Abschluss: a card on Heute, a plain block inside the summary card ---- */
-.tk-finisher { display: flex; flex-direction: column; gap: var(--space-2); }
-.tk-finisher .tk-mob { margin-top: 0; }
-.tk-summary .tk-finisher { border: 0; background: none; box-shadow: none; padding: var(--space-2) 0 0; }
+.tk-summary > .card { border: 0; background: none; box-shadow: none; padding: var(--space-2) 0 0; }
 
 /* ---- One look per kind (task 3) ---- */
 /* Steppers (− count +): one round outline button, in the routine editor and on the recipe. */
