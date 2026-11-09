@@ -5,7 +5,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { chromium, type Browser, type Page, type WebSocketRoute } from 'playwright-core';
+import { chromium, type Browser, type WebSocketRoute } from 'playwright-core';
 import { createAccount } from '../web-server/auth';
 import { openDb } from '../web-server/db';
 import { putRecords } from '../web-server/records';
@@ -393,7 +393,7 @@ const missed: string[] = [];
 
 async function main() {
   try { browser = await chromium.launch({ headless: true }); }
-  catch (e) { throw new Error(`no browser could be launched (${(e as Error).message.split('\n')[0]}). Install one with: npx playwright-core install chromium`); }
+  catch (e) { throw new Error(`no browser could be launched (${(e as Error).message.split('\n')[0]}). Install one with: npx playwright-core install chromium`, { cause: e }); }
   const ctx = await browser.newContext({ viewport: { width: VW, height: VH }, deviceScaleFactor: VW < 700 ? 2 : 1, isMobile: VW < 700, hasTouch: VW < 700, locale: 'de-DE', colorScheme: DARK ? 'dark' : 'light' });
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);

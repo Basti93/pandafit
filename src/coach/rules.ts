@@ -1,7 +1,6 @@
 import type { Session, Step } from '../shared/session';
 import { checkSession, mustBeEasy, mustBeGentle, tssCap, type CoachContext } from './session-limits';
 import { estimateTss, RAMP_ID } from '../shared/session';
-import { rampTest } from '../shared/ramp';
 
 import { loadModel, type RideSummary } from './metrics';
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { deleteRule, excludeRuleRecord, FOCUS_GROUPS, goalRecord, MAX_FOCUS, moveRule, ruleId, ruleRecord, RULE_TEXT_MAX, rulesOf, storedGoalOf, type GoalBody, type Prio, type SportKey, type Strength } from '../../shared/personal';
 import { MUSCLE_TARGETS } from '../../shared/muscle-targets';
-import { addDays, SPORT_LABEL, WEEKDAY_LABEL } from '../../shared/week-plan';
+import { addDays, SPORT_LABEL } from '../../shared/week-plan';
 import { dateKey } from '../../shared/day-rating';
 import { shortDateOfKey as dayLabel } from '../../shared/dates';
 import { type COACH_LABEL, deleteTask, openTasks } from '../../shared/tasks';

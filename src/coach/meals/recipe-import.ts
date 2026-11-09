@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SECTIONS, UNITS, type Ingredient, type Section, type Slot, type Unit } from '../../shared/meals';
+import { SECTIONS, UNITS, type Ingredient, type Section, type Unit } from '../../shared/meals';
 import { policyRule, ruleNumber, ruleValues } from '../../shared/training-policy';
 import { fitsDiet } from './check';
 import { parseNutrition, type Ausgewogen, type Nutrition } from './recipe-health';

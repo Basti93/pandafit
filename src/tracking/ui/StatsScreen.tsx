@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ReadFailed } from './ReadFailed';
 import { STATE_LABELS, type GroupBalance } from '../../shared/muscle-balance';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
-import { readStats, SPORTS, STATS_ID, type Sport, type StatsBody } from '../../shared/stats';
+import { readStats, STATS_ID, type Sport, type StatsBody } from '../../shared/stats';
 import type { TrackingPort } from '../ports';
 import { statsView, weekMinutes, weekSessions, wellFormed, type StatsView, type WeekStats } from '../stats';
 import { durationText } from '../../shared/duration';

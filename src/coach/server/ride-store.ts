@@ -98,7 +98,7 @@ const closedMeta = (ridesDir: string, rideId: string, profileId: string): { stat
 
 /** The profile's closed rides the server holds, oldest first. Folders like `.replaced-<ms>` and `.incoming-` do not count. */
 export const listRides = (ridesDir: string, profileId: string): StoredRide[] => {
-  let names: string[] = [];
+  let names: string[];
   try { names = fs.readdirSync(ridesDir); } catch { return []; }
   const out: StoredRide[] = [];
   for (const rideId of names.filter((n) => RIDE_ID.test(n)).sort()) {

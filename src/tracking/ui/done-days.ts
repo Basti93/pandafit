@@ -3,7 +3,7 @@ import { ACTIVITIES_ID, readActivities, type ActivityItem, type ActivityKind } f
 import { localDayKey } from '../../shared/dates';
 import { dedupeSessions, onePerSession } from '../../shared/history';
 import { overlapsByHalf } from '../../shared/overlap';
-import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
+import type { TrackedRecord } from '../../shared/records';
 import { dayParts, type PlanDay, type Sport } from '../../shared/week-plan';
 
 type Merged = { items: ActivityItem[]; known: boolean };

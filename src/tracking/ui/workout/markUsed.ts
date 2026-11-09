@@ -13,7 +13,7 @@ export async function markUsed(port: TrackingPort, workouts: { id: string; chang
 
 /** Marks the taken changes the finished workouts list as used (see markUsed), reading the workouts afresh. */
 export async function markUsedNow(port: TrackingPort, now: () => number): Promise<void> {
-  let all: LoggedWorkout[] = [];
+  let all: LoggedWorkout[];
   try { all = (await port.list('workout')).filter((r) => !r.deleted).map((r) => bodyOf('workout', r)); } catch { return; /* the next start marks them */ }
   await markUsed(port, all.filter((x) => x.endMs !== null), now());
 }

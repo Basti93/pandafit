@@ -78,8 +78,8 @@ const adjustmentsOf = (ride: { samples: Sample[]; events?: RideEvent[] }, sessio
   let skipped = 0;
   let si = 0;
   let elapsed = 0;
-  let adjustSteps: { step: number; delta: number }[] = [];
-  let autoEvents: { step: number; kind: 'auto' | 'up' | 'down' }[] = [];
+  const adjustSteps: { step: number; delta: number }[] = [];
+  const autoEvents: { step: number; kind: 'auto' | 'up' | 'down' }[] = [];
   for (const e of ride.events ?? []) {
     while (si < ride.samples.length && ride.samples[si].wallClockMs <= e.wallClockMs) elapsed = ride.samples[si++].rideElapsedS;
     if (e.type === 'skip') {

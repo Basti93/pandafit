@@ -14,7 +14,6 @@ import type { WorkoutOps, WorkoutResult } from '../../../src/coach/run/garmin-wo
 import { initialRunCache, loadRunCache, saveRunCache } from '../../../src/coach/run/state';
 
 const HOUR = 3_600_000;
-const DAY = 24 * HOUR;
 /** Monday 2 November 2026, local time. */
 const at = (day: number, hour = 9, minute = 0): number => new Date(2026, 10, 2 + day, hour, minute).getTime();
 const W0 = '2026-11-02';

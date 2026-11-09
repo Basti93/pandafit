@@ -11,7 +11,7 @@ const KEYLEN = 64;
 const scryptAsync = (password: string, salt: Buffer): Promise<Buffer> => {
   stats.scryptCalls++;
   stats.maxInflight = Math.max(stats.maxInflight, ++stats.inflight);
-  return new Promise((resolve, reject) => scrypt(password, salt, KEYLEN, (e, key) => { stats.inflight--; e ? reject(e) : resolve(key); }));
+  return new Promise((resolve, reject) => scrypt(password, salt, KEYLEN, (e, key) => { stats.inflight--; if (e) reject(e); else resolve(key); }));
 };
 const checkLength = (password: string) => {
   if (password.length < MIN_PASSWORD) throw new Error(`password needs at least ${MIN_PASSWORD} characters`);

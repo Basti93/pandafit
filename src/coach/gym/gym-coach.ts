@@ -12,7 +12,7 @@ import { buildGymPrompt, gymAnswerJsonSchema, gymAnswerSchema, GYM_SYSTEM_PROMPT
 import { ruleWorkout } from './rules';
 import { mergeCatalog } from '../../shared/catalog';
 import { isExcluded } from '../../shared/excluded';
-import { EXERCISES, exerciseTitles, linkHevyTemplates, type Exercise } from '../../shared/exercises';
+import { EXERCISES, linkHevyTemplates, type Exercise } from '../../shared/exercises';
 import { FEDB_EXERCISES } from '../../shared/fedb';
 import { onePerSession } from '../../shared/history';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
@@ -21,7 +21,7 @@ import { historyFromLogged, mergeHistory } from '../tracking/merge';
 import type { RecordStore } from '../tracking/store';
 import { legacyGymRules, loadGymState, removeGymState, saveGymState, type GymState } from './state';
 import type { ExerciseTemplate, GymExercise, GymWorkout } from '../../shared/gym/types';
-import { readTasks, type GivenTask, type CoachId } from '../coach-tasks';
+import { readTasks, type GivenTask } from '../coach-tasks';
 import { readOutlook, type GymOutlook } from '../../shared/gym-outlook';
 import type { LoadStepOverrides } from '../../shared/loads';
 import { MUSCLE_TARGETS } from '../../shared/muscle-targets';

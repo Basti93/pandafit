@@ -1,7 +1,6 @@
 import { bodyOf } from '../../shared/record-bodies';
 import { useMemo, useState } from 'react';
 import { dedupeSessions } from '../../shared/history';
-import type { LoggedWorkout } from '../../shared/records';
 import type { TrackingPort } from '../ports';
 import { liftTrends } from '../progress';
 import { CatalogScreen } from './CatalogScreen';

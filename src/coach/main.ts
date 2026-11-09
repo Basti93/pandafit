@@ -8,7 +8,7 @@ import { findOpenRides } from '../ride-format/recovery';
 import type { Profile } from '../shared/profiles';
 import { parseCoachClientMessage } from '../shared/coach-messages';
 import { COACH_PORT } from '../shared/protocol';
-import { type CoachClientMessage, type CoachHome, type CoachServerMessage } from './protocol';
+import { type CoachHome, type CoachServerMessage } from './protocol';
 import { askClaude, findClaude } from './claude-client';
 import { computeTogether } from './together';
 import type { CoachState } from './state';

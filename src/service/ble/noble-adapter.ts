@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import fs from 'node:fs';
 import path from 'node:path';
 import type { BlePort, DeviceKind } from './device-port';
@@ -27,7 +28,6 @@ const CONNECT_TIMEOUT_MS = 15_000;
 // The Click is usually asleep: search briefly so that it does not hold up trainer and strap.
 const CLICKER_SCAN_MS = 4000;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Real Bluetooth connection. Remembers the last used device UUID per device type,
  * because macOS returns UUIDs instead of addresses.

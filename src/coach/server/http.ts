@@ -172,7 +172,7 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
     const account = household.account(accountId);
     if (!account) return reply.code(404).send({ error: 'not moved' });
     const store = household.meals()?.recipes() ?? null;
-    let found: ReturnType<NonNullable<typeof store>['imageOf']> = null;
+    let found: ReturnType<NonNullable<typeof store>['imageOf']>;
     try { found = store && /^[cl]-[0-9a-f]{14}$/.test(id) && store.canSee(id, account.profileId) ? store.imageOf(id) : null; } catch { found = null; }
     if (!found) return reply.code(404).send({ error: 'no picture' });
     let stat: fs.Stats;

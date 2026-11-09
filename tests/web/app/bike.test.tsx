@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
-import { NOW, DAY, plan, session, boot } from './helpers';
+import { NOW, DAY, boot } from './helpers';
 
 afterEach(cleanup);
 

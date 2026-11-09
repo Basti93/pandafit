@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import type { CoachState } from '../../src/coach/state';
 import type { RideSummary } from '../../src/coach/metrics';
 import { FeedbackView } from '../../src/ui/views/FeedbackView';
 import { FilmView } from '../../src/ui/views/FilmView';

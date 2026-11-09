@@ -103,7 +103,7 @@ export class RideUploads {
   /** The profile's closed rides, oldest first. */
   closed(profileId: string): string[] {
     if (!SAFE_ID.test(profileId)) return [];
-    let names: string[] = [];
+    let names: string[];
     try { names = fs.readdirSync(this.opts.ridesDir); } catch { return []; }
     return names.filter((n) => RIDE_ID.test(n) && closedRide(this.opts.ridesDir, n, profileId)).sort();
   }

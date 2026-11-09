@@ -44,7 +44,7 @@ export const cleanSamples = (samples: Sample[]): { samples: Sample[]; removed: n
   const isSpike = (i: number): boolean => {
     const p = ranged[i].powerW;
     if (p === null || p < SPIKE_MIN_W) return false;
-    const around = ranged.slice(Math.max(0, i - SPIKE_WINDOW), i + SPIKE_WINDOW + 1).flatMap((s, j) => (s.powerW === null || s === ranged[i] ? [] : [s.powerW]));
+    const around = ranged.slice(Math.max(0, i - SPIKE_WINDOW), i + SPIKE_WINDOW + 1).flatMap((s) => (s.powerW === null || s === ranged[i] ? [] : [s.powerW]));
     return p > SPIKE_FACTOR * Math.max(median(around), 1);
   };
   const out = ranged.map((s) => ({ ...s }));

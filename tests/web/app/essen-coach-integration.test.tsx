@@ -10,7 +10,7 @@ import path from 'node:path';
 import { MealCoach } from '../../../src/coach/meals/meal-coach';
 import { MEAL_SYSTEM_PROMPT } from '../../../src/coach/meals/prompt';
 import { RecordStore } from '../../../src/coach/tracking/store';
-import { NOW, plan, boot } from './helpers';
+import { NOW, boot } from './helpers';
 
 afterEach(cleanup);
 

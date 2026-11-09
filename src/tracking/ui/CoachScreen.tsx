@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { chatThread, proposalAnswer, waitingMessage } from '../../shared/chat';
+import { chatThread, waitingMessage } from '../../shared/chat';
 import { mondayOf, planOfWeek, addDays, SPORT_LABEL } from '../../shared/week-plan';
 import type { TrackingPort } from '../ports';
 import { readStats, STATS_ID } from '../../shared/stats';

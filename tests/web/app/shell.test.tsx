@@ -7,8 +7,6 @@ import type { TrackedRecord } from '../../../src/shared/records';
 import { App, ErrorBoundary, visibleTabs } from '../../../src/web/App';
 import { openIdb } from '../../../src/web/idbStore';
 import { mobilityToShow, shouldShowInstallHint } from '../../../src/web/logic';
-import fs from 'node:fs';
-import path from 'node:path';
 import { NOW, DAY, json, plan, session, boot } from './helpers';
 
 afterEach(cleanup);

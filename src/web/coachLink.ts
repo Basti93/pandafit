@@ -70,7 +70,7 @@ export class CoachLink {
 
   private async connect(): Promise<void> {
     if (this.stopped || this.ws) return;
-    let status: Awaited<ReturnType<typeof this.o.status>> = null;
+    let status: Awaited<ReturnType<typeof this.o.status>>;
     try { status = await this.o.status(); } catch { status = null; }
     if (this.stopped || this.ws) return;
     if (!status) { this.later(); return; }

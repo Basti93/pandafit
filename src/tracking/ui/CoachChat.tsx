@@ -4,7 +4,7 @@ import { mondayOf, type WeekProposal } from '../../shared/week-plan';
 import { dayHeading, dayMonthOfKey, localDayKey, shortDateOfKey } from '../../shared/dates';
 import type { TrackingPort } from '../ports';
 import { takeWeekPlan, undoWeekPlan, weekUndoRefusal } from '../week-take';
-import { DECLINE, DECLINED, TAKE, UNDO } from '../../shared/wording';
+import { DECLINE, TAKE, UNDO } from '../../shared/wording';
 import { NextChangeCard } from './NextChangeCard';
 import { RuleCard } from './RuleCard';
 import { ChatBubble, ChatNote } from './ChatBubble';

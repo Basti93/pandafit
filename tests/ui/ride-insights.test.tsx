@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { RideSummary } from '../../src/coach/metrics';
-import type { CoachState } from '../../src/coach/state';
 import type { StateMessage } from '../../src/shared/protocol';
 import { beepsAt, SOUND_KEY } from '../../src/ui/countdown';
 import { FeedbackView } from '../../src/ui/views/FeedbackView';
@@ -85,8 +84,6 @@ describe('problem report', () => {
     expect(screen.getByText(/bleibt auf diesem Mac/)).toBeTruthy();
   });
 });
-
-const coachState = (summaries: RideSummary[]) => ({ profileId: 'A', summaries, feedback: {} }) as unknown as CoachState;
 
 describe('backup line', () => {
   test('one muted line says whether all rides are backed up; nothing for a profile that has not moved', () => {

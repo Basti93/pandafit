@@ -147,12 +147,12 @@ export class MigrationDesk {
 
   /** Parts an earlier process left behind when it stopped mid-upload: never trusted, never kept. */
   private sweepParts(): void {
-    let names: string[] = [];
+    let names: string[];
     try { names = fs.readdirSync(path.join(this.opts.root, 'accounts')); } catch { return; }
     for (const n of names) {
       if (!ACCOUNT_DIR.test(n)) continue;
       const dir = path.join(this.opts.root, 'accounts', n, 'migrate', 'incoming');
-      let files: string[] = [];
+      let files: string[];
       try { files = fs.readdirSync(dir); } catch { continue; }
       for (const f of files) if (f.startsWith('.') && f.endsWith('.part')) fs.rmSync(path.join(dir, f), { force: true });
     }

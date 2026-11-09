@@ -148,9 +148,8 @@ test('a ride over the size limit is not sent, waits longer each time up to six h
   const waits: number[] = [];
   let last = st.now;
   for (let i = 0; i < 12; i++) {
-    let tries = uploads.refused('pa')[0]!.tries;
+    const tries = uploads.refused('pa')[0]!.tries;
     while (uploads.refused('pa')[0]!.tries === tries) { st.now += 60_000; await uploads.tick('pa'); }
-    tries = uploads.refused('pa')[0]!.tries;
     waits.push(st.now - last);
     last = st.now;
   }

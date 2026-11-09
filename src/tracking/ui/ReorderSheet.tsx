@@ -65,7 +65,7 @@ export function ReorderSheet({ workout, start, onDrop, onStep, onClose }: {
       window.removeEventListener('pointercancel', cancel);
       window.removeEventListener('touchmove', noScroll);
     };
-  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [active]);  
 
   const to = drag && from >= 0 ? target(drag.dy, from) : -1;
   const gap = rects.current.length > 1 ? Math.max(0, rects.current[1]!.top - (rects.current[0]!.top + rects.current[0]!.height)) : 0;

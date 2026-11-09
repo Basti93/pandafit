@@ -17,7 +17,17 @@ jobs:
           node-version: 26
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:chaos
       - run: npm run test:garmin
+      - run: npm run build:web
+      - run: npx playwright-core install chromium
+      - run: npm run test:web-smoke
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f web-server/Dockerfile -t pandafit-web:ci .
+      - run: docker build -f web-server/Dockerfile.coach -t pandafit-coach:ci .

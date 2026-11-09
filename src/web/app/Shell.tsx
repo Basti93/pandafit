@@ -27,12 +27,6 @@ const Profil = lazy(() => import('./Profil').then((m) => ({ default: m.Profil })
 export function Shell({ account, env, port, onLogout, onRelogin }: { account: string; env: Env; port: WebPort; onLogout: () => void; onRelogin: (name: string) => void }) {
   // "Weitermachen" on Heute opens the open workout itself, once; "Ansehen und anpassen" opens the sheet "Nächstes Training", once; every other way into Kraft shows the start screen.
   const [entry, setEntry] = useState<'resume' | 'plan' | null>(null);
-  const openTab = (t: string): void => {
-    const next = tabFor(t);
-    if (!next) return;
-    if (t === 'rad' || t === 'laufen') saveEndurance(env, account, t);
-    setTab(next);
-  };
   /** Set by a way into the coach from Heute: Woche opens with the chat open, once. */
   const [chatOnOpen, setChatOnOpen] = useState(false);
   const [tab, setTab] = useState<Tab>(() => {

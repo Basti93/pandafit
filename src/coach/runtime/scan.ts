@@ -1,7 +1,6 @@
 import path from 'node:path';
 import { createLogger } from '../../shared/node/log';
 import type { Profile } from '../../shared/profiles';
-import { Coach } from '../coach';
 import { readRide } from '../../ride-format/read';
 import { cleanSamples } from '../metrics';
 import { GarminDb } from '../garmin-db';
@@ -152,7 +151,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
   const steps: ScanStep[] = [
     {
       name: 'coach-runs',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, runs, now }) => {
       for (const p of list) {
         const s = coach.state(p.id);
         if (runs && !coach.isThinking(p.id)) void coach.ensureDebrief(p.id).catch((e) => log.error('coach debrief', e)).finally(publish);
@@ -166,7 +165,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'hevy',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, runs }) => {
       // Separate safeguard: Hevy must never disturb the coach run or a ride, and waits while a heavy run goes.
       const syncs = runs && !heavyBusy();
       if (syncs) void hevy.tick(list.map((p) => p.id), noOpenRide).catch((e) => log.error('hevy tick', e)).finally(publish);
@@ -174,7 +173,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'gym',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, runs }) => {
       // Separate safeguard: the gym coach must never disturb the bike coach or a ride, and runs with no ride open only.
       // Unknown exercise titles are then classified once; the answer is stored and applied by code, never by AI later. Written to this profile, the mirror copies it.
       if (runs) for (const p of list) { try { void gym.tick(p.id).catch((e) => log.error('gym tick', e)).then(() => exerciseMapper.run(p.id)).then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('gym tick (step 2)', e)).finally(publish); } catch { /* try again on the next run */ } }
@@ -182,14 +181,14 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'run',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, runs }) => {
       // Separate safeguard: the run coach must never disturb a ride or the other coaches, and plans with no ride open only.
       if (runs) for (const p of list) { try { void run.tick(p.id).catch((e) => log.error('run tick', e)).finally(publish); } catch { /* try again on the next run */ } }
       },
     },
     {
       name: 'meals',
-      run: ({ list, all, free, runs, now }) => {
+      run: () => {
       // Separate safeguard: the meal plan must never disturb a ride or the coach. It plans only with no ride open.
       // A shared meal plan is ticked by its owner.
       if (ownCoach && scheduled() && mealsHere()) void ownCoach.tick().catch((e) => log.error('own coach tick', e)).finally(publish);
@@ -197,46 +196,46 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'mirror-exercises',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ all, free }) => {
       // One exercise catalog for every profile on this store: mirrored on every scan (cheap, idempotent, the first scan covers the start). Touches no workout.
       if (free) mealsChanged(mirrorExercises(records, all.map((p) => p.id)));
       },
     },
     {
       name: 'together',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free, now }) => {
       // The together page for linked accounts: written only when it changes, never with a ride open. Never throws.
       if (free) mealsChanged(exportTogether({ store: records, profileIds: list.map((p) => p.id), linked: (id) => opts.links.status(id).state === 'linked', noOpenRide, nowMs: now, together: opts.together }));
       },
     },
     {
       name: 'plan-seen',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list }) => {
       for (const p of list) { try { if (planSeen.changed(p.id, weekPlanKey(records.all(p.id, 'weekplan')))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
       },
     },
     {
       name: 'personal-seen',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list }) => {
       for (const p of list) { try { if (personalSeen.changed(p.id, personalKey(p.id))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
       },
     },
     {
       name: 'task-seen',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list }) => {
       // A task of the rider or a removal of any task (also from another Mac) makes the bike and gym coach plan again, like a rule change.
       for (const p of list) { try { if (taskSeen.changed(p.id, `${tasks.version(p.id, 'bike')}|${tasks.version(p.id, 'gym')}`, true)) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
       },
     },
     {
       name: 'advice-seen',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list }) => {
       for (const p of list) { try { if ((adviceKey(adviceOf(p.id)) !== '' && adviceSeen.changed(p.id, `${adviceKey(adviceOf(p.id))}|g${gymLegsKeyOf(records, p.id, dateKey(nowMs()), gymDoneDates(p.id))}`, true))) { coach.weekPlanChanged(p.id); gym.weekPlanChanged(p.id); } } catch { /* next scan */ } }
       },
     },
     {
       name: 'activities-seen',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, runs, now }) => {
       // Never with a ride open (a ride becomes an activity only once it is closed), and only while coaches may plan.
       if (runs) for (const p of list) {
         try {
@@ -250,7 +249,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'week-review',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, runs }) => {
       // The accepted week plan is never changed: the chat proposes the updated week, the rider takes it or keeps the old one.
       if (runs) for (const [id, acts] of weekReviews) {
         if (!list.some((p) => p.id === id)) { weekReviews.delete(id); continue; }
@@ -260,7 +259,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'prompts',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free, now }) => {
       if (free && scheduled()) for (const p of list) {
         try {
           const due = duePrompts({ id: p.id, records: { prefs: records.all(p.id, 'coachprefs'), weekplan: records.all(p.id, 'weekplan') }, nowMs: now, sent: sentPrompts, detail: (s) => detailOf(p.id, s) });
@@ -276,28 +275,28 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'chat',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free }) => {
       // Chat answers: a message gets its answer even while scheduled runs pause. Never with a ride open.
       if (free) for (const p of list) { try { void chat.tick(p.id).then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('chat tick', e)).finally(publish); } catch { /* next scan */ } }
       },
     },
     {
       name: 'weekly-mail',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list }) => {
       // Separate safeguard: a mail problem never reaches the coach loop; the mailer catches and logs once.
       if (weeklyMailer) for (const p of list) { try { void weeklyMailer.tick(p.id, contactOfProfile(records, p.id), weeklyMailOf(p.id)).catch((e) => log.error('weekly mail tick', e)); } catch { /* next scan */ } }
       },
     },
     {
       name: 'stats',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free, now }) => {
       // The stats record for every profile coached here, linked or not: written only when it changes, never with a ride open. Never throws.
       if (free) mealsChanged(exportStats({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: statsDue }));
       },
     },
     {
       name: 'health',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free }) => {
       // The health record and the weekly note on it: only on change and once per week, never with a ride open. Never throws.
       if (free) {
         mealsChanged(exportHealthNow(list.map((p) => p.id)));
@@ -307,7 +306,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'day-text',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free, now }) => {
       // The coach sentence of the day, renewed after each finished training: only on change, at most four AI calls a day, never with a ride open or in quiet hours (`scheduled()`). Never throws.
       if (free) {
         mealsChanged(exportDayTextNow(list.map((p) => p.id)));
@@ -317,14 +316,14 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'activities-export',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free, now }) => {
       // All recent activities from every source for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportActivities({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, content: (id) => { try { return activityItems(activitiesOf(id), garminData(id)?.activities ?? []); } catch { return null; } } }));
       },
     },
     {
       name: 'tasks-settle',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free, now }) => {
       // A one-off task is done once its sport has a session after it. Never throws.
       if (free) for (const p of list) {
         try {
@@ -336,21 +335,21 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
     },
     {
       name: 'bike-export',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list, free, now }) => {
       // The bike plan and the counted rides for the web, only on change, never with a ride open. Never throws.
       if (free) mealsChanged(exportBike({ store: records, profileIds: list.map((p) => p.id), coachHere, noOpenRide, nowMs: now, state: (id) => { try { return coach.state(id); } catch { return null; } }, samples: (rideId) => cleanSamples(readRide(dir, rideId).samples).samples }));
       },
     },
     {
       name: 'account-sync',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ all }) => {
       // Separate safeguard: the account sync must never disturb a ride or the coach, and is not awaited here.
       for (const p of all) { try { void accountSync.tick(p.id).finally(publish); } catch { /* try again on the next run */ } }
       },
     },
     {
       name: 'garmin-sync',
-      run: ({ list, all, free, runs, now }) => {
+      run: ({ list }) => {
       // Separate safeguard: the fetch must never disturb the coach run.
       if (scheduled() && !heavyBusy()) for (const p of list) { try { garminSync.tick(p.id); } catch { /* try again on the next run */ } }
       },

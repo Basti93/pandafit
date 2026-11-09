@@ -24,7 +24,7 @@ import { addNote, type ChangeNote } from '../../shared/change-notes';
 import { feelHold, HOLD_REASON, phaseOf, ruleWeek, weekDates, type RuleWeek } from './rules';
 import { manualRuns, mergeRuns } from './runs';
 import { loadRunCache, saveRunCache, type RunCache } from './state';
-import { readTasks, type GivenTask, type CoachId } from '../coach-tasks';
+import { readTasks, type GivenTask } from '../coach-tasks';
 
 const DAY = 86_400_000;
 const RETRY_MS = 10 * 60_000;

@@ -13,7 +13,7 @@
     "test": "vitest run --exclude 'tests/chaos/**'",
     "test:chaos": "vitest run tests/chaos",
     "test:garmin": "python3 -m unittest discover -s scripts/garmin",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
     "coach:check": "tsx scripts/coach-check.ts",
     "ui:shots": "tsx scripts/ui-shots/run.ts",
     "live:adjust": "tsx scripts/live-adjust.ts",
@@ -24,7 +24,8 @@
     "test:web-smoke": "npm run build:web && tsx scripts/web-smoke.ts",
     "dev:web": "vite --config vite.web.config.ts",
     "media:fedb": "tsx scripts/fedb-media.ts",
-    "app": "electron-vite build && electron-builder --mac dir && bash scripts/install-app.sh"
+    "app": "electron-vite build && electron-builder --mac dir && bash scripts/install-app.sh",
+    "lint": "node -r ./scripts/eslint-ts6.cjs node_modules/eslint/bin/eslint.js ."
   },
   "dependencies": {
     "@garmin/fitsdk": "^21.218.0",
@@ -37,6 +38,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
@@ -46,11 +48,16 @@
     "electron": "^45.2.1",
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-typescript": "npm:typescript@^6.0.3",
     "fake-indexeddb": "^6.2.7",
+    "globals": "^17.14.0",
     "jsdom": "^30.1.3",
     "playwright-core": "^1.64.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   },
@@ -93,5 +100,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Basti93/pandafit.git"
+  },
+  "overrides": {
+    "typescript-eslint": {
+      "typescript": "$typescript"
+    }
   }
 }

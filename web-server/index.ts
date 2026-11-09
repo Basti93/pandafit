@@ -255,7 +255,7 @@ export const buildServer = (opts: {
   app.setNotFoundHandler(async (req, reply) => {
     if (!staticRoot || (req.method !== 'GET' && req.method !== 'HEAD')) return reply.code(404).send({ error: 'not found' });
     try {
-      let rel = decodeURIComponent(req.url.split('?')[0]!);
+      const rel = decodeURIComponent(req.url.split('?')[0]!);
       if (rel.includes('\0') || rel.includes('\\')) throw new Error('bad path');
       if (rel.split('/').some((seg) => seg.startsWith('.') && seg !== '.well-known')) throw new Error('hidden');
       let file = resolve(staticRoot, '.' + rel);

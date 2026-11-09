@@ -1,7 +1,7 @@
 import { bodyOf } from '../../shared/record-bodies';
 import type { ActivityItem } from '../../shared/activities';
 import { localDayKey } from '../../shared/dates';
-import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
+import type { TrackedRecord } from '../../shared/records';
 import { activityText, mergedActivities } from '../../tracking/ui/done-days';
 import { activitiesOn } from './day-data';
 

@@ -113,7 +113,7 @@ export class ExerciseMapper {
   private unresolved(profileId: string, catalog: Exercise[], state: MapperState, now: number): string[] {
     const records = this.deps.store.all(profileId, 'workout');
     const stats = readStats(this.deps.store.all(profileId, 'stats').find((r) => r.id === STATS_ID && !r.deleted)?.body);
-    const { known, undone } = this.history(profileId, now, catalog);
+    const { known } = this.history(profileId, now, catalog);
     const out: string[] = [];
     const seen = new Set<string>();
     for (const r of records) {

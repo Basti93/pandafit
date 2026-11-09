@@ -142,7 +142,7 @@ const run = (mac: ReturnType<typeof macData>, http: ReturnType<typeof coachHttp>
 const files = (dir: string): Record<string, string> => {
   const out: Record<string, string> = {};
   const walk = (d: string, rel: string) => {
-    let names: string[] = [];
+    let names: string[];
     try { names = fs.readdirSync(d); } catch { return; }
     for (const n of names.sort()) {
       const p = path.join(d, n);

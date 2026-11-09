@@ -16,7 +16,7 @@ import { FAMILY_IDS, isExcludableFamily, MAX_FAMILIES } from '../../shared/famil
 import { FOCUS_GROUPS, MAX_EXCLUDED, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
 import { LONG_TERM_GUIDE, weekHistory } from './long-term';
 import { titleHash } from '../../shared/exercise-links';
-import { readTasks, type GivenTask, tasksJsonSchema, type CoachId } from '../coach-tasks';
+import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
 
 const EXCLUDABLE = FAMILY_IDS.filter((f) => f !== 'other');
 

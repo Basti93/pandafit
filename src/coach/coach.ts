@@ -9,7 +9,7 @@ import { PASSES } from '../shared/passes';
 import type { Session } from '../shared/session';
 import { thinSamples } from '../shared/bike';
 import { ClaudeError } from './claude-client';
-import { readTasks, type GivenTask, TASKS_GUIDE, zTasks, type CoachId } from './coach-tasks';
+import { readTasks, type GivenTask, TASKS_GUIDE, zTasks } from './coach-tasks';
 import { checkSession, type CoachContext } from './session-limits';
 import { RAMP_ID } from '../shared/session';
 import { cleanDebrief, debriefAnswerSchema, debriefJsonSchema, DEBRIEF_SYSTEM_PROMPT, ruleDebrief } from './debrief';

@@ -154,7 +154,7 @@ export function useDraft(value: string, commit: (text: string) => void, debounce
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
     if (dirty.current) { dirty.current = false; latest.current.commit(latest.current.draft); }
   };
-  useEffect(() => () => flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => flush(), []);  
   return {
     draft,
     onChange(text: string) {

@@ -4,7 +4,7 @@ import type { TrackedRecord } from '../shared/records';
 import {
   addWeeks, changeOwn, favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, isOwnKey, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withOwn, cookPortions, isChatRecordId, newChatId, readMealChat, DAY_LONG, DAY_SHORT, dayDate, dayIndex, eatersOf, initialOf, mealKey, readMealPlan, readMealState, recipeAmount,
   shoppingList, sideText, SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf, withEater, withItem,
-  type ItemState, type LinkRequest, type Meal, type Slot, type MealChat, type MealPlan, type MealState, type ShopItem,
+  type ItemState, type LinkRequest, type Meal, type MealChat, type MealPlan, type MealState, type ShopItem,
 } from '../shared/meals';
 import { weekRangeOfKey } from '../shared/dates';
 import type { WebPort } from './webPort';

@@ -118,7 +118,7 @@ test('quick check leaves lastTryMs and complete alone', async () => {
   expect(JSON.parse(fs.readFileSync(path.join((sync as any).dataDir('p1'), 'sync-meta.json'), 'utf8'))).toMatchObject({ lastTryMs: first, lastQuickMs: env.now });
 });
 test('a successful quick check clears a failed problem', async () => {
-  const { sync, children, env, finish } = setup();
+  const { sync, children, finish } = setup();
   sync.tick('p1');
   await finish(0, { status: 'ok', complete: true });
   (sync as any).save('p1', { problem: 'failed' });

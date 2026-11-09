@@ -264,7 +264,7 @@ describe('adding a recipe by link', () => {
   });
 
   it('does nothing for a person without a linked account', async () => {
-    const pages = vi.fn(async (url: string): Promise<Page> => ({ ok: false, reason: 'error' }));
+    const pages = vi.fn(async (_url: string): Promise<Page> => ({ ok: false, reason: 'error' }));
     const { coach, store } = setup({ ask: answer, fetchPage: pages, linked: [] });
     store.putMany('max', [request('link-aaaa0020', 'https://rezepte.example/a')], 'remote');
     await coach.tick();

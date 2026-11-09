@@ -11,7 +11,6 @@ afterEach(cleanup);
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 const NOW = new Date(2026, 10, 4, 12).getTime();
-const DAY = 86_400_000;
 
 async function boot(seed: TrackedRecord[], clock: { now: number } = { now: NOW }) {
   const factory = new IDBFactory();
@@ -32,11 +31,6 @@ async function boot(seed: TrackedRecord[], clock: { now: number } = { now: NOW }
   return { rerender: () => view.rerender(<App env={{ ...env }} />) };
 }
 const rec = (kind: string, id: string, body: unknown): TrackedRecord => ({ kind: kind as TrackedRecord['kind'], id, updatedMs: NOW, deleted: false, body });
-const health = (rows = true) => rec('health', 'health', {
-  type: 'health', atMs: NOW, today: { level: 'normal', reasons: [] },
-  findings: [{ rule: 'health.rhr-raised', text: 'Dein Ruhepuls liegt bei 58 und ist etwas höher als sonst.', tone: 'achtung' }],
-  weeks: rows ? [{ week: '2026-10-26', rhr: 58 }] : [], days: rows ? [{ date: '2026-11-03', rhr: 58 }] : [],
-});
 const dish = (title: string) => ({ title, ingredients: [], steps: ['Kochen.'], minutes: 20, proteinG: 20, keepsDays: 1, source: 'liste' });
 const meals = (days: number[]) => rec('mealplan', 'week-2026-11-02', { week: '2026-11-02', createdMs: 1, source: 'liste', trainingDays: [], people: [{ id: 'a', name: 'Anna' }, { id: 'm', name: 'Max' }],
   meals: days.map((day) => ({ day, slot: 'mittag', dish: dish(day === 1 ? 'Linsensuppe' : 'Nudeln'), reuseOf: null, eaters: ['a', 'm'] })) });

@@ -316,7 +316,7 @@ export class RecipeStore {
     const rows = this.open().prepare(`SELECT id, json, ai_json, tag_hash, tag_key, tag_tries FROM recipes WHERE ${where} ORDER BY imported_ms, id LIMIT ?`).all(...args, limit) as { id: string; json: string; ai_json: string | null; tag_hash: string | null; tag_key: string | null; tag_tries: number }[];
     return rows.flatMap((r) => {
       const json = this.parse(r);
-      let ai: AiTags | null = null;
+      let ai: AiTags | null;
       try { ai = r.ai_json ? (JSON.parse(r.ai_json) as AiTags) : null; } catch { ai = null; }
       return json ? [{ id: r.id, json, ai, hash: r.tag_hash, key: r.tag_key, tries: r.tag_tries }] : [];
     });
@@ -444,7 +444,7 @@ export class RecipeStore {
     let n = 0;
     for (const row of rows) {
       const old = this.parse(row);
-      let raw: { recipe?: unknown } | null = null;
+      let raw: { recipe?: unknown } | null;
       try { raw = row.raw ? (JSON.parse(row.raw) as { recipe?: unknown }) : null; } catch { raw = null; }
       if (!old || !raw?.recipe) { o.prepare('UPDATE recipes SET derive_version = ? WHERE id = ?').run(this.version(), row.id); continue; }
       const r = await importRecipe(raw.recipe);
@@ -457,7 +457,7 @@ export class RecipeStore {
         o.prepare('UPDATE recipes SET fp = ?, title = ?, rating = ?, rating_n = ?, minutes = ?, protein = ?, vegan = ?, quality = ?, flagged = ?, derive_version = ?, json = ? WHERE id = ?')
           .run(fingerprint(next.title, next.ingredients), next.title, next.rating?.value ?? null, next.rating?.count ?? null, minutes, protein, vegan, quality, flagged, this.version(), JSON.stringify(next), row.id);
       } catch { o.prepare('UPDATE recipes SET derive_version = ? WHERE id = ?').run(this.version(), row.id); continue; }
-      let ai: AiTags | null = null;
+      let ai: AiTags | null;
       try { ai = row.ai_json ? (JSON.parse(row.ai_json) as AiTags) : null; } catch { ai = null; }
       if (ai && old.tags) {
         // The old classification stays; when the AI's input changed it is asked again in the background (tag_key emptied).
