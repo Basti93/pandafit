@@ -27,7 +27,13 @@ describe('Sensei wording', () => {
     expect(hits([...files('src/coach', ['.ts']), ...files('web-server', ['.ts'])].filter((f) => /push|mail|notif/i.test(f)))).toEqual([]);
   });
   it('takes the fixed Bo texts from one place', () => {
-    expect(read('src/web/today/CoachLine.tsx')).toContain('BO.ask');
+    const kit = read('src/tracking/ui/kit/Dojo.tsx');
+    expect(kit).toContain('BO.ask');
+    expect(kit).toContain('BO_LINES.seeProposal');
+    for (const f of ['src/web/today/CoachLine.tsx', 'src/tracking/ui/CoachScreen.tsx']) {
+      expect(read(f)).toContain('<AskBoButton');
+      expect(read(f)).not.toContain('Vorschlag ansehen');
+    }
   });
   it('tells every persona never to say Coach, and keeps the word out of prompt text', async () => {
     const { CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT } = await import('../../src/coach/chat/chat-coach');

@@ -152,7 +152,7 @@ test('sends a message and shows that the coach is thinking', async () => {
   fireEvent.change(screen.getByLabelText('Nachricht an Bo'), { target: { value: '  3× Rad bitte ' } });
   fireEvent.click(screen.getByRole('button', { name: 'Senden' }));
   await waitFor(() => expect(records(map, 'chat').map((r) => r.body)).toEqual([{ role: 'rider', text: '3× Rad bitte', atMs: NOW }]));
-  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Gesendet. Bo antwortet, sobald er kann.');
+  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'Angekommen. Ich antworte dir, sobald ich kann.');
 });
 
 test('taking a proposal writes the week plan and shows it; then it cannot be taken twice', async () => {
@@ -207,6 +207,19 @@ test('a waiting proposal: Bo says so and Vorschlag ansehen opens the proposals s
   fireEvent.click(await screen.findByRole('button', { name: 'Vorschlag ansehen' }));
   const sheet = await screen.findByRole('dialog', { name: 'Vorschlag' });
   expect(within(sheet).getByRole('button', { name: 'Übernehmen' })).toBeTruthy();
+});
+
+test('on Woche the proposals sheet never opens by itself after the last answer', async () => {
+  const { port, map, notify } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Vorschlag ansehen' }));
+  fireEvent.click(within(await screen.findByRole('dialog', { name: 'Vorschlag' })).getByRole('button', { name: 'Nein danke' }));
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Vorschlag' })).toBeNull());
+  map.set('chat:c3', { ...ruleMsg, id: 'c3', updatedMs: 9, body: { ...(ruleMsg.body as object), nextChange: 'chg-m3', atMs: NOW - 100 } });
+  map.set('change:chg-m3', { ...proposedChange, id: 'chg-m3' });
+  notify();
+  await screen.findByRole('button', { name: 'Vorschlag ansehen' });
+  expect(screen.queryByRole('dialog', { name: /^Vorschl(ag|äge)$/ })).toBeNull();
 });
 
 test('without a plan: seven calm dots, no count, and Bo offers Woche planen', async () => {

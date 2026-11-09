@@ -141,7 +141,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
             </ChatBubble>
           </Fragment>
         ))}
-        {waiting && <ChatNote>{now() - waiting.atMs > STALE_MS ? 'Darauf kam keine Antwort mehr. Schreib gern nochmal.' : now() - waiting.atMs > SLOW_MS ? 'Bo antwortet, sobald er wieder erreichbar ist.' : 'Gesendet. Bo antwortet, sobald er kann.'}</ChatNote>}
+        {waiting && <ChatNote>{now() - waiting.atMs > STALE_MS ? BO_LINES.stale : now() - waiting.atMs > SLOW_MS ? BO_LINES.slow : BO_LINES.sent}</ChatNote>}
         <div ref={endRef} />
       </section>
       {showMore && <ProposalsSheet port={port} now={now} newId={newId} entries={rest} onClose={() => setMoreOpen(false)} />}

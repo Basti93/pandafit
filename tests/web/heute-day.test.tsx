@@ -5,6 +5,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SAYINGS } from '../../src/shared/day-text';
 import { weekDates } from '../../src/shared/week-plan';
+import { frameRecord } from '../../src/shared/frame';
 import type { TrackedRecord } from '../../src/shared/records';
 import { App } from '../../src/web/App';
 import { openIdb } from '../../src/web/idbStore';
@@ -82,6 +83,11 @@ describe('Heute in the Dojo', () => {
     expect((await screen.findByRole('button', { name: /^Morgen/ })).textContent).toContain('Ruhetag');
     cleanup();
     await boot([]);
+    expect(screen.queryByRole('button', { name: /^Morgen/ })).toBeNull();
+    cleanup();
+    // In Spontan mode the plan rests, as on Woche: no Morgen card.
+    await boot([weekplanWithGymToday, planRecord, frameRecord({ mode: 'spontaneous', minutes: null }, 1)]);
+    await screen.findByRole('list', { name: 'Wochenweg' });
     expect(screen.queryByRole('button', { name: /^Morgen/ })).toBeNull();
   });
   it('an open workout takes the Jetzt dran place with Weitermachen', async () => {

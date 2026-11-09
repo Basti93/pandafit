@@ -10,8 +10,8 @@ import { Sheet } from './kit';
 import { planDayLabel, runText } from './plan-text';
 import { runView } from './run-view';
 
-/** One day of the week path in a small sheet: what was done (today and before) or what is planned (today and later). No start button. */
-export function DaySheet({ port, date, now, onClose }: { port: TrackingPort; date: string; now: () => number; onClose: () => void }) {
+/** One day of the week path in a small sheet: what was done (today and before) or what is planned (today and later). No start button. In Spontan mode the plan rests: no plan here. */
+export function DaySheet({ port, date, now, spontaneous, onClose }: { port: TrackingPort; date: string; now: () => number; spontaneous: boolean; onClose: () => void }) {
   const activities = usePortRecords(port, 'activities').records;
   const workouts = usePortRecords(port, 'workout').records;
   const mobility = usePortRecords(port, 'mobility').records;
@@ -35,7 +35,7 @@ export function DaySheet({ port, date, now, onClose }: { port: TrackingPort; dat
 
   // Today shows only the open parts of the plan: a finished strength day does not show the strength plan again.
   const planOn = (d: string) => {
-    const raw = planFor(weekplans ?? [], d);
+    const raw = spontaneous ? null : planFor(weekplans ?? [], d);
     return raw && d === today ? doneDays([d], today, [raw], merged)[0]!.plan : raw;
   };
   const plan = future ? planOn(date) : null;

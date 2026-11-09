@@ -6,7 +6,7 @@
  *   Role, ask and title come only from ../bo.ts; sentences may name Bo directly. Icons come only through Icon.
  *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Tag is the small green label with a check.
  *   RowCard (RowCard.tsx) is the only row card with an icon tile (DESIGN "Zeilenkarte"); Row stays the plain text row without icon (lists, settings). WordTile is the only word tile.
- *   BackButton is the one back button of pages (round, or a pill with a label); Sheet `page` is for pages like the chat (BackButton instead of ×).
+ *   RoundButton is the one round icon button; BackButton is the one back button of pages (RoundButton, or a pill with a label); Sheet `page` is for pages like the chat (BackButton instead of ×).
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
  * Buttons (plain <button> classes), one look per role:
@@ -41,7 +41,7 @@ export { PageHead } from './PageHead';
 export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
 export { ConfirmLink } from './ConfirmLink';
-export { BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, Tag } from './Dojo';
+export { AskBoButton, BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, RoundButton, SeeProposalButton, Tag } from './Dojo';
 export { BoScene } from './BoScene';
 export type { BoPlace } from './BoScene';
 export { RowCard, WordTile } from './RowCard';

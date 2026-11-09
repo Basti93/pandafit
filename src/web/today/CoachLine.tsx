@@ -1,17 +1,16 @@
-import { BoBubble, Icon } from '../../tracking/ui/kit';
-import { BO } from '../../tracking/ui/bo';
+import { AskBoButton, BoBubble, SeeProposalButton } from '../../tracking/ui/kit';
 import type { PandaGesture } from '../../tracking/ui/PandaPortrait';
 
 /**
  * Bo on Heute: he sits in his nest, the coach sentence of the day in his bubble. `onAsk` opens the real coach chat.
- * With `onProposal` a waiting proposal turns the main button into "Vorschlag ansehen"; "Frag Bo" stays beside it.
+ * With `onProposal` a waiting proposal adds the main button SeeProposalButton; AskBoButton stays beside it.
  * `pose` is the one pose Bo glides into when Heute opens and keeps until it opens again.
  */
 export function CoachLine({ text, onAsk, pose, onProposal }: { text: string; onAsk?: () => void; pose?: PandaGesture | null; onProposal?: () => void }) {
   const actions = (onProposal || onAsk) && (
     <>
-      {onProposal && <button type="button" className="primary" onClick={onProposal}>Vorschlag ansehen</button>}
-      {onAsk && <button type="button" className="secondary" onClick={onAsk}><Icon name="sprechen" size={18} />{BO.ask}</button>}
+      {onProposal && <SeeProposalButton onClick={onProposal} />}
+      {onAsk && <AskBoButton onClick={onAsk} />}
     </>
   );
   return (

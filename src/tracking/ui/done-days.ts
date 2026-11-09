@@ -70,7 +70,7 @@ export function doneDays(dates: string[], today: string, plan: PlanDay[] | null,
   return dates.map((date): DayRow => {
     const planDay = plan?.find((p) => p.date === date) ?? null;
     if (date > today) return { date, done: [], kinds: [], plan: planDay, rest: false };
-    const items = merged.items.filter((a) => localDayKey(a.startMs) === date).sort((a, b) => a.startMs - b.startMs);
+    const items = activitiesOn(merged, date) ?? [];
     const done = items.map(activityText);
     const kinds = items.map((a) => a.kind);
     if (date < today) return { date, done, kinds, plan: null, rest: done.length === 0 && merged.known };

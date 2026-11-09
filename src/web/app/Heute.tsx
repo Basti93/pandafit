@@ -8,7 +8,7 @@ import { TodayCard, todayPlan, type GymPart } from '../../tracking/ui/TodayCard'
 import { DaySheet } from '../../tracking/ui/DaySheet';
 import { useOpenProposals } from '../../tracking/ui/proposals';
 import { useWeekDays } from '../../tracking/ui/week-days';
-import { SPORT_ICON, weekCount, weekCountText, weekPathOf } from '../../tracking/ui/week-path';
+import { SPORT_ICON } from '../../tracking/ui/week-path';
 import { planDayLabel } from '../../tracking/ui/plan-text';
 import { MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
@@ -88,10 +88,8 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   const bike = bikePlan && goBike ? { line: `${bikePlan.name}, ${bikePlan.minutes} Min`, view: goBike } : undefined;
 
   const tomorrow = addDays(dayKey, 1);
-  const tomorrowPlan = planFor(weekplans ?? [], tomorrow);
-  // The week path: the same rows as Woche. Without a plan only the days from Monday to today count.
-  const path = weekPathOf(week.dates, week.rows, week.today);
-  const count = weekCountText(weekCount(week.rows, week.current && !week.spontaneous ? week.current.days : null));
+  // In Spontan mode the plan rests, as on Woche: no Morgen card.
+  const tomorrowPlan = week.spontaneous ? null : planFor(weekplans ?? [], tomorrow);
   // Nothing planned and nothing switched on: the one card offers to plan.
   const setup = !open && weekplans !== null && plans !== null && !today && !planning && !p;
 
@@ -101,7 +99,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
         <h1 className="tk-sr">Heute</h1>
         <p className="tk-dateline">{weekdayOfKey(dayKey)}, {dayMonthLongOfKey(dayKey)}</p>
       </header>
-      {week.loaded && <WeekPath days={path} kicker="Dein Weg diese Woche" count={count} onPick={setSheetDate} />}
+      {week.loaded && <WeekPath days={week.path} kicker="Dein Weg diese Woche" count={week.count} onPick={setSheetDate} />}
       <CoachLine text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} onProposal={proposals.length > 0 ? goCoach : undefined}
         pose={dayClip({ today, dateKey: dayKey, mobility: !!session, finisher: !!finisher, open: !!open, offset: 0 }) ?? 'greet'} />
       {/* One "Jetzt dran": an open workout, then the finish card, then the day of the plan. */}
@@ -116,7 +114,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
         ) : <TodayCard port={port} weekplans={weekplans} runs={runs} nowMs={now} gym={gym} onRun={goRun} bike={bike} extra={mobilityRow} />}
       {meals && <DayMeals port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
       {tomorrowPlan && <RowCard icon={SPORT_ICON[tomorrowPlan.sport]} kicker="Morgen" title={planDayLabel(tomorrowPlan)} onClick={() => setSheetDate(tomorrow)} />}
-      {sheetDate && <DaySheet port={port} date={sheetDate} now={env.now} onClose={() => setSheetDate(null)} />}
+      {sheetDate && <DaySheet port={port} date={sheetDate} now={env.now} spontaneous={week.spontaneous} onClose={() => setSheetDate(null)} />}
     </div>
   );
 }

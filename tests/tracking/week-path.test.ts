@@ -35,10 +35,15 @@ describe('the week path', () => {
     expect(weekCount([row(MO, { done: ['Kraft'] }), row(DI, {})], [gym, bike, rest])).toEqual({ done: 1, planned: 2 });
   });
   it('says the week in whole sentences', () => {
-    expect(weekSentence([row(MO, { done: ['Kraft'] }), row(MI, { done: ['Kraft'] }), row(DO, { plan: gym }), row(FR, { plan: bike }), row(SO, { plan: run })], DO!))
+    expect(weekSentence([row(MO, { done: ['Kraft'] }), row(MI, { done: ['Kraft'] }), row(DO, { plan: gym }), row(FR, { plan: bike }), row(SO, { plan: run })], DO!, [gym, bike, run]))
       .toBe('Zwei Einheiten hast du schon geschafft. Heute ist Kraft, mittel dran. Danach kommen noch zwei Einheiten.');
-    expect(weekSentence([row(MO, {}), row(DO, { plan: rest })], DO!)).toBe('Die Woche fängt gerade an. Heute ist Ruhetag.');
-    expect(weekSentence([row(MO, { done: ['Kraft'] }), row(DO, {}), row(FR, { plan: bike })], DO!)).toBe('Eine Einheit hast du schon geschafft. Danach kommt noch eine Einheit.');
+    expect(weekSentence([row(MO, {}), row(DO, { plan: rest })], DO!, [day(DO!, 'rest')])).toBe('Die Woche fängt gerade an. Heute ist Ruhetag.');
+    expect(weekSentence([row(MO, { done: ['Kraft'] }), row(DO, {}), row(FR, { plan: bike })], DO!, [bike])).toBe('Eine Einheit hast du schon geschafft. Danach kommt noch eine Einheit.');
+  });
+  it('says the week "fängt gerade an" only at its start, otherwise calmly that nothing is done yet', () => {
+    expect(weekSentence([row(DI, { plan: gym })], DI!, [day(MO!, 'gym'), gym])).toMatch(/^Die Woche fängt gerade an\./);
+    expect(weekSentence([row(SA, {})], SA!, [day(MO!, 'gym'), gym])).toBe('Diese Woche ist noch keine Einheit erledigt.');
+    expect(weekSentence([row(DO, { plan: gym })], DO!, [day(MO!, 'rest'), gym])).toMatch(/^Die Woche fängt gerade an\./);
   });
   it('names the rest days after today', () => {
     expect(restDaysText([row(DI, { plan: rest }), row(SA, { plan: rest })], MO!)).toBe('Dienstag und Samstag sind Ruhetage.');

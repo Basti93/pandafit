@@ -13,13 +13,18 @@ const activities = (items: unknown[]) => rec('activities', 'activities', { type:
 const ride = { key: 'rad-1', kind: 'rad', title: null, sport: 'cycling', startMs: new Date(2026, 10, 3, 18).getTime(), minutes: 44.6, distanceM: null, avgHr: null, ref: null };
 const weekplan = (sports: string[], extra: Record<string, unknown> = {}) => rec('weekplan', '2026-11-02', { weekStart: '2026-11-02', fromMessage: 'm', acceptedMs: 1, days: [0, 1, 2, 3, 4, 5, 6].map((i) => ({ date: `2026-11-0${2 + i}`, sport: sports[i] ?? 'rest', hardness: 'moderate', fixed: false, ...(i === 4 ? extra : {}) })) });
 
-function show(seed: TrackedRecord[], date: string) {
+function show(seed: TrackedRecord[], date: string, spontaneous = false) {
   const f = fakePort(seed);
-  render(<DaySheet port={f.port} date={date} now={() => NOW} onClose={() => {}} />);
+  render(<DaySheet port={f.port} date={date} now={() => NOW} spontaneous={spontaneous} onClose={() => {}} />);
   return screen.getByRole('dialog');
 }
 
 describe('DaySheet', () => {
+  it('in Spontan mode a later day shows no plan, as on Woche', async () => {
+    const sheet = show([weekplan(['gym', 'gym', 'gym', 'gym', 'bike'])], '2026-11-06', true);
+    await waitFor(() => expect(sheet.textContent).toContain('Für diesen Tag ist noch nichts geplant.'));
+    expect(sheet.textContent).not.toMatch(/Rad|Ausdauer/);
+  });
   it('a past day lists what was done with minutes, and the exercises of an own strength workout muted', async () => {
     const start = new Date(2026, 10, 3, 17).getTime();
     const sheet = show([activities([ride]), rec('workout', 'w1', { id: 'w1', title: 'Beine', startMs: start, endMs: start + 54 * 60000, source: 'pandafit', exercises: [{ exerciseId: 'sq', title: 'Kniebeuge', supersetId: null, notes: '', sets: [{ type: 'normal', weightKg: 40, reps: 8, durationS: null, doneMs: start }] }] })], '2026-11-03');
