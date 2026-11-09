@@ -100,7 +100,7 @@ describe('dojo fundament', () => {
   it('defines the Dojo tokens in both schemes, light only under the media query', () => {
     const css = read(TOKENS);
     const [dark, light] = css.split('@media (prefers-color-scheme: light)');
-    for (const t of ['--bg-top', '--card-soft', '--kicker', '--brush', '--glow']) {
+    for (const t of ['--bg-top', '--card-soft', '--kicker', '--brush', '--glow', '--bamboo-tile', '--bamboo-shoot']) {
       expect(dark).toContain(`${t}:`);
       expect(light).toContain(`${t}:`);
     }
