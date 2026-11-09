@@ -593,7 +593,7 @@
 .tk-rowcards { display: flex; flex-direction: column; gap: var(--space-2); }
 /* Dojo 4 kit: pictures in cards, the head card, icon rows, a pressed round button, a link as a secondary button. */
 .tk-meal { flex: none; display: block; }
-.tk-meal.small { width: 100%; height: 100%; }
+.tk-meal.small { width: 100%; height: 100%; } /* tiles only: inside .tk-rowcard-tile it is 40 px (below) */
 .tk-meal.big { width: 196px; height: 154px; max-width: 100%; margin-inline: auto; }
 .tk-meal:is(img) { object-fit: cover; border-radius: var(--radius-m); }
 .tk-meal.big:is(img) { border-radius: var(--radius-card); }
@@ -601,7 +601,6 @@
 .tk-headavatar { display: flex; align-items: center; gap: var(--space-3); }
 .tk-headtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .tk-avatar { flex: none; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-round); border: 2px solid var(--accent); background: var(--tile); color: var(--good-text); }
-.tk-rowbtn > .tk-rowcard-tile, .tk-switchrow > .tk-rowcard-tile, div.tk-rowbtn > .tk-rowcard-tile { flex: none; }
 .tk-switchrow > .tk-rowcard-tile + .tk-switchtext { flex: 1; }
 .tk-rowcard-tile > .tk-meal.small { width: 40px; height: 40px; }
 .tk-screen button.tk-roundbtn[aria-pressed="true"] { color: var(--accent); }

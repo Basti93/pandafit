@@ -42,6 +42,12 @@ describe('Dojo kit', () => {
     expect(screen.getByRole('button', { name: /Garmin/ }).querySelector('svg[data-icon="uhr"]')).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Benachrichtigungen' }).closest('label')!.querySelector('svg[data-icon="glocke"]')).toBeTruthy();
   });
+  it('a row without onClick is a calm row without a button, and shows its hint', () => {
+    render(<RowList><Row icon="kraft" title="Kraftsatz" hint="Gewichte in Kilogramm" value="4" /></RowList>);
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByText('Gewichte in Kilogramm').className).toContain('tk-row-sub');
+    expect(document.querySelector('svg[data-icon="kraft"]')).toBeTruthy();
+  });
   it('a kicker can be a heading', () => {
     render(<Kicker heading>Nachrichten</Kicker>);
     expect(screen.getByRole('heading', { level: 2, name: 'Nachrichten' }).className).toBe('tk-kicker');
