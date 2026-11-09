@@ -35,6 +35,25 @@ export const doctorFinding = (h: HealthBody): HealthFinding | null => h.findings
 /** The first line: the coach's note of the week, or the first finding that is not the doctor row. */
 export const firstLine = (h: HealthBody): string => h.coachText?.text ?? h.findings.find((f) => f.tone !== 'arzt')?.text ?? 'Gerade gibt es nichts Besonderes zu sagen.';
 
+const MORE = 'Mehr dazu steht auf der Gesundheitsseite.';
+
+/**
+ * What the card says. The card never prints a digit: a text without digits is used as is.
+ * A doctor finding with digits becomes one general sentence naming its area; other texts with digits are skipped for the next digit-free one.
+ * The doctor hint still leads. The page keeps the full texts.
+ */
+export function cardText(h: HealthBody): { doctor: string | null; line: string } {
+  const clean = (t: string | undefined): string | null => (t && !/\d/.test(t) ? t : null);
+  const d = doctorFinding(h);
+  let doctor: string | null = null;
+  if (d) {
+    const area = healthRows(h).find((r) => r.sentence === d.text)?.short;
+    doctor = clean(d.text) ?? `${area ? `Dein ${area} fällt` : 'Ein Wert fällt'} gerade auf. Lass das am besten ärztlich abklären.`;
+  }
+  const line = clean(h.coachText?.text) ?? h.findings.filter((f) => f.tone !== 'arzt').map((f) => clean(f.text)).find((t) => t !== null) ?? (h.findings.some((f) => f.tone !== 'arzt') || h.coachText ? MORE : 'Gerade gibt es nichts Besonderes zu sagen.');
+  return { doctor, line };
+}
+
 /**
  * Up to four rows, each one sentence; the numbers (and sparklines) are only in the opened row. A row exists only with data.
  * Body Battery and stress are not in the record and never appear here.

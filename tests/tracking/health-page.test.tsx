@@ -5,6 +5,7 @@ import type { TrackedRecord } from '../../src/shared/records';
 import { STATS_ID, type StatsBody } from '../../src/shared/stats';
 import { CoachScreen } from '../../src/tracking/ui/CoachScreen';
 import { healthRows, SLEEP_HINT } from '../../src/tracking/ui/health-view';
+import { findingsOf } from '../../src/coach/health/findings';
 import { fakePort } from './fake-port';
 
 afterEach(cleanup);
@@ -65,7 +66,7 @@ it('without a health record there is no card at all, and Rückblick has no healt
 });
 
 it('Verlauf opens the lines of one area; Quellen and Zurück work; Woche brings the week back', async () => {
-  await showWeek([statsRec, healthRec(body({ coachText: { week: '2026-11-02', text: 'Ruhig.', atMs: new Date(2026, 10, 3, 9).getTime() } }))]);
+  await showWeek([statsRec, healthRec(body({ coachText: { week: '2026-11-02', text: 'Ruhig.', atMs: new Date(2026, 10, 3, 12).getTime() } }))]);
   fireEvent.click(await screen.findByRole('button', { name: /Gesundheit ansehen/ }));
   expect(screen.getByText('Diese Woche, Stand Dienstag, 3. November')).toBeTruthy();
   const area = screen.getByRole('region', { name: 'Ruhepuls' });
@@ -96,4 +97,20 @@ it('rows exist only with data, and Body Battery and stress appear nowhere', asyn
   await showWeek([healthRec(body())]);
   fireEvent.click(await screen.findByRole('button', { name: /Gesundheit ansehen/ }));
   expect(document.body.textContent).not.toMatch(/Body Battery|Stress|ACWR/i);
+});
+
+it('the card never prints a digit, even with the real finding texts; the page keeps the numbers', async () => {
+  const w = { week: '2026-10-26', steps: 5300, activeMin: 90, strengthDays: 1 };
+  // the real builder gives an arzt finding and digit texts for the steps and minutes
+  const days = Array.from({ length: 5 }, (_, i) => ({ date: `2026-11-0${4 - i}`, restingHrBpm: 112 }));
+  const found = findingsOf(days as never, [w] as never, { birthDate: '1990-01-01' }, NOW);
+  expect(found.some((x) => x.tone === 'arzt')).toBe(true);
+  const real = found.filter((x) => x.tone !== 'arzt');
+  expect(real.some((x) => /\d/.test(x.text))).toBe(true);
+  await showWeek([healthRec(body({ findings: found, coachText: { week: '2026-11-02', text: 'Du hast 3 Einheiten geschafft.' } }))]);
+  const card = await screen.findByRole('region', { name: 'Gesundheit' });
+  expect(card.textContent).not.toMatch(/\d/);
+  expect(card.querySelector('.tk-note')!.textContent).toContain('ärztlich abklären');
+  fireEvent.click(within(card).getByRole('button', { name: /Gesundheit ansehen/ }));
+  expect(document.body.textContent).toMatch(/über 100/);
 });

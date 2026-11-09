@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { HealthBody } from '../../shared/health';
-import { doctorFinding, firstLine, healthRows, healthSources, SLEEP_HINT, standLine, type HealthRow, type HealthRowKey, type HealthSeries } from './health-view';
+import { cardText, doctorFinding, firstLine, healthRows, healthSources, SLEEP_HINT, standLine, type HealthRow, type HealthRowKey, type HealthSeries } from './health-view';
 import { Card, Icon, Kicker, PageHead, Row, RowList, Sheet, WordTile } from './kit';
 
 const W = 300, H = 48;
@@ -53,12 +53,12 @@ function SourcesSheet({ onClose }: { onClose: () => void }) {
 
 /** The health card of Woche: one sentence, the areas as words, a way to the page. A doctor hint always leads. No numbers here. */
 export function HealthCard({ health, onOpen }: { health: HealthBody; onOpen: () => void }) {
-  const doctor = doctorFinding(health);
+  const { doctor, line } = cardText(health);
   const tiles = healthRows(health).filter((r) => r.key === 'rhr' || r.key === 'vo2' || r.key === 'move');
   return (
     <Card label="Gesundheit">
       <Kicker>Gesundheit</Kicker>
-      {doctor ? <p className="tk-note">{doctor.text}</p> : <p className="tk-health-line">{firstLine(health)}</p>}
+      {doctor ? <p className="tk-note">{doctor}</p> : <p className="tk-health-line">{line}</p>}
       {tiles.length > 0 && (
         <div className="tk-wordtiles">
           {tiles.map((r) => <WordTile key={r.key} icon={r.icon} label={r.short} word={r.word} tone={r.tone} />)}
@@ -76,7 +76,7 @@ function AreaCard({ row, doctorText, onOpen }: { row: HealthRow; doctorText?: st
         <span className="tk-rowcard-tile" aria-hidden="true"><Icon name={row.icon} size={24} /></span>
         <div className="tk-health-area-text">
           <Kicker>{row.title}</Kicker>
-          <p className={`tk-health-word ${row.tone}`}>{row.word}</p>
+          <p className={`tk-wordtile-word tk-health-word ${row.tone}`}>{row.word}</p>
         </div>
       </div>
       {doctorText && <p className="tk-note">{doctorText}</p>}
@@ -100,7 +100,7 @@ export function HealthPage({ health, onBack }: { health: HealthBody; onBack: () 
       <Card>
         <Kicker>{standLine(health)}</Kicker>
         {/* A warning stands alone: no calm overall sentence beside it. */}
-        {!doctor && <p className="tk-health-line">{firstLine(health)}</p>}
+        {doctor ? hasRhr && <p className="tk-health-line">Hier siehst du, wie es in den einzelnen Bereichen aussieht.</p> : <p className="tk-health-line">{firstLine(health)}</p>}
         {doctor && !hasRhr && <p className="tk-note">{doctor.text}</p>}
       </Card>
       {rows.map((r) => <AreaCard key={r.key} row={r} doctorText={r.key === 'rhr' ? doctor?.text : undefined} onOpen={() => setOpen(r.key)} />)}
