@@ -151,7 +151,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - ~~`src/shared/catalog.ts` importiert Muskelnamen aus `src/tracking/ui/labels` (Schichtung).~~ Erledigt mit K.
   - ~~Eigene Übungs-Records: Muskel/Gerät/Typ werden nicht gegen die erlaubten Werte geprüft.~~ Erledigt mit K.
 - Aus Meilenstein B:
-  - Körperbild/Muskelkarte statt Liste? (Frage an die Person offen.)
+  - ~~Körperbild/Muskelkarte statt Liste? (Frage an die Person offen.)~~ Gestrichen am 09.11.2026: zu viel Detail, die Liste bleibt.
   - Zielbereiche Gesäß + Oberschenkel hinten und Schulter seitlich + hinten summieren sich höher als früher; beobachten, ob der Coach dort zu viele Sätze plant.
   - Muskelpaare zählen halbe Sätze einer Übung auch auf der Gegenseite (Kniebeuge → Gesäß), das mildert den Ungleichgewichtshinweis.
   - Unbekannte Hevy-Übungen mit „Schultern“ zählen als Schulter vorn.
@@ -176,7 +176,7 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - ~~Die Empfehlung kennt keine Uhrzeit; abends gilt noch die Empfehlung des Tages.~~ Erledigt mit I.
 - Aus Meilenstein G:
   - Pausen pro einzelnem Satz und Aufwärmen nach Erfahrung der Person.
-  - Verschieben per Ziehen statt über das Menü.
+  - ~~Verschieben per Ziehen statt über das Menü.~~ Erledigt: langes Drücken auf eine Übung (Titel oder „Danach“) hebt sie an.
   - ~~Eigene Pausen-Einstellung geht beim Tauschen einer Übung verloren (die neue Übung bekommt ihre eigene Pause).~~ Erledigt mit I.
 - Aus Meilenstein H:
   - ~~„Nächstes Mal“ steht nur im Verlauf beim letzten Training; eine eigene Zusammenfassung nach dem Training fehlt.~~ Erledigt mit I.
