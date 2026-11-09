@@ -82,7 +82,7 @@ export function Sheet({ title, onClose, onBack, children, actions, size = 'full'
       {size === 'small' && <div className="tk-sheet-backdrop" aria-hidden="true" onClick={onClose} />}
       <div className="tk-sheet-panel">
       <header className="tk-sheet-head">
-        {page && <BackButton onClick={onClose} />}
+        {page && <BackButton onClick={onBack ?? onClose} />}
         {back && <button type="button" className="link tk-sheet-back" onClick={back}>‹ Zurück</button>}
         {lead}
         <h2 id={`${id}-t`} className={display ? 'tk-display' : undefined}>{title}</h2>

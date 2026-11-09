@@ -58,7 +58,7 @@ export function Bubble({ children, actions, tail = 'left', foot }: { children: R
 /** The one back button of a page: round with "Zurück" as its name, or a pill "‹ label". */
 export function BackButton({ label, onClick }: { label?: string; onClick: () => void }) {
   return (
-    <button type="button" className={label ? 'tk-back pill' : 'tk-back'} aria-label={label ? undefined : 'Zurück'} onClick={onClick}>
+    <button type="button" className={label ? 'tk-backbtn pill' : 'tk-backbtn'} aria-label={label ? undefined : 'Zurück'} onClick={onClick}>
       <Icon name="zurueck" size={20} />{label}
     </button>
   );

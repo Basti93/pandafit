@@ -2,6 +2,8 @@
 export type IconName = 'heute' | 'woche' | 'kraft' | 'essen' | 'ausdauer' | 'profil'
   | 'lauf' | 'herz' | 'spross' | 'mond' | 'ziel' | 'stift' | 'sprechen' | 'senden' | 'zurueck' | 'haken' | 'rueckblick' | 'regeln' | 'aenderung';
 
+const SCROLL = <><path d="M8 6 H25 Q27 6 27 8 V24 Q27 26 25 26 H10" /><path d="M8 6 Q5 6 5 9 V11 H11 V9 Q11 6 8 6 Z" /><path d="M10 26 Q7 26 7 23 V21 H13 V23 Q13 26 10 26 Z" /></>;
+
 const PATHS: Record<IconName, React.ReactNode> = {
   heute: <><path d="M2 10.5 Q5 10.5 7 7.5 Q12 2.5 17 7.5 Q19 10.5 22 10.5" /><path d="M5.5 10 V19.5 H18.5 V10" /><path d="M10 19.5 V15 Q12 13 14 15 V19.5" /></>,
   woche: <><path d="M7 4 H18 Q20 4 20 6 V7 H7" /><path d="M7 4 Q4.5 4 4.5 6.5 V17.5 Q4.5 20 7 20 H17 Q19.5 20 19.5 17.5 V7" /><path d="M9 11 H10 M12 11 H13 M15 11 H16 M9 15 H10 M12 15 H13" /></>,
@@ -19,9 +21,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
   senden: <><path d="M4 12 L20 4 L15 20 L11.5 13 Z" /><path d="M11.5 13 L20 4" /></>,
   zurueck: <path d="M15 5 L8 12 L15 19" strokeWidth="2.4" />,
   haken: <path d="M5 12.5 L10 17 L19 7" strokeWidth="3" />,
-  rueckblick: <g transform="scale(.75)" strokeWidth="2.667"><path d="M8 6 H25 Q27 6 27 8 V24 Q27 26 25 26 H10" /><path d="M8 6 Q5 6 5 9 V11 H11 V9 Q11 6 8 6 Z" /><path d="M10 26 Q7 26 7 23 V21 H13 V23 Q13 26 10 26 Z" /><path d="M14 12 H23 M14 16 H21 M14 20 H19" /></g>,
+  rueckblick: <g transform="scale(.75)" strokeWidth="2.667">{SCROLL}<path d="M14 12 H23 M14 16 H21 M14 20 H19" /></g>,
   regeln: <g transform="scale(.75)" strokeWidth="2.667"><path d="M7 5 H22 Q25 5 25 8 V27 L19 23 L13 27 V8" /><path d="M7 5 Q4 5 4 8 V11 H13" /><path d="M16 11 Q19 9 21 12 Q19 16 16 11 Z" /></g>,
-  aenderung: <g transform="scale(.75)" strokeWidth="2.667"><path d="M8 6 H25 Q27 6 27 8 V24 Q27 26 25 26 H10" /><path d="M8 6 Q5 6 5 9 V11 H11 V9 Q11 6 8 6 Z" /><path d="M10 26 Q7 26 7 23 V21 H13 V23 Q13 26 10 26 Z" /><path d="M14 13 L16 15 L20 10" /><path d="M14 20 H21" /></g>,
+  aenderung: <g transform="scale(.75)" strokeWidth="2.667">{SCROLL}<path d="M14 13 L16 15 L20 10" /><path d="M14 20 H21" /></g>,
 };
 
 export function Icon({ name, size = 24 }: { name: IconName; size?: number }) {
