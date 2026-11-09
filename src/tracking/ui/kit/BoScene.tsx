@@ -20,9 +20,9 @@ export const PLACE_POSES: Record<BoPlace, readonly PandaGesture[]> = {
   dojo: ['flex', 'greet', 'nod', 'listen', 'breathe'],
   huegel: ['bike'],
   wald: ['run'],
-  matte: ['yoga'],
-  buecher: ['read'],
-  kissen: ['knit'],
+  matte: ['yoga', 'breathe', 'nod'],
+  buecher: ['read', 'greet', 'nod', 'listen'],
+  kissen: ['knit', 'greet', 'nod', 'listen'],
 };
 
 /** The pose Bo takes in a place: the wanted one if it fits there, otherwise the place's own pose. */

@@ -48,7 +48,7 @@ async function boot(seed: TrackedRecord[], now = NOW) {
 }
 
 describe('Bo on Heute', () => {
-  it('takes the pose of the day once, if it fits the nest', async () => {
+  it('takes the pose of the day once, in the place of that pose', async () => {
     await boot([week('gym')]);
     await waitFor(() => expect(log.last.pose).toBe('flex'), { timeout: 4000 });
     expect(log.mounts).toBe(1);
