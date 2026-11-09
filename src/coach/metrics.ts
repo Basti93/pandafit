@@ -3,17 +3,8 @@ import type { Sample } from '../shared/sample';
 import { stepFtpFraction, type Session, type Step } from '../shared/session';
 import { stepTargetZone, zoneOf } from '../shared/hr-zones';
 
-export type RideSummary = {
-  rideId: string; startedAtMs: number; status: 'finished' | 'aborted'; sessionId: string; ftpW: number; durationS: number;
-  avgPowerW: number | null; normalizedPowerW: number | null; intensityFactor: number | null; tss: number;
-  avgHrBpm: number | null; maxHrBpm: number | null; bestMinutePowerW: number | null; completedFraction: number;
-  sessionName?: string; suspectData?: boolean; intervalsPlanned?: number; intervalsDone?: number;
-  hrZoneMinutes?: number[]; hrTargetPct?: number; hrDriftPct?: number; hrRecoveryBpm?: number;
-  /** Best mean power per duration in seconds. */
-  powerCurve?: Record<string, number>;
-  /** Share of the ridden seconds within 10 % of the target. */
-  onTargetPct?: number;
-};
+import type { RideSummary } from '../shared/ride-summary';
+export type { RideSummary };
 
 const DAY_MS = 86_400_000;
 const mean = (xs: number[]): number | null => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);

@@ -1,4 +1,4 @@
-import type { RideSummary } from './metrics';
+import type { RideSummary } from './ride-summary';
 
 export type RideProgress = { comparedRideId: string; comparedAtMs: number; sameSession: boolean } & (
   | { kind: 'lower-hr' | 'higher-hr'; bpm: number }
