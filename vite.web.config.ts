@@ -52,6 +52,7 @@ export default defineConfig(({ command }) => ({
   },
   server: {
     // Manual testing against a local Pandafit server: PANDAFIT_URL=http://127.0.0.1:8080 npm run dev:web
-    proxy: Object.fromEntries(['/records', '/login', '/logout', '/me', '/device-token', '/healthz', '/push'].map((p) => [p, process.env.PANDAFIT_URL ?? 'http://127.0.0.1:8080'])),
+    // Exact API paths only: a plain prefix like /push would also catch the module /push.ts.
+    proxy: { '^/(records|login|logout|me|device-token|healthz|push)(/|\\?|$)': process.env.PANDAFIT_URL ?? 'http://127.0.0.1:8080' },
   },
 }));
