@@ -48,7 +48,7 @@ test('spontaneous mode lists Monday to today without any plan', async () => {
 
 test('"Heute nur" writes frame.today for today only', async () => {
   const { port, map } = fakePort([plan(['gym', 'bike', 'run'])]);
-  render(<TodayCard port={port} weekplans={[plan(['gym', 'bike', 'run'])]} runs={[]} nowMs={NOW} gym={null} />);
+  render(<TodayCard port={port} weekplans={[plan(['gym', 'bike', 'run'])]} runs={[]} nowMs={NOW} />);
   expect(screen.queryByRole('group', { name: 'Heute nur' })).toBeNull();
   fireEvent.click(await screen.findByRole('button', { name: /^Etwas anderes heute/ }));
   expect(screen.getByRole('dialog', { name: 'Etwas anderes heute?' })).toBeTruthy(); // a small sheet, and no line about tomorrow
@@ -59,7 +59,7 @@ test('"Heute nur" writes frame.today for today only', async () => {
 
 test('the start screen without a plan shows the advice with its reason', async () => {
   const { port } = fakePort([]);
-  render(<TodayCard port={port} weekplans={[]} runs={[]} nowMs={NOW} gym={null} />);
+  render(<TodayCard port={port} weekplans={[]} runs={[]} nowMs={NOW} />);
   expect(await screen.findByRole('heading')).toBeTruthy();
   expect(screen.getByText(/^Das passt heute,? (weil |als ruhiger Einstieg)/)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: /^Etwas anderes heute/ }));
@@ -69,15 +69,14 @@ test('the start screen without a plan shows the advice with its reason', async (
 test('week mode: the plan day is the headline when it fits; when it does not, the advice is, with the plan in one muted line', async () => {
   const legs = { kind: 'workout', id: 'w', updatedMs: 1, deleted: false, body: { id: 'w', title: 'Beine', startMs: NOW - 86_400_000, endMs: NOW - 86_400_000 + 3_600_000, source: 'pandafit', exercises: [{ exerciseId: 'pf-squat', title: 'Kniebeuge', supersetId: null, notes: '', sets: [] }] } } as TrackedRecord;
   const fits = fakePort([plan(['rest', 'rest', 'bike'])]);
-  render(<TodayCard port={fits.port} weekplans={[plan(['rest', 'rest', 'bike'])]} runs={[]} nowMs={NOW} gym={null} />);
+  render(<TodayCard port={fits.port} weekplans={[plan(['rest', 'rest', 'bike'])]} runs={[]} nowMs={NOW} />);
   expect((await screen.findByRole('heading')).textContent).toBe('Rad, mittel');
   expect(screen.queryByText(/Geplant war/)).toBeNull();
   cleanup();
   const { port } = fakePort([plan(['rest', 'rest', 'gym']), legs]);
-  render(<TodayCard port={port} weekplans={[plan(['rest', 'rest', 'gym'])]} runs={[]} nowMs={NOW} gym={<button type="button">Zum Krafttraining</button>} />);
+  render(<TodayCard port={port} weekplans={[plan(['rest', 'rest', 'gym'])]} runs={[]} nowMs={NOW} gym={{ name: null, line: null, start: () => {} }} />);
   await waitFor(() => expect(screen.getByRole('heading').textContent).toBe('Kraft ohne Beine'));
-  expect(screen.getByText(/^Das passt heute, weil deine Beine gestern/)).toBeTruthy();
-  expect(screen.getByText('Geplant war: Kraft, mittel')).toBeTruthy();
-  expect(screen.getByText('Zum Krafttraining')).toBeTruthy();
+  expect(screen.getByText(/^Das passt heute, weil deine Beine gestern.* Geplant war: Kraft, mittel\./)).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Training starten' })).toBeTruthy();
   expect(screen.queryByText(/Heute passt/)).toBeNull();
 });

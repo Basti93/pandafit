@@ -224,23 +224,12 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-screen .rc-slotpick button { padding-left: .4rem; padding-right: .4rem; }
 .tk-screen .rc-view a { color: var(--muted); text-decoration: underline; font-weight: 700; }
 
-/* Heute as a day page: arrows left and right, the day name in the middle, the coach sentence with its mark. */
-.tk-daypage { touch-action: pan-y pinch-zoom; }
-.tk-dayhead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 2.75rem; margin-bottom: .5rem; padding-right: 3.4rem; }
-.tk-daytitle { flex: 1; text-align: center; min-width: 0; }
-.tk-daytitle .tk-title { margin: 0; line-height: 1.2; }
-.tk-daytitle p, .tk-screen .tk-daytitle .tk-title + p.muted { margin: .1rem 0 0; font-size: var(--text-s); }
-.tk-screen .tk-dayarrow { flex: none; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: var(--text-xl); line-height: 1; display: grid; place-items: center; box-shadow: none; }
-.tk-screen .tk-dayarrow:disabled { opacity: .35; }
-.tk-bodyrows { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
-
 /* Top bar: the wordmark on the left, the round profile button on the right (it is positioned on the same row). */
 .web-top { box-sizing: border-box; max-width: var(--content-max); margin: 0 auto; min-height: calc(44px + .55rem); padding: calc(.55rem + 6px) 4.6rem 0 var(--space-4); }
 .web-wordmark { font-family: var(--font-display); font-size: var(--text-l); letter-spacing: .04em; color: var(--text); line-height: 1.2; }
 @media (max-width: 400px) { .web-top { padding-left: .6rem; } }
 /* Display face: the wordmark, Panda's name and short page titles only. Workout titles and anything with measures stay in the UI face. */
-.tk-pagehead .tk-title, .tk-daytitle .tk-title, .web-login .tk-title { font-family: var(--font-display); font-weight: 400; letter-spacing: .03em; }
-.tk-daytitle .tk-title { font-size: var(--text-xl); }
+.tk-pagehead .tk-title, .web-login .tk-title { font-family: var(--font-display); font-weight: 400; letter-spacing: .03em; }
 
 /* Bo on Heute: the portrait and the sentence in his bubble (kit/Dojo.tsx). */
 /* The portrait: the still picture fills the box; the canvas lies over it and fades in once it has drawn, then the still is hidden. */
@@ -251,14 +240,6 @@ body:has(.tk-sheet) .web-profile, body:has(.tk-live) .web-profile { display: non
 .tk-panda[data-drawn='true'] .tk-pandastill { visibility: hidden; }
 .tk-pandahead-mini { flex: none; width: 4.2rem; }
 
-/* Wide screens: Heute in two columns. The DOM and phone order stay: open workout, coach, training, meals, mobility, body, together. */
-@media (min-width: 1024px) {
-  .tk-screen.tk-daypage { max-width: 1040px; display: grid; grid-template-columns: minmax(0, 1fr) 20rem; column-gap: var(--space-4); row-gap: var(--space-2); align-items: start; grid-auto-flow: row dense; }
-  .tk-daypage > * { grid-column: 1; min-width: 0; }
-  .tk-daypage > .tk-dayhead { grid-column: 1 / -1; }
-  .tk-daypage > .tk-coachline { grid-column: 2; grid-row: span 6; position: sticky; top: var(--space-4); }
-  .tk-daypage > [aria-label='Training läuft noch'] { grid-column: 1 / -1; }
-}
 /* On wide screens the top bar spans the wide Heute columns: the wordmark and the profile button sit at its outer edges. */
 @media (min-width: 1024px) {
   .web-top { max-width: 1040px; }

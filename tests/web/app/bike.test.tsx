@@ -97,7 +97,7 @@ describe('Rad on the phone', () => {
 
   it('Heute on a bike day names the session, says it starts on the Mac, and Ansehen opens Rad', async () => {
     await boot({ account: 'anna', seed: [bikeRec(), await bikeWeek()] });
-    await waitFor(() => expect(screen.getByRole('region', { name: /^Heute/ }).textContent).toContain('Schwellen-Intervalle · 60 Min'));
+    await waitFor(() => expect(screen.getByRole('region', { name: /^Heute/ }).textContent).toContain('Schwellen-Intervalle, 60 Min'));
     const card = screen.getByRole('region', { name: /^Heute/ });
     expect(card.textContent).toContain('am Mac');
     fireEvent.click(within(card).getByRole('button', { name: 'Ansehen' }));

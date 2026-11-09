@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SAYINGS } from '../../src/shared/day-text';
+import { weekDates } from '../../src/shared/week-plan';
 import type { TrackedRecord } from '../../src/shared/records';
 import { App } from '../../src/web/App';
 import { openIdb } from '../../src/web/idbStore';
@@ -33,131 +34,108 @@ async function boot(seed: TrackedRecord[], clock: { now: number } = { now: NOW }
   return { rerender: () => view.rerender(<App env={{ ...env }} />) };
 }
 const rec = (kind: string, id: string, body: unknown): TrackedRecord => ({ kind: kind as TrackedRecord['kind'], id, updatedMs: NOW, deleted: false, body });
-const health = (rows = true) => rec('health', 'health', {
-  type: 'health', atMs: NOW, today: { level: 'normal', reasons: [] },
-  findings: [{ rule: 'health.rhr-raised', text: 'Dein Ruhepuls liegt bei 58 und ist etwas höher als sonst.', tone: 'achtung' }],
-  weeks: rows ? [{ week: '2026-10-26', rhr: 58 }] : [], days: rows ? [{ date: '2026-11-03', rhr: 58 }] : [],
-});
 const before = (a: Node, b: Node) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+const weekplan = (sports: Record<string, string>) => rec('weekplan', '2026-11-02', {
+  weekStart: '2026-11-02', fromMessage: 'c', acceptedMs: NOW,
+  days: weekDates('2026-11-02').map((date) => ({ date, sport: sports[date] ?? 'rest', hardness: 'moderate', fixed: false })),
+});
+const weekplanWithGymToday = weekplan({ '2026-11-04': 'gym', '2026-11-05': 'bike', '2026-11-03': 'gym' });
+const planRecord = rec('plan', 'current', {
+  workout: { name: 'Oberkörper A', exercises: [{ templateId: 'pf-bench', title: 'Bankdrücken', restS: 90, sets: [{ reps: 8 }, { reps: 8 }, { reps: 8 }] }] },
+  reason: 'x', source: 'ai', note: null, questions: [], atMs: NOW - 1000, mobility: null,
+});
+const yesterdayActivities = rec('activities', 'activities', { type: 'activities', atMs: NOW, items: [{ key: 'kraft-1', kind: 'kraft', title: null, sport: 'strength', startMs: NOW - DAY, minutes: 45, distanceM: null, avgHr: null, ref: null }] });
+const proposal = { weekStart: '2026-11-02', days: weekDates('2026-11-02').map((date, i) => ({ date, sport: i === 4 ? 'gym' : 'rest', hardness: 'moderate', fixed: i === 4 })) };
+const riderMsg = rec('chat', 'r1', { role: 'rider', text: 'Freitag Studio', atMs: NOW - 1000 });
+const coachMsgWithProposal = rec('chat', 'c1', { role: 'coach', text: 'Wie wäre das?', atMs: NOW - 500, replyTo: 'r1', proposal });
+const daytext = rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW });
 
-describe('Heute as a day page', () => {
-  it('shows the coach line before the training card, Gemeinsam last', async () => {
+describe('Heute in the Dojo', () => {
+  it('shows the week path, Bo in his nest, one Jetzt dran card, then only meals and tomorrow', async () => {
+    await boot([daytext, weekplanWithGymToday, planRecord]);
+    const path = await screen.findByRole('list', { name: 'Wochenweg' });
+    const bo = screen.getByLabelText('Satz von Bo');
+    const now = screen.getByRole('region', { name: /^Heute/ });
+    expect(before(path, bo) && before(bo, now)).toBe(true);
+    expect(bo.querySelector('.tk-scene[data-place="nest"]')).toBeTruthy();
+    expect(screen.getAllByText('Jetzt dran')).toHaveLength(1);
+    expect(within(now).getByRole('heading').textContent).toBe('Oberkörper A');
+    expect(now.textContent).toContain('Krafttraining, etwa');
+    expect(screen.queryByRole('region', { name: 'Dein Körper' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Tag vor' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Heute' }).className).toBe('tk-sr');
+  });
+  it('a dot of the week path opens that day', async () => {
+    await boot([weekplanWithGymToday, yesterdayActivities]);
+    fireEvent.click(await screen.findByRole('button', { name: /^Dienstag/ }));
+    expect(await screen.findByRole('dialog', { name: /^Dienstag/ })).toBeTruthy();
+  });
+  it('tomorrow is one row card that opens the day sheet; without a plan for tomorrow there is none', async () => {
+    await boot([weekplanWithGymToday, planRecord]);
+    const row = await screen.findByRole('button', { name: /^Morgen/ });
+    fireEvent.click(row);
+    expect(await screen.findByRole('dialog', { name: /^Donnerstag/ })).toBeTruthy();
+    cleanup();
+    await boot([weekplan({ '2026-11-04': 'gym' }), planRecord]);
+    await screen.findByRole('list', { name: 'Wochenweg' });
+    // Rest is a plan too: the card says so.
+    expect((await screen.findByRole('button', { name: /^Morgen/ })).textContent).toContain('Ruhetag');
+    cleanup();
+    await boot([]);
+    expect(screen.queryByRole('button', { name: /^Morgen/ })).toBeNull();
+  });
+  it('an open workout takes the Jetzt dran place with Weitermachen', async () => {
+    const open = rec('workout', 'w-open', { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] });
+    await boot([weekplanWithGymToday, planRecord, open]);
+    const go = await screen.findByRole('button', { name: 'Weitermachen' });
+    expect(screen.queryByRole('button', { name: 'Training starten' })).toBeNull();
+    expect(screen.queryAllByText('Jetzt dran')).toHaveLength(0);
+    expect(screen.getByText('Läuft noch')).toBeTruthy();
+    expect(before(screen.getByLabelText('Satz von Bo'), go)).toBe(true);
+    fireEvent.click(go);
+    expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();
+  });
+  it('a waiting proposal turns Bo’s bubble into Vorschlag ansehen, which opens the chat', async () => {
+    await boot([riderMsg, coachMsgWithProposal]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Vorschlag ansehen' }));
+    expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensei' })).toBeTruthy();
+  });
+  it('without a plan the one card offers to plan', async () => {
+    await boot([]);
+    const card = await screen.findByRole('region', { name: 'Was Pandafit planen kann' });
+    expect(card.textContent).toContain('Dein Plan');
+    expect(within(card).getByRole('button', { name: 'Woche planen' }).className).toBe('primary');
+    expect(within(card).getByRole('button', { name: 'Im Profil auswählen' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Vorschlag ansehen' })).toBeNull();
+  });
+  it('shows Gemeinsam last', async () => {
     const weeks = [...Array(11).fill(0), 40];
     const together = {
       week: Date.UTC(2026, 10, 2), atMs: NOW - 3_600_000, you: 'anna',
       people: [{ profileId: 'anna', name: 'Anna', ridesThisWeek: 1, minutesThisWeek: 40, wordsLearned: 30, weeks }, { profileId: 'max', name: 'Max', ridesThisWeek: 2, minutesThisWeek: 75, wordsLearned: 12, weeks }],
       recent: [], metres: 2350, lastRideMetres: 400, peak: { name: 'Mont Ventoux', done: 1250, total: 1600, next: 'Stilfser Joch' }, summits: [], climbed: [], climbing: [],
     };
-    await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW }), rec('together', 'current', together)]);
+    await boot([daytext, weekplanWithGymToday, planRecord, rec('together', 'current', together)]);
     const coach = await screen.findByText('Schön, dass du dran bist.');
-    const train = await screen.findByRole('button', { name: 'Zum Krafttraining' });
     const tg = await screen.findByRole('button', { name: /Gemeinsam/ });
-    expect(before(coach, train)).toBe(true);
     expect(before(coach, tg)).toBe(true);
-    const page = coach.closest('.tk-daypage')!;
-    expect(page.lastElementChild!.contains(tg)).toBe(true);
+    expect(coach.closest('.tk-heute')!.lastElementChild!.contains(tg)).toBe(true);
   });
   it('"Frag Bo, deinen Sensei" on Heute opens the real coach composer', async () => {
-    await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-04', text: 'Schön, dass du dran bist.', atMs: NOW })]);
+    await boot([daytext]);
     const card = screen.getByLabelText('Satz von Bo');
-    expect(card.textContent).toContain('Bo');
-    expect(card.textContent).toContain('Sensei');
+    expect(card.textContent).not.toContain('Sensei ·');
     expect(card.querySelector('img')?.getAttribute('alt')).toBe('');
     fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensei' }));
     expect(await screen.findByLabelText('Nachricht an Bo')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 1, name: 'Heute' })).toBeNull();
-    // The same chat sheet as the "Coach" row on Woche: one dialog named Coach that holds the composer.
     expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensei' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
   });
-  it('an open synced workout comes first: "Weitermachen" opens it, no "Ansehen und anpassen", Panda stays below', async () => {
-    const open = rec('workout', 'w-open', { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] });
-    await boot([open]);
-    const go = await screen.findByRole('button', { name: 'Weitermachen' });
-    expect(screen.queryByRole('button', { name: 'Ansehen und anpassen' })).toBeNull();
-    expect(before(go, screen.getByLabelText('Satz von Bo'))).toBe(true);
-    expect(go.closest('.tk-daypage')!.querySelector('section')!.contains(go)).toBe(true);
-    fireEvent.click(go);
-    expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();
-  });
-  it("a daytext of yesterday shows a saying", async () => {
+  it('a daytext of yesterday shows a saying', async () => {
     await boot([rec('daytext', 'today', { type: 'daytext', date: '2026-11-03', text: 'Gestriger Satz.', atMs: NOW - DAY })]);
     expect(screen.queryByText('Gestriger Satz.')).toBeNull();
     const card = screen.getByLabelText('Satz von Bo');
     expect(SAYINGS).toContain(card.querySelector('p')!.textContent);
-  });
-  it('the arrows go to Morgen and Gestern and are disabled at the ends', async () => {
-    await boot([]);
-    fireEvent.click(screen.getByRole('button', { name: 'Tag vor' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Morgen' })).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Tag vor' }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Tag zurück' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Tag zurück' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Gestern' })).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Tag zurück' }) as HTMLButtonElement).disabled).toBe(true);
-  });
-  it('a swipe to the left goes on one day, and does nothing from inside a field', async () => {
-    await boot([]);
-    const root = screen.getByLabelText('Satz von Bo').parentElement!;
-    fireEvent.pointerDown(root, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
-    fireEvent.pointerUp(root, { clientX: 100, clientY: 105, isPrimary: true, pointerType: 'touch' });
-    expect(screen.getByRole('heading', { level: 1, name: 'Morgen' })).toBeTruthy();
-  });
-  it('a swipe from inside a field or a dialog does not change the day', async () => {
-    await boot([]);
-    const page = screen.getByLabelText('Satz von Bo').parentElement!;
-    const input = document.createElement('input'); page.appendChild(input);
-    fireEvent.pointerDown(input, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
-    fireEvent.pointerUp(input, { clientX: 100, clientY: 100, isPrimary: true, pointerType: 'touch' });
-    const dlg = document.createElement('div'); dlg.setAttribute('role', 'dialog'); const inner = document.createElement('p'); dlg.appendChild(inner); page.appendChild(dlg);
-    fireEvent.pointerDown(inner, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
-    fireEvent.pointerUp(inner, { clientX: 100, clientY: 100, isPrimary: true, pointerType: 'touch' });
-    expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
-  });
-  it('a mouse drag does not change the day', async () => {
-    await boot([]);
-    const page = screen.getByLabelText('Satz von Bo').parentElement!;
-    fireEvent.pointerDown(page, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'mouse' });
-    fireEvent.pointerUp(page, { clientX: 100, clientY: 100, isPrimary: true, pointerType: 'mouse' });
-    expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
-  });
-  it('a short swipe does not change the day', async () => {
-    await boot([]);
-    const page = screen.getByLabelText('Satz von Bo').parentElement!;
-    fireEvent.pointerDown(page, { clientX: 200, clientY: 100, isPrimary: true, pointerType: 'touch' });
-    fireEvent.pointerUp(page, { clientX: 160, clientY: 100, isPrimary: true, pointerType: 'touch' });
-    expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
-  });
-  it('a doctor finding is the first line of Dein Körper', async () => {
-    const h = health().body as { findings: unknown[] };
-    h.findings.push({ rule: 'health.rhr-high', text: 'Das lässt du bitte ärztlich anschauen.', tone: 'arzt' });
-    await boot([rec('health', 'health', h)]);
-    const card = await screen.findByRole('region', { name: 'Dein Körper' });
-    expect(card.querySelector('p')!.textContent).toBe('Das lässt du bitte ärztlich anschauen.');
-    expect(card.querySelector('p')!.compareDocumentPosition(card.querySelector('ul')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-  it('a new calendar day starts at Heute again', async () => {
-    const clock = { now: NOW };
-    const b = await boot([], clock);
-    fireEvent.click(screen.getByRole('button', { name: 'Tag vor' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Morgen' })).toBeTruthy();
-    clock.now = NOW + DAY;
-    b.rerender();
-    expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
-  });
-  it('Dein Körper shows words and no digits, and the outline button leads on', async () => {
-    await boot([health()]);
-    const card = await screen.findByRole('region', { name: 'Dein Körper' });
-    expect(card.textContent).toContain('Ruhepuls · beachten');
-    expect(card.textContent).not.toMatch(/\d/);
-    const toCoach = screen.getByRole('button', { name: 'Bo fragen' });
-    expect(toCoach.className).toBe('secondary'); // a jump is an outline button, not a text link
-    fireEvent.click(toCoach);
-    // Straight into the chat, not only onto the week page.
-    expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensei' })).toBeTruthy();
-  });
-  it('without a health record there is no Dein Körper', async () => {
-    await boot([]);
-    expect(screen.queryByText('Dein Körper')).toBeNull();
   });
 
   describe('Zum Abschluss', () => {

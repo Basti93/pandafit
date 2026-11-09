@@ -17,7 +17,6 @@ import { useGoal, usePortRecords } from './hooks';
 import { dayText as runDay } from './run-view';
 import { PageHead, Row, RowList } from './kit';
 import { LookBack } from './StatsScreen';
-import { WaitingProposal } from './WaitingProposal';
 
 /** Woche is the week: seven days, what changed lately, rows that open the goal, the rules and the chat with the coach, and the Rückblick. */
 /** `openChat`: the page opens with the chat already open ("Bo fragen" on Heute leads straight there). */
@@ -110,5 +109,15 @@ export function CoachScreen({ port, now, newId, showPrefs = true, openChat = fal
       {sheet === 'history' && <ActivityHistory port={port} now={now} onClose={() => setSheet(null)} />}
       {sheet === 'chat' && <CoachChat port={port} now={now} newId={newId} onClose={() => setSheet(null)} />}
     </div>
+  );
+}
+
+/** The one open decision on Woche, said where it cannot be missed. Task 7 turns it into Bo's bubble. */
+function WaitingProposal({ onOpen }: { onOpen: () => void }) {
+  return (
+    <section className="card tk-waiting-card" aria-label="Ein Vorschlag wartet auf dich">
+      <p><b>Ein Vorschlag wartet auf dich</b></p>
+      <button type="button" className="secondary" onClick={onOpen}>Ansehen</button>
+    </section>
   );
 }

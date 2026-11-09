@@ -1,16 +1,22 @@
-import { BoBubble } from '../../tracking/ui/kit';
+import { BoBubble, Icon } from '../../tracking/ui/kit';
 import { BO } from '../../tracking/ui/bo';
 import type { PandaGesture } from '../../tracking/ui/PandaPortrait';
 
 /**
- * Bo on Heute: his portrait, the coach sentence of the day in his bubble and, on today, one button that opens the real coach chat.
+ * Bo on Heute: he sits in his nest, the coach sentence of the day in his bubble. `onAsk` opens the real coach chat.
+ * With `onProposal` a waiting proposal turns the main button into "Vorschlag ansehen"; "Frag Bo" stays beside it.
  * `pose` is the one pose Bo glides into when Heute opens and keeps until it opens again.
  */
-export function CoachLine({ text, onAsk, pose }: { text: string; onAsk?: () => void; pose?: PandaGesture | null }) {
+export function CoachLine({ text, onAsk, pose, onProposal }: { text: string; onAsk?: () => void; pose?: PandaGesture | null; onProposal?: () => void }) {
+  const actions = (onProposal || onAsk) && (
+    <>
+      {onProposal && <button type="button" className="primary" onClick={onProposal}>Vorschlag ansehen</button>}
+      {onAsk && <button type="button" className="secondary" onClick={onAsk}><Icon name="sprechen" size={18} />{BO.ask}</button>}
+    </>
+  );
   return (
     <section className="tk-coachline" aria-label="Satz von Bo">
-      <BoBubble pose={pose} actions={onAsk && <button type="button" className="secondary" onClick={onAsk}>{BO.ask}</button>}>
-        <span className="tk-bo-name">{BO.name} · {BO.role}</span>
+      <BoBubble place="nest" pose={pose} actions={actions}>
         <p className="tk-coachtext">{text}</p>
       </BoBubble>
     </section>

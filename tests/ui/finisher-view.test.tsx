@@ -12,7 +12,7 @@ const props = { workout: w, next: [], nowMs: NOON + 60_000, today: null, activit
 test('the summary shows the finisher with the cardio line and keeps one Fertig button', () => {
   let done = 0;
   render(<WorkoutSummary {...props} onDone={() => { done++; }} />);
-  expect(screen.getByRole('heading', { name: 'Zum Abschluss' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Locker ausklingen' })).toBeTruthy();
   expect(screen.getByText('Mach 20 Min lockeres Cardio auf dem Rad, dem Crosstrainer oder dem Laufband. Du kannst dabei noch reden.')).toBeTruthy();
   expect(screen.getByText('Dehn ein paar Minuten, was sich fest anfühlt.')).toBeTruthy();
   expect(screen.getAllByRole('button')).toHaveLength(1);

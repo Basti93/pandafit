@@ -9,17 +9,20 @@ import { runView } from './run-view';
 
 /**
  * The one source of the week: Heute (the week path) and Woche (the list) read the same rows.
- * `loaded` is true once the week plans, the activities and the workouts are read: before that the rows would only look empty.
+ * `loaded` is true once the week plans, the activities and the workouts are read (a failed read counts as empty, so the path never hangs): before that the rows would only look empty.
  * Monday to today in Spontan mode or without a plan, else the whole week; every activity counts once.
  */
 export function useWeekDays(port: TrackingPort, nowMs: number): {
   today: string; monday: string; dates: string[]; rows: DayRow[]; current: ReturnType<typeof planOfWeek>; next: ReturnType<typeof planOfWeek>;
   runs: PlannedRun[]; spontaneous: boolean; loaded: boolean; frame: ReturnType<typeof useTodayAdvice>;
 } {
-  const plans = usePortRecords(port, 'weekplan').all;
+  const planRead = usePortRecords(port, 'weekplan');
+  const plans = planRead.all;
   const runRecords = usePortRecords(port, 'run').all;
-  const activityRecords = usePortRecords(port, 'activities').all;
-  const workoutRecords = usePortRecords(port, 'workout').all;
+  const activityRead = usePortRecords(port, 'activities');
+  const activityRecords = activityRead.all;
+  const workoutRead = usePortRecords(port, 'workout');
+  const workoutRecords = workoutRead.all;
   const frame = useTodayAdvice(port, nowMs);
 
   const today = localDayKey(nowMs);
@@ -34,5 +37,5 @@ export function useWeekDays(port: TrackingPort, nowMs: number): {
   const rowDates = current && !spontaneous ? dates : dates.filter((d) => d <= today);
   const merged = mergedActivities(activityRecords, workoutRecords, true);
   const rows = doneDays(rowDates, today, spontaneous ? null : current?.days ?? null, merged);
-  return { today, monday, dates, rows, current, next, runs, spontaneous, loaded: plans !== null && activityRecords !== null && workoutRecords !== null, frame };
+  return { today, monday, dates, rows, current, next, runs, spontaneous, loaded: (plans !== null || planRead.failed) && (activityRecords !== null || activityRead.failed) && (workoutRecords !== null || workoutRead.failed), frame };
 }

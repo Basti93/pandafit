@@ -151,13 +151,13 @@ describe('web app', () => {
   it('an open workout from an earlier day says so in its heading', async () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w-old', updatedMs: NOW - 500, deleted: false, body: { id: 'w-old', title: 'Pull', startMs: NOW - 26 * 3_600_000, endMs: null, source: 'pandafit', exercises: [] } };
     await boot({ seed: [plan(NOW - 1000), open] });
-    expect(await screen.findByRole('heading', { name: /^Pull läuft seit gestern \d\d:\d\d$/ })).toBeTruthy();
+    expect(await screen.findByText(/^Seit gestern \d\d:\d\d$/)).toBeTruthy();
   });
 
   it('an open workout shows on Heute with "Weitermachen", which leads to the workout', async () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w-open', updatedMs: NOW - 500, deleted: false, body: { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] } };
     await boot({ seed: [plan(NOW - 1000), open] });
-    expect(await screen.findByRole('heading', { name: /^Pull läuft seit \d\d:\d\d$/ })).toBeTruthy();
+    expect(await screen.findByText(/^Seit \d\d:\d\d$/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Etwas anderes heute?' })).toBeNull(); // no day card beside the open workout
     fireEvent.click(screen.getByRole('button', { name: 'Weitermachen' }));
     // one tap: the workout itself opens, not the start screen with its card
@@ -207,7 +207,7 @@ describe('web app', () => {
 
   it('without a plan there is a calm note and a workout can still be started', async () => {
     await boot({ seed: [] });
-    expect(await screen.findByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Woche planen' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
     expect(await screen.findByRole('button', { name: 'Leeres Training starten' })).toBeTruthy();
     expect(screen.getByText('Oder leg unter Routinen einen Ablauf an.')).toBeTruthy();
@@ -216,7 +216,7 @@ describe('web app', () => {
 
   it('a new account sees what Pandafit can plan, with the way to Profil; it goes once something is on', async () => {
     await boot({ seed: [] });
-    expect(await screen.findByRole('heading', { name: 'Was soll Pandafit für dich planen?' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Dein Plan' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Woche planen' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Im Profil auswählen' }));
     expect(await screen.findByRole('heading', { name: 'Profil' })).toBeTruthy();
@@ -229,8 +229,8 @@ describe('web app', () => {
     expect(screen.getByText('Trag zuerst deine E-Mail ein.')).toBeTruthy();
     cleanup();
     await boot({ seed: [plan(NOW - 1000)] });
-    await screen.findByRole('button', { name: 'Zum Krafttraining' });
-    expect(screen.queryByRole('heading', { name: 'Was soll Pandafit für dich planen?' })).toBeNull();
+    await screen.findByRole('button', { name: 'Training starten' });
+    expect(screen.queryByRole('heading', { name: 'Dein Plan' })).toBeNull();
   });
 
   it('the mobility card comes from the plan and Gemacht writes the done record', async () => {
@@ -442,7 +442,7 @@ describe('web app', () => {
 
   it('a malformed plan record does not white-screen the page', async () => {
     await boot({ seed: [{ kind: 'plan', id: 'current', updatedMs: 1, deleted: false, body: { workout: { name: 'X', exercises: [{ title: 'Ohne Sätze' }] } } }, { kind: 'complaint', id: 'c', updatedMs: 1, deleted: false, body: null }] });
-    expect(await screen.findByRole('button', { name: 'Zum Krafttraining' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Training starten' })).toBeTruthy();
   });
 
   it('an error boundary shows a calm message and still offers the workout page', () => {
