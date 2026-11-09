@@ -370,4 +370,13 @@ describe('coach note notification', () => {
     const ids = (await app.inject({ method: 'GET', url: '/records', headers: H(a) })).json().records.map((r: { id: string }) => r.id);
     expect(ids.sort()).toEqual(['n2', 'w1']);
   });
+  it('a linked Mac (device token) runs a coach and may send a coach message with push', async () => {
+    const { app, sent } = await server();
+    const a = (await login(app, 'anna', PW_A)).cookie!;
+    await subscribe(app, a, sub('anna'));
+    const t = (await app.inject({ method: 'POST', url: '/device-token', payload: { name: 'anna', password: PW_A, deviceName: 'mac' } })).json().token;
+    const res = await app.inject({ method: 'POST', url: '/records', headers: { authorization: `Bearer ${t}` }, payload: { records: [note('n1', { push: true })] } });
+    expect(res.json().refused ?? []).toEqual([]);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+  });
 });
