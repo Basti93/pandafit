@@ -25,13 +25,32 @@ const valid = (d: unknown): d is FileData => {
 /** The Mac's own copy of tracked records, one file per profile. Writes are synchronous: temp file, then rename. */
 export class RecordStore {
   private readonly dir: string;
+  /** Parsed files by profile, valid while mtime and size match (another process may write the file). */
+  private readonly cache = new Map<string, { mtimeMs: number; size: number; data: FileData }>();
   constructor(opts: { dir: string }) { this.dir = opts.dir; }
 
   private file(profileId: string): string { return path.join(this.dir, `${encodeURIComponent(profileId)}.json`); }
 
   private load(profileId: string): FileData {
     const f = this.file(profileId);
-    if (!fs.existsSync(f)) return empty();
+    let st: fs.Stats;
+    try { st = fs.statSync(f); } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') { this.cache.delete(profileId); return empty(); }
+      throw e;
+    }
+    const hit = this.cache.get(profileId);
+    if (hit && hit.mtimeMs === st.mtimeMs && hit.size === st.size) return hit.data;
+    this.cache.delete(profileId);
+    const data = this.readFile(profileId, f);
+    this.remember(profileId, f, data);
+    return data;
+  }
+
+  private remember(profileId: string, f: string, data: FileData): void {
+    try { const st = fs.statSync(f); this.cache.set(profileId, { mtimeMs: st.mtimeMs, size: st.size, data }); } catch { this.cache.delete(profileId); }
+  }
+
+  private readFile(profileId: string, f: string): FileData {
     // A read error (busy, no permission) is not corruption: let it through, the file is fine.
     const text = fs.readFileSync(f, 'utf8');
     let parsed: unknown;
@@ -50,7 +69,9 @@ export class RecordStore {
   private save(profileId: string, data: FileData): void {
     fs.mkdirSync(this.dir, { recursive: true });
     const f = this.file(profileId);
+    this.cache.delete(profileId);
     writeJsonAtomic(f, data);
+    this.remember(profileId, f, data);
   }
 
   /** A write made on this Mac. `seenMs` is the version it stands on, when the writer knows one. */
@@ -72,6 +93,11 @@ export class RecordStore {
 
   private write(profileId: string, records: TrackedRecord[], origin: WriteOrigin, copies: TrackedRecord[]): PutResult[] {
     const data = this.load(profileId);
+    // The cached object is mutated in place: if this throws before the save, drop it.
+    try { return this.apply(profileId, data, records, origin, copies); } catch (e) { this.cache.delete(profileId); throw e; }
+  }
+
+  private apply(profileId: string, data: FileData, records: TrackedRecord[], origin: WriteOrigin, copies: TrackedRecord[]): PutResult[] {
     let changed = false;
     const keepLoser = (loser: TrackedRecord) => {
       const text = JSON.stringify(loser);
@@ -103,8 +129,10 @@ export class RecordStore {
   acknowledged(profileId: string, records: TrackedRecord[]): void {
     if (records.length === 0) return;
     const data = this.load(profileId);
-    for (const r of records) { const e = data.entries[keyOf(r)]; if (e) { e.serverMs = r.updatedMs; e.line = lineAfterAck(e.line, r.updatedMs); } }
-    this.save(profileId, data);
+    try {
+      for (const r of records) { const e = data.entries[keyOf(r)]; if (e) { e.serverMs = r.updatedMs; e.line = lineAfterAck(e.line, r.updatedMs); } }
+      this.save(profileId, data);
+    } catch (e) { this.cache.delete(profileId); throw e; }
   }
 
   all(profileId: string, kind?: RecordKind): TrackedRecord[] {

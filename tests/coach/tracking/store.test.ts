@@ -168,8 +168,8 @@ describe('RecordStore', () => {
   });
 
   it('a transient read error does not move a good file aside', () => {
-    const s = new RecordStore({ dir });
-    s.put('a', rec('w1', 1));
+    new RecordStore({ dir }).put('a', rec('w1', 1));
+    const s = new RecordStore({ dir }); // fresh store: nothing cached
     const real = fs.readFileSync;
     vi.spyOn(fs, 'readFileSync').mockImplementation(((f: fs.PathOrFileDescriptor, o?: unknown) => {
       if (String(f).endsWith('a.json')) throw Object.assign(new Error('busy'), { code: 'EBUSY' });
