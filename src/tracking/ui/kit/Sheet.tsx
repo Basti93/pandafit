@@ -57,7 +57,7 @@ function takeEntry(id: string, onPop: () => void): () => void {
 export function useBackEntry(onBack: () => void) {
   const id = useId();
   const back = useRef(onBack);
-  back.current = onBack;
+  useEffect(() => { back.current = onBack; });
   useEffect(() => takeEntry(id, () => back.current()), [id]);
 }
 
