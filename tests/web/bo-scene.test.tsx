@@ -42,5 +42,7 @@ describe('Bo scene', () => {
     expect(css).toMatch(/\.tk-bo-portrait:not\(:has\(\.tk-scene\)\), \.tk-pandahead-mini \{[^}]*background: var\(--bo-glow\)/);
     // No later rule takes the light away again (the chat once set its small portraits to none).
     expect(css).not.toMatch(/\.tk-bo-portrait \{[^}]*background: none/);
+    // The scene is positioned, so it paints above the card below it: the glow must stay inside the scene.
+    expect(css).toMatch(/\.tk-scene-glow \{[^}]*bottom: 0;/);
   });
 });
