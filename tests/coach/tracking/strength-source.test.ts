@@ -89,7 +89,7 @@ describe('bike coach and health page read the merged history', () => {
   });
 
   it('the coach runtime wires them, and leaves the ride process alone', () => {
-    const main = fs.readFileSync(path.join(__dirname, '../../../src/coach/runtime.ts'), 'utf8');
+    const main = fs.readFileSync(path.join(__dirname, '../../../src/coach/runtime/index.ts'), 'utf8');
     expect(main).toMatch(/strength: mergedStrength\(/);
     expect(main).toMatch(/mergedHealth\(/);
     expect(main).toMatch(/onWorkoutFinished: .*strengthChanged/);
