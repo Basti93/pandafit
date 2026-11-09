@@ -133,7 +133,16 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .gm-stack li { grid-template-columns: minmax(0, 1fr); gap: .1rem; }
 .gm-stack li span { text-align: left; }
 /* The profile sits at the top right instead of taking a tab. */
-.web-main { position: relative; background: var(--bamboo-shoot) left bottom / 40px 240px no-repeat, var(--bamboo-tile) min(100%, calc(50% + var(--content-max) / 2 - 195px)) var(--bamboo-drift, 0px) / 390px 900px repeat-y; min-height: 100dvh; box-sizing: border-box; }
+.web-main { position: relative; overflow: clip; background: var(--bamboo-shoot) left bottom / 40px 240px no-repeat; min-height: 100dvh; box-sizing: border-box; }
+/* The bamboo grove is its own layer behind the cards. Where the browser has scroll-driven animations it lags behind the page
+   (parallax, on the compositor, so it does not jerk); elsewhere and with reduced motion it scrolls along. */
+.web-main::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--bamboo-tile) min(100%, calc(50% + var(--content-max) / 2 - 195px)) top / 390px 900px repeat-y; }
+@keyframes bamboo-parallax { to { transform: translateY(calc((100% - 100lvh) * var(--bamboo-parallax))); } }
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .web-main::before { will-change: transform; animation: bamboo-parallax linear both; animation-timeline: scroll(root block); }
+  }
+}
 .web-profile { position: absolute; z-index: 4; top: calc(env(safe-area-inset-top) + .55rem); right: max(calc(env(safe-area-inset-right) + 1rem), calc((100% - var(--content-max)) / 2 + 1rem)); width: 44px; height: 44px; min-height: 0; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--field-line); background: var(--card); color: var(--text); display: grid; place-items: center; cursor: pointer; }
 .web-profile[aria-current='page'] { color: var(--text); border-color: var(--accent); }
 /* Sub pages of a tab (Kraft, Ausdauer, Essen Tage/Einkauf): one pill with segments, not loose buttons. One look everywhere. */

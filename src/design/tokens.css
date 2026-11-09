@@ -17,7 +17,7 @@
   --glow: rgba(239, 171, 118, .38);
   --bamboo-tile: url('/brand/bamboo-tile-dark.svg');
   --bamboo-shoot: url('/brand/bamboo-shoot-dark.svg');
-  --bamboo-drift: 0px; /* parallax offset of the grove, written by src/web/parallax.ts */
+  --bamboo-parallax: .35; /* share of the scroll the bamboo grove lags behind the page; 0 = scrolls along */
   --page-bg: radial-gradient(120% 600px at 50% 0, var(--bg-top), transparent) no-repeat, var(--bg); /* shared */
   --text: #f5ecd8;
   --ink: #302417; /* shared */
