@@ -110,7 +110,7 @@ it('the card never prints a digit, even with the real finding texts; the page ke
   await showWeek([healthRec(body({ findings: found, coachText: { week: '2026-11-02', text: 'Du hast 3 Einheiten geschafft.' } }))]);
   const card = await screen.findByRole('region', { name: 'Gesundheit' });
   expect(card.textContent).not.toMatch(/\d/);
-  expect(card.querySelector('.tk-note')!.textContent).toContain('ärztlich abklären');
+  expect(card.querySelector('.tk-note')!.textContent).toBe('Dein Wert für Ruhepuls fällt gerade auf. Lass das am besten ärztlich abklären.');
   fireEvent.click(within(card).getByRole('button', { name: /Gesundheit ansehen/ }));
   expect(document.body.textContent).toMatch(/über 100/);
 });

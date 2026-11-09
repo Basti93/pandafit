@@ -48,7 +48,7 @@ export function cardText(h: HealthBody): { doctor: string | null; line: string }
   let doctor: string | null = null;
   if (d) {
     const area = healthRows(h).find((r) => r.sentence === d.text)?.short;
-    doctor = clean(d.text) ?? `${area ? `Dein ${area} fällt` : 'Ein Wert fällt'} gerade auf. Lass das am besten ärztlich abklären.`;
+    doctor = clean(d.text) ?? `${area ? `Dein Wert für ${area} fällt` : 'Ein Wert fällt'} gerade auf. Lass das am besten ärztlich abklären.`;
   }
   const line = clean(h.coachText?.text) ?? h.findings.filter((f) => f.tone !== 'arzt').map((f) => clean(f.text)).find((t) => t !== null) ?? (h.findings.some((f) => f.tone !== 'arzt') || h.coachText ? MORE : 'Gerade gibt es nichts Besonderes zu sagen.');
   return { doctor, line };
