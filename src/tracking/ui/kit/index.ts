@@ -7,7 +7,7 @@
  *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Tag is the small green label with a check.
  *   RowCard (RowCard.tsx) is the only row card with an icon tile (DESIGN "Zeilenkarte"); Row stays the plain text row without icon (lists, settings). WordTile is the only word tile.
  *   StandCard is the one orientation card "… · diese Woche" (Kraft, Rad, Laufen); Segments the one switch between sub pages; PillButton the one pill (quiet side action and back);
- *   MarkDot the one state dot (done, now, open); Band the one part bar.
+ *   MarkDot the one state dot (done, now, open; button dots in a row need a gap of at least 16 px); Band the one part bar.
  *   RoundButton is the one round icon button; BackButton is the one back button of pages (RoundButton, or a PillButton with a label); Sheet `page` is for pages like the chat (BackButton instead of ×).
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
@@ -30,7 +30,7 @@
  *   size="small": a bottom sheet of auto height (max 70 %) over a dimmed backdrop, for option lists of up to about six entries
  *   (studio, Anderes Training, the menus, Etwas anderes heute, ChoiceRow). A sheet that opens in the same commit as another closes never pops the new one.
  * PageHead: the page title, an optional muted subtitle, and room for the profile button; 16 px before the first card.
- *   One pattern: the title on top, a switch (.tk-seg) below it, no second title for the chosen half.
+ *   One pattern: the title on top, a Segments switch below it, no second title for the chosen half.
  * Switch: a row with the label left and the switch right, the whole row taps. It replaces checkboxes.
  * ChoiceRow: "Label  Wert ›" that opens a small Sheet with the options. It replaces selects with more than a couple of options.
  * Details on demand: numbers, statistics, explanations and credits sit behind "Details" or in the opened row. Muted help text is one line.

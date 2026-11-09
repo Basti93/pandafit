@@ -545,7 +545,7 @@
 .tk-bubble.right .tk-bubble-tail { left: auto; right: -7px; background: var(--bubble-me); border-left: 0; border-bottom: 0; border-top: 1px solid var(--bubble-me-line); border-right: 1px solid var(--bubble-me-line); }
 .tk-screen .tk-bubble-foot { margin: 0; font-size: var(--text-xs); color: var(--muted); }
 .tk-bubble.right .tk-bubble-foot { text-align: right; }
-/* The one round icon button (kit RoundButton, BackButton): 44 px, card fill, thin line; `pill` adds a label. */
+/* The one round icon button (kit RoundButton, BackButton): 44 px, card fill, thin line. */
 .tk-screen button.tk-roundbtn { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: var(--radius-round); border: 1px solid var(--field-line); background: var(--card); color: var(--text); }
 /* The one pill (kit PillButton, BackButton with a label): 44 px, transparent, thin line, quiet text, icon on the left. */
 .tk-screen button.tk-pill { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); flex: none; min-height: 44px; height: 44px; padding: 0 var(--space-3); border-radius: var(--radius-pill); border: 1px solid var(--field-line); background: transparent; color: var(--muted); font-weight: 500; font-size: var(--text-s); }
@@ -561,11 +561,11 @@
 /* The focus card of a running workout. */
 .tk-screen .card.focus { border-color: var(--accent); box-shadow: 0 0 24px var(--focus-glow); }
 /* The one state dot (kit MarkDot): done green with a check, now an accent ring, open a quiet ring. The week path dots extend it. */
-.tk-mark { position: relative; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 1.5rem; height: 1.5rem; padding: 0; border-radius: var(--radius-round); background: var(--bg); border: 2px solid var(--field-line); color: var(--muted); font-size: var(--text-xs); font-weight: 700; }
-.tk-mark.done { background: var(--good); border-color: var(--good); color: var(--ink); }
-.tk-mark.now { border-color: var(--accent); color: var(--text); }
-.tk-screen button.tk-mark { min-height: 0; }
-.tk-mark:is(button)::after { content: ''; position: absolute; inset: -10px; }
+.tk-mark, .tk-screen button.tk-mark { position: relative; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; flex: none; width: 1.5rem; min-width: 1.5rem; height: 1.5rem; min-height: 1.5rem; padding: 0; border: 2px solid var(--field-line); border-radius: var(--radius-round); background: var(--bg); box-shadow: none; color: var(--muted); font-size: var(--text-xs); font-weight: 700; }
+.tk-mark.done, .tk-screen button.tk-mark.done { background: var(--good); border-color: var(--good); color: var(--ink); }
+.tk-mark.now, .tk-screen button.tk-mark.now { border-color: var(--accent); color: var(--text); }
+/* A button dot has a 40 px tap area around the 24 px dot; a row of button dots needs a gap of at least 16 px so the areas do not overlap. */
+.tk-mark:is(button)::after { content: ''; position: absolute; inset: -8px; }
 .tk-stand { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .tk-stand-marks { display: flex; gap: var(--space-2); flex: none; }
 /* The one part bar (kit Band): parts as wide as their share, filled in the accent. */
