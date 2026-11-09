@@ -112,7 +112,7 @@ test('the header menu: discard asks first and then removes the workout; Studio a
   expect(f.map.get('workout:w1')!.deleted).toBe(false);
   fireEvent.click(within(menu).getByRole('button', { name: 'Ja' }));
   await waitFor(() => expect(f.map.get('workout:w1')!.deleted).toBe(true));
-  expect(await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ })).toBeTruthy();
 });
 
 test('Bo fragen from the header menu opens the coach panel', async () => {
@@ -134,14 +134,14 @@ test('the rest bar is one button that skips, with +30 s next to it', async () =>
   await waitFor(() => expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull());
 });
 
-test('the start screen: studio is a row, the others live behind "Routine oder leeres Training"', async () => {
+test('the start screen: studio is a pill, the others live behind "Anderes Training"', async () => {
   const f = fakePort([]);
   const plan = { name: 'Plan', exercises: [{ templateId: 'pf-squat', title: 'Kniebeuge', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal' as const, weightKg: 60, reps: 8 }] }] };
   render(<WorkoutScreen port={f.port} plan={plan} {...ids} />);
-  await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ });
+  await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
   expect(screen.queryByRole('button', { name: 'Leeres Training starten' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Routine oder leeres Training' }));
-  fireEvent.click(within(screen.getByRole('dialog', { name: 'Routine oder leeres Training' })).getByRole('button', { name: 'Leeres Training starten' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Anderes Training' }));
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'Anderes Training' })).getByRole('button', { name: 'Leeres Training starten' }));
   await waitFor(() => expect(f.state.puts.some((p) => p.kind === 'workout')).toBe(true));
 });
 

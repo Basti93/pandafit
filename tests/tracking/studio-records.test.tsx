@@ -10,13 +10,13 @@ afterEach(cleanup);
 const ids = { newId: () => 'new-id', now: () => 100_000 };
 const past = (id: string, startMs: number, studio: string): TrackedRecord => ({ kind: 'workout', id, updatedMs: 1, deleted: false,
   body: { id, title: 'T', startMs, endMs: startMs + 1, source: 'pandafit', exercises: [], studio } as LoggedWorkout });
-/** The studio row on the start screen shows the chosen studio; the sheet behind it lists, creates, renames and removes. */
-const current = () => screen.getByRole('button', { name: /^Studio/ }).querySelector('.tk-row-value')!.textContent;
+/** The studio pill on the start screen shows the chosen studio; the sheet behind it lists, creates, renames and removes. */
+const current = () => screen.getByRole('button', { name: /^Studio/ }).textContent;
 const openSheet = () => { fireEvent.click(screen.getByRole('button', { name: /^Studio/ })); return screen.getByRole('dialog', { name: 'Studio' }); };
 
 async function start(f: ReturnType<typeof fakePort>) {
   render(<WorkoutScreen port={f.port} {...ids} />);
-  await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ });
+  await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
 }
 async function create(name: string) {
   fireEvent.click(within(openSheet()).getByRole('button', { name: 'Neues Studio …' }));

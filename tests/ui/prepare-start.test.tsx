@@ -42,7 +42,7 @@ test('prepareStart returns exactly the workout the start begins (history, studio
 
   const f = fakePort(seed);
   render(<WorkoutScreen port={f.port} plan={plan} {...ids} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Beine A starten' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Training starten' }));
   await waitFor(() => expect(f.state.puts.some((r) => r.kind === 'workout' && r.id === 'new-id')).toBe(true));
   const begun = f.state.puts.find((r) => r.kind === 'workout' && r.id === 'new-id')!.body as LoggedWorkout;
 

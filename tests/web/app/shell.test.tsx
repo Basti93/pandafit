@@ -138,7 +138,7 @@ describe('web app', () => {
     const a = await boot({ offline: true, account: 'anna', seed: [plan(NOW - 1000)] });
     expect(await screen.findByText('Beine A')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Routine oder leeres Training' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Anderes Training' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leeres Training starten' }));
     await waitFor(async () => {
       const s = await openIdb('anna', a.factory);
@@ -196,9 +196,10 @@ describe('web app', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Fertig' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Nächstes Training' })).toBeNull());
     // Away to another Kraft page and back: the sheet does not open again by itself.
-    fireEvent.click(screen.getByRole('button', { name: 'Routinen', exact: true } as never));
-    fireEvent.click(await screen.findByRole('button', { name: 'Training', pressed: false }));
-    await screen.findByRole('button', { name: 'Beine A starten' });
+    fireEvent.click(screen.getByRole('button', { name: /Deine Routinen/ }));
+    await screen.findByRole('heading', { name: 'Deine Routinen' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Kraft' }).find((b) => b.className.includes('tk-pill'))!);
+    await screen.findByRole('button', { name: 'Training starten' });
     await new Promise((r) => setTimeout(r, 50));
     expect(screen.queryByRole('dialog', { name: 'Nächstes Training' })).toBeNull();
     fireEvent.click(within(screen.getByRole('navigation')).getByRole('button', { name: 'Heute' }));
@@ -210,8 +211,8 @@ describe('web app', () => {
     expect(await screen.findByRole('button', { name: 'Woche planen' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Kraft' }));
     expect(await screen.findByRole('button', { name: 'Leeres Training starten' })).toBeTruthy();
-    expect(screen.getByText('Oder leg unter Routinen einen Ablauf an.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^Studio/ }).textContent).toContain('noch keins');
+    expect(screen.getByText(/Bo hat gerade kein Training für dich geplant/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Studio/ }).textContent).toContain('Studio wählen');
   });
 
   it('a new account sees what Pandafit can plan, with the way to Profil; it goes once something is on', async () => {

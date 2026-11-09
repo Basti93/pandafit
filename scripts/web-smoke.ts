@@ -72,8 +72,8 @@ try {
   step('the next workout opens in its sheet and closes');
 
   await page.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true }).click();
-  // Start an empty workout: directly, or through the "Routine oder leeres Training" sheet when a plan or routines exist.
-  const anderes = page.getByRole('button', { name: 'Routine oder leeres Training' });
+  // Start an empty workout: directly, or through the "Anderes Training" sheet when a plan or routines exist.
+  const anderes = page.getByRole('button', { name: 'Anderes Training' });
   const empty = page.getByRole('button', { name: 'Leeres Training starten' });
   await empty.or(anderes).first().waitFor();
   if (await anderes.count() > 0 && await empty.count() === 0) await anderes.click();
@@ -95,11 +95,10 @@ try {
   await endSheet.or(summary).first().waitFor();
   if (await endSheet.count() > 0) await endSheet.click();
   await summary.getByRole('button', { name: 'Fertig' }).click();
-  const seg = (p: Page, label: string) => p.getByRole('group', { name: 'Kraft' }).getByRole('button', { name: label, exact: true });
   const nav = (p: Page) => p.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true });
   const seeWorkout = async (p: Page, timeout = 15_000) => {
     await nav(p).click();
-    await seg(p, 'Übungen').click();
+    await p.getByRole('button', { name: /Deine Übungen/ }).click();
     await p.getByRole('list', { name: 'Deine Übungen' }).getByText(pickedTitle, { exact: true }).waitFor({ timeout });
   };
   await seeWorkout(page);

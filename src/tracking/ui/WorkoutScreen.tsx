@@ -19,8 +19,9 @@ import { createWorkoutStore } from '../store';
 import { finishedWorkouts, useCatalog, useExcluded, usePortRecords, type WorkoutStore } from './hooks';
 
 import { SyncNote } from './SyncNote';
-import { StudioRow, StudioSheet } from './StudioSheet';
-import { Sheet } from './kit';
+import { StudioSheet } from './StudioSheet';
+import { BoBubble, MainCard, PillButton, Row, RowList, Sheet } from './kit';
+import { gymLine } from './plan-text';
 import { WorkoutSummary, pendingSummary, setPendingSummary } from './WorkoutSummary';
 import { defaultStudio, knownStudios, resolveStudio, studioStateOf } from '../../shared/studio';
 import { hideStudio, rememberStudio, removeStudio, renameStudio } from '../studios';
@@ -213,7 +214,6 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
 
   const routines = routinesQ.records ?? [];
   const studioKnown = knownStudios(logged, studios.renames, studios.picks, studios.hidden);
-  const manyStudios = studioKnown.length > 1;
   return (
     <div className="tk-screen">
       {message && <p role="status" className="tk-note">{message}</p>}
@@ -223,30 +223,22 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
       {!summary && (
         <>
           {plan ? (
-            <section className="card tk-plan-preview" aria-label="Heutiger Plan">
-              <h2>Nächstes Training</h2>
-              <p><strong>{plan.name}</strong></p>
-              <p className="muted tk-clamp">{draft ? draft.exercises.map((e) => e.title).join(', ') : plan.exercises.filter((e) => !isExcludedExercise(e, catalog, excluded)).map((e) => e.title).join(', ')}</p>
-              {manyStudios && <button type="button" className="secondary tk-studio-line" aria-label={`Studio ${studio ?? 'wählen'}`} onClick={() => setStudioOpen(true)}>{studio ?? 'Studio wählen'} ›</button>}
-              <button type="button" aria-label={`${plan.name} starten`} onClick={() => void startNext(plan)}>Training starten</button>
-              <button type="button" className="secondary" onClick={() => void lookAt(plan)}>Ansehen und anpassen</button>
-              {draft && <div className="tk-links"><span className="muted">Angepasst</span><button type="button" className="link" onClick={dropDraft}>Änderungen verwerfen</button></div>}
-              {dropped && !draft && <p className="muted">Deine Anpassungen passen nicht mehr zum aktuellen Plan oder Studio. Darum gilt wieder der Plan von Bo.</p>}
-            </section>
+            <MainCard kicker="Nächstes Training" title={plan.name} text={gymLine({ exercises: (draft?.exercises ?? plan.exercises.filter((e) => !isExcludedExercise(e, catalog, excluded))).map((e) => ({ ...e, restS: e.restS ?? null })) }, catalog)}
+              primary={{ label: 'Training starten', onClick: () => void startNext(plan) }} secondary={{ label: 'Ansehen', onClick: () => void lookAt(plan) }}
+              more={(draft || dropped) && (
+                draft
+                  ? <div className="tk-links"><span className="muted">Du hast den Plan angepasst.</span><button type="button" className="link" onClick={dropDraft}>Zurücksetzen</button></div>
+                  : <p className="muted">Deine Anpassungen passen nicht mehr zum aktuellen Plan oder Studio. Darum gilt wieder der Plan von Bo.</p>
+              )} />
           ) : (
-            <>
-              <button type="button" onClick={() => void begin(startEmpty(now(), newId()))}>Leeres Training starten</button>
-              {routines.length === 0 && <p className="muted">Oder leg unter Routinen einen Ablauf an.</p>}
-            </>
+            <MainCard kicker="Freies Training" title="Kraft" text="Bo hat gerade kein Training für dich geplant. Du kannst frei trainieren oder eine Routine starten."
+              primary={{ label: 'Leeres Training starten', onClick: () => void begin(startEmpty(now(), newId())) }} />
           )}
-          <div className="tk-rows">
-            {!(plan && manyStudios) && <StudioRow value={studio} onOpen={() => setStudioOpen(true)} />}
-            {(plan || routines.length > 0) && (
-              <button type="button" className="tk-rowbtn tk-choice" onClick={() => setOthers(true)}>
-                <span className="tk-row-title">Routine oder leeres Training</span><span className="tk-chevron" aria-hidden="true">›</span>
-              </button>
-            )}
+          <div className="tk-pills">
+            <PillButton icon="studio" label={studio ?? 'Studio wählen'} name={`Studio ${studio ?? 'wählen'}`} onClick={() => setStudioOpen(true)} />
+            {(plan || routines.length > 0) && <PillButton icon="wechsel" label="Anderes Training" onClick={() => setOthers(true)} />}
           </div>
+          {plan && (planMeta?.reason ?? planMeta?.note) && <BoBubble portrait="mini">{planMeta?.reason ?? planMeta?.note}</BoBubble>}
         </>
       )}
       {studioOpen && (
@@ -262,14 +254,14 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
           onStart={() => { const d = draft; if (d) void startNext(plan, sheet.also); else { setSheet(null); void startPlan(plan); } }} />
       )}
       {others && (
-        <Sheet size="small" title="Routine oder leeres Training" onClose={() => setOthers(false)}>
-          <ul className="tk-rows">
+        <Sheet size="small" title="Anderes Training" onClose={() => setOthers(false)}>
+          <RowList>
             {routines.map((r) => {
               const body = bodyOf('routine', r);
-              return <li key={r.id} className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { setOthers(false); void startPlan(body); }}><span className="tk-row-title">{body.name} starten</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>;
+              return <Row key={r.id} title={`${body.name} starten`} onClick={() => { setOthers(false); void startPlan(body); }} />;
             })}
-            <li className="tk-rowitem"><button type="button" className="tk-rowbtn" onClick={() => { setOthers(false); void begin(startEmpty(now(), newId())); }}><span className="tk-row-title">Leeres Training starten</span><span className="tk-chevron" aria-hidden="true">›</span></button></li>
-          </ul>
+            <Row title="Leeres Training starten" onClick={() => { setOthers(false); void begin(startEmpty(now(), newId())); }} />
+          </RowList>
         </Sheet>
       )}
     </div>

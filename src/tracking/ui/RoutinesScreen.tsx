@@ -42,7 +42,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
         <Sheet title={draft.isNew ? 'Neue Routine' : 'Routine bearbeiten'} onClose={closeAll}
           actions={<>
             {!valid && (draft.name !== '' || draft.exercises.length > 0) && <p className="muted tk-oneline">Gib einen Namen und mindestens eine Übung an.</p>}
-            <button type="button" disabled={!valid} onClick={async () => {
+            <button type="button" className="primary" disabled={!valid} onClick={async () => {
               if (saving.current) return; // a double tap saves once
               saving.current = true;
               try {
@@ -78,7 +78,7 @@ export function RoutinesScreen({ port, onStart, now = Date.now, newId = () => cr
     return (
       <Sheet title={body.name} onClose={closeAll}
         actions={<>
-          <button type="button" onClick={() => { setOpen(null); onStart(body); }}>Training starten</button>
+          <button type="button" className="primary" onClick={() => { setOpen(null); onStart(body); }}>Training starten</button>
           <button type="button" className="secondary" onClick={() => setDraft({ id: openRecord.id, isNew: false, name: body.name, exercises: body.exercises, updatedMs: openRecord.updatedMs })}>Bearbeiten</button>
         </>}>
         {body.exercises.length === 0 ? <p className="muted">Diese Routine hat noch keine Übung.</p> : (

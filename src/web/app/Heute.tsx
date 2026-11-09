@@ -1,6 +1,5 @@
 import { bodyOf } from '../../shared/record-bodies';
 import { useMemo, useState } from 'react';
-import { gymMinutes } from '../../shared/duration';
 import { dayMonthLongOfKey, localDayKey, timeLabel, weekdayOfKey } from '../../shared/dates';
 import { addDays, planFor } from '../../shared/week-plan';
 import { bikeOf } from '../../tracking/ui';
@@ -9,7 +8,7 @@ import { DaySheet } from '../../tracking/ui/DaySheet';
 import { useOpenProposals } from '../../tracking/ui/proposals';
 import { useWeekDays } from '../../tracking/ui/week-days';
 import { SPORT_ICON } from '../../tracking/ui/week-path';
-import { planDayLabel } from '../../tracking/ui/plan-text';
+import { gymLine, planDayLabel } from '../../tracking/ui/plan-text';
 import { MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
 import { complaintsOpenIn, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
@@ -72,7 +71,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, meals, pl
   const exercises = p?.workout?.exercises.length ?? 0;
   const gym: GymPart = {
     name: p?.workout?.name ?? null,
-    line: p?.workout && exercises > 0 ? `Krafttraining, etwa ${gymMinutes(p.workout)} Minuten, ${exercises} ${exercises === 1 ? 'Übung' : 'Übungen'}` : null,
+    line: p?.workout ? gymLine(p.workout) : null,
     start: () => goTraining(),
     view: exercises > 0 ? () => goTraining('plan') : undefined,
     notes: p && (

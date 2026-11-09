@@ -146,7 +146,7 @@ test('a thrown-away workout leaves the change taken; it is marked used when a wo
   map.set('workout:w-b', { ...done, updatedMs: NOW + 9, body: { ...(done.body as object), endMs: NOW + 8 } });
   cleanup();
   render(<WorkoutScreen port={port} plan={plan} routine={null} {...env} newId={() => 'w-c'} />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Plan starten' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Training starten' }));
   await waitFor(() => expect(stateOf(map, 'chg-m1')).toBe('used'));
   expect(map.get('change:chg-m1')!.body).toMatchObject({ usedBy: 'w-b' });
 });

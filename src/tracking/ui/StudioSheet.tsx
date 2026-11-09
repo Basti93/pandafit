@@ -2,17 +2,6 @@ import { useState } from 'react';
 import { studioName } from '../../shared/studio';
 import { ConfirmLink, Sheet } from './kit';
 
-/** "Studio  Nord ›": the studio of this workout, one row. It opens the studio sheet. */
-export function StudioRow({ value, onOpen }: { value: string | undefined; onOpen: () => void }) {
-  return (
-    <button type="button" className="tk-rowbtn tk-choice" onClick={onOpen}>
-      <span className="tk-row-title">Studio</span>
-      <span className="tk-row-value muted">{value ?? 'noch keins'}</span>
-      <span className="tk-chevron" aria-hidden="true">›</span>
-    </button>
-  );
-}
-
 /**
  * Choose the studio from the known ones, create a new one, rename this one. On the start screen (`onAway`) it can also be taken out of
  * the list: removed for good when no workout has it (after a confirm), else only hidden. The workouts keep their studio either way.
@@ -34,7 +23,7 @@ export function StudioSheet({ value, known, onChange, onRename, onAway, onClose 
   };
   const typing = mode !== 'pick';
   return (
-    <Sheet size={typing ? 'full' : 'small'} title="Studio" display onClose={onClose} actions={typing ? <button type="button" disabled={!studioName(text)} onClick={save}>Speichern</button> : undefined}>
+    <Sheet size={typing ? 'full' : 'small'} title="Studio" display onClose={onClose} actions={typing ? <button type="button" className="primary" disabled={!studioName(text)} onClick={save}>Speichern</button> : undefined}>
       {typing ? (
         <input type="text" autoFocus maxLength={40} value={text} aria-label={mode === 'new' ? 'Name des neuen Studios' : 'Neuer Name des Studios'}
           onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />

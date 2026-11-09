@@ -123,6 +123,8 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 /* One page head (Kraft, Ausdauer): the title on top, the switch below it at full width; the screen under it follows closely. */
 .tk-screen.tk-headblock { padding-bottom: 0; }
 .tk-headblock .tk-pagehead { margin-bottom: 0; }
+/* The two tiles below Kraft: close to the pills above, a little air between them. */
+.tk-screen.tk-tiles { padding-top: 0; gap: var(--space-2); }
 /* The live workout hides the round profile button, so its ⋯ sits at the edge. */
 /* A sheet covers everything: the round profile button steps aside while one is open. */
 /* The round profile button has the size and the edge of the day arrows: 44 px, on the page padding. */

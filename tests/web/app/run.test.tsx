@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
-import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
@@ -78,17 +78,6 @@ describe('Laufen on the phone', () => {
     await screen.findByRole('navigation');
     expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Ausdauer' })).toBeNull();
-  });
-
-  it('Kraft: one page head, then three sub-pages; Übungen holds your exercises and the catalog', async () => {
-    await boot({ account: 'anna', seed: [] });
-    fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Kraft' })).toBeTruthy();
-    const group = screen.getByRole('group', { name: 'Kraft' });
-    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Training', 'Routinen', 'Übungen']);
-    fireEvent.click(within(group).getByRole('button', { name: 'Übungen' }));
-    expect(await screen.findByRole('heading', { name: 'Anleitungen nachschlagen' })).toBeTruthy();
-    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
   it('Laufen shows the run look back only when a review exists', async () => {

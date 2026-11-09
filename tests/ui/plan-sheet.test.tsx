@@ -31,8 +31,9 @@ function show(seed: TrackedRecord[] = [], storage: DraftStorage = memory(), extr
   const view = render(<WorkoutScreen port={f.port} plan={plan} planMeta={meta} account="mira" storage={storage} {...ids} {...extra} />);
   return { f, storage, view };
 }
+const card = async () => within(await screen.findByRole('region', { name: 'Nächstes Training' }));
 const openSheet = async () => {
-  fireEvent.click(await screen.findByRole('button', { name: 'Ansehen und anpassen' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Ansehen' }));
   return screen.findByRole('dialog', { name: 'Nächstes Training' });
 };
 const exercise = (sheet: HTMLElement, title: string) => within(within(sheet).getByRole('region', { name: title }));
@@ -86,14 +87,14 @@ describe('the sheet "Nächstes Training"', () => {
     expect(stored(storage)).toBeNull(); // used up
   });
 
-  test('the card says "Angepasst"; "Änderungen verwerfen" goes back to the plan', async () => {
+  test('the card says "Du hast den Plan angepasst."; "Zurücksetzen" goes back to the plan', async () => {
     const { storage } = show();
     const sheet = await openSheet();
     type(exercise(sheet, 'Latzug').getByLabelText('Wiederholungen Satz 1'), '6');
     fireEvent.click(within(sheet).getByRole('button', { name: 'Fertig' }));
-    await screen.findByText('Angepasst');
-    fireEvent.click(screen.getByRole('button', { name: 'Änderungen verwerfen' }));
-    expect(screen.queryByText('Angepasst')).toBeNull();
+    await screen.findByText('Du hast den Plan angepasst.');
+    fireEvent.click(screen.getByRole('button', { name: 'Zurücksetzen' }));
+    expect(screen.queryByText('Du hast den Plan angepasst.')).toBeNull();
     expect(stored(storage)).toBeNull();
     const again = await openSheet();
     expect((exercise(again, 'Latzug').getByLabelText('Wiederholungen Satz 1') as HTMLInputElement).value).toBe('10');
@@ -105,7 +106,7 @@ describe('the sheet "Nächstes Training"', () => {
     const sheet = await openSheet();
     fireEvent.click(exercise(sheet, 'Face Pull').getByRole('button', { name: 'Übung entfernen Face Pull' }));
     fireEvent.click(within(sheet).getByRole('button', { name: 'Fertig' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Pull starten' }));
+    fireEvent.click((await card()).getByRole('button', { name: 'Training starten' }));
     await screen.findByRole('region', { name: 'Latzug' });
     expect(screen.queryByRole('region', { name: 'Face Pull' })).toBeNull();
   });
@@ -116,12 +117,12 @@ describe('the sheet "Nächstes Training"', () => {
     writeDraft(s, 'mira', 'older:Pull', old);
     const { view } = show([], s);
     await screen.findByText('Deine Anpassungen passen nicht mehr zum aktuellen Plan oder Studio. Darum gilt wieder der Plan von Bo.');
-    expect(screen.queryByText('Angepasst')).toBeNull();
+    expect(screen.queryByText('Du hast den Plan angepasst.')).toBeNull();
     view.unmount();
     show([], s);
-    await screen.findByRole('button', { name: 'Ansehen und anpassen' });
+    await screen.findByRole('button', { name: 'Ansehen' });
     expect(screen.queryByText(/passen nicht mehr zum aktuellen Plan/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Pull starten' }));
+    fireEvent.click((await card()).getByRole('button', { name: 'Training starten' }));
     await screen.findByRole('region', { name: 'Latzug' }); // the plan, not the empty old draft
   });
 
@@ -160,7 +161,7 @@ describe('the sheet "Nächstes Training"', () => {
       body: { id, title: 'T', startMs: NOW - 86_400_000, endMs: NOW - 86_000_000, source: 'pandafit', exercises: [], studio } as LoggedWorkout });
     show([done('b', 'Beta')], s); // now the studio is Beta, the draft was made without one
     await screen.findByText('Deine Anpassungen passen nicht mehr zum aktuellen Plan oder Studio. Darum gilt wieder der Plan von Bo.');
-    expect(screen.queryByText('Angepasst')).toBeNull();
+    expect(screen.queryByText('Du hast den Plan angepasst.')).toBeNull();
     expect(stored(s)).toBeNull();
     sheet = await openSheet();
     expect((exercise(sheet, 'Latzug').getByLabelText('Wiederholungen Satz 1') as HTMLInputElement).value).toBe('10');
@@ -175,7 +176,7 @@ describe('the sheet "Nächstes Training"', () => {
     await waitFor(() => expect(stored(s)?.exercises).toHaveLength(0));
     expect((within(sheet).getByRole('button', { name: 'Training starten' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(within(sheet).getByRole('button', { name: 'Fertig' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Pull starten' }));
+    fireEvent.click((await card()).getByRole('button', { name: 'Training starten' }));
     await screen.findByRole('region', { name: 'Latzug' });
     expect(screen.getByRole('region', { name: 'Face Pull' })).toBeTruthy();
   });
@@ -203,7 +204,7 @@ describe('the sheet "Nächstes Training"', () => {
     const open: LoggedWorkout = { id: 'o', title: 'Push', startMs: NOW - 1000, endMs: null, source: 'pandafit', exercises: [] };
     show([{ kind: 'workout', id: 'o', updatedMs: 1, deleted: false, body: open }], memory(), { openPlan: true });
     await screen.findByRole('button', { name: 'Weitermachen' });
-    expect(screen.queryByRole('button', { name: 'Ansehen und anpassen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ansehen' })).toBeNull();
     expect(screen.queryByRole('dialog', { name: 'Nächstes Training' })).toBeNull();
   });
 });

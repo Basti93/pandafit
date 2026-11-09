@@ -98,7 +98,7 @@ test('starting from the plan prefills the range and saves at once', async () => 
   const plan: GymWorkout = { name: 'Plan', exercises: [{ templateId: 'pf-squat', title: 'Kniebeuge', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal', weightKg: null, reps: null, repRange: { start: 8, end: 12 } }] }] };
   const { port, map } = fakePort();
   render(<WorkoutScreen port={port} plan={plan} {...ids} />);
-  fireEvent.click(await screen.findByRole('button', { name: /Plan starten/ }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Training starten' }));
   expect(((await screen.findByLabelText('Wiederholungen Satz 1')) as HTMLInputElement).value).toBe('8');
   expect(screen.getByText(/8–12/)).toBeTruthy();
   expect(map.get('workout:new-id')).toBeTruthy();
@@ -403,15 +403,14 @@ test('an old open workout shows its date and can be continued, ended or discarde
   const { port, map } = fakePort([rec(open({ startMs: 90_000 })), rec(older)]);
   render(<WorkoutScreen port={port} {...ids} />);
   expect(await screen.findByRole('button', { name: 'Weitermachen' })).toBeTruthy();
-  expect(screen.queryByRole('button', { name: /Training verwerfen/ })).toBeNull(); // Verwerfen lives behind "Mehr"
-  expect(screen.getAllByRole('button', { name: /^Training beenden/ })).toHaveLength(2);
-  fireEvent.click(screen.getByRole('button', { name: /^Mehr zum Training Gestern/ }));
-  fireEvent.click(screen.getAllByRole('button', { name: /^Mehr zum Training$/ })[0]!);
-  expect(screen.getAllByRole('button', { name: /Training verwerfen/ })).toHaveLength(2);
   expect(screen.getAllByText(/Gestartet/).length).toBe(2); // both visible
-  fireEvent.click(screen.getByRole('button', { name: /Training verwerfen Gestern/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Gestern/ })); // the older one is a row card with a small sheet
+  const sheet = await screen.findByRole('dialog');
+  expect(within(sheet).getByRole('button', { name: /^Weitermachen Gestern/ })).toBeTruthy();
+  expect(within(sheet).getByRole('button', { name: /^Training beenden Gestern/ })).toBeTruthy();
+  fireEvent.click(within(sheet).getByRole('button', { name: /Training verwerfen Gestern/ }));
   expect(map.get('workout:old')!.deleted).toBe(false);
-  fireEvent.click(await screen.findByRole('button', { name: 'Ja, verwerfen' }));
+  fireEvent.click(await within(sheet).findByRole('button', { name: 'Ja' }));
   await waitFor(() => expect(map.get('workout:old')!.deleted).toBe(true));
 });
 
@@ -568,10 +567,9 @@ test('a failed discard from the open-workout card does not retry; the workout ca
   try {
     const { port, map, state } = fakePort([rec(open())]);
     render(<WorkoutScreen port={port} {...ids} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Mehr zum Training' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Training verwerfen' }));
     state.failPuts = true;
-    fireEvent.click(await screen.findByRole('button', { name: 'Ja, verwerfen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ja' }));
     await screen.findByRole('status');
     state.failPuts = false;
     await vi.advanceTimersByTimeAsync(30_000);
@@ -684,7 +682,7 @@ test('a plan without weights says "Gewicht nach Gefühl" once, under the title',
   const plan: GymWorkout = { name: 'Plan', exercises: [{ templateId: 'pf-leg-press', title: 'Beinpresse', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal', weightKg: null, reps: 10 }, { type: 'normal', weightKg: null, reps: 10 }] }] };
   const { port } = fakePort();
   render(<WorkoutScreen port={port} plan={plan} {...ids} />);
-  fireEvent.click(await screen.findByRole('button', { name: /Plan starten/ }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Training starten' }));
   expect(await screen.findAllByText('Gewicht nach Gefühl')).toHaveLength(1);
   expect((screen.getByLabelText('Gewicht Satz 1') as HTMLInputElement).placeholder).toBe('–');
 });
@@ -804,10 +802,11 @@ test('the start screen shows what the plan holds before starting', async () => {
     { templateId: 'pf-squat', title: 'Kniebeuge', restS: null, supersetId: null, notes: '', sets: [{ type: 'normal', weightKg: null, reps: null, repRange: { start: 8, end: 12 } }, { type: 'normal', weightKg: null, reps: null, repRange: { start: 8, end: 12 } }] },
   ] };
   render(<WorkoutScreen port={port} plan={plan} {...ids} />);
-  const card = await screen.findByRole('region', { name: 'Heutiger Plan' });
-  expect(within(card).getByText('Bankdrücken, Kniebeuge')).toBeTruthy(); // names only
+  const card = await screen.findByRole('region', { name: 'Nächstes Training' });
+  expect(within(card).getByText('Oberkörper')).toBeTruthy();
+  expect(within(card).getByText(/^Krafttraining, etwa \d+ Minuten, 2 Übungen$/)).toBeTruthy(); // one line, no exercise list
   expect(card.querySelector('li')).toBeNull();
-  expect(within(card).getByRole('button', { name: 'Oberkörper starten' })).toBeTruthy();
+  expect(within(card).getByRole('button', { name: 'Training starten' })).toBeTruthy();
 });
 
 test('the rest timer has +30 s, and the per-exercise Pause select sets the rest', async () => {

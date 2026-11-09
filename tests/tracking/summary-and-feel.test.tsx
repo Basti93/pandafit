@@ -42,7 +42,7 @@ test('before the publish the summary shows no placeholder, and a reload still sh
   fireEvent.click(screen.getByRole('button', { name: 'Fertig' }));
   cleanup();
   render(<WorkoutScreen port={port} {...ids} />);
-  await screen.findByRole('button', { name: /^(Routine oder leeres Training|Leeres Training starten)$/ });
+  await screen.findByRole('button', { name: /^(Anderes Training|Leeres Training starten)$/ });
   expect(screen.queryByRole('region', { name: 'Zusammenfassung' })).toBeNull();
 });
 

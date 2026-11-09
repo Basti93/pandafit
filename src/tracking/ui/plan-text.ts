@@ -1,5 +1,7 @@
 import { HARDNESS_LABEL, SPORT_LABEL, dayLabel, dayParts, minutesText, type PlanDay } from '../../shared/week-plan';
 import type { PlannedRun } from '../../shared/run';
+import { gymMinutes, type TimedWorkout } from '../../shared/duration';
+import type { Exercise } from '../../shared/exercises';
 
 const RUN_KIND: Record<string, string> = { easy: 'locker', long: 'lang', test: 'Test' };
 
@@ -23,3 +25,9 @@ export const planDayLabel = (d: PlanDay) => {
   if (d.also.hardness === d.hardness) return `${SPORT_LABEL[d.sport]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.hardness]}`;
   return `${SPORT_LABEL[d.sport]} ${HARDNESS_LABEL[d.hardness]} + ${SPORT_LABEL[d.also.sport]}${min} ${HARDNESS_LABEL[d.also.hardness]}`;
 };
+
+/** The strength plan in one line: "Krafttraining, etwa 45 Minuten, 6 Übungen". Without exercises: null. Heute and Kraft both use it. */
+export function gymLine(w: TimedWorkout, catalog?: readonly Exercise[]): string | null {
+  const n = w.exercises.length;
+  return n > 0 ? `Krafttraining, etwa ${gymMinutes(w, catalog)} Minuten, ${n} ${n === 1 ? 'Übung' : 'Übungen'}` : null;
+}
