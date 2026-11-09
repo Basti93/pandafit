@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { GarminUploadSettings } from '../../coach/garmin-upload';
+import type { GarminUploadSettings } from '../../shared/garmin-upload';
 import type { AccountStatus, CoachClientMessage, CoachHome, GarminStatus, GarminSyncInfo, HevyStatus } from '../../coach/protocol';
 import { AccountCard } from './AccountCard';
 import { GarminCard } from './GarminCard';

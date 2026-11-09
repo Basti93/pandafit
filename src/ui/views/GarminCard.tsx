@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { uploadSettings, type GarminUploadSettings, type UploadMode } from '../../coach/garmin-upload';
+import { uploadSettings, type GarminUploadSettings, type UploadMode } from '../../shared/garmin-upload';
 import type { CoachClientMessage, GarminStatus, GarminSyncInfo } from '../../coach/protocol';
 
 const REASON: Record<string, string> = {

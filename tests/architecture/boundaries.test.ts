@@ -80,11 +80,6 @@ const rules: Rule[] = [
 
 // Known violations with a reason. Goal: empty.
 const exceptions: { rule: string; from: string; reason: string }[] = [
-  { rule: 'ui and web import coach only as types', from: 'src/ui/views/CoachView.tsx', reason: 'to move (task 8)' },
-  { rule: 'ui and web import coach only as types', from: 'src/ui/views/FeedbackView.tsx', reason: 'to move (task 8)' },
-  { rule: 'ui and web import coach only as types', from: 'src/ui/views/GarminCard.tsx', reason: 'to move (task 8)' },
-  { rule: 'ui and web import coach only as types', from: 'src/ui/views/GarminUploadButton.tsx', reason: 'to move (task 8)' },
-  { rule: 'ui and web import coach only as types', from: 'src/ui/views/TrainingCard.tsx', reason: 'to move (task 8)' },
 ];
 
 describe('architecture boundaries', () => {

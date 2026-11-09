@@ -13,7 +13,7 @@ import { readTasks, type GivenTask, TASKS_GUIDE, zTasks, type CoachId } from './
 import { checkSession, type CoachContext } from './session-limits';
 import { RAMP_ID } from '../shared/session';
 import { cleanDebrief, debriefAnswerSchema, debriefJsonSchema, DEBRIEF_SYSTEM_PROMPT, ruleDebrief } from './debrief';
-import { uploadSettings, withUploadMode, type RideUpload, type UploadMode } from './garmin-upload';
+import { uploadSettings, withUploadMode, type RideUpload, type UploadMode } from '../shared/garmin-upload';
 import type { StrengthWorkout } from './hevy';
 import { strengthPromptData } from './strength';
 import { garminPromptData, readinessFrom, type GarminCoachData } from './readiness';
