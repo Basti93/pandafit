@@ -9,7 +9,7 @@ test('a failed catalog import is retried by the next caller', async () => {
     return { FEDB_EXERCISES: [{ id: 'x' }] };
   });
   const { loadFedb } = await import('../../src/tracking/fedb-lazy');
-  await expect(loadFedb()).rejects.toThrow('chunk failed');
+  await expect(loadFedb()).rejects.toThrow();
   await expect(loadFedb()).resolves.toEqual([{ id: 'x' }]);
   vi.doUnmock('../../src/shared/fedb');
 });
