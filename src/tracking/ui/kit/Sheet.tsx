@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { BackButton } from './Dojo';
 
 /**
  * Full screen on the phone (size "small": a bottom sheet of auto height, at most 70 %, over a dimmed backdrop, for short option lists): title, × top right, the body, and a sticky bottom area for the primary button.
@@ -36,11 +37,11 @@ if (typeof window !== 'undefined') {
  * One close pattern: × top right. A sub-page has "‹ Zurück" at the top left instead: a full sheet opened over another sheet
  * (it closes back to the one below), or a sheet given `onBack` (a page inside the same sheet).
  */
-export function Sheet({ title, onClose, onBack, children, actions, size = 'full', lead, display }: { title: string; onClose: () => void; onBack?: () => void; children: ReactNode; actions?: ReactNode; size?: 'full' | 'small'; /** A small decorative picture before the title (Panda in the coach chat). */ lead?: ReactNode; /** Set the (short) title in the display face. Only for titles without measures or user text. */ display?: boolean }) {
+export function Sheet({ title, onClose, onBack, children, actions, size = 'full', lead, display, page }: { title: string; onClose: () => void; onBack?: () => void; children: ReactNode; actions?: ReactNode; size?: 'full' | 'small'; /** A small decorative picture before the title (Panda in the coach chat). */ lead?: ReactNode; /** Set the (short) title in the display face. Only for titles without measures or user text. */ display?: boolean; /** A page like the chat: a round back button top left instead of ×. */ page?: boolean }) {
   const id = useId();
   // Decided once, when it opens: is there a sheet below it?
   const [over] = useState(() => stack.length > 0);
-  const back = onBack ?? (over && size === 'full' ? onClose : undefined);
+  const back = page ? undefined : onBack ?? (over && size === 'full' ? onClose : undefined);
   const box = useRef<HTMLDivElement>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -81,10 +82,11 @@ export function Sheet({ title, onClose, onBack, children, actions, size = 'full'
       {size === 'small' && <div className="tk-sheet-backdrop" aria-hidden="true" onClick={onClose} />}
       <div className="tk-sheet-panel">
       <header className="tk-sheet-head">
+        {page && <BackButton onClick={onClose} />}
         {back && <button type="button" className="link tk-sheet-back" onClick={back}>‹ Zurück</button>}
         {lead}
         <h2 id={`${id}-t`} className={display ? 'tk-display' : undefined}>{title}</h2>
-        {!back && <button type="button" className="link tk-sheet-x" aria-label="Schließen" onClick={onClose}>×</button>}
+        {!back && !page && <button type="button" className="link tk-sheet-x" aria-label="Schließen" onClick={onClose}>×</button>}
       </header>
       <div className="tk-sheet-body">{children}</div>
       {actions && <footer className="tk-sheet-actions">{actions}</footer>}

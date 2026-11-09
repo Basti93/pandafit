@@ -3,8 +3,10 @@
  *
  * Dojo pieces (Dojo.tsx): Card (the one .card; `soft` for a quieter group), Kicker, BrushTitle, MainCard, Bubble, BoBubble.
  *   MainCard is the only "Jetzt dran" card: every screen shows its main next thing through it, never a hand-built copy.
- *   Role, ask and title come only from ../bo.ts; sentences may name Bo directly. Chat moves to Bubble in Dojo 2. Icons come only through Icon.
- *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Reserved for Dojo 2: RowCard, WeekPath.
+ *   Role, ask and title come only from ../bo.ts; sentences may name Bo directly. Icons come only through Icon.
+ *   Main button = filled (MainCard `primary`), side button = outline (`secondary`). Tag is the small green label with a check.
+ *   RowCard (RowCard.tsx) is the only row card with an icon tile (DESIGN "Zeilenkarte"); Row stays the plain text row without icon (lists, settings). WordTile is the only word tile.
+ *   BackButton is the one back button of pages (round, or a pill with a label); Sheet `page` is for pages like the chat (BackButton instead of ×).
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).
  * Buttons (plain <button> classes), one look per role:
@@ -39,6 +41,7 @@ export { PageHead } from './PageHead';
 export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
 export { ConfirmLink } from './ConfirmLink';
-export { BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard } from './Dojo';
+export { BackButton, BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard, Tag } from './Dojo';
+export { RowCard, WordTile } from './RowCard';
 export { Icon } from './Icon';
 export type { IconName } from './Icon';
