@@ -4,6 +4,7 @@ import type { CoachClientMessage, CoachHome } from '../../coach/protocol';
 import type { ClientMessage } from '../../shared/protocol';
 import { hrMaxFor, zoneBounds, ZONES } from '../../shared/hr-zones';
 import type { Profile } from '../../shared/profiles';
+import { BO } from '../../shared/bo';
 
 const AVATARS = ['🐼', '🐭', '🦊', '🐻', '🐰', '🐨', '🦉', '🐢'];
 const number = (text: string): number => Number(text.trim().replace(',', '.'));
@@ -99,7 +100,7 @@ export const ProfileSettingsView = ({ profile, ftpW, coachConnected, sendRide, s
             Pulszonen{zones.estimated ? ', geschätzt, rund ±10 Schläge' : ''}: {ZONES.map((z, i) => { const b = zoneBounds(z, zones.bpm); return <span key={z}>{i > 0 && ' · '}<ZoneChip zone={z}>{z}</ZoneChip>: {b.fromBpm}–{b.toBpm}</span>; })}
           </p>
         )}
-        {ftpChanged && !invalid.length && <p className="notice" role="status">Mit der neuen FTP plant der Coach deine nächste Einheit neu.</p>}
+        {ftpChanged && !invalid.length && <p className="notice" role="status">Mit der neuen FTP plant {BO.name} deine nächste Einheit neu.</p>}
         {invalid.length > 0 && <p className="notice" role="alert">Bitte prüfen: {invalid.join(', ')}.</p>}
         <p className="muted">Bei Beschwerden wie Brustschmerz oder Schwindel, oder bei bekannter Herz-Kreislauf-Erkrankung vor dem Training ärztlich abklären.</p>
         <div className="row">

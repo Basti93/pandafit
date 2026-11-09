@@ -3,6 +3,7 @@ import type { RideDebrief } from '../../coach/debrief';
 import type { CoachState } from '../../coach/state';
 import type { CoachClientMessage } from '../../coach/protocol';
 import { PandaMark } from './PandaMark';
+import { BO } from '../../shared/bo';
 
 export const coachScreen = (s: CoachState | null): 'feedback' | 'debrief' | 'coach' => {
   if (s?.awaitingFeedback) return 'feedback';
@@ -27,8 +28,8 @@ type CardProps = { debrief: RideDebrief; thinking: boolean; next?: CoachState['n
 /** The coach's words on a ride. Without the AI the rule version stands here, nothing waits for it. */
 export const DebriefCard = ({ debrief, thinking, next, onAnswer, onSkip }: CardProps) => (
   <section className="encouragement debrief" data-testid="debrief">
-    <span className="encouragement-from">Dein Coach</span>
-    {thinking && debrief.source === 'rules' && <p className="muted" role="status">Dein Coach schreibt noch …</p>}
+    <span className="encouragement-from">{BO.title}</span>
+    {thinking && debrief.source === 'rules' && <p className="muted" role="status">{BO.name} schreibt noch …</p>}
     {debrief.motivation && <p className="motivation-words">{debrief.motivation}</p>}
     {debrief.summary && <><h3>So lief es</h3><p>{debrief.summary}</p></>}
     {debrief.tips.length > 0 && <><h3>Tipps</h3><ul>{debrief.tips.map((t) => <li key={t}>{t}</li>)}</ul></>}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { HealthBody, HealthFinding } from '../../shared/health';
 import { cardText, doctorFinding, firstLine, healthRows, healthSources, SLEEP_HINT, standLine, type HealthRow, type HealthRowKey, type HealthSeries } from './health-view';
-import { Card, Kicker, PageHead, Row, RowCard, RowList, Sheet, WordTile } from './kit';
+import { Card, Kicker, PageHead, Row, RowCard, RowList, Sheet, useBackEntry, WordTile } from './kit';
 
 const W = 300, H = 48;
 
@@ -83,6 +83,7 @@ function AreaCard({ row, doctor, onOpen }: { row: HealthRow; doctor?: HealthFind
 
 /** Health as its own page under Woche: read only, one card per area, never a diagnosis. */
 export function HealthPage({ health, onBack }: { health: HealthBody; onBack: () => void }) {
+  useBackEntry(onBack);
   const [open, setOpen] = useState<HealthRowKey | null>(null);
   const [sources, setSources] = useState(false);
   const doctor = doctorFinding(health);

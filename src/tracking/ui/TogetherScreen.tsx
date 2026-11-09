@@ -1,5 +1,5 @@
 import type { TrackedRecord } from '../../shared/records';
-import { PageHead } from './kit';
+import { Card, PageHead, useBackEntry } from './kit';
 import { readTogether, TOGETHER_ID, type TogetherBody, type TogetherPerson } from '../../shared/together';
 
 const WEEK_MS = 7 * 86_400_000;
@@ -27,13 +27,14 @@ const PeakBar = ({ t }: { t: TogetherBody }) => (
 
 /** The Mac's together page for the phone: the same sections, one column. Only time and regularity, no watts. */
 export function TogetherPage({ t, now, onBack }: { t: TogetherBody; now: number; onBack: () => void }) {
+  useBackEntry(onBack);
   const people = ordered(t);
   const max = Math.max(30, ...people.flatMap((p) => p.weeks));
   return (
     <div className="tk-screen tk-gm">
       <PageHead title="Gemeinsam" back={{ label: 'Woche', onClick: onBack }} />
       <p className="muted tk-gm-stand">{standText(t.atMs)}{isThisWeek(t, now) ? '' : '. Neue Zahlen kommen, sobald der Mac wieder an ist.'}</p>
-      <section className="card">
+      <Card>
         <h2>Euer Berg</h2>
         <p>Auf dem Weg zum <b>{t.peak.name}</b></p>
         <PeakBar t={t} />
@@ -44,32 +45,32 @@ export function TogetherPage({ t, now, onBack }: { t: TogetherBody; now: number;
             <li key={p.profileId}><b>{p.name}</b><span>{rides(p.ridesThisWeek)}, {p.minutesThisWeek} Min{p.wordsLearned > 0 ? `, ${p.wordsLearned} Wörter` : ''}</span></li>
           ))}
         </ul>
-      </section>
+      </Card>
       {t.climbing.length > 0 && (
-        <section className="card">
+        <Card>
           <h2>Unterwegs am Berg</h2>
           <ul className="tk-gm-list">
             {t.climbing.map((c, i) => <li key={i}><b>{c.name}</b><span>{c.who}, {c.pct} %</span><div className="tk-gm-bar tk-gm-bar-thin"><i style={{ width: `${Math.max(0, Math.min(100, c.pct))}%` }} /></div></li>)}
           </ul>
-        </section>
+        </Card>
       )}
       {t.climbed.length > 0 && (
-        <section className="card">
+        <Card>
           <h2>Bezwungene Berge</h2>
           <ul className="tk-gm-list tk-gm-stack">
             {t.climbed.map((c, i) => <li key={i}><b>{c.name}</b><span>{c.who}, {new Date(c.atMs).toLocaleDateString('de-DE', LONG)}</span></li>)}
           </ul>
-        </section>
+        </Card>
       )}
       {t.summits.length > 0 && (
-        <section className="card">
+        <Card>
           <h2>Euer Gipfelbuch</h2>
           <ul className="tk-gm-list tk-gm-stack">
             {[...t.summits].reverse().map((s, i) => <li key={i}><b>{s.name}</b><span>gemeinsam erreicht am {new Date(s.atMs).toLocaleDateString('de-DE', LONG)}</span></li>)}
           </ul>
-        </section>
+        </Card>
       )}
-      <section className="card">
+      <Card>
         <h2>Die letzten 12 Wochen</h2>
         <table className="tk-gm-rhythm">
           <tbody>
@@ -86,14 +87,14 @@ export function TogetherPage({ t, now, onBack }: { t: TogetherBody; now: number;
           </tbody>
         </table>
         <p className="muted">Je kräftiger, desto mehr Minuten in der Woche. Rechts ist die Woche vom Stand.</p>
-      </section>
-      <section className="card">
+      </Card>
+      <Card>
         <h2>Zuletzt gefahren</h2>
         {t.recent.length === 0 && <p className="muted">Noch keine Fahrt.</p>}
         <ul className="tk-gm-list">
           {t.recent.map((r, i) => <li key={i}><b>{r.name}</b><span>{shortDate(r.startedAtMs)}, {r.sessionName ?? 'Fahrt'}, {r.minutes} Min</span></li>)}
         </ul>
-      </section>
+      </Card>
     </div>
   );
 }

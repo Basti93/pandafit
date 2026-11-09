@@ -182,3 +182,14 @@ describe('Heute in the Dojo', () => {
     });
   });
 });
+
+describe('Zurück aus dem Chat von Heute', () => {
+  it('closing the chat opened from Heute lands on Heute, not on Woche', async () => {
+    await boot([]);
+    fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensei' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Bo, dein Sensei' });
+    fireEvent.click(within(dialog).getByRole('button', { name: /Zurück|Schließen/ }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Deine Woche' })).toBeNull();
+  });
+});

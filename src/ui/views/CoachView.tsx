@@ -17,20 +17,22 @@ import { SessionFacts, StepList, TrainingCard } from './TrainingCard';
 import { WorkoutBar } from './WorkoutBar';
 import { backupLine } from './backup-line';
 import { openWebApp } from './WebLink';
+import { COACH_LABEL } from '../../shared/tasks';
+import { BO } from '../../shared/bo';
 
 const NOTICE: Record<string, string> = {
-  limit: 'Das Limit deines Claude-Plans ist gerade erreicht. Diese Einheit stammt vom Regelwerk, der Coach versucht es später erneut.',
+  limit: `Das Limit deines Claude-Plans ist gerade erreicht. Diese Einheit stammt vom Regelwerk, die ${COACH_LABEL.bike} versucht es später erneut.`,
   missing: 'Claude wurde auf diesem Mac nicht gefunden. Diese Einheit stammt vom Regelwerk.',
-  timeout: 'Claude hat nicht rechtzeitig geantwortet. Diese Einheit stammt vom Regelwerk, der Coach versucht es später erneut.',
+  timeout: `Claude hat nicht rechtzeitig geantwortet. Diese Einheit stammt vom Regelwerk, die ${COACH_LABEL.bike} versucht es später erneut.`,
   invalid: 'Der Vorschlag von Claude passte nicht zu den Leitplanken. Diese Einheit stammt vom Regelwerk.',
-  failed: 'Claude war gerade nicht erreichbar. Diese Einheit stammt vom Regelwerk, der Coach versucht es später erneut.',
+  failed: `Claude war gerade nicht erreichbar. Diese Einheit stammt vom Regelwerk, die ${COACH_LABEL.bike} versucht es später erneut.`,
 };
 const KEPT: Record<string, string> = {
-  limit: 'Das Limit deines Claude-Plans ist gerade erreicht. Die Einheit bleibt, der Coach berücksichtigt Neues beim nächsten Versuch.',
-  missing: 'Claude wurde auf diesem Mac nicht gefunden. Die Einheit bleibt, bis der Coach wieder planen kann.',
-  timeout: 'Claude hat nicht rechtzeitig geantwortet. Die Einheit bleibt, der Coach versucht es später erneut.',
+  limit: `Das Limit deines Claude-Plans ist gerade erreicht. Die Einheit bleibt, die ${COACH_LABEL.bike} berücksichtigt Neues beim nächsten Versuch.`,
+  missing: `Claude wurde auf diesem Mac nicht gefunden. Die Einheit bleibt, bis die ${COACH_LABEL.bike} wieder planen kann.`,
+  timeout: `Claude hat nicht rechtzeitig geantwortet. Die Einheit bleibt, die ${COACH_LABEL.bike} versucht es später erneut.`,
   invalid: 'Der letzte Vorschlag von Claude passte nicht zu den Leitplanken. Die Einheit bleibt.',
-  failed: 'Claude war gerade nicht erreichbar. Die Einheit bleibt, der Coach versucht es später erneut.',
+  failed: `Claude war gerade nicht erreichbar. Die Einheit bleibt, die ${COACH_LABEL.bike} versucht es später erneut.`,
 };
 const greeting = (): string => {
   const h = new Date().getHours();
@@ -59,7 +61,7 @@ export const CoachView = ({ coachHome, webOrigin, profile, state, thinking, coac
   const isRamp = next?.session.id === RAMP_ID;
   const adjust = (how: 'easier' | 'harder' | 'shorter') => sendCoach({ type: 'adjust', profileId: profile.id, how });
   const library: Choice[] = [
-    ...(state?.alternatives ?? []).map((a) => ({ session: a.session, why: a.why, tag: 'Vom Coach' })),
+    ...(state?.alternatives ?? []).map((a) => ({ session: a.session, why: a.why, tag: `Von ${BO.name}` })),
     ...STARTER_SESSIONS.map((session) => ({ session, why: session.description ?? '', tag: 'Standard' })),
     ...(isRamp ? [] : [{ session: rampTest(ftpW), why: 'Misst deine FTP genauer als die Schätzung. Bis du nicht mehr kannst.', tag: 'Test' }]),
   ];
@@ -72,7 +74,7 @@ export const CoachView = ({ coachHome, webOrigin, profile, state, thinking, coac
         <h1>{profile.avatar && <span aria-hidden="true">{profile.avatar} </span>}{greeting()}, {profile.name}<span className="leaf" aria-hidden="true">🍁</span></h1>
       </div>
       {coachHome && <CoachHomeNote coachHome={coachHome} />}
-      {!state && <p className="notice" role="status">{coachConnected ? 'Coach lädt…' : 'Der Coach ist gerade nicht erreichbar. Du kannst trotzdem fahren.'}</p>}
+      {!state && <p className="notice" role="status">{coachConnected ? `${BO.name} lädt …` : `${BO.name} ist gerade nicht erreichbar. Du kannst trotzdem fahren.`}</p>}
       {backup && <p className="muted" data-testid="ride-backup">{backup}</p>}
       <ReadinessNote readiness={garminReadiness} />
       {reauth && coachConnected && (
@@ -93,7 +95,7 @@ export const CoachView = ({ coachHome, webOrigin, profile, state, thinking, coac
               <p>{shown.why}</p>
               {shownRamp && <p className="muted">Nach dem Warmup wird es jede Minute schwerer. Fahre, bis es nicht mehr geht, und drücke dann „Beenden“. Das Ergebnis wird gespeichert.</p>}
               {!picked && state?.lastError && <p className="notice" role="status">{next?.source === 'rules' ? NOTICE[state.lastError] : KEPT[state.lastError]}</p>}
-              {!picked && thinking && <p className="muted">Der Coach denkt gerade nach. Fahren kannst du trotzdem jederzeit.</p>}
+              {!picked && thinking && <p className="muted">{BO.name} denkt gerade nach. Fahren kannst du trotzdem jederzeit.</p>}
               <StepList session={shown.session} ftpW={ftpW} />
               <div className="row">
                 <button className="go" onClick={() => start(shown.session)}>Los</button>
