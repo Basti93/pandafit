@@ -8,6 +8,7 @@ import type { Session } from '../../src/shared/session';
 
 export const SCALE = 20;
 let nextPort = 7500;
+export const TOKEN = 'c'.repeat(64);
 export const session = (durationS = 100): Session => ({ id: 's', name: 'Chaos', steps: [{ kind: 'erg', durationS, ftpFraction: 0.5, label: 'A' }] });
 export const tempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'chaos-'));
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -16,7 +17,7 @@ export type Svc = { child: ChildProcess; port: number };
 export const startService = async (dir: string): Promise<Svc> => {
   const port = nextPort++;
   const child = spawn('npx', ['tsx', 'src/service/main.ts'], {
-    env: { ...process.env, BIKE_FAKE_BLE: '1', BIKE_DATA_DIR: dir, BIKE_TIME_SCALE: String(SCALE), BIKE_PORT: String(port) },
+    env: { ...process.env, BIKE_FAKE_BLE: '1', BIKE_DATA_DIR: dir, BIKE_TIME_SCALE: String(SCALE), BIKE_PORT: String(port), PANDAFIT_LOCAL_TOKEN: TOKEN },
     stdio: ['pipe', 'pipe', 'inherit'], detached: true,
   });
   await new Promise<void>((resolve) => child.stdout!.once('data', () => resolve()));
@@ -28,7 +29,7 @@ export const hardKill = async (svc: Svc) => {
   await sleep(50);
 };
 export const connect = (port: number): Promise<WebSocket> => new Promise((resolve, reject) => {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/?t=${TOKEN}`);
   ws.once('open', () => resolve(ws));
   ws.once('error', reject);
 });

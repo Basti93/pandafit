@@ -1,3 +1,4 @@
+import { requireLocalToken, servicePort } from '../shared/node/local-token';
 import { FakeBlePort } from './ble/fake-device';
 import { NobleBlePort } from './ble/noble-adapter';
 import { SimBlePort } from './ble/sim-device';
@@ -28,7 +29,8 @@ const service = new RideService({
   onRideChange: (riding) => parent?.postMessage({ riding }),
 });
 const wss = startWsServer(service, {
-  port: Number(process.env.BIKE_PORT ?? 7410),
+  port: servicePort(7410),
+  token: requireLocalToken(),
   devOrigin: process.env.ELECTRON_RENDERER_URL ? new URL(process.env.ELECTRON_RENDERER_URL).origin : undefined,
 });
 setInterval(() => {

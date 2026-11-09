@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { localSocketUrl } from './local-token';
 import { SERVICE_PORT, type ClientMessage, type RecoveryOffer, type StateMessage } from '../shared/protocol';
 
 export const useRide = () => {
@@ -16,7 +17,7 @@ export const useRide = () => {
     let closed = false;
     let timer: ReturnType<typeof setTimeout>;
     const open = () => {
-      const ws = new WebSocket(`ws://127.0.0.1:${SERVICE_PORT}`);
+      const ws = new WebSocket(localSocketUrl(SERVICE_PORT));
       socket.current = ws;
       ws.onopen = () => setConnected(true);
       ws.onmessage = (e) => {

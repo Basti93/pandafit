@@ -86,7 +86,7 @@ const stub = () => {
     static OPEN = 1; readyState = 1; onopen?: () => void; onmessage?: (e: { data: string }) => void; onclose?: () => void;
     private coach: boolean;
     constructor(url: string) {
-      this.coach = url.endsWith('7411');
+      this.coach = /:7411\b/.test(url);
       setTimeout(() => {
         if (this.coach && !w.__coach) { this.readyState = 3; this.onclose?.(); return; }
         this.onopen?.();
