@@ -2,7 +2,7 @@ import { bodyOf } from '../../shared/record-bodies';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { Exercise } from '../../shared/exercises';
 import { mergeCatalog } from '../../shared/catalog';
-import { FEDB_EXERCISES } from '../../shared/fedb';
+import { fedbIfLoaded, loadFedb } from '../fedb-lazy';
 import { EXERCISES } from '../../shared/exercises';
 import type { LoggedWorkout, RecordKind, TrackedRecord } from '../../shared/records';
 import { dateKey } from '../../shared/day-rating';
@@ -72,7 +72,20 @@ export const finishedWorkouts = (records: TrackedRecord[] | null): LoggedWorkout
 /** The one catalog: built-ins plus the person's exercise records (an own record with a built-in's id is an overlay). */
 export function useCatalog(port: TrackingPort): Exercise[] {
   const own = usePortRecords(port, 'exercise').records;
-  return useMemo(() => mergeCatalog(EXERCISES, FEDB_EXERCISES, own ?? []), [own]);
+  const fedb = useFedb();
+  return useMemo(() => mergeCatalog(EXERCISES, fedb ?? [], own ?? []), [own, fedb]);
+}
+
+/** The base catalog, loaded on first use; null while it loads (the catalog then holds the built-ins and own exercises only). */
+export function useFedb(): Exercise[] | null {
+  const [list, setList] = useState<Exercise[] | null>(fedbIfLoaded);
+  useEffect(() => {
+    let live = true;
+    // On a failed load the catalog stays as it is; the next screen tries again.
+    loadFedb().then((l) => { if (live) setList(l); }, () => undefined);
+    return () => { live = false; };
+  }, []);
+  return list;
 }
 
 /** The exercise ids the person's active exclude rules rule out. */

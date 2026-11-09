@@ -1,19 +1,20 @@
 import { useMemo, useState } from 'react';
 import { mergeCatalog } from '../../shared/catalog';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
-import { FEDB_EXERCISES } from '../../shared/fedb';
 import type { TrackedRecord } from '../../shared/records';
 import { isObj } from '../../shared/exercise-links';
 import { changeProposal, confirmProposal, proposalOf, recentLinkOf, rejectProposal, relink, undoLinkAndUnused } from '../exercise-proposals';
 import type { TrackingPort } from '../ports';
 import { ExercisePicker } from './ExercisePicker';
-import { usePortRecords } from './hooks';
+import { loadFedb } from '../fedb-lazy';
+import { usePortRecords, useFedb } from './hooks';
 import { equipmentSuffix, muscleLabel } from './labels';
 
 /** What the coach sorted for the person: proposals to confirm or change, and recent links to change or take back. Nothing when there is nothing. */
 export function ExerciseProposals({ port, now = Date.now, newId }: { port: TrackingPort; now?: () => number; newId?: () => string }) {
   const { records } = usePortRecords(port, 'exercise');
-  const catalog = useMemo(() => mergeCatalog(EXERCISES, FEDB_EXERCISES, records ?? []), [records]);
+  const fedb = useFedb();
+  const catalog = useMemo(() => mergeCatalog(EXERCISES, fedb ?? [], records ?? []), [records, fedb]);
   const [changing, setChanging] = useState<{ r: TrackedRecord; link: boolean } | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -36,7 +37,7 @@ export function ExerciseProposals({ port, now = Date.now, newId }: { port: Track
   async function write(make: (stored: TrackedRecord[], cat: Exercise[]) => TrackedRecord[] | Promise<TrackedRecord[]>, others: TrackedRecord[] = []) {
     try {
       const stored = await port.list('exercise');
-      const cat = mergeCatalog(EXERCISES, FEDB_EXERCISES, stored);
+      const cat = mergeCatalog(EXERCISES, await loadFedb(), stored);
       const made = await make(stored, cat);
       const twins = made.length === 0 ? [] : others.flatMap((o) => { const cur = stored.find((x) => x.id === o.id); return cur && proposalOf(cur) ? rejectProposal(cur, now()) : []; });
       for (const rec of [...made, ...twins]) await port.put(rec);

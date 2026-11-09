@@ -55,7 +55,7 @@ describe('catalog page', () => {
     expect(line(bench.title)).toBeTruthy();
     expect(queryLine(squat.title)).toBeNull();
     search('qqqqzzz');
-    expect(screen.getByText('Nichts gefunden.')).toBeTruthy();
+    expect(await screen.findByText('Nichts gefunden.')).toBeTruthy();
   });
 
   test('"Ausschließen" writes a person rule for the exercise', async () => {

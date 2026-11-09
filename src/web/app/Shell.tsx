@@ -1,8 +1,7 @@
 import { bodyOf } from '../../shared/record-bodies';
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { openStoreCount, subscribeStores } from '../../tracking/registry';
 import { bikeOf, hasBike as bikeVisible, ridesOf } from '../../tracking/ui';
-import { CoachScreen } from '../../tracking/ui/CoachScreen';
 import { runView } from '../../tracking/ui/run-view';
 import { usePortRecords } from '../../tracking/ui/hooks';
 import { shouldShowInstallHint } from '../logic';
@@ -16,11 +15,14 @@ import { Env, HINT_KEY, OPEN_MAX_AGE_MS, get } from './env';
 import { LoginForm } from './LoginForm';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Heute } from './Heute';
-import { Training } from './Training';
 import { usePush, PushCard } from './Push';
 import { Tab, TABS, readMealsOn, saveMealsOn, NO_LINK, COACH_ASK_MS, noSub, visibleTabs, saveEndurance, tabFor } from './tabs';
-import { Ausdauer } from './Ausdauer';
-import { Profil } from './Profil';
+
+// The screens that are not on the first view load on demand (their chunks are in the offline cache like the rest).
+const CoachScreen = lazy(() => import('../../tracking/ui/CoachScreen').then((m) => ({ default: m.CoachScreen })));
+const Training = lazy(() => import('./Training').then((m) => ({ default: m.Training })));
+const Ausdauer = lazy(() => import('./Ausdauer').then((m) => ({ default: m.Ausdauer })));
+const Profil = lazy(() => import('./Profil').then((m) => ({ default: m.Profil })));
 
 export function Shell({ account, env, port, onLogout, onRelogin }: { account: string; env: Env; port: WebPort; onLogout: () => void; onRelogin: (name: string) => void }) {
   // "Weitermachen" on Heute opens the open workout itself, once; "Ansehen und anpassen" opens the sheet "Nächstes Training", once; every other way into Kraft shows the start screen.
@@ -132,12 +134,14 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
         {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
+          <Suspense fallback={<p className="muted" role="status">Wird geladen.</p>}>
           {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goProfile={() => setTab('profil')} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
           {tab === 'training' && <Training entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} />}
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer hasRun={hasRun} hasBike={hasBike} />}
           {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} showPrefs={false} openChat={chatOnOpen} />}
           {tab === 'profil' && <Profil link={link} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}
+          </Suspense>
         </ErrorBoundary>
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>

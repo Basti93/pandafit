@@ -1,10 +1,13 @@
 import fs from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { EXERCISE_IMAGES } from '../../src/shared/exercise-images';
 import { FEDB_EXERCISES } from '../../src/shared/fedb';
+import { loadFedb } from '../../src/tracking/fedb-lazy';
 import { exerciseImages, imageSrc, videoSearchUrl } from '../../src/tracking/media';
 
 describe('exerciseImages', () => {
+  beforeAll(async () => { await loadFedb(); });
+
   it('gives the bundled pictures of an own exercise with their credits', () => {
     const imgs = exerciseImages('pf-bench-press');
     expect(imgs.length).toBeGreaterThan(0);
@@ -49,5 +52,15 @@ describe('videoSearchUrl', () => {
 
   it('uses the German title when there is no English one', () => {
     expect(videoSearchUrl({ title: 'Übung & mehr' })).toBe('https://www.youtube.com/results?search_query=%C3%9Cbung%20%26%20mehr%20exercise%20form');
+  });
+});
+
+describe('exerciseImages before the base catalog is loaded', () => {
+  it('knows only the own exercises (the screens render again when the catalog arrives)', async () => {
+    const { vi } = await import('vitest');
+    vi.resetModules();
+    const fresh = await import('../../src/tracking/media');
+    expect(fresh.exerciseImages(FEDB_EXERCISES.find((e) => (e.images?.length ?? 0) > 0)!.id)).toEqual([]);
+    expect(fresh.exerciseImages('pf-bench-press').length).toBeGreaterThan(0);
   });
 });
