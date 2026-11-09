@@ -7,7 +7,7 @@ import { useWeekDays } from './week-days';
 import { numberWord } from './week-path';
 
 export type SportKey = 'kraft' | 'rad' | 'lauf';
-export type SportWeek = { marks: Mark[]; done: number; planned: number | null; next: string | null };
+export type SportWeek = { marks: Mark[]; done: number; onPlan: number; planned: number | null; next: string | null };
 
 const NAMES: Record<SportKey, { none: string; one: string; many: string; today: string; article: string; dative: string }> = {
   kraft: { none: 'kein Krafttraining', one: 'Ein Krafttraining', many: 'Krafttrainings', today: 'ein Krafttraining', article: 'Das', dative: 'Krafttrainings' },
@@ -23,7 +23,9 @@ export function sportWeekOf({ done, planned, today }: { done: string[]; planned:
   const doneDays = [...new Set(done)].filter((d) => d <= today);
   const rest = [...new Set(planned ?? [])].filter((d) => d >= today && !doneDays.includes(d)).sort();
   const marks: Mark[] = [...doneDays.map((): Mark => 'done'), ...rest.map((d): Mark => (d === today ? 'now' : 'open'))];
-  return { marks, done: doneDays.length, planned: planned === null ? null : new Set(planned).size, next: rest[0] ?? null };
+  // A plan without a day of this sport is no plan. `onPlan` counts the done days that were planned.
+  const plan = planned?.length ? new Set(planned) : null;
+  return { marks, done: doneDays.length, onPlan: plan ? doneDays.filter((d) => plan.has(d)).length : doneDays.length, planned: plan?.size ?? null, next: rest[0] ?? null };
 }
 
 export function sportWeekText(sport: SportKey, w: SportWeek, today: string): string {
@@ -34,13 +36,13 @@ export function sportWeekText(sport: SportKey, w: SportWeek, today: string): str
   else parts.push(`${cap(numberWord(w.done))} ${n.many} hast du geschafft.`);
   if (w.next === today) parts.push(`Heute ist ${n.today} dran.`);
   else if (w.next) parts.push(`${n.article} nächste kommt am ${weekdayOfKey(w.next)}.`);
-  else if (w.planned !== null && w.done >= w.planned) parts.push('Damit ist alles geschafft, was geplant war.');
+  else if (w.planned !== null && w.onPlan >= w.planned) parts.push('Damit ist alles geschafft, was geplant war.');
   return parts.join(' ');
 }
 
 export function sportWeekLabel(sport: SportKey, w: SportWeek): string {
-  if (w.planned === null || w.done > w.planned) return `${w.done} geschafft`;
-  return `${w.done} von ${w.planned} ${NAMES[sport].dative}`;
+  if (w.planned === null) return `${w.done} geschafft`;
+  return `${w.onPlan} von ${w.planned} ${NAMES[sport].dative}`;
 }
 
 export function useSportWeek(port: TrackingPort, nowMs: number, sport: SportKey): SportWeek & { text: string; label: string; loaded: boolean } {

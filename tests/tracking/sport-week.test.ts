@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sportWeekLabel, sportWeekOf, sportWeekText } from '../../src/tracking/ui/sport-week';
 
-const [MO, , MI, DO, FR, SA] = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07'] as [string, string, string, string, string, string];
+const [MO, DI, MI, DO, FR, SA] = ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07'] as [string, string, string, string, string, string];
 
 describe('sport week', () => {
   it('counts done days and marks today and later plan days', () => {
@@ -27,5 +27,20 @@ describe('sport week', () => {
     expect(sportWeekLabel('kraft', sportWeekOf({ done: [MO], planned: [MO, FR], today: MI }))).toBe('1 von 2 Krafttrainings');
     expect(sportWeekLabel('rad', sportWeekOf({ done: [MO], planned: [MO, FR], today: MI }))).toBe('1 von 2 Fahrten');
     expect(sportWeekLabel('lauf', sportWeekOf({ done: [MO], planned: [MO, FR], today: MI }))).toBe('1 von 2 Läufen');
+  });
+  it('a plan without a day of this sport is no plan', () => {
+    const w = sportWeekOf({ done: [], planned: [], today: MI });
+    expect(w.planned).toBeNull();
+    expect(sportWeekText('kraft', w, MI)).toBe('Diese Woche ist noch kein Krafttraining erledigt.');
+    expect(sportWeekLabel('kraft', w)).toBe('0 geschafft');
+  });
+  it('"alles geschafft" needs every planned day done; an extra session does not replace one', () => {
+    const w = sportWeekOf({ done: [DI, MI], planned: [MO, MI], today: DO });
+    expect(sportWeekText('kraft', w, DO)).toBe('Zwei Krafttrainings hast du geschafft.');
+    expect(sportWeekLabel('kraft', w)).toBe('1 von 2 Krafttrainings');
+  });
+  it('a missed day with a later planned day names the next one', () => {
+    const w = sportWeekOf({ done: [], planned: [MO, FR], today: MI });
+    expect(sportWeekText('kraft', w, MI)).toBe('Diese Woche ist noch kein Krafttraining erledigt. Das nächste kommt am Freitag.');
   });
 });
