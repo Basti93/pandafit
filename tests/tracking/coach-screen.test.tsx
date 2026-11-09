@@ -183,14 +183,17 @@ test('declining writes a decline and changes no plan', async () => {
 
 test('the run coach runs are listed under Kommt noch without a week plan, and sit on their day with a plan', async () => {
   const { runFp } = await import('../../src/shared/run');
-  const run = { date: '2026-11-05', kind: 'easy' as const, minutes: 35, hrCap: 150, counts: 'Zeit zählt.', note: null };
+  const run = { date: '2026-11-04', kind: 'easy' as const, minutes: 35, hrCap: 150, counts: 'Zeit zählt.', note: null };
   const runWeek: TrackedRecord = { kind: 'run', id: 'week-2026-11-02', updatedMs: 1, deleted: false, body: {
     type: 'week', week: '2026-11-02', announce: true, atMs: 1, phase: 1, source: 'rules', reason: 'Ruhig.', note: null, runs: [{ ...run, fp: runFp(run), done: null }], garmin: null } };
   const { port } = fakePort([runWeek]);
   render(<CoachScreen port={port} {...env} />);
-  expect((await screen.findByRole('region', { name: 'Tage' })).textContent).toContain('Laufen · 35 Min · locker');
+  const noPlanDays = await screen.findByRole('region', { name: 'Tage' });
+  expect(noPlanDays.textContent).toContain('Laufen · 35 Min · locker');
+  expect(noPlanDays.textContent).not.toContain('Kommt noch'); // today's run belongs under Heute
+  expect(noPlanDays.querySelector('.tk-rowcard.highlight')).toBeTruthy();
   cleanup();
-  const plan: TrackedRecord = { ...takenPlan, body: { ...(takenPlan.body as object), days: weekDates('2026-11-02').map((date, i) => ({ date, sport: i === 3 ? 'run' : 'rest', hardness: 'moderate', fixed: false })) } };
+  const plan: TrackedRecord = { ...takenPlan, body: { ...(takenPlan.body as object), days: weekDates('2026-11-02').map((date, i) => ({ date, sport: i === 2 ? 'run' : 'rest', hardness: 'moderate', fixed: false })) } };
   const two = fakePort([runWeek, plan]);
   render(<CoachScreen port={two.port} {...env} />);
   const days = await screen.findByRole('region', { name: 'Tage' });
@@ -278,4 +281,12 @@ test('a double tap on Übernehmen writes the plan and the note once', async () =
   await new Promise((r) => setTimeout(r, 50));
   expect(records(map, 'chat').filter((r) => (r.body as { takes?: string }).takes === 'c1')).toHaveLength(1);
   expect(records(map, 'weekplan')).toHaveLength(1);
+});
+
+test('Bo shows no "Woche planen" while the waiting proposal is still being read', async () => {
+  const { port } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  expect(screen.queryByRole('button', { name: 'Woche planen' })).toBeNull();
+  await screen.findByRole('button', { name: 'Vorschlag ansehen' });
+  expect(screen.queryByRole('button', { name: 'Woche planen' })).toBeNull();
 });

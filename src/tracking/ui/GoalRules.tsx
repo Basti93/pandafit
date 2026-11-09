@@ -43,7 +43,7 @@ const GOAL_SENTENCE: Record<Strength, string> = { muscle: 'Du baust Muskeln auf'
 
 /** The goal as a sentence for Woche: "Du baust Muskeln auf, vor allem Rücken und Schultern." */
 export function goalSentence(goal: { strength: Strength; focus: readonly string[] }): string {
-  const groups = focusLabel(goal.focus).split(', ').filter(Boolean);
+  const groups = goal.focus.map((g) => MUSCLE_TARGETS[g as (typeof FOCUS_GROUPS)[number]]?.label ?? g);
   const named = groups.length > 1 ? `${groups.slice(0, -1).join(', ')} und ${groups[groups.length - 1]}` : groups[0];
   return `${GOAL_SENTENCE[goal.strength]}${named ? `, vor allem ${named}` : ''}.`;
 }

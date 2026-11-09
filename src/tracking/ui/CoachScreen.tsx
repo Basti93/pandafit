@@ -71,19 +71,21 @@ export function CoachScreen({ port, now, newId, openChat = false }: { port: Trac
   const todayDone = todayRow && todayRow.done.length > 0;
   const todayOpen = todayRow?.plan ?? null;
   const coming = current && !spontaneous ? dayRows.filter((r) => r.date > today && r.plan && !isRest(r)) : [];
-  const comingRuns = noPlan ? runs.filter((r) => r.date >= today) : [];
+  const comingRuns = noPlan ? runs.filter((r) => r.date > today) : [];
   const rest = current && !spontaneous ? restDaysText(dayRows, today) : null;
-  const showToday = !!todayRow && (todayDone || todayOpen !== null);
+  const todayRuns = noPlan ? runs.filter((r) => r.date === today) : [];
+  const showToday = (!!todayRow && (todayDone || todayOpen !== null)) || todayRuns.length > 0;
+  const boReady = loaded && chat !== null;
   const anyDays = doneRows.length > 0 || showToday || coming.length > 0 || comingRuns.length > 0;
   const open = (date: string) => () => setDayDate(date);
 
   // Bo's bubble: the first line that fits. The main button is the next step, the secondary one always opens the chat.
-  const main = asking ? null : proposals.length > 0 ? { label: 'Vorschlag ansehen', to: 'proposals' as const } : loaded && noPlan ? { label: 'Woche planen', to: 'chat' as const } : null;
-  const boText = asking ? BO_LINES.thinking : proposals.length > 0 ? BO_LINES.proposal : loaded && noPlan ? BO_LINES.weekEmpty : BO_LINES.weekCalm;
+  const main = asking ? null : proposals.length > 0 ? { label: 'Vorschlag ansehen', to: 'proposals' as const } : boReady && noPlan ? { label: 'Woche planen', to: 'chat' as const } : null;
+  const boText = asking ? BO_LINES.thinking : proposals.length > 0 ? BO_LINES.proposal : boReady && noPlan ? BO_LINES.weekEmpty : BO_LINES.weekCalm;
   const boActions = (
     <>
-      {main && <button key="main" type="button" className="primary" onClick={() => setSheet(main.to)}>{main.label}</button>}
-      <button key="ask" type="button" className="secondary" onClick={() => setSheet('chat')}>{BO.ask}</button>
+      {main && <button type="button" className="primary" onClick={() => setSheet(main.to)}>{main.label}</button>}
+      <button type="button" className="secondary" onClick={() => setSheet('chat')}>{BO.ask}</button>
     </>
   );
 
@@ -112,8 +114,9 @@ export function CoachScreen({ port, now, newId, openChat = false }: { port: Trac
           {showToday && (
             <div className="tk-daysection">
               <h3 className="tk-section">Heute</h3>
-              {todayDone && <RowCard flat highlight={!todayOpen} lead={dayName(today).slice(0, 2)} icon={KIND_ICON[todayRow!.kinds[0] ?? 'andere']} title={todayRow!.done.join(' + ')} end="done" onClick={open(today)} />}
+              {todayDone && <RowCard flat highlight={!todayOpen && todayRuns.length === 0} lead={dayName(today).slice(0, 2)} icon={KIND_ICON[todayRow!.kinds[0] ?? 'andere']} title={todayRow!.done.join(' + ')} end="done" onClick={open(today)} />}
               {todayOpen && <RowCard flat highlight lead={todayDone ? undefined : dayName(today).slice(0, 2)} icon={SPORT_ICON[todayOpen.sport]} title={isRest(todayRow!) ? 'Ruhetag' : planTitle(todayRow!)} sub={extraRuns(todayRow!)} onClick={open(today)} />}
+              {todayRuns.map((r) => <RowCard key={r.kind} flat highlight={!todayDone} lead={todayDone ? undefined : dayName(today).slice(0, 2)} icon="lauf" title={runText(r)} onClick={open(today)} />)}
             </div>
           )}
           {(coming.length > 0 || comingRuns.length > 0) && (

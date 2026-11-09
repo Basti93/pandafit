@@ -107,13 +107,8 @@ button.pm-person:not(.on) .pm-avatar { opacity: .45; }
 .pm-source a, .pm-rowtitle small a { color: var(--muted); }
 .pm-asked { margin: 0; color: var(--muted); font-size: var(--text-s); }
 
-/* Gemeinsam: the compact card on Heute and the full page. Time and regularity only, the same look for everyone. */
+/* Gemeinsam: the page on Woche. Time and regularity only, the same look for everyone. */
 .tk-screen .gm-label { margin: 0; }
-.gm-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .4rem; }
-.gm-person { display: flex; flex-direction: column; padding: .4rem .6rem; border-radius: var(--radius-m); background: var(--bg); }
-.gm-person span { color: var(--muted); font-size: var(--text-s); }
-.gm-recent { display: flex; flex-direction: column; gap: .1rem; font-size: var(--text-s); color: var(--muted); }
-.gm-peak { font-size: var(--text-m); }
 .gm-bar { position: relative; height: .7rem; border-radius: var(--radius-pill); background: var(--bg); overflow: hidden; border: 1px solid var(--line); }
 .gm-bar i { display: block; height: 100%; background: var(--good); border-radius: var(--radius-pill); }
 .gm-bar-thin { height: .45rem; grid-column: 1 / -1; }
