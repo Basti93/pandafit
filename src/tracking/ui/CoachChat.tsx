@@ -72,10 +72,12 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   const monday = mondayOf(localDayKey(now()));
   // The week plan is the biggest decision: it comes first (useOpenProposals sorts it so).
   const open = useOpenProposals(port, now());
-  const first = open[0];
-  const rest = open.slice(1);
+  const window = visible.slice(-shown);
+  // The first open proposal stands in its bubble; if that message is older than the shown ones, it waits behind the strip with the others.
+  const first = open[0] && window.some((m) => m.id === open[0]!.id) ? open[0] : undefined;
+  const rest = open.filter((m) => m.id !== first?.id);
   const { undo, error: undoError } = useProposalActions(port, now, newId);
-  useEffect(() => { if (rest.length === 0) setMoreOpen(false); }, [rest.length]);
+  const showMore = moreOpen && rest.length > 0;
   const scroller = () => endRef.current?.closest('.tk-sheet-body') as HTMLElement | null;
 
   // Opening and a new message scroll to the end; loading older ones keeps what the person was looking at where it was.
@@ -123,7 +125,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
       {notes.length > 0 && <RowCard icon="aenderung" kicker="Zuletzt geändert" title={noteText(notes[0]!)} onClick={() => setNotesOpen(true)} />}
       <section className="tk-chat" aria-label="Unterhaltung mit Bo">
         {visible.length > shown && <button type="button" className="link" onClick={older}>Frühere Nachrichten zeigen</button>}
-        {visible.slice(-shown).map((m, i, list) => (
+        {window.map((m, i, list) => (
           <Fragment key={m.id}>
             {(i === 0 || localDayKey(list[i - 1]!.atMs) !== localDayKey(m.atMs)) && <p className="tk-daypill" role="separator">{dayHeading(m.atMs, now())}</p>}
             <ChatBubble m={m}>
@@ -140,7 +142,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
         {waiting && <ChatNote>{now() - waiting.atMs > STALE_MS ? 'Darauf kam keine Antwort mehr. Schreib gern nochmal.' : now() - waiting.atMs > SLOW_MS ? 'Bo antwortet, sobald er wieder erreichbar ist.' : 'Gesendet. Bo antwortet, sobald er kann.'}</ChatNote>}
         <div ref={endRef} />
       </section>
-      {moreOpen && <ProposalsSheet port={port} now={now} newId={newId} entries={rest} onClose={() => setMoreOpen(false)} />}
+      {showMore && <ProposalsSheet port={port} now={now} newId={newId} entries={rest} onClose={() => setMoreOpen(false)} />}
       {notesOpen && (
         <Sheet size="small" title="Zuletzt geändert" onClose={() => setNotesOpen(false)}>
           <ul className="tk-changes" aria-label="Zuletzt geändert">

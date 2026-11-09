@@ -205,7 +205,7 @@ test('the rider can say no, and undo while it is not used', async () => {
   const nein = await screen.findAllByRole('button', { name: 'Nein danke' });
   fireEvent.click(nein[0]!);
   await waitFor(() => expect(stateOf(map, 'chg-m1')).toBe('declined'));
-  fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Übernehmen' }));
   await waitFor(() => expect(stateOf(map, 'chg-m2')).toBe('taken'));
   fireEvent.click(await screen.findByRole('button', { name: 'Rückgängig' }));
   await waitFor(() => expect(stateOf(map, 'chg-m2')).toBe('undone'));

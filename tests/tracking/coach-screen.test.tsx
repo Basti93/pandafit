@@ -218,6 +218,35 @@ test('Escape in the proposal sheet closes only that sheet: the chat and its comp
   await openMoreProposals();
   fireEvent.keyDown(document, { key: 'Escape' });
   await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Vorschl(ag|äge)$/ })).toBeNull());
+  // answering the last proposal in the sheet closes it
+  const sheet = await openMoreProposals();
+  fireEvent.click(within(sheet).getByRole('button', { name: 'Nein danke' }));
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Vorschlag' })).toBeNull());
   expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensei' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
   expect(records(map, 'weekplan')).toHaveLength(0); // looking is not taking
+});
+
+test('an open proposal older than the shown messages is still reachable behind the strip', async () => {
+  const many = Array.from({ length: 31 }, (_, i): TrackedRecord => ({ kind: 'chat', id: `n${String(i).padStart(2, '0')}`, updatedMs: 10 + i, deleted: false, body: { role: 'rider', text: `Nachricht ${i}`, atMs: NOW - 400 + i } }));
+  const { port } = fakePort([riderMsg, coachMsg, ...many]);
+  render(<CoachScreen port={port} {...env} />);
+  const chat = within(await openChat());
+  const strip = await chat.findByRole('button', { name: /^Bo hat noch einen weiteren Vorschlag/ });
+  expect(chat.queryByRole('group', { name: /^Vorschlag Wochenplan/ })).toBeNull();
+  fireEvent.click(strip);
+  const sheet = within(await screen.findByRole('dialog', { name: 'Vorschlag' }));
+  expect(sheet.getByRole('group', { name: /^Vorschlag Wochenplan/ })).toBeTruthy();
+});
+
+test('a double tap on Übernehmen writes the plan and the note once', async () => {
+  const { port, map } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  await openChat();
+  const btn = await proposalIn().then((b) => within(b).getByRole('button', { name: 'Übernehmen' }));
+  fireEvent.click(btn);
+  fireEvent.click(btn);
+  await waitFor(() => expect(records(map, 'chat').filter((r) => (r.body as { takes?: string }).takes === 'c1')).toHaveLength(1));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(records(map, 'chat').filter((r) => (r.body as { takes?: string }).takes === 'c1')).toHaveLength(1);
+  expect(records(map, 'weekplan')).toHaveLength(1);
 });

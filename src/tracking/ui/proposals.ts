@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { chatThread, type ChatEntry, type ChatMessage } from '../../shared/chat';
 import { localDayKey } from '../../shared/dates';
 import { mondayOf, type WeekProposal } from '../../shared/week-plan';
@@ -23,25 +23,32 @@ export type WeekEntry = ChatEntry & { proposal: WeekProposal };
 /** Take, undo and decline a proposal. Each writes the same records as before the chat was rebuilt; `error` holds the last refusal or failure. */
 export function useProposalActions(port: TrackingPort, now: () => number, newId: () => string): { take: (m: WeekEntry) => Promise<void>; undo: (m: WeekEntry) => Promise<void>; decline: (m: ChatEntry) => void; error: string | null } {
   const [error, setError] = useState<string | null>(null);
+  // One take or undo at a time: a fast double tap must not write twice.
+  const busy = useRef(false);
+  const once = (f: (m: WeekEntry) => Promise<void>) => async (m: WeekEntry) => {
+    if (busy.current) return;
+    busy.current = true;
+    try { await f(m); } finally { busy.current = false; }
+  };
   const write = async (m: ChatMessage) => {
     setError(null);
     try { await port.put({ kind: 'chat', id: newId(), updatedMs: now(), deleted: false, body: m }); return true; } catch { setError('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.'); return false; }
   };
-  const take = async (m: WeekEntry) => {
+  const take = once(async (m: WeekEntry) => {
     setError(null);
     try {
       const res = await takeWeekPlan(port, { proposal: m.proposal, changeId: m.id, shownMs: m.atMs, now: now() });
       if (!res.ok) { setError(res.reason); return; }
       await write({ role: 'rider', text: 'Übernommen.', atMs: now(), takes: m.id });
     } catch { setError('Der Plan konnte nicht gespeichert werden. Versuch es gleich nochmal.'); }
-  };
-  const undo = async (m: WeekEntry) => {
+  });
+  const undo = once(async (m: WeekEntry) => {
     setError(null);
     try {
       const res = await undoWeekPlan(port, { proposal: m.proposal, changeId: m.id, now: now() });
       if (res.ok) await write({ role: 'rider', text: 'Wochenplan rückgängig gemacht.', atMs: now(), undoes: m.id }); else setError(res.reason);
     } catch { setError('Der Plan konnte nicht gespeichert werden. Versuch es gleich nochmal.'); }
-  };
+  });
   const decline = (m: ChatEntry) => void write({ role: 'rider', text: 'Nein danke.', atMs: now(), declines: m.id });
   return { take, undo, decline, error };
 }

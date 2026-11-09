@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 /** The Woche page has a row "Coach" that opens the chat sheet; without a week plan the button "Woche planen" does. */
 export async function openChat(): Promise<HTMLElement> {
@@ -10,6 +10,7 @@ export async function openChat(): Promise<HTMLElement> {
 /** The first open proposal stands in Bo's bubble in the chat; this finds it there (a week plan is a group, the others are their cards). */
 export async function proposalIn(chat?: HTMLElement): Promise<HTMLElement> {
   const bubble = await within(chat ?? (await screen.findByRole('dialog', { name: 'Bo, dein Sensei' }))).findByRole('button', { name: 'Übernehmen' });
+  await waitFor(() => expect((bubble as HTMLButtonElement).disabled).toBe(false)); // the card reads its records first
   return (bubble.closest('.tk-bubble') as HTMLElement | null) ?? bubble;
 }
 

@@ -25,7 +25,7 @@ export function ProposalCard({ port, now, newId, m }: Env & { m: ChatEntry }) {
   const p = m.proposal;
   return (
     <div className="tk-proposal" role="group" aria-label={`Vorschlag Wochenplan ab ${dayMonthOfKey(p.weekStart)}`}>
-      <p><b>Mein Vorschlag für die Woche ab {dayMonthOfKey(p.weekStart)}.</b></p>
+      <p><b>Für die Woche ab {dayMonthOfKey(p.weekStart)} schlage ich dir das vor:</b></p>
       <Week brief rows={planRows(p.days)} label={`Vorschlag für die Woche ab ${shortDateOfKey(p.weekStart)}`} />
       {m.warnings && m.warnings.length > 0 && <p className="tk-note">Das ist mehr, als unsere Regeln für Erholung empfehlen: {m.warnings.join(' ')}</p>}
       {error && <p role="alert" className="tk-note">{error}</p>}

@@ -172,7 +172,6 @@
 .tk-week li { padding: .3rem var(--space-2); border-radius: var(--radius-s); }
 .tk-week li.tk-today { color: var(--text); border-radius: 0; box-shadow: inset 3px 0 0 var(--accent); }
 .tk-chat { display: flex; flex-direction: column; gap: .6rem; }
-.tk-proposal { margin-top: .4rem; }
 .tk-chat-input textarea { flex: 1; min-height: 2.6rem; font: inherit; border-radius: var(--radius-xs); padding: var(--space-2); background: var(--field); color: var(--text); border: 1px solid var(--line); }
 .tk-progress { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-progress dt { font-weight: 700; }
@@ -268,7 +267,7 @@
 .tk-changes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; font-size: var(--text-m); }
 .tk-histline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
 .tk-histline button.link { padding: var(--space-1) 0; }
-.tk-sheet .tk-chat { gap: var(--space-2); flex: 1; }
+.tk-sheet .tk-chat { gap: var(--space-3); flex: 1; }
 .tk-pins { display: flex; flex-direction: column; gap: var(--space-2); max-height: 40vh; overflow-y: auto; }
 .tk-pin p { margin: 0; }
 .tk-pin { display: flex; flex-direction: column; gap: .3rem; padding: var(--space-2) .8rem; border-radius: var(--radius-m); border: 1px solid var(--accent); background: var(--card); }
@@ -277,7 +276,7 @@
 .tk-pin .tk-nextchange { margin: 0; }
 .tk-chat-form { display: flex; gap: var(--space-2); align-items: flex-end; }
 .tk-chat-form textarea { flex: 1; min-width: 0; resize: none; field-sizing: content; min-height: 48px; max-height: 7rem; }
-.tk-screen button.tk-send { flex: none; width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: var(--radius-round); font-size: var(--text-xl); line-height: 1; }
+.tk-screen button.tk-send { flex: none; width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: var(--radius-round); line-height: 1; }
 
 .tk-rowbtn:has(.tk-ellipsis) .tk-row-title { flex: none; white-space: nowrap; }
 /* Heute: chips for "Heute nur", the quiet "Etwas anderes heute?" toggle. */
@@ -509,7 +508,7 @@
 .tk-sheet-head:has(.tk-pandahead-mini) { gap: var(--space-3); }
 .tk-sheet-head .tk-pandahead-mini { width: 3.4rem; }
 .tk-pin { border-radius: var(--radius-card); border-width: 1px; padding: var(--space-3) var(--space-4); }
-.tk-chat-form textarea { border-radius: 1.5rem; padding: .7rem var(--space-4); }
+.tk-chat-form textarea { border-radius: var(--radius-pill); padding: .7rem var(--space-4); }
 /* Kraft: the next training and the open training lead with an accent edge, like the other lead cards. */
 .tk-screen .card.tk-plan-preview, .tk-screen .card.tk-open { border-top: 4px solid var(--accent); }
 .tk-screen .card.tk-summary { border-top: 4px solid var(--good); }
@@ -614,7 +613,6 @@
 .tk-sheet-titles { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tk-sheet-titles h2 { flex: none; }
 .tk-sheet-sub { margin: 0; font-size: var(--text-s); color: var(--muted); }
-.tk-chat { gap: var(--space-3); }
 .tk-chat .tk-bo { padding-right: var(--space-4); }
 .tk-chat .tk-bo .tk-bo-portrait { width: 2.4rem; align-self: flex-end; background: none; }
 .tk-chat .tk-bubble.right { margin-left: 3rem; }
@@ -628,5 +626,4 @@
 .tk-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .6; }
 @media (prefers-reduced-motion: no-preference) { .tk-typing i { animation: tk-dot 1.2s infinite ease-in-out; } .tk-typing i:nth-child(2) { animation-delay: .2s; } .tk-typing i:nth-child(3) { animation-delay: .4s; } }
 @keyframes tk-dot { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }
-.tk-screen button.tk-send.primary { border-radius: var(--radius-round); display: inline-flex; align-items: center; justify-content: center; }
-.tk-chat-form textarea { border-radius: 24px; }
+.tk-screen button.tk-send.primary { display: inline-flex; align-items: center; justify-content: center; }
