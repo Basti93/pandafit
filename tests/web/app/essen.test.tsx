@@ -65,6 +65,8 @@ describe('Essen on the phone', () => {
     const { sockets, openLive } = fakeSockets();
     const a = await boot({ account: 'anna', seed: [], openLive });
     fireEvent.click(await screen.findByRole('button', { name: 'Profil' }));
+    // Profil loads on demand: wait for it, so the socket below is its link and not the short one-time question at start.
+    await screen.findByRole('group', { name: 'Darstellung' });
     // The coach's socket subscribes; its state says the meal plan is on.
     const link = await subscribed(sockets);
     expect(screen.queryByRole('button', { name: 'Essen' })).toBeNull();
