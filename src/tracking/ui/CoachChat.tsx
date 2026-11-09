@@ -77,6 +77,8 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   const first = open[0] && window.some((m) => m.id === open[0]!.id) ? open[0] : undefined;
   const rest = open.filter((m) => m.id !== first?.id);
   const { undo, error: undoError } = useProposalActions(port, now, newId);
+  // The sheet never opens by itself: once the last waiting proposal is answered, forget that it was open.
+  if (moreOpen && rest.length === 0) setMoreOpen(false);
   const showMore = moreOpen && rest.length > 0;
   const scroller = () => endRef.current?.closest('.tk-sheet-body') as HTMLElement | null;
 

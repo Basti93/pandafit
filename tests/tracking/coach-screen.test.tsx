@@ -212,7 +212,7 @@ test('a waiting proposal gets a card under the week with Ansehen, which opens th
 });
 
 test('Escape in the proposal sheet closes only that sheet: the chat and its composer stay open and no plan changes', async () => {
-  const { port, map } = fakePort([riderMsg, coachMsg, ruleMsg, proposedChange]);
+  const { port, map, notify } = fakePort([riderMsg, coachMsg, ruleMsg, proposedChange]);
   render(<CoachScreen port={port} {...env} />);
   await openChat();
   await openMoreProposals();
@@ -222,6 +222,12 @@ test('Escape in the proposal sheet closes only that sheet: the chat and its comp
   const sheet = await openMoreProposals();
   fireEvent.click(within(sheet).getByRole('button', { name: 'Nein danke' }));
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Vorschlag' })).toBeNull());
+  // a proposal that arrives later waits behind the strip; the sheet does not open by itself
+  map.set('chat:c3', { ...ruleMsg, id: 'c3', updatedMs: 9, body: { ...(ruleMsg.body as object), nextChange: 'chg-m3', atMs: NOW - 100 } });
+  map.set('change:chg-m3', { ...proposedChange, id: 'chg-m3' });
+  notify();
+  await screen.findByRole('button', { name: /^Bo hat noch/ });
+  expect(screen.queryByRole('dialog', { name: /^Vorschl(ag|äge)$/ })).toBeNull();
   expect(within(screen.getByRole('dialog', { name: 'Bo, dein Sensei' })).getByLabelText('Nachricht an Bo')).toBeTruthy();
   expect(records(map, 'weekplan')).toHaveLength(0); // looking is not taking
 });
