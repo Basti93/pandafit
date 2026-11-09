@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import type { IncomingMessage } from 'node:http';
 import path from 'node:path';
-import { logServerErrors, fastifyLogger } from '../../shared/node/log';
+import { createLogger, logServerErrors, fastifyLogger } from '../../shared/node/log';
 import { ACCOUNT_ID, startHeartbeat, tokenDigest, tokenMatches } from '../../shared/node/server-kit';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { WebSocketServer, type RawData, type WebSocket } from 'ws';
@@ -17,6 +17,8 @@ import type { AccountCoach, Household } from './household';
 import { LIVE_TYPES, type LiveMessage } from '../../shared/live';
 import { LiveChannel } from './live';
 import { MAX_ITEM_BYTES, MigrationError, parseManifest } from './migration';
+
+const dropLog = createLogger('coach-queue');
 
 export type CoachServerOptions = {
   household: Household; internalToken: string; nowMs?: () => number;
@@ -355,9 +357,10 @@ export const buildCoachServer = (opts: CoachServerOptions): FastifyInstance => {
           // Handled before and its ack lost: acked again, never applied twice.
           if (qid !== null && qidsOf(a).has(qid)) return;
           const inner = m.message;
-          if (typeof m.atMs !== 'number' || !Number.isFinite(m.atMs) || !isObj(inner)) return;
-          if (typeof inner.type !== 'string' || !QUEUEABLE.has(inner.type as CoachClientMessage['type'])) return;
-          if (parseCoachClientMessage(inner) === null) return;
+          const dropInvalid = (): void => { dropLog.warn('queued message invalid, dropped', { type: isObj(inner) && typeof inner.type === 'string' ? inner.type.slice(0, 40) : null, qid }); };
+          if (typeof m.atMs !== 'number' || !Number.isFinite(m.atMs) || !isObj(inner)) return dropInvalid();
+          if (typeof inner.type !== 'string' || !QUEUEABLE.has(inner.type as CoachClientMessage['type'])) return dropInvalid();
+          if (parseCoachClientMessage(inner) === null) return dropInvalid();
           // A clock running ahead on the client never makes a change newer than now.
           apply(c, a, inner, Math.min(m.atMs, now), true);
         } finally {

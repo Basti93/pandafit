@@ -8,7 +8,10 @@ let loaded: Exercise[] | null = null;
 let pending: Promise<Exercise[]> | null = null;
 
 export function loadFedb(): Promise<Exercise[]> {
-  pending ??= import('../shared/fedb').then((m) => (loaded = m.FEDB_EXERCISES));
+  pending ??= import('../shared/fedb').then((m) => (loaded = m.FEDB_EXERCISES), (e: unknown) => {
+    pending = null; // a failed load (network) is retried by the next caller
+    throw e;
+  });
   return pending;
 }
 
