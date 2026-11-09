@@ -95,3 +95,42 @@ test('every clip has a held pose inside the clip, away from the rest pose at its
     expect(f, name).toBeLessThan(clip.frames);
   }
 });
+
+test('a held activity (knitting, reading) keeps moving after the glide; a held gesture stays still', async () => {
+  const frames = canvasFrames();
+  const panda = await mountPanda(frames.canvas);
+  panda.hold('greet', 1000);
+  frames.frame(0);
+  frames.frame(1000);
+  expect(frames.scheduled()).toBe(0);
+
+  for (const activity of ['knit', 'read'] as const) {
+    panda.hold(activity, 1000);
+    frames.frame(10_000);
+    frames.frame(11_000);
+    const seen = new Set<string>();
+    for (let t = 11_000; t <= 16_000; t += 250) {
+      frames.frame(t);
+      seen.add(JSON.stringify(frames.snapshot()));
+    }
+    expect(frames.scheduled(), activity).toBe(1);
+    expect(seen.size, activity).toBeGreaterThan(5);
+  }
+  panda.dispose();
+  expect(frames.scheduled()).toBe(0);
+});
+
+test('an activity loop runs forth and back over its span, so it never jumps', async () => {
+  const { ACTIVITY_SPANS, pingPong } = await import('../../src/tracking/ui/panda-canvas');
+  const { pandaMotion } = await import('../../src/tracking/ui/panda-motion');
+  for (const [name, [from, to]] of Object.entries(ACTIVITY_SPANS)) {
+    const clip = pandaMotion.clips[name as PandaGesture];
+    expect(from, name).toBeGreaterThan(0);
+    expect(to, name).toBeLessThan(clip.frames);
+  }
+  expect(pingPong(0, 10, 20)).toBe(10);
+  expect(pingPong(5, 10, 20)).toBe(15);
+  expect(pingPong(10, 10, 20)).toBe(20);
+  expect(pingPong(15, 10, 20)).toBe(15);
+  expect(pingPong(20, 10, 20)).toBe(10);
+});

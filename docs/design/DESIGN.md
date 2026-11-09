@@ -18,6 +18,7 @@ Die Bilder dazu: `docs/design/moodboard/*.html` im Browser öffnen (abgenommene 
 - Bo sitzt auf Heute in seinem **Bambusnest**: gebogene Halme als Laube, geflochtene Schale, Laterne an einem Halm.
 - **Bos Orte:** Jede Pose hat eine kleine Szene (Moodboard `bos-orte.html`). Hinter Bo liegt immer ein warmer Lichtschein, damit sein dunkles Fell auf dunklem Grund lesbar bleibt.
 - Jeder Ort legt fest, welche Posen zu ihm passen (`PLACE_POSES` in `kit/BoScene.tsx`). Im Nest sitzt Bo; Posen im Stehen mit eigenem Boden (Rad, Laufen, Yoga) zeigt er erst an ihren eigenen Orten (Dojo 5), bis dahin begrüßt er im Nest.
+- Bo gleitet beim Öffnen einer Seite ruhig in seine Pose. Gesten (Begrüßen, Nicken, Zuhören) hält er still. Tätigkeiten (Stricken, Lesen, `ACTIVITY_SPANS` in `panda-canvas.ts`) macht er ruhig weiter, vor und zurück ohne Sprung.
 
 | Pose | Wann | Ort |
 |---|---|---|

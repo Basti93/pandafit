@@ -3,7 +3,7 @@ import { pandaMotion } from './panda-motion';
 export type PandaGesture = 'greet' | 'listen' | 'nod' | 'breathe' | 'flex' | 'bike' | 'run' | 'yoga' | 'read' | 'knit';
 export type PandaHandle = {
   play(gesture: PandaGesture): void;
-  /** Glide from the rest pose into the clip's strongest pose over `ms`, then keep it until dispose. */
+  /** Glide from the rest pose into the clip's strongest pose over `ms`, then keep it until dispose. An activity (ACTIVITY_SPANS) glides into the start of its span and then keeps doing it. */
   hold(gesture: PandaGesture, ms: number): void;
   dispose(): void;
 };
@@ -49,6 +49,16 @@ function valueAt(keys: Key[], frame: number): number {
 
 // How far a pose is from rest: positions in px, rotation, scale and opacity weighted so that each counts.
 const WEIGHT = [1, 40, 60, 60, 30];
+
+/** Activities Bo keeps doing while he holds them: the clip frames between settling in and letting go. Gestures (greet, nod …) stay still. */
+export const ACTIVITY_SPANS: Partial<Record<PandaGesture, readonly [from: number, to: number]>> = { knit: [16, 139], read: [15, 139] };
+
+/** Forth and back over [from, to]: `elapsed` frames after the start, so the loop never jumps back to its first frame. */
+export function pingPong(elapsed: number, from: number, to: number): number {
+  const length = to - from;
+  const phase = elapsed % (2 * length);
+  return phase <= length ? from + phase : to - (phase - length);
+}
 
 /** The frame where the clip is furthest from the rest pose: the pose Panda keeps. */
 export function holdFrame(clip: Clip, nodes: PandaMotion['nodes']): number {
@@ -150,18 +160,30 @@ export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle
     hold(gesture, ms) {
       if (disposed) return;
       cancel();
-      const target = posesAt(clips[gesture], holdFrame(clips[gesture], nodes));
+      const clip = clips[gesture];
+      const span = ACTIVITY_SPANS[gesture];
+      const target = posesAt(clip, span ? span[0] : holdFrame(clip, nodes));
       let start: number | undefined;
       function advance(now: number): void {
         start ??= now;
-        const k = ease(Math.min(1, (now - start) / ms));
+        const done = now - start >= ms;
+        const k = done ? 1 : ease((now - start) / ms);
         const poses = new Map<number, Pose>();
         for (const [index, to] of target) {
           const from = nodes[index]!.pose;
           poses.set(index, from.map((v, i) => v + (to[i]! - v) * k) as Pose);
         }
         paint(poses);
-        pending = k < 1 ? requestAnimationFrame(advance) : null;
+        if (!done) pending = requestAnimationFrame(advance);
+        else if (span) pending = requestAnimationFrame((now) => keepDoing(span, now));
+        else pending = null;
+      }
+      function keepDoing([from, to]: readonly [number, number], begin: number): void {
+        function step(now: number): void {
+          draw(clip, pingPong((now - begin) * clip.fps / 1000, from, to));
+          pending = requestAnimationFrame(step);
+        }
+        step(begin);
       }
       pending = requestAnimationFrame(advance);
     },
