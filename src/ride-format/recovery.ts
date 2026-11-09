@@ -3,16 +3,42 @@ import path from 'node:path';
 import type { RideEvent, Sample } from '../shared/sample';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 import { stepFtpFraction, type Session } from '../shared/session';
-import { readMeta, type RideMeta } from './read';
+import type { RideMeta } from './read';
 
-/** A crash can leave meta.json empty or cut off. The samples still prove the ride exists, so the meta is rebuilt from them. */
-const rebuildMeta = (dir: string, name: string): RideMeta | null => {
+/** A rebuilt ride counts as open only if its last sample is younger than this; older ones are kept as aborted. */
+const REBUILD_OPEN_MAX_AGE_MS = 12 * 3_600_000;
+
+export type FindOptions = {
+  /** Only the ride service may set this: it lets a damaged meta.json be rewritten. Everyone else never writes into rides/. */
+  rebuild?: boolean;
+  nowMs?: () => number;
+};
+
+type ProfileRef = { id?: unknown };
+
+/** The only profile of the profiles file, if there is exactly one. */
+const soleProfileId = (dir: string): string => {
+  try {
+    const all = JSON.parse(fs.readFileSync(path.join(dir, 'profiles.json'), 'utf8')) as ProfileRef[];
+    if (Array.isArray(all) && all.length === 1 && typeof all[0]?.id === 'string') return all[0].id;
+  } catch { /* no profiles file */ }
+  return '';
+};
+
+/** Builds the meta from the samples. Throws on read errors of the samples; null if no valid sample exists. */
+const metaFromSamples = (dir: string, name: string, nowMs: () => number): RideMeta | null => {
   let first: Sample | undefined;
+  let last: Sample | undefined;
   for (const line of fs.readFileSync(path.join(dir, name, 'samples.jsonl'), 'utf8').split('\n')) {
     if (!line) continue;
-    try { first = JSON.parse(line) as Sample; break; } catch { /* truncated line */ }
+    try {
+      const s = JSON.parse(line) as Sample;
+      if (typeof s?.wallClockMs !== 'number') continue;
+      first ??= s;
+      last = s;
+    } catch { /* truncated line */ }
   }
-  if (!first) return null;
+  if (!first || !last) return null;
   let sessionId = '';
   let profileId = '';
   try {
@@ -20,22 +46,48 @@ const rebuildMeta = (dir: string, name: string): RideMeta | null => {
     sessionId = String(stored.session.id);
     if (typeof stored.profileId === 'string') profileId = stored.profileId;
   } catch { /* unknown session */ }
-  const meta: RideMeta = { rideId: name, profileId, sessionId, startedAtMs: first.wallClockMs, status: 'open', formatVersion: 1 };
-  writeJsonAtomic(path.join(dir, name, 'meta.json'), meta);
-  return meta;
+  if (!profileId) profileId = soleProfileId(dir);
+  const status = nowMs() - last.wallClockMs < REBUILD_OPEN_MAX_AGE_MS ? 'open' : 'aborted';
+  return { rideId: name, profileId, sessionId, startedAtMs: first.wallClockMs, status, formatVersion: 1 };
 };
 
-export const findOpenRides = (dir: string): RideMeta[] => {
+const validMeta = (m: unknown): m is RideMeta => {
+  const x = m as Partial<RideMeta> | null;
+  return !!x && typeof x === 'object' && typeof x.rideId === 'string' && typeof x.status === 'string' && typeof x.startedAtMs === 'number';
+};
+
+/** 'missing' means meta.json is absent, empty or damaged. Any other read error throws. */
+const readMetaState = (dir: string, name: string): RideMeta | 'missing' => {
+  let text: string;
+  try { text = fs.readFileSync(path.join(dir, name, 'meta.json'), 'utf8'); } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return 'missing';
+    throw e;
+  }
+  if (!text.trim()) return 'missing';
+  try {
+    const m = JSON.parse(text) as unknown;
+    return validMeta(m) ? m : 'missing';
+  } catch { return 'missing'; }
+};
+
+export const findOpenRides = (dir: string, opts: FindOptions = {}): RideMeta[] => {
   if (!fs.existsSync(dir)) return [];
+  const nowMs = opts.nowMs ?? Date.now;
   const open: RideMeta[] = [];
   for (const name of fs.readdirSync(dir)) {
     // A crash before the first meta.json write leaves only the samples; they still count as a ride.
     if (!fs.existsSync(path.join(dir, name, 'meta.json')) && !fs.existsSync(path.join(dir, name, 'samples.jsonl'))) continue;
     try {
       let meta: RideMeta | null;
-      try { meta = readMeta(dir, name); } catch { meta = rebuildMeta(dir, name); }
+      const state = readMetaState(dir, name);
+      if (state === 'missing') {
+        meta = metaFromSamples(dir, name, nowMs);
+        if (meta && opts.rebuild) writeJsonAtomic(path.join(dir, name, 'meta.json'), meta);
+        // Without permission to write, the ride still counts as open, so nobody treats it as gone.
+        else if (meta) meta = { ...meta, status: 'open' };
+      } else meta = state;
       if (meta?.status === 'open') open.push(meta);
-    } catch { /* an unreadable ride must not prevent startup */ }
+    } catch { /* a transient or unreadable ride is skipped for now, nothing is written */ }
   }
   return open;
 };

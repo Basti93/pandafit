@@ -57,7 +57,7 @@ test.each([['empty', ''], ['broken', '{"rideId":']])('a ride with %s meta.json a
   fs.writeFileSync(path.join(dir, 'ride-9', 'meta.json'), content);
   fs.writeFileSync(path.join(dir, 'ride-9', 'samples.jsonl'), sampleLine(0, 5000) + sampleLine(1, 6000));
   fs.writeFileSync(path.join(dir, 'ride-9', 'session.json'), JSON.stringify({ session: { id: 'sess-1' }, ftpW: 200 }));
-  const open = findOpenRides(dir);
+  const open = findOpenRides(dir, { rebuild: true, nowMs: () => 7000 });
   expect(open).toHaveLength(1);
   expect(open[0]).toMatchObject({ rideId: 'ride-9', status: 'open', startedAtMs: 5000, sessionId: 'sess-1' });
   // The rebuilt meta is saved, so the next read works.
@@ -68,7 +68,7 @@ test('a ride without meta.json keeps its profile from session.json', () => {
   fs.mkdirSync(path.join(dir, 'ride-8'));
   fs.writeFileSync(path.join(dir, 'ride-8', 'samples.jsonl'), sampleLine(0, 5000));
   fs.writeFileSync(path.join(dir, 'ride-8', 'session.json'), JSON.stringify({ profileId: 'p1', session: { id: 'sess-1' }, ftpW: 200 }));
-  expect(findOpenRides(dir)).toEqual([expect.objectContaining({ rideId: 'ride-8', profileId: 'p1', status: 'open' })]);
+  expect(findOpenRides(dir, { rebuild: true, nowMs: () => 6000 })).toEqual([expect.objectContaining({ rideId: 'ride-8', profileId: 'p1', status: 'open' })]);
 });
 test('a ride with broken meta.json and no samples is still skipped', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
@@ -83,6 +83,53 @@ test('an old meta.json without formatVersion is read; new rides write formatVers
   expect(findOpenRides(dir).map((m) => m.rideId)).toEqual(['old']);
   RideRecorder.create(dir, { rideId: 'n', profileId: 'p', sessionId: 's', startedAtMs: 1, status: 'open' });
   expect(readRide(dir, 'n').meta.formatVersion).toBe(1);
+});
+
+const damagedRide = (dir: string, extra: { session?: object; samples?: string } = {}) => {
+  fs.mkdirSync(path.join(dir, 'ride-7'));
+  fs.writeFileSync(path.join(dir, 'ride-7', 'meta.json'), '');
+  fs.writeFileSync(path.join(dir, 'ride-7', 'samples.jsonl'), extra.samples ?? sampleLine(0, 5000));
+  if (extra.session) fs.writeFileSync(path.join(dir, 'ride-7', 'session.json'), JSON.stringify(extra.session));
+};
+test('a transient read error of meta.json does not rewrite it', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+  RideRecorder.create(dir, { rideId: 'ride-1', profileId: 'p', sessionId: 's', startedAtMs: 1, status: 'open' }).finish('finished');
+  const file = path.join(dir, 'ride-1', 'meta.json');
+  const before = fs.readFileSync(file, 'utf8');
+  const real = fs.readFileSync;
+  const spy = vi.spyOn(fs, 'readFileSync').mockImplementation(((f: fs.PathOrFileDescriptor, ...r: unknown[]) => {
+    if (String(f) === file) throw Object.assign(new Error('too many open files'), { code: 'EMFILE' });
+    return (real as (...a: unknown[]) => unknown)(f, ...r);
+  }) as typeof fs.readFileSync);
+  expect(findOpenRides(dir, { rebuild: true })).toEqual([]);
+  spy.mockRestore();
+  expect(fs.readFileSync(file, 'utf8')).toBe(before);
+});
+test('without rebuild nothing is written but the ride still counts as open', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+  damagedRide(dir);
+  expect(findOpenRides(dir, { nowMs: () => 1e12 }).map((m) => m.rideId)).toEqual(['ride-7']);
+  expect(fs.readFileSync(path.join(dir, 'ride-7', 'meta.json'), 'utf8')).toBe('');
+});
+test('rebuilt profile: session.json, else the only profile, else empty', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+  damagedRide(dir);
+  expect(findOpenRides(dir, { rebuild: true, nowMs: () => 6000 })[0].profileId).toBe('');
+  fs.writeFileSync(path.join(dir, 'ride-7', 'meta.json'), '');
+  fs.writeFileSync(path.join(dir, 'profiles.json'), JSON.stringify([{ id: 'solo' }]));
+  expect(findOpenRides(dir, { rebuild: true, nowMs: () => 6000 })[0].profileId).toBe('solo');
+  fs.writeFileSync(path.join(dir, 'ride-7', 'meta.json'), '');
+  fs.writeFileSync(path.join(dir, 'profiles.json'), JSON.stringify([{ id: 'a' }, { id: 'b' }]));
+  expect(findOpenRides(dir, { rebuild: true, nowMs: () => 6000 })[0].profileId).toBe('');
+  fs.writeFileSync(path.join(dir, 'ride-7', 'meta.json'), '');
+  fs.writeFileSync(path.join(dir, 'ride-7', 'session.json'), JSON.stringify({ profileId: 'own', session: { id: 's' } }));
+  expect(findOpenRides(dir, { rebuild: true, nowMs: () => 6000 })[0].profileId).toBe('own');
+});
+test('a rebuilt ride whose last sample is older than 12 hours is aborted, not open', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'));
+  damagedRide(dir, { samples: sampleLine(0, 5000) + sampleLine(1, 6000) + '{"cut' });
+  expect(findOpenRides(dir, { rebuild: true, nowMs: () => 6000 + 12 * 3_600_000 })).toEqual([]);
+  expect(readRide(dir, 'ride-7').meta).toMatchObject({ status: 'aborted', startedAtMs: 5000 });
 });
 
 import { RideEngine } from '../../src/service/engine';

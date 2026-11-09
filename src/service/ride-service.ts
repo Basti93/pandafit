@@ -183,7 +183,7 @@ export class RideService {
 
   /** An open ride continues recording immediately after the restart; the user decides afterwards. */
   private recoverOpenRide(): void {
-    const open = findOpenRides(this.deps.dir);
+    const open = findOpenRides(this.deps.dir, { rebuild: true, nowMs: this.deps.nowMs });
     const [meta, ...others] = open.sort((x, y) => y.startedAtMs - x.startedAtMs);
     for (const old of others) this.guard(() => { RideRecorder.open(this.deps.dir, old.rideId).finish('aborted'); });
     if (!meta) return;
