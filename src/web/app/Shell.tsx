@@ -2,6 +2,7 @@ import { bodyOf } from '../../shared/record-bodies';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { openStoreCount, subscribeStores } from '../../tracking/registry';
 import { bikeOf, hasBike as bikeVisible, ridesOf } from '../../tracking/ui';
+import { Icon, type IconName } from '../../tracking/ui/kit';
 import { runView } from '../../tracking/ui/run-view';
 import { usePortRecords } from '../../tracking/ui/hooks';
 import { shouldShowInstallHint } from '../logic';
@@ -23,6 +24,8 @@ const CoachScreen = lazy(() => import('../../tracking/ui/CoachScreen').then((m) 
 const Training = lazy(() => import('./Training').then((m) => ({ default: m.Training })));
 const Ausdauer = lazy(() => import('./Ausdauer').then((m) => ({ default: m.Ausdauer })));
 const Profil = lazy(() => import('./Profil').then((m) => ({ default: m.Profil })));
+
+const TAB_ICON: Record<Tab, IconName> = { heute: 'heute', coach: 'woche', training: 'kraft', essen: 'essen', ausdauer: 'ausdauer', profil: 'profil' };
 
 export function Shell({ account, env, port, onLogout, onRelogin }: { account: string; env: Env; port: WebPort; onLogout: () => void; onRelogin: (name: string) => void }) {
   // "Weitermachen" on Heute opens the open workout itself, once; "Ansehen und anpassen" opens the sheet "Nächstes Training", once; every other way into Kraft shows the start screen.
@@ -113,7 +116,7 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
       <main className="web-main">
         <div className="web-top"><span className="web-wordmark">Pandafit</span></div>
         <button type="button" className="web-profile" aria-label="Profil" aria-current={tab === 'profil' ? 'page' : undefined} onClick={() => setTab('profil')}>
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+          <Icon name="profil" />
         </button>
         {status === 'login' && (
           <div className="tk-screen">
@@ -140,7 +143,7 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
       </main>
       <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
         {tabs.map(([t, label]) => (
-          <button key={t} type="button" aria-current={tab === t ? 'page' : undefined} onClick={() => { setEntry(null); setChatOnOpen(false); setTab(t); }}>{label}</button>
+          <button key={t} type="button" aria-current={tab === t ? 'page' : undefined} onClick={() => { setEntry(null); setChatOnOpen(false); setTab(t); }}><Icon name={TAB_ICON[t]} />{label}</button>
         ))}
       </nav>
     </>

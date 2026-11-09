@@ -40,3 +40,5 @@ export { Switch } from './Switch';
 export { ChoiceRow } from './ChoiceRow';
 export { ConfirmLink } from './ConfirmLink';
 export { BrushTitle, BoBubble, Bubble, Card, Kicker, MainCard } from './Dojo';
+export { Icon } from './Icon';
+export type { IconName } from './Icon';

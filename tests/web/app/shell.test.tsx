@@ -26,6 +26,19 @@ describe('web app', () => {
     expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual(['Heute', 'Woche', 'Kraft']);
   });
 
+  it('shows every tab with its icon and the profile as a panda button', async () => {
+    const status = { kind: 'run', id: 'status', updatedMs: NOW - 1000, deleted: false, body: {
+      type: 'status', atMs: NOW - 1000, on: true, suggest: false, needsAnswers: false, garmin: false, suggestedDays: [1, 3, 5], hrCap: 150, complaint: null,
+      numbers: { easyPace: { now: null, weeks4: null, weeks12: null, trend: [] }, weeks: [], longest: { blockKm: null, lastBlockKm: null }, tests: [] }, card: null } } as TrackedRecord;
+    await boot({ account: 'anna', flags: { 'pandafit.essensplan.anna': 'on' }, seed: [status] });
+    const nav = await screen.findByRole('navigation', { name: 'Seiten' });
+    await waitFor(() => expect(within(nav).getAllByRole('button').length).toBe(5));
+    const buttons = within(nav).getAllByRole('button');
+    expect(buttons.map((b) => b.textContent)).toEqual(['Heute', 'Woche', 'Kraft', 'Essen', 'Ausdauer']);
+    expect(buttons.map((b) => b.querySelector('svg')?.getAttribute('data-icon'))).toEqual(['heute', 'woche', 'kraft', 'essen', 'ausdauer']);
+    expect(screen.getByRole('button', { name: 'Profil' }).querySelector('svg[data-icon="profil"]')).not.toBeNull();
+  });
+
   it('the login says where an account comes from', async () => {
     await boot({ me: 401 });
     expect(await screen.findByText('Ein Konto bekommst du von der Person, die Pandafit eingerichtet hat.')).toBeTruthy();

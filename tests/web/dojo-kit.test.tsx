@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BoBubble, MainCard } from '../../src/tracking/ui/kit';
+import { BoBubble, Icon, MainCard } from '../../src/tracking/ui/kit';
 import { BO } from '../../src/tracking/ui/bo';
 
 afterEach(cleanup);
@@ -25,5 +25,14 @@ describe('Dojo kit', () => {
     rerender(<BoBubble portrait="none">Nur die Blase.</BoBubble>);
     expect(document.querySelector('.tk-panda')).toBeNull();
     expect(document.querySelector('.tk-bubble-tail')).not.toBeNull();
+  });
+  it('draws every registered icon with currentColor only', () => {
+    for (const name of ['heute', 'woche', 'kraft', 'essen', 'ausdauer', 'profil'] as const) {
+      const { container, unmount } = render(<Icon name={name} />);
+      const svg = container.querySelector(`svg[data-icon="${name}"]`)!;
+      expect(svg.getAttribute('aria-hidden')).toBe('true');
+      expect(svg.outerHTML).not.toMatch(/#[0-9a-f]{3,8}/i);
+      unmount();
+    }
   });
 });
