@@ -10,6 +10,12 @@ type TrainerCommand = { kind: 'power'; w: number } | { kind: 'grade'; pct: numbe
 const KINDS: DeviceKind[] = ['trainer', 'hr', 'clicker'];
 const CONTROL_RETRY_MS = 2000;
 const RESULT_NOT_PERMITTED = 0x05;
+/** A connected device that sends nothing for this long is treated like a lost connection. */
+export const SILENT_MS = 10_000;
+const WATCHDOG_TICK_MS = 1000;
+const MAX_BACKOFF_MS = 30_000;
+/** The clicker only sends on a button press, so silence is normal for it. */
+const WATCHED: DeviceKind[] = ['trainer', 'hr'];
 
 export class DeviceManager {
   private status: DeviceStatus = { trainer: 'searching', hr: 'searching', clicker: 'searching' };
@@ -26,17 +32,26 @@ export class DeviceManager {
   private pumping = false;
   private held = { plus: false, minus: false };
   private lastControlRequestMs = -Infinity;
+  private nowMs: () => number;
+  private lastDataAt: Partial<Record<DeviceKind, number>> = {};
+  private retryTimers = new Map<DeviceKind, ReturnType<typeof setTimeout>>();
+  private failures: Partial<Record<DeviceKind, number>> = {};
+  /** Backoff applies to reconnecting after a loss; the first search keeps the flat interval. */
+  private wasConnected = new Set<DeviceKind>();
+  private watchdog: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(private port: BlePort, opts: { retryMs?: number; writeRetryMs?: number } = {}) {
+  constructor(private port: BlePort, opts: { retryMs?: number; writeRetryMs?: number; nowMs?: () => number } = {}) {
+    this.nowMs = opts.nowMs ?? Date.now;
     this.retryMs = opts.retryMs ?? 2000;
     this.writeRetryMs = opts.writeRetryMs ?? 500;
-    port.subscribe('trainer', (b) => this.safely(() => this.readingCb(parseIndoorBikeData(b))));
-    port.subscribe('hr', (b) => this.safely(() => this.readingCb({ hrBpm: parseHeartRate(b) })));
+    port.subscribe('trainer', (b) => this.safely(() => { this.lastDataAt.trainer = this.nowMs(); this.readingCb(parseIndoorBikeData(b)); }));
+    port.subscribe('hr', (b) => this.safely(() => { this.lastDataAt.hr = this.nowMs(); this.readingCb({ hrBpm: parseHeartRate(b) }); }));
     port.subscribe('clicker', (b) => this.safely(() => this.handleClick(b)));
     port.onControl((b) => this.safely(() => this.handleControl(b)));
     port.onDisconnect((kind) => {
       if (kind === 'clicker') this.held = { plus: false, minus: false };
       if (this.status[kind] === 'off') return;
+      if (this.status[kind] === 'searching' && this.retryTimers.has(kind)) return; // already reconnecting
       this.setStatus(kind, 'searching');
       this.schedule(kind);
     });
@@ -45,11 +60,36 @@ export class DeviceManager {
   start(): void {
     this.statusCb({ ...this.status });
     for (const kind of KINDS) void this.tryConnect(kind);
+    this.armWatchdog();
   }
   stop(): void {
     this.stopped = true;
     for (const t of this.timers) clearTimeout(t);
     this.timers.clear();
+    this.retryTimers.clear();
+    if (this.watchdog) clearTimeout(this.watchdog);
+    this.watchdog = null;
+  }
+
+  private armWatchdog(): void {
+    if (this.stopped) return;
+    this.watchdog = setTimeout(() => {
+      this.checkSilent();
+      this.armWatchdog();
+    }, WATCHDOG_TICK_MS);
+  }
+
+  /** Only connected devices count: one that is off, searching or still connecting is not silent. */
+  private checkSilent(): void {
+    const now = this.nowMs();
+    for (const kind of WATCHED) {
+      if (this.status[kind] !== 'connected' || this.connecting.has(kind)) continue;
+      if (now - (this.lastDataAt[kind] ?? now) < SILENT_MS) continue;
+      // Same path as a real disconnect: status change (device-lost), then reconnect.
+      this.setStatus(kind, 'searching');
+      void this.port.disconnect(kind).catch(() => { /* already disconnected */ });
+      this.schedule(kind);
+    }
   }
 
   /** Stays disconnected until someone connects. This lets the clicker, for example, go to sleep. */
@@ -160,6 +200,9 @@ export class DeviceManager {
       return;
     }
     this.setStatus(kind, 'connected');
+    this.lastDataAt[kind] = this.nowMs();
+    this.failures[kind] = 0;
+    this.wasConnected.add(kind);
     if (kind === 'trainer') {
       await this.writeTrainer(encodeRequestControl());
       this.pendingCommand = this.lastCommand;
@@ -168,11 +211,18 @@ export class DeviceManager {
   }
   private schedule(kind: DeviceKind): void {
     if (this.stopped) return;
+    const old = this.retryTimers.get(kind);
+    if (old) { clearTimeout(old); this.timers.delete(old); }
+    const n = this.failures[kind] ?? 0;
+    this.failures[kind] = n + 1;
+    const delay = this.wasConnected.has(kind) ? Math.min(MAX_BACKOFF_MS, this.retryMs * 2 ** n) : this.retryMs;
     const t = setTimeout(() => {
       this.timers.delete(t);
+      this.retryTimers.delete(kind);
       void this.tryConnect(kind);
-    }, this.retryMs);
+    }, delay);
     this.timers.add(t);
+    this.retryTimers.set(kind, t);
   }
   private setStatus(kind: DeviceKind, s: DeviceStatus[DeviceKind]): void {
     this.status[kind] = s;

@@ -34,6 +34,8 @@ export type EngineState = {
 export type TrainerCommand = { targetW: number };
 export type EngineOptions = {
   session: Session; ftpW: number; resumeAtS?: number; skippedS?: number; startSeq?: number; nowMs: () => number; maxHrBpm?: number; hrMaxBpm?: number;
+  /** Restored after a crash, see recovery.ts. */
+  adjustPct?: number; adjustedStep?: number; autoPct?: number; autoStep?: number; holdPct?: number;
 };
 
 export class RideEngine {
@@ -62,6 +64,11 @@ export class RideEngine {
     this.elapsedS = opts.resumeAtS ?? 0;
     this.skippedS = opts.skippedS ?? 0;
     this.seq = opts.startSeq ?? 0;
+    this.adjustPct = opts.adjustPct ?? 0;
+    this.adjustedStep = opts.adjustedStep ?? -1;
+    this.autoPct = opts.autoPct ?? 0;
+    this.autoStep = opts.autoStep ?? -1;
+    this.holdPct = opts.holdPct ?? 0;
   }
 
   tick(reading: Reading): { sample: Sample; command: TrainerCommand | null; events: RideEvent[] } {

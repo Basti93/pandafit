@@ -11,7 +11,7 @@ import { RideEngine } from './engine';
 import type { Diagnostics } from './diagnostics';
 import { exportFit } from './export/fit';
 import { readRide, RideRecorder } from './recorder';
-import { findOpenRides, resumePoint } from './recovery';
+import { findOpenRides, resumePoint, type ResumePoint } from './recovery';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 
 type Active = {
@@ -178,7 +178,7 @@ export class RideService {
     try { return JSON.parse(fs.readFileSync(path.join(this.deps.dir, 'profiles.json'), 'utf8')) as Profile[]; } catch { return []; }
   }
 
-  private newEngine(session: Session, ftpW: number, extra: { resumeAtS?: number; skippedS?: number; startSeq?: number; maxHrBpm?: number; hrMaxBpm?: number } = {}): RideEngine {
+  private newEngine(session: Session, ftpW: number, extra: Partial<ResumePoint> & { maxHrBpm?: number; hrMaxBpm?: number } = {}): RideEngine {
     return new RideEngine({ session, ftpW, nowMs: this.deps.nowMs, ...extra });
   }
 
@@ -197,7 +197,7 @@ export class RideService {
       return;
     }
     const ride = readRide(this.deps.dir, meta.rideId);
-    const point = resumePoint(ride);
+    const point = resumePoint(ride, stored.session);
     const now = this.deps.nowMs();
     const lastMs = ride.samples.at(-1)?.wallClockMs ?? meta.startedAtMs;
     if (now - lastMs > CRASH_GAP_MS) {
