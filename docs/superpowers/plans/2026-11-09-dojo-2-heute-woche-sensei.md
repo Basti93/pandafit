@@ -36,11 +36,11 @@ Vorab entschieden, damit niemand beim Bauen raten muss:
 5. **„Jetzt dran“ hat eine feste Rangfolge:** offenes Training („Weitermachen“), dann „Zum Abschluss“ (innerhalb der 3 Stunden), dann der Tag aus dem Plan (`TodayCard`), sonst „Was soll Pandafit planen?“. Alles ist eine `MainCard`. Das Beweglichkeitsangebot steht im `more`-Bereich dieser Karte.
 6. **Ein wartender Vorschlag** ist keine eigene Karte mehr: Auf Heute und Woche bekommt Bos Blase den Hauptknopf „Vorschlag ansehen“ (Heute öffnet den Chat, die Woche das Vorschläge-Sheet). `WaitingProposal.tsx` fällt weg.
 7. **Im Chat** steht der erste offene Vorschlag (Wochenplan zuerst, sonst der neueste) mit „Übernehmen“ und „Nein danke“ in seiner Blase. Weitere offene Vorschläge stehen hinter dem Streifen „Bo hat noch … weitere Vorschläge.“ Das automatische Öffnen des Vorschläge-Sheets entfällt.
-8. **Zeit pro Nachricht bleibt** klein in der Blase (Meilenstein H „Chat mit Datum/Zeit“). Bo hat in jeder Blase sein kleines Standbild ohne Canvas. Grund: nur ein bewegter Bo pro Seite, und 30 Canvas-Player wären teuer.
+8. **Zeit pro Nachricht bleibt** klein in der Blase (Meilenstein H „Chat mit Datum/Zeit“). Bo hat in jeder Blase sein kleines Standbild ohne Canvas. Der eine bewegte Bo des Chats steht oben im Kopf: `PandaPortrait pose="listen"` (Player aus `panda-canvas.ts`, `mountPanda`/`hold`), wie heute in `CoachChat`. Grund: Projektregel „Bo bewegt sich nur auf Heute und im Gespräch mit dem Sensei“; nur ein bewegter Bo pro Seite, und 30 Canvas-Player wären teuer.
 9. **Der Chat bleibt ein Sheet** (über der Tab-Leiste), bekommt aber oben links „Zurück“ statt ×. Grund: Die feste Eingabe mit Tastatur funktioniert so schon; das Moodboard zeigt die Leiste nur zur Orientierung.
 10. **Gesundheit ist eine Unterseite im Woche-Tab** (lokaler Zustand in `CoachScreen`, Tab Woche bleibt aktiv, Knopf „‹ Woche“), wie heute `TogetherPage` auf Heute. Browser-Zurück schließt sie nicht; das kommt in den Parkplatz.
-11. **Bos Nest gilt für hell und dunkel** (eine SVG-Fassung, über `/* shared */`-Tokens). Grund: Die Szene hat eigene Objektfarben auf eigenem Lichtschein, wie `panda-still.svg`. Braucht hell später eine Variante, ist das nur ein Token-Wert.
-12. **Bo auf der Woche** ist das kleine Standbild (`portrait="mini"`), bewegt nur auf Heute. Grund: DESIGN, verspielt nur auf Heute und im Gespräch.
+11. **Bos Nest ist eine SVG-Datei für hell und dunkel**, aber ohne Farb-Literale: `src/web/public/brand/bo-nest.svg` hat zwei `<symbol>` (`back`, `front`), jede Fläche färbt sich über `style="fill: var(--scene-…)"` / `stroke`. `BoScene` bindet die Symbole per `<svg><use href="/brand/bo-nest.svg#back" /></svg>` ein, so erben sie die Tokens der Seite. Grund: Die Moodboard-Farben (Halme `#4f6b43`, Schale innen `#2a2416`) sind fürs dunkle Schema gemacht; der Seiten-Bambus braucht hell schon eigene, blasse Farben (`bamboo-tile-light.svg`). Ein `background-image` kann keine Tokens lesen, deshalb `<use>`. Die Szenen-Tokens heißen allgemein (`--scene-stem`, `--scene-leaf`, …), damit die übrigen Bos Orte in Dojo 5 sie mitnutzen.
+12. **Bo auf der Woche** ist das kleine Standbild (`portrait="mini"`), bewegt nur auf Heute (Nest) und im Chat-Kopf. Grund: DESIGN, verspielt nur auf Heute und im Gespräch.
 13. **Zähler „2 von 5 geschafft“** steht auf Heute und Woche gleich: erledigte Tage dieser Woche von den Trainingstagen im Wochenplan. Ohne Plan steht nur „2 geschafft“, bei 0 ohne Plan nichts.
 14. **Seitentitel** bekommen überall den Pinselstrich: `PageHead` rendert seinen Titel über `BrushTitle level={1}`. Heute hat keinen sichtbaren Titel (Moodboard), nur ein `<h1>` für Screenreader und die Datumszeile.
 15. **„Was Bo beachtet“** zeigt keine Anzahl mehr, „Nächste Woche“ ist eine ruhige Zeile unter „Kommt noch“, die ein kleines Sheet mit dem Plan öffnet. `CoachPrefs` fällt aus `CoachScreen` (die Web-App zeigt es im Profil; `showPrefs` entfällt).
@@ -67,15 +67,16 @@ Vorab entschieden, damit niemand beim Bauen raten muss:
 - Produces (Tokens, dunkel / hell): `--tile` `#2f4033` / `rgba(34,55,43,.08)`; `--today-glow` `rgba(242,189,85,.55)` / `rgba(224,168,58,.45)`; `--bubble-me` `#3a3a2a` / `#f6e3cf`; `--bubble-me-line` `#7a5a3e` / `#e0b48c`; `--good-wash` `rgba(156,186,114,.16)` / `rgba(94,130,60,.14)`.
 - Produces (Icons): `IconName` um `'lauf' | 'herz' | 'spross' | 'mond' | 'ziel' | 'stift' | 'sprechen' | 'senden' | 'zurueck' | 'haken' | 'rueckblick' | 'regeln' | 'aenderung'` erweitert. Pfade aus den Moodboards (`woche.html`: Lauf-Schuh, Ziel, Stift, Haken, Rückblick-Rolle, Regel-Buch; `gesundheit.html`: Herz, Spross, Mond; `sensei.html`: Zurück, Senden, Liste „Zuletzt geändert“; `heute.html`: Sprechblase im Knopf „Frag Bo“). Farbige Füllungen der Vorlage werden `currentColor` oder `fill="none"`.
 - Produces (Kit):
-  - `BrushTitle({ children, level = 2 }: { children: ReactNode; level?: 1 | 2 | 3 })`.
-  - `PageHead({ title, subtitle, back }: { title: string; subtitle?: ReactNode; back?: { label: string; onClick: () => void } })`: Titel über `BrushTitle level={1}`; `back` ist ein runder Pillenknopf `‹ {label}` über dem Titel.
+  - `BrushTitle({ children, level = 2 }: { children: ReactNode; level?: 1 | 2 | 3 })`: `level={1}` rendert `<h1 className="tk-title">` (die Regeln in `web.css` für `.tk-pagehead .tk-title` greifen weiter). Die lokale Variable `Tag` in `BrushTitle` heißt künftig `H`, damit sie den neuen Baustein `Tag` nicht verdeckt.
+  - `BackButton({ label, onClick }: { label?: string; onClick: () => void })` in `Dojo.tsx`: der eine Zurück-Knopf für Seiten, 44 px, Kartenfläche, Rand `--field-line` (wie der Profilknopf), `Icon name="zurueck"`. Ohne `label` rund mit `aria-label="Zurück"` (Chat), mit `label` eine Pille `‹ {label}` (Gesundheit „Woche“, Gemeinsam). Der bestehende Link `‹ Zurück` für Unter-Sheets bleibt unverändert.
+  - `PageHead({ title, subtitle, back }: { title: string; subtitle?: ReactNode; back?: { label: string; onClick: () => void } })`: Titel über `BrushTitle level={1}`; `back` rendert `BackButton` über dem Titel.
   - `MainCard({ kicker, title, text, primary, secondary, more, label }: { kicker: string; title: string; text?: ReactNode; primary?: Action; secondary?: Action; more?: ReactNode; label?: string })`: `primary` jetzt optional; `more` steht unter den Knöpfen (ruhige Zusätze); `label` überschreibt den Regionsnamen (Standard `kicker`).
   - `Bubble({ children, actions, tail = 'left', foot }: { …; tail?: 'left' | 'right' | 'none'; foot?: ReactNode })`: `tail="right"` ist die Blase „du“ (Fläche `--bubble-me`, Rand `--bubble-me-line`, rechts ausgerichtet); `foot` ist eine kleine gedämpfte Zeile (Uhrzeit, Etikett).
   - `Tag({ children }: { children: ReactNode })` in `Dojo.tsx`: kleines grünes Etikett mit Haken (`--good-wash`, `--good-text`), z. B. „Im Training berücksichtigt“.
   - `RowCard({ icon, kicker, title, sub, lead, end = 'chevron', flat = false, highlight = false, onClick }: { icon: IconName; kicker?: string; title: string; sub?: string; lead?: string; end?: 'chevron' | 'done' | 'none'; flat?: boolean; highlight?: boolean; onClick?: () => void })`: die Zeilenkarte aus DESIGN (Icon-Kachel `--tile` links, Kicker, Titel, Untertitel, rechts `›` oder grüner Haken). `flat` ohne eigenen Kartenrand (Zeile innerhalb einer `Card`), `lead` ist das Tageskürzel links („Mo“), `highlight` der goldene Rahmen für heute. Mit `onClick` ein `<button>`, sonst ein `<div>`.
   - `WordTile({ icon, label, word, tone = 'calm' }: { icon: IconName; label: string; word: string; tone?: 'calm' | 'note' })`: Kachel `.tk-wordtile` mit Icon, Großbuchstaben-Label und einem Wort (`calm` in `--good-text`, `note` in `--accent-text`).
-  - `Sheet` bekommt `page?: boolean`: oben links ein runder Knopf mit `Icon name="zurueck"` und `aria-label="Zurück"` statt ×; er ruft `onClose`.
-  - `kit/index.ts` exportiert `RowCard`, `WordTile`, `Tag`; Kopfkommentar ergänzt: `RowCard` ist die einzige Zeilenkarte, `WordTile` die einzige Wort-Kachel, `Sheet page` für Seiten wie den Chat; „Reserviert für Dojo 2“ wird ersetzt.
+  - `Sheet` bekommt `page?: boolean`: oben links `BackButton` (rund, `aria-label="Zurück"`) statt ×; er ruft `onClose`.
+  - `kit/index.ts` exportiert `RowCard`, `WordTile`, `Tag`, `BackButton`; Kopfkommentar ergänzt: `RowCard` ist die einzige Zeilenkarte mit Icon-Kachel (DESIGN „Zeilenkarte“), `Row` bleibt die reine Textzeile ohne Icon (Listen, Einstellungen); `WordTile` die einzige Wort-Kachel; `BackButton` der eine Zurück-Knopf von Seiten; `Sheet page` für Seiten wie den Chat; „Reserviert für Dojo 2“ wird ersetzt.
 
 - [ ] **Step 1: Write the failing tests.** In `tests/web/style-tokens.test.ts`:
 
@@ -137,21 +138,22 @@ it('gives every page title the brush stroke', () => {
 ```
 
 - [ ] **Step 2: Run** `npx vitest run tests/web/dojo-kit.test.tsx tests/web/style-tokens.test.ts` — Expected: FAIL.
-- [ ] **Step 3: Implement** Tokens, Icons, Kit-Bausteine und ihre CSS-Regeln im Kit-Block von `tracking.css` (nur Tokens). Alle `font-weight: 600` in `web.css` und `tracking.css` auf `700`. `PageHead` auf `BrushTitle level={1}` umstellen; Tests, die eine Überschrift über `.tk-title` suchen, finden sie weiter, weil das `<h1>` die Klasse behält.
+- [ ] **Step 3: Implement** Tokens, Icons, Kit-Bausteine und ihre CSS-Regeln im Kit-Block von `tracking.css` (nur Tokens). Alle `font-weight: 600` in `web.css` und `tracking.css` auf `700`. `PageHead` auf `BrushTitle level={1}` umstellen; die CSS-Regeln für `.tk-title` greifen weiter, weil das `<h1>` die Klasse behält.
 - [ ] **Step 4: Run** die beiden Tests, dann `npm test` — Expected: PASS (Screens sehen außer dem Pinselstrich unter Seitentiteln gleich aus).
 - [ ] **Step 5: Commit** `feat(design): Dojo 2 kit (row card, word tile, tag, sheet page, icons, tokens)`.
 
 ### Task 2: Bos Bambusnest
 
 **Files:**
-- Create: `src/web/public/brand/bo-nest-back.svg` (Laube aus gebogenen Halmen, Laterne an einem Halm, Rückseite der Schale), `src/web/public/brand/bo-nest-front.svg` (geflochtener Schalenrand vor Bo), `src/tracking/ui/kit/BoScene.tsx`. Formen und Farben aus `docs/design/moodboard/heute.html` (Block vor der ersten Sprechblase: die SVGs vor und nach `panda-still.svg`); die Maske „oben ausblenden“ wird ein Verlauf im SVG selbst.
-- Modify: `src/design/tokens.css` (`--scene-nest-back`, `--scene-nest-front`, beide `/* shared */`), `src/tracking/ui/kit/Dojo.tsx` (`BoBubble`), `src/tracking/ui/kit/index.ts`, `src/tracking/ui/tracking.css`
-- Test: `tests/web/bo-scene.test.tsx`
+- Create: `src/web/public/brand/bo-nest.svg` (ein `<svg>` mit zwei `<symbol>`: `id="back"` Laube aus gebogenen Halmen, Laterne an einem Halm, Rückseite der Schale; `id="front"` geflochtener Schalenrand vor Bo), `src/tracking/ui/kit/BoScene.tsx`. Formen aus `docs/design/moodboard/heute.html` (Block vor der ersten Sprechblase: die SVGs vor und nach `panda-still.svg`). Keine Farb-Literale in der Datei: jede Fläche und Linie färbt sich über `style="fill: var(--scene-…)"` bzw. `stroke`; das Lampion über `var(--accent)`. Deckkraft (`opacity`) darf bleiben.
+- Modify: `src/design/tokens.css` (Szenen-Tokens, siehe unten), `src/tracking/ui/kit/Dojo.tsx` (`BoBubble`), `src/tracking/ui/kit/index.ts` (`BoScene`, `BoPlace` exportieren), `src/tracking/ui/tracking.css`
+- Test: `tests/web/bo-scene.test.tsx`, `tests/web/style-tokens.test.ts`
 
 **Interfaces:**
+- Produces (Tokens, dunkel aus dem Moodboard / hell als Startwert, Task 8 stimmt hell nur in `tokens.css` ab): `--scene-stem` `#4f6b43` / `#a3b58c` (Halme); `--scene-node` `#8fae6e` / `#c5d1ae` (Knoten); `--scene-leaf` `#6f9152` / `#9db57f` (Blätter, auch die an der Schale); `--scene-wood` `#b0954f` / `#c9a965` (helle Flechtstreifen, ersetzt auch `#c2a85e`); `--scene-wood-deep` `#8a7a46` / `#a68e55` (dunkle Streifen, ersetzt auch `#7d8a4a`); `--scene-weave` `#5e5230` / `#8a7547` (Querfäden); `--scene-hollow` `#2a2416` / `#d9ccab` (Schale innen). Ohne helle Variante, mit `/* shared */`: `--scene-lantern-line` `#c96a3a`, `--scene-lantern-cap` `#5c4630`, `--scene-string` `#7f9180`. Die Namen sind allgemein, damit Dojo 5 die übrigen Bos Orte (Bambus, Laternen, Holz) mit denselben Tokens malt.
 - Produces:
-  - `export type BoPlace = 'nest';` und `BoScene({ place, children }: { place: BoPlace; children: ReactNode })` → `<span className="tk-scene" data-place={place}>` mit drei Ebenen: `.tk-scene-back` (Hintergrund `var(--scene-nest-back)`), Lichtschein `--glow`, `children` (Bo), `.tk-scene-front` (`var(--scene-nest-front)`). Pro Ort genau eine CSS-Zeile je Ebene (`.tk-scene[data-place="nest"] .tk-scene-back { background-image: var(--scene-nest-back) }`). Kopfkommentar: „Dojo 5 fügt hier die übrigen Orte aus DESIGN.md (Bos Orte) hinzu: ein Name in `BoPlace`, zwei SVGs, zwei Tokens, zwei CSS-Zeilen.“
-  - `BoBubble({ …, place }: { …; place?: BoPlace })`: mit `place` steht das Porträt in `BoScene`. `portrait="mini"` zeigt nur das Standbild `/brand/panda-still.svg` (kein Canvas, kein Player-Import).
+  - `export type BoPlace = 'nest';` und `BoScene({ place, children }: { place: BoPlace; children: ReactNode })` → `<span className="tk-scene" data-place={place} aria-hidden="true">` mit Ebenen in dieser Reihenfolge: `<svg className="tk-scene-back"><use href={`/brand/bo-${place}.svg#back`} /></svg>`, Lichtschein (`.tk-scene-glow`, `--glow`), `children` (Bo), `<svg className="tk-scene-front"><use href={`/brand/bo-${place}.svg#front`} /></svg>`. Das Ausblenden nach oben ist CSS auf `.tk-scene-back` (`mask-image: linear-gradient(to bottom, transparent, black 22%)`), nicht im SVG. Rahmen und Lagen gelten für jeden Ort gleich (116 × 176 px, Bo etwa 94 px breit, unten bündig); ein Ort braucht keine eigene CSS-Zeile. Kopfkommentar: „Dojo 5 fügt die übrigen Orte aus DESIGN.md (Bos Orte) hinzu: ein Name in `BoPlace` und eine Datei `brand/bo-{place}.svg` mit den Symbolen `back` und `front`, gefärbt nur über `--scene-*`-Tokens. `children` darf das Standbild oder das bewegte `PandaPortrait` sein.“
+  - `BoBubble({ …, place }: { …; place?: BoPlace })`: mit `place` steht das Porträt in `BoScene`. `portrait="mini"` zeigt nur das Standbild `/brand/panda-still.svg` (kein Canvas, kein Player-Import); das bewegte Mini-Porträt im Chat-Kopf setzt `CoachChat` selbst über `PandaPortrait` (Entscheidung 8).
 
 - [ ] **Step 1: Write the failing test** `tests/web/bo-scene.test.tsx`:
 
@@ -159,16 +161,22 @@ it('gives every page title the brush stroke', () => {
 it('sets Bo into his nest, with the scene behind and the basket rim in front', () => {
   render(<BoBubble place="nest" pose="greet">Heute kommt das dritte Training.</BoBubble>);
   const scene = document.querySelector('.tk-scene[data-place="nest"]')!;
-  const layers = [...scene.children].map((c) => c.className);
-  expect(layers[0]).toContain('tk-scene-back');
-  expect(layers.at(-1)).toContain('tk-scene-front');
+  const layers = [...scene.children];
+  expect(layers[0]!.getAttribute('class')).toContain('tk-scene-back');
+  expect(layers.at(-1)!.getAttribute('class')).toContain('tk-scene-front');
+  expect(layers[0]!.querySelector('use')!.getAttribute('href')).toBe('/brand/bo-nest.svg#back');
   expect(scene.querySelector('.tk-panda')).toBeTruthy();
 });
-it('keeps the scene in one asset per layer, referenced only through tokens', () => {
-  for (const f of ['bo-nest-back', 'bo-nest-front']) expect(readFileSync(`src/web/public/brand/${f}.svg`, 'utf8')).toContain('<svg');
-  const tokens = readFileSync('src/design/tokens.css', 'utf8');
-  expect(tokens).toMatch(/--scene-nest-back:\s*url\('\/brand\/bo-nest-back\.svg'\);\s*\/\* shared \*\//);
-  expect(readFileSync('src/tracking/ui/tracking.css', 'utf8')).not.toContain('bo-nest');
+it('paints the nest only through tokens that exist in both schemes', () => {
+  const svg = readFileSync('src/web/public/brand/bo-nest.svg', 'utf8');
+  expect(svg).toContain('<symbol id="back"');
+  expect(svg).toContain('<symbol id="front"');
+  expect(svg.match(/#[0-9a-fA-F]{3,8}\b|\brgba?\(/g) ?? []).toEqual([]);
+  const [dark, light] = readFileSync('src/design/tokens.css', 'utf8').split('@media (prefers-color-scheme: light)');
+  for (const t of new Set(svg.match(/--scene-[a-z-]+/g))) {
+    expect(dark, t).toContain(`${t}:`);
+    if (!new RegExp(`${t}:[^;]+;\\s*/\\* shared \\*/`).test(dark!)) expect(light, t).toContain(`${t}:`);
+  }
 });
 it('draws a mini Bo as the still picture only', () => {
   render(<BoBubble portrait="mini">Alles gut.</BoBubble>);
@@ -178,7 +186,7 @@ it('draws a mini Bo as the still picture only', () => {
 ```
 
 - [ ] **Step 2: Run** `npx vitest run tests/web/bo-scene.test.tsx` — Expected: FAIL.
-- [ ] **Step 3: Implement** SVGs, Tokens, `BoScene`, `BoBubble`. Die Szene ist `aria-hidden`; Größe wie im Moodboard (116 × 176 px Feld, Bo etwa 94 px breit).
+- [ ] **Step 3: Implement** SVG, Tokens, `BoScene`, `BoBubble`.
 - [ ] **Step 4: Run** den Test und `npx vitest run tests/web/heute-panda.test.tsx tests/tracking/panda-portrait.test.tsx` — Expected: PASS.
 - [ ] **Step 5: Commit** `feat(design): Bo's bamboo nest as a reusable scene`.
 
@@ -198,10 +206,10 @@ it('draws a mini Bo as the still picture only', () => {
   - `weekCount(rows: DayRow[], planDays: PlanDay[] | null): { done: number; planned: number | null }` und `weekCountText(c): string | null` → `"2 von 5 geschafft"`, ohne Plan `"2 geschafft"`, ohne Plan und 0 → `null`.
   - `weekSentence(rows: DayRow[], today: string): string`: drei Teile. Erledigt: 0 → „Die Woche fängt gerade an.“, 1 → „Eine Einheit hast du schon geschafft.“, n → „{Zahlwort} Einheiten hast du schon geschafft.“ (Zahlwörter zwei bis sieben). Heute: offener Plan → „Heute ist {planDayLabel} dran.“, Ruhetag → „Heute ist Ruhetag.“, sonst nichts. Danach: Trainingstage nach heute 0 → nichts, 1 → „Danach kommt noch eine Einheit.“, n → „Danach kommen noch {Zahlwort} Einheiten.“
   - `restDaysText(rows: DayRow[], today: string): string | null`: Ruhetage nach heute; „Samstag ist ein Ruhetag.“, „Dienstag und Samstag sind Ruhetage.“, drei und mehr mit Kommas und „und“.
-  - `weekRangeText(monday: string): string` → `"9. bis 15. November"`, über den Monat `"30. November bis 6. Dezember"`.
+  - `weekRangeText(monday: string): string` → `"9. bis 15. November"`, über den Monat `"30. November bis 6. Dezember"`. Monatsnamen und Wochentage nur über `src/shared/dates.ts` (de-DE), keine eigene Namensliste.
   - `SPORT_ICON: Record<Sport, IconName>` (`gym→kraft`, `bike→ausdauer`, `run→lauf`, `mobility→spross`, `rest→mond`) und `KIND_ICON: Record<ActivityKind, IconName>` (`kraft→kraft`, `rad→ausdauer`, `lauf→lauf`, `andere→spross`).
 - Produces (`week-days.ts`): `useWeekDays(port: TrackingPort, nowMs: number): { today: string; monday: string; dates: string[]; rows: DayRow[]; current: ReturnType<typeof planOfWeek>; next: ReturnType<typeof planOfWeek>; runs: PlannedRun[]; spontaneous: boolean; loaded: boolean; frame: ReturnType<typeof useTodayAdvice> }`. Die Logik ist die heutige aus `CoachScreen` (Zeilen Montag bis heute im Modus Spontan oder ohne Plan, sonst ganze Woche; `mergedActivities(…, true)`).
-- Produces (Kit): `WeekPath({ days, onPick }: { days: PathDay[]; onPick?: (date: string) => void })`: sieben Punkte auf einer Linie (DESIGN „Wochenweg“: erledigt Apricot mit Haken, heute Gold-Ring mit `--today-glow`, geplant Ring, Ruhetag kleiner Punkt), Linie bis zum letzten erledigten Tag in Apricot. Jeder Punkt ist ein Knopf mit `aria-label` „{Wochentag}, {Zustand}“ (z. B. „Mittwoch, erledigt“), 44 px Tippfläche; `ol` mit `aria-label="Wochenweg"`.
+- Produces (Kit): `WeekPath({ days, kicker, count, onPick }: { days: PathDay[]; kicker: string; count?: string | null; onPick?: (date: string) => void })`: oben eine Kopfzeile mit `Kicker` links und `count` gedämpft rechts (Heute und Woche bauen diesen Kopf nicht selbst), darunter sieben Punkte auf einer Linie (DESIGN „Wochenweg“: erledigt Apricot mit Haken, heute Gold-Ring mit `--today-glow`, geplant Ring, Ruhetag kleiner Punkt), Linie bis zum letzten erledigten Tag in Apricot. Jeder Punkt ist ein Knopf mit `aria-label` „{Wochentag}, {Zustand}“ (z. B. „Mittwoch, erledigt“), 44 px Tippfläche; `ol` mit `aria-label="Wochenweg"`.
 - Produces: `DaySheet({ port, date, now, onClose }: { port: TrackingPort; date: string; now: () => number; onClose: () => void })`: kleines Sheet, Titel „Mittwoch, 11. November“. Liest seine Records selbst. Vergangen und heute: was gemacht wurde (Text und Minuten, bei eigenem Krafttraining die Übungen gedämpft, „Beweglichkeit“), sonst „Das war ein Ruhetag.“ oder „Für diesen Tag sind noch keine Daten da.“. Heute und später: der Plantag (`planDayLabel`, `note`, bei `fixed` „Dieser Tag ist fest eingeplant.“, geplante Läufe mit `runText`), am ersten Krafttag ab heute Name und Übungen des Plans aus dem Record `plan/current`; ohne Plan „Für diesen Tag ist noch nichts geplant.“. Kein Startknopf.
 
 - [ ] **Step 1: Write the failing tests.** `tests/tracking/week-path.test.ts` (Zeilen mit einer kleinen Fabrik `row(date, { done, plan })`):
@@ -262,7 +270,7 @@ it('a later day shows the plan without a start button, and a calm line without a
 - `TodayCard` rendert `MainCard` mit `kicker="Jetzt dran"`, `label` „Heute“ bzw. „Heute laut Wochenplan“ wie bisher. Statt `gym: ReactNode` bekommt es `gym?: { name: string | null; line: string | null; notes?: ReactNode; start: () => void; view?: () => void }` (`line` = „Krafttraining, etwa 45 Minuten, 6 Übungen“ aus `gymMinutes` und der Übungszahl; `notes` = „Angepasst“, „Der Plan ist schon etwas älter …“, offene Fragen) und `extra?: ReactNode` (Beweglichkeitsangebot) für `more`. Titel: Krafttag → Name des Trainings, sonst `planDayLabel` bzw. der Satz des Vorschlags; Hauptknopf „Training starten“ / „Zum Laufen“; Radtag: Nebenknopf „Ansehen“, Text „Gestartet wird am Mac.“; Ruhetag ohne Hauptknopf. „Etwas anderes heute?“ bleibt als `secondary` in `more`. Erledigt: Kicker „Heute erledigt“, Titel „Gut gemacht“, Text „Du hast heute schon trainiert.“.
 - `Finisher` rendert `MainCard` mit `kicker="Zum Abschluss"`, Titel „Locker ausklingen“ (mit Cardio) oder „Dehnen“, Text wie bisher, `more` = Beweglichkeitszeile oder „Dehn ein paar Minuten, was sich fest anfühlt.“.
 
-Reihenfolge auf Heute (fest): Datumszeile (`<h1 className="tk-sr">Heute</h1>` nur für Screenreader; `.tk-sr` im Kit-Block anlegen, falls es keine solche Klasse gibt) → Kopf mit `Kicker` „Dein Weg diese Woche“ und `weekCountText` rechts → `WeekPath` (Tipp öffnet `DaySheet`) → `CoachLine` → **eine** „Jetzt dran“-Karte nach Entscheidung 5 (offenes Training: `MainCard` kicker „Läuft noch“, Titel = Trainingstitel, Text „Seit {sinceText}“, Hauptknopf „Weitermachen“; ohne Plan: kicker „Jetzt dran“, Titel „Dein Plan“, Text „Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit Bo.“, Hauptknopf „Woche planen“, Nebenknopf „Im Profil auswählen“) → `DayMeals` (nur mit Essensplan) → `RowCard` „Morgen“ (Kicker „Morgen“, Titel `planDayLabel`, Icon `SPORT_ICON`, öffnet `DaySheet`; ohne Plan für morgen keine Karte) → bis Task 7: `TogetherCard` als letztes.
+Reihenfolge auf Heute (fest): Datumszeile (`<h1 className="tk-sr">Heute</h1>` nur für Screenreader; `.tk-sr` im Kit-Block anlegen, falls es keine solche Klasse gibt) → `WeekPath kicker="Dein Weg diese Woche" count={weekCountText(…)}` (Tipp öffnet `DaySheet`) → `CoachLine` → **eine** „Jetzt dran“-Karte nach Entscheidung 5 (offenes Training: `MainCard` kicker „Läuft noch“, Titel = Trainingstitel, Text „Seit {sinceText}“, Hauptknopf „Weitermachen“; ohne Plan: kicker „Jetzt dran“, Titel „Dein Plan“, Text „Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit Bo.“, Hauptknopf „Woche planen“, Nebenknopf „Im Profil auswählen“) → `DayMeals` (nur mit Essensplan) → `RowCard` „Morgen“ (Kicker „Morgen“, Titel `planDayLabel`, Icon `SPORT_ICON`, öffnet `DaySheet`; ohne Plan für morgen keine Karte) → bis Task 7: `TogetherCard` als letztes.
 
 - [ ] **Step 1: Write the failing tests** in `tests/web/heute-day.test.tsx` (vorhandenes `boot`; die Tests zu Pfeilen, Wischen, neuem Kalendertag und „Dein Körper“ löschen):
 
@@ -363,7 +371,7 @@ it('rows exist only with data, and Body Battery and stress appear nowhere', () =
 - Produces (`bo.ts`): `BO_LINES = { weekCalm: 'Wenn du an der Woche etwas ändern willst, sag es mir einfach.', weekEmpty: 'Für diese Woche steht noch kein Plan. Sollen wir zusammen einen machen?', proposal: 'Ich habe einen Vorschlag für dich. Schau ihn dir in Ruhe an.', thinking: 'Ich denke gerade über deine Nachricht nach.', subtitle: 'Dein Sensei kennt deinen Plan.', suggestions: ['Schlag mir eine Woche vor', 'Mir tut etwas weh', 'Diese Woche habe ich weniger Zeit'] } as const`.
 - `ChatBubble({ m, children })`: Bo → `BoBubble portrait="mini"`, du → `Bubble tail="right"`; `foot` = Uhrzeit (`timeLabel`). `ChatNote` = Bo-Blase mit drei Punkten (`.tk-typing`, `aria-hidden`) und dem Text, `role="status"` bleibt. `WorkoutCoach` nutzt dieselbe Blase und ändert sich mit.
 
-Aufbau von `CoachChat` (oben nach unten): `Sheet page display title={BO.title}` mit `lead` = Mini-Bo und Untertitel `BO_LINES.subtitle` → `RowCard` (icon `aenderung`, kicker „Zuletzt geändert“, Titel neueste Notiz mit Grund) öffnet ein kleines Sheet „Zuletzt geändert“ mit den fünf neuesten → `link` „Frühere Nachrichten zeigen“ → Tagestrenner als Pille → Blasen; der erste offene Vorschlag (`useOpenProposals(...)[0]`) rendert in seiner Blase `ProposalCard` statt `ProposalLine`; beantwortete bleiben eine Zeile mit Rückgängig wie bisher → unten: Streifen „Bo hat noch einen weiteren Vorschlag.“ / „Bo hat noch {n} weitere Vorschläge.“ (öffnet `ProposalsSheet` mit den übrigen), Chips aus `BO_LINES.suggestions` (nur bei leerem Feld; Tipp schreibt den Satz ins Feld), Eingabe mit Platzhalter „Schreib Bo, was ansteht“ und rundem Sendeknopf (`Icon name="senden"`, `aria-label="Senden"`). Der leere Verlauf zeigt keinen Beispielsatz mehr (die Chips ersetzen ihn).
+Aufbau von `CoachChat` (oben nach unten): `Sheet page display title={BO.title}` mit `lead={<PandaPortrait className="tk-pandahead-mini" pose="listen" />}` (der bewegte Bo des Chats, wie heute; Entscheidung 8) und Untertitel `BO_LINES.subtitle` → `RowCard` (icon `aenderung`, kicker „Zuletzt geändert“, Titel neueste Notiz mit Grund) öffnet ein kleines Sheet „Zuletzt geändert“ mit den fünf neuesten → `link` „Frühere Nachrichten zeigen“ → Tagestrenner als Pille → Blasen; der erste offene Vorschlag (`useOpenProposals(...)[0]`) rendert in seiner Blase `ProposalCard` statt `ProposalLine`; beantwortete bleiben eine Zeile mit Rückgängig wie bisher → unten: Streifen „Bo hat noch einen weiteren Vorschlag.“ / „Bo hat noch {n} weitere Vorschläge.“ (öffnet `ProposalsSheet` mit den übrigen), Chips aus `BO_LINES.suggestions` (nur bei leerem Feld; Tipp schreibt den Satz ins Feld), Eingabe mit Platzhalter „Schreib Bo, was ansteht“ und rundem Sendeknopf (`Icon name="senden"`, `aria-label="Senden"`). Der leere Verlauf zeigt keinen Beispielsatz mehr (die Chips ersetzen ihn).
 
 - [ ] **Step 1: Write the failing tests.** `tests/tracking/open-chat.ts`: `openProposals()` wird zu `proposalIn(chat: HTMLElement)` (sucht die Gruppe in der Blase) und `openMoreProposals()` (Streifen `/^Bo hat noch/` → Dialog `/^Vorschl(ag|äge)$/`). In `tests/tracking/coach-screen.test.tsx`:
 
@@ -388,6 +396,14 @@ it('more open proposals wait behind one strip; exactly one stands in a bubble', 
   expect(await screen.findByRole('dialog', { name: 'Vorschlag' })).toBeTruthy();
 });
 it('Bo speaks left with his still picture, you speak right, each with the time', async () => { /* .tk-bubble.right, img, timeLabel */ });
+it('only the head Bo moves: he listens in the chat head, the bubbles show the still', async () => {
+  const { port } = fakePort([riderMsg, coachMsg]);
+  render(<CoachScreen port={port} {...env} />);
+  const chat = await openChat();
+  expect(chat.querySelectorAll('canvas')).toHaveLength(1);
+  expect(chat.querySelector('.tk-sheet-head canvas')).toBeTruthy();
+  expect(chat.querySelector('.tk-bubble canvas, .tk-bo canvas')).toBeNull();
+});
 it('a chip writes its sentence into the field', async () => { /* Tipp „Mir tut etwas weh“ → textarea.value */ });
 it('Zuletzt geändert is a card on top that opens the list', async () => { /* RowCard → dialog „Zuletzt geändert“ */ });
 ```
@@ -403,7 +419,7 @@ Die bestehenden Tests (senden, „Gesendet. Bo antwortet …“, alter Vorschlag
 
 **Files:**
 - Modify: `src/tracking/ui/CoachScreen.tsx`, `src/tracking/ui/GoalRules.tsx` (`goalSentence`), `src/tracking/ui/StatsScreen.tsx` (`LookBack` ohne eigenes `<h2>`, als Sheet-Inhalt), `src/web/app/Shell.tsx` (`showPrefs` raus), `src/web/app/Heute.tsx` (Gemeinsam raus), `tracking.css` (alte `.tk-coach .tk-week`-Regeln löschen, sobald unbenutzt)
-- Move: `src/web/TogetherScreen.tsx` → `src/tracking/ui/TogetherScreen.tsx` (`git mv`, Importe anpassen)
+- Move: `src/web/TogetherScreen.tsx` → `src/tracking/ui/TogetherScreen.tsx` (`git mv`, Importe anpassen; der handgebaute Kopf `<h1 className="tk-title">Gemeinsam</h1>` plus Link „Zurück“ wird `PageHead title="Gemeinsam" back={{ label: 'Woche', onClick: onBack }}`)
 - Test: `tests/tracking/coach-screen.test.tsx` (Wochen-Teile), `tests/web/app/review.test.tsx`, `tests/web/together.test.tsx`, `tests/tracking/stats-screen.test.tsx`
 
 **Interfaces:**
@@ -411,7 +427,7 @@ Die bestehenden Tests (senden, „Gesendet. Bo antwortet …“, alter Vorschlag
 - Produces: `goalSentence(goal: { strength: Strength; focus: readonly string[] }): string` neben `goalSummary`: `{ muscle: 'Du baust Muskeln auf', strength: 'Du wirst stärker', fitness: 'Du bleibst fit' }` plus bei Fokus „, vor allem {Gruppen aus `focusLabel`, die letzte mit „und“ verbunden}“ und Punkt, z. B. „Du baust Muskeln auf, vor allem Rücken und Schultern.“
 - `CoachScreen({ port, now, newId, openChat })` (ohne `showPrefs`). Seite von oben nach unten:
   1. `PageHead title="Deine Woche"`.
-  2. Wochenkarte (`Card`, Region „Diese Woche“): `Kicker` `weekRangeText(monday)` mit `weekCountText` rechts, `WeekPath` (Tipp → `DaySheet`), `weekSentence`; im Modus Spontan statt dessen `Heute: {frame.advice.line}` als Satz; ohne Plan und nicht spontan „Für diese Woche gibt es noch keinen Plan.“. Darunter, durch eine Linie getrennt: `Icon ziel`, „**Dein Ziel:** {goalSentence}“ (nicht gewählt: dahinter gedämpft „Das ist ein Vorschlag.“) und runder Knopf `Icon stift` mit `aria-label="Ziel und Planung"` → `GoalSheet`.
+  2. Wochenkarte (`Card`, Region „Diese Woche“): `WeekPath kicker={weekRangeText(monday)} count={weekCountText(…)}` (Tipp → `DaySheet`), `weekSentence`; im Modus Spontan statt dessen `Heute: {frame.advice.line}` als Satz; ohne Plan und nicht spontan „Für diese Woche gibt es noch keinen Plan.“. Darunter, durch eine Linie getrennt: `Icon ziel`, „**Dein Ziel:** {goalSentence}“ (nicht gewählt: dahinter gedämpft „Das ist ein Vorschlag.“) und runder Knopf `Icon stift` mit `aria-label="Ziel und Planung"` → `GoalSheet`.
   3. Tageskarte (`Card`, Region „Tage“): Abschnitte „Erledigt“ (vergangene Tage mit Erledigtem: `RowCard flat lead="Mo" icon={KIND_ICON} end="done"`), „Heute“ (`RowCard flat highlight`), „Kommt noch“ mit `restDaysText` rechts (Plantage nach heute ohne Ruhetage; ohne Plan die geplanten Läufe mit `runText`). Jede Zeile öffnet `DaySheet`. Ruhetage vor heute stehen nur im Wochenweg. Gibt es `next` und nicht Spontan: `RowCard flat icon="woche" title="Nächste Woche"` → kleines Sheet mit `Week rows={planRows(next.days)}`.
   4. `HealthCard` (nur mit Health-Record) → Unterseite `HealthPage`.
   5. Bo: `BoBubble portrait="mini"`; Text nach Lage: wartet eine Antwort → `BO_LINES.thinking`; offener Vorschlag → `BO_LINES.proposal` mit `primary` „Vorschlag ansehen“ (`ProposalsSheet` mit allen offenen); kein Plan und nicht Spontan → `BO_LINES.weekEmpty` mit `primary` „Woche planen“ (öffnet den Chat); sonst `BO_LINES.weekCalm`. Immer `secondary` `BO.ask` → Chat.
@@ -450,7 +466,7 @@ it('without a plan: seven calm dots, no count, and Bo offers Woche planen', asyn
 it('Rückblick and Was Bo beachtet are quiet tiles that open their sheets', async () => { /* … */ });
 ```
 
-`tests/tracking/open-chat.ts`: `openChat()` klickt `BO.ask` („Frag Bo, deinen Sensei“). `tests/web/app/review.test.tsx`: Rückblick über die Kachel öffnen, Rest gleich. `tests/web/together.test.tsx`: Gemeinsam liegt auf der Woche, „Zurück“ führt zur Woche.
+`tests/tracking/open-chat.ts`: `openChat()` klickt `BO.ask` („Frag Bo, deinen Sensei“). `tests/web/app/review.test.tsx`: Rückblick über die Kachel öffnen, Rest gleich. `tests/web/together.test.tsx`: Gemeinsam liegt auf der Woche, der Knopf „‹ Woche“ führt zur Woche.
 
 - [ ] **Step 2: Run** `npx vitest run tests/tracking/coach-screen.test.tsx` — Expected: FAIL.
 - [ ] **Step 3: Implement.**
@@ -460,6 +476,6 @@ it('Rückblick and Was Bo beachtet are quiet tiles that open their sheets', asyn
 ### Task 8: Abschluss
 
 - [ ] **Step 1:** `npm run typecheck`, `rtk proxy npm run lint` (0 Fehler), `npm test` — Expected: alles grün. `grep -rn "font-weight: *600\|HealthSheet\|WaitingProposal\|DayHead\|day-nav" src tests` — Expected: keine Treffer.
-- [ ] **Step 2:** `npm run dev:sim`, Web-App bei 390 px und 1200 px, dunkel und hell (Profil „Hell“ und „Dunkel“), mit `docs/design/moodboard/{heute,woche,sensei,gesundheit}.html` vergleichen: Nest mit Lichtschein, Wochenweg-Zustände und Heute-Glühen, Blase „du“, Kacheln, Gesundheit, Chat-Eingabe über der Tastatur. Lesbarkeit im hellen Schema ist der Review-Focus 2; ein unlesbares Nest bekommt hier eine helle Variante (zweiter Token-Wert, zwei SVGs). Abweichungen, die die Abnahme nicht betreffen, in den Parkplatz.
+- [ ] **Step 2:** `npm run dev:sim`, Web-App bei 390 px und 1200 px, dunkel und hell (Profil „Hell“ und „Dunkel“), mit `docs/design/moodboard/{heute,woche,sensei,gesundheit}.html` vergleichen: Nest mit Lichtschein, Wochenweg-Zustände und Heute-Glühen, Blase „du“, Kacheln, Gesundheit, Chat-Eingabe über der Tastatur. Lesbarkeit im hellen Schema ist der Review-Focus 2; ein schlecht lesbares Nest wird nur über die hellen Werte der `--scene-*`-Tokens in `tokens.css` abgestimmt, nie in der SVG-Datei. Prüfen, dass `<use>` die Tokens in Chrome und Safari erbt (Nest färbt sich beim Wechsel Hell/Dunkel im Profil um). Abweichungen, die die Abnahme nicht betreffen, in den Parkplatz.
 - [ ] **Step 3:** Roadmap: Zeile Dojo 2 auf ✅; im Parkplatz die Dojo-1-Punkte zu `font-weight` und Hauptknöpfen (für Heute/Woche) als erledigt markieren; neu in den Parkplatz: „Gesundheit und Gemeinsam sind Unterseiten ohne Browser-Zurück“. Plan nach `docs/archive/plans/` verschieben (`git mv`), Verweis im Abschnitt „Dojo — Briefs“ ergänzen.
 - [ ] **Step 4: Commit** `docs: Dojo 2 done`.
