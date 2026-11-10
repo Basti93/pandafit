@@ -21,7 +21,10 @@ export type Prio = 'focus' | 'equal' | 'keep';
 export type SportKey = 'gym' | 'bike' | 'run';
 /** A focus that lies over the base goal until a date (inclusive). It never changes the base; `endedSeenMs` hides the end notice. */
 export type TemporaryFocus = { focus?: MuscleGroup[]; sports?: Partial<Record<SportKey, Prio>>; until: string; endedSeenMs?: number };
-export type GoalBody = { strength: Strength; focus: MuscleGroup[]; sports: Partial<Record<SportKey, Prio>>; temporary?: TemporaryFocus; atMs: number };
+/** How hard the coach pushes. A goal without `push` counts as normal, so code can tell that it was never chosen. */
+export type Push = 'gentle' | 'normal' | 'hard';
+export const PUSH_LABEL: Record<Push, string> = { gentle: 'Vorsichtig', normal: 'Normal', hard: 'Fordere mich' };
+export type GoalBody = { strength: Strength; focus: MuscleGroup[]; sports: Partial<Record<SportKey, Prio>>; push?: Push; temporary?: TemporaryFocus; atMs: number };
 export const DEFAULT_GOAL: Omit<GoalBody, 'atMs'> = { strength: 'muscle', focus: [], sports: {} };
 export const MAX_WEEKS = 12;
 /** The goal as the coaches and screens use it: the base with an active temporary focus laid over it, plus a recently ended one. */
@@ -30,6 +33,11 @@ export type EffectiveGoal = Omit<GoalBody, 'atMs' | 'temporary'> & { temporary?:
 const STRENGTHS: Strength[] = ['muscle', 'strength', 'fitness'];
 const PRIOS: Prio[] = ['focus', 'equal', 'keep'];
 const SPORT_KEYS: SportKey[] = ['gym', 'bike', 'run'];
+const PUSHES: Push[] = ['gentle', 'normal', 'hard'];
+
+/** The hardness that applies now: gentle while a complaint is active or healing, else the chosen one (normal if never chosen). */
+export const effectivePush = (goal: { push?: Push }, complaints: readonly { status: string }[]): Push =>
+  complaints.some((c) => c.status === 'active' || c.status === 'healing') ? 'gentle' : goal.push ?? 'normal';
 
 /** One goal per profile: record kind `goal`, id `goal`. */
 export const GOAL_ID = 'goal';
@@ -43,7 +51,8 @@ function readGoalParts(b: Record<string, unknown>): Omit<GoalBody, 'atMs'> | nul
     if (!SPORT_KEYS.includes(k as SportKey) || !PRIOS.includes(v as Prio)) return null;
     sports[k as SportKey] = v as Prio;
   }
-  return { strength: b.strength as Strength, focus: b.focus as MuscleGroup[], sports };
+  if (b.push !== undefined && !PUSHES.includes(b.push as Push)) return null;
+  return { strength: b.strength as Strength, focus: b.focus as MuscleGroup[], sports, ...(b.push !== undefined ? { push: b.push as Push } : {}) };
 }
 
 const isDateKey = (x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && addDays(x, 0) === x;
@@ -73,7 +82,7 @@ export const goalRecord = (g: Omit<GoalBody, 'atMs'>, nowMs: number, have?: Trac
 export function storedGoalOf(records: readonly TrackedRecord[]): Omit<GoalBody, 'atMs'> {
   const r = records.find((x) => x.kind === 'goal' && x.id === GOAL_ID && !x.deleted);
   const g = r ? readGoal(r.body) : null;
-  return g ? { strength: g.strength, focus: g.focus, sports: g.sports, ...(g.temporary ? { temporary: g.temporary } : {}) } : { ...DEFAULT_GOAL, focus: [], sports: {} };
+  return g ? { strength: g.strength, focus: g.focus, sports: g.sports, ...(g.push ? { push: g.push } : {}), ...(g.temporary ? { temporary: g.temporary } : {}) } : { ...DEFAULT_GOAL, focus: [], sports: {} };
 }
 
 /**
@@ -143,6 +152,7 @@ export function readRule(id: string, body: unknown): Rule | null {
       if (g.focus !== undefined) goal.focus = parts.focus;
       if (g.sports !== undefined) goal.sports = parts.sports;
     }
+    if (g.push !== undefined) { if (!PUSHES.includes(g.push as Push)) return null; goal.push = g.push as Push; }
     if (g.weeks !== undefined) {
       if (typeof g.weeks !== 'number' || !Number.isInteger(g.weeks) || g.weeks < 1 || g.weeks > MAX_WEEKS || (g.focus === undefined && g.sports === undefined)) return null;
       goal.weeks = g.weeks;

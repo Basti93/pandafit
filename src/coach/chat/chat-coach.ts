@@ -123,6 +123,7 @@ const ruleDraftSchema = { anyOf: [{ type: 'null' }, {
     goal: { type: 'object', additionalProperties: false, properties: {
       strength: { enum: ['muscle', 'strength', 'fitness'] }, focus: { type: 'array', items: { enum: FOCUS_GROUPS } },
       sports: { type: 'object', additionalProperties: false, properties: { gym: prio, bike: prio, run: prio } },
+      push: { enum: ['gentle', 'normal', 'hard'] },
       weeks: { type: 'integer', minimum: 1, maximum: 12 },
     } },
   },
