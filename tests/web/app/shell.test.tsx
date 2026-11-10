@@ -520,7 +520,7 @@ describe('web app', () => {
     const a = await boot({ account: 'anna', seed: [openRec(60_000)] });
     fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
     fireEvent.click(await screen.findByRole('button', { name: /Weitermachen/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Mehr zu Kniebeuge' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Menü Kniebeuge' }));
     fireEvent.click(screen.getByRole('button', { name: 'Notiz hinzufügen Kniebeuge' }));
     const note = await screen.findByLabelText('Notiz zu Kniebeuge');
     fireEvent.focus(note);

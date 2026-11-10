@@ -2,11 +2,13 @@ import { contiguousGroups } from '../../shared/superset';
 import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from '../../shared/gym/types';
 import { MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
-import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext } from './history';
+import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan, type Suggestion } from './history';
+import { hardSetsOf, muscleOfFrom, preFatigue } from './pre-fatigue';
 import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
 import { studioName, type Renames } from '../../shared/studio';
 import { repRangeOf } from '../../shared/muscle-targets';
-import { isExcluded } from '../../shared/excluded';
+import { isExcluded, resolveCatalogEntry } from '../../shared/excluded';
+import { executionKey } from '../../shared/execution';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
 import { gymLimit, gymMinutes } from '../../shared/duration';
 
@@ -43,6 +45,22 @@ export function weightCap(suggested: number, withStep: boolean, ladder: Ladder):
   return withStep ? nextUp(suggested, ladder) : suggested;
 }
 
+/** The plan the suggestions are made for: studio, weight steps and where each exercise stood in past workouts. */
+export const gymPlan = (ctx: GymContext): Plan => ({ studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, muscleOf: muscleOfFrom(ctx.templates, ctx.catalog ?? []) });
+
+/**
+ * The suggestion without the place (`blind`, the one the prompt shows) and the one for this place (`here`). The place may only
+ * ever lower the weight: `here` is the blind suggestion unless the place gives a lower weight. Without hard sets before it,
+ * without a weight or with assistance, `here` is `blind`.
+ */
+export function placedSuggestion(templateId: string, t: ExerciseTemplate, ctx: GymContext, preSets: number): { blind: Suggestion; here: Suggestion } {
+  const plan = gymPlan(ctx);
+  const blind = suggestNext(templateId, ctx.workouts, ctx.nowMs, t, { ...plan, muscleOf: undefined });
+  if (preSets <= 0 || blind.weightKg === null || isAssisted(t.type)) return { blind, here: blind };
+  const aware = suggestNext(templateId, ctx.workouts, ctx.nowMs, t, plan, preSets);
+  return { blind, here: aware.weightKg !== null && aware.weightKg <= blind.weightKg ? aware : blind };
+}
+
 function parseSet(raw: unknown, where: string): GymSet {
   if (!isRecord(raw)) return no(`${where}: Satz ungültig`);
   const type = SET_TYPES.find((t) => t === raw.type);
@@ -77,12 +95,16 @@ function parseExercise(raw: unknown, i: number, byId: Map<string, ExerciseTempla
   return { ex: { templateId: template.id, title: template.title, restS, supersetId, notes, sets }, template };
 }
 
-function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, recentEquipment: Set<string>, known: Set<string>): void {
+/**
+ * `preSets`: hard sets for the same muscle before this exercise in the workout. The limit for refusing is the suggestion the
+ * prompt shows, which does not look at the place; a weight above what the place allows is then lowered to the suggestion for it
+ * (see placedSuggestion, which the rule workout uses too).
+ */
+function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, recentEquipment: Set<string>, known: Set<string>, preSets: number): void {
   const where = ex.title;
   if (!isRepBased(t)) no(`${where}: nur Übungen mit Wiederholungen`);
-  const plan = { studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames };
-  const sug = suggestNext(ex.templateId, ctx.workouts, ctx.nowMs, t, plan);
-  const ladder = ladderFor(ex.templateId, t, ctx.workouts, ctx.nowMs, plan);
+  const { blind: sug, here } = placedSuggestion(ex.templateId, t, ctx, preSets);
+  const ladder = ladderFor(ex.templateId, t, ctx.workouts, ctx.nowMs, gymPlan(ctx));
   const range = repRangeOf(t);
   if (!known.has(ex.templateId) && !recentEquipment.has(t.equipment)) no(`${where}: Gerät in den letzten Monaten nicht benutzt`);
   const widow = isWidowmaker(ex.notes);
@@ -101,6 +123,7 @@ function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, re
       // Only reachable weights go on.
       else s.weightKg = Math.min(s.weightKg, snapDown(s.weightKg, ladder));
       if (s.weightKg > weightCap(sug.weightKg as number, !isWidowSet(s), ladder)) no(`${where}: Gewicht zu hoch`);
+      if (here.weightKg !== null && s.weightKg > weightCap(here.weightKg, !isWidowSet(s), ladder)) s.weightKg = here.weightKg;
     }
     if (s.type === 'warmup') continue;
     if (isWidowSet(s)) continue;
@@ -113,7 +136,18 @@ function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, re
   }
 }
 
-/** Hard limits for an AI workout. Anything outside them is refused whole; nothing is repaired here. */
+/** The execution key of an exercise, or null without a catalog entry; the entry is resolved the way the exclusion check does it. */
+export function executionKeyOf(e: { templateId: string; title: string }, ctx: GymContext): string | null {
+  const c = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links);
+  return c ? executionKey(c) : null;
+}
+const executionKeysOf = (exercises: GymExercise[], ctx: GymContext): string[] =>
+  exercises.map((e) => executionKeyOf(e, ctx)).filter((k): k is string => k !== null);
+
+/**
+ * Hard limits for an AI workout. Anything outside them is refused whole. Only weights are fitted: snapped to reachable steps and
+ * lowered to what the place of the exercise in the workout allows.
+ */
 export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
   try {
     if (!isRecord(raw)) return no('Training ungültig');
@@ -124,6 +158,9 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     const parsed = raw.exercises.map((e, i) => parseExercise(e, i, byId));
     const exercises = parsed.map((p) => p.ex);
     if (exercises.some((e) => isExcluded(e, ctx.excluded, ctx.catalog ?? [], ctx.links))) return no('Übung ausgeschlossen (Regel der Person)');
+    // The same execution twice (only the equipment differs) is refused; an exercise without a catalog entry has no key.
+    const keys = executionKeysOf(exercises, ctx);
+    if (new Set(keys).size < keys.length) return no('dieselbe Ausführung doppelt');
     if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Keine Beine in dieser Einheit');
     const all = exercises.flatMap((e) => e.sets);
     if (all.filter((s) => s.type !== 'warmup').length > MAX_SETS) return no(`mehr als ${MAX_SETS} Sätze`);
@@ -134,10 +171,15 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     const avail = availableExercises(ctx.workouts, ctx.nowMs);
     const known = new Set(avail.map((a) => a.templateId));
     const recentEquipment = new Set(avail.filter((a) => a.recent).map((a) => byId.get(a.templateId)?.equipment).filter((e): e is string => !!e));
-    parsed.forEach((p) => checkExercise(p.ex, p.template, ctx, recentEquipment, known));
+    const muscleOf = muscleOfFrom(ctx.templates, ctx.catalog ?? []);
+    // Pre-fatigue follows the order the person will see: superset partners pulled together.
+    const grouped = contiguousGroups(exercises);
+    const pre = preFatigue(grouped.map((e) => ({ primaryMuscle: muscleOf(e.templateId), hardSets: hardSetsOf(e.sets), supersetId: e.supersetId })));
+    const preOf = new Map(grouped.map((e, i) => [e, pre[i]!]));
+    parsed.forEach((p) => checkExercise(p.ex, p.template, ctx, recentEquipment, known, preOf.get(p.ex)!));
     // The weights are for this studio's equipment; the app uses it to refit them when another studio is chosen. Never taken from the answer.
     const studio = studioName(plannedKey(ctx.workouts, ctx));
-    const workout: GymWorkout = { name: raw.name.trim(), exercises: contiguousGroups(exercises), ...(studio ? { studio } : {}) };
+    const workout: GymWorkout = { name: raw.name.trim(), exercises: grouped, ...(studio ? { studio } : {}) };
     if (ctx.budgetMinutes !== undefined && gymMinutes(workout, ctx.catalog ?? EXERCISES) > gymLimit(ctx.budgetMinutes)) return no(`zu lang für deine Zeit: ca. ${gymMinutes(workout, ctx.catalog ?? EXERCISES)} Min bei höchstens ${ctx.budgetMinutes}`);
     return { ok: true, workout };
   } catch (e) {
@@ -154,6 +196,7 @@ const REASON_PHRASES: [RegExp, string][] = [
   [/Schema/, 'die Antwort war nicht lesbar'],
   [/Keine Beine in dieser Einheit/, 'Beinübungen, obwohl die Beine in dieser Einheit pausieren'],
   [/ausgeschlossen/, 'eine Übung, die du ausgeschlossen hast'],
+  [/dieselbe Ausführung doppelt/, 'dieselbe Übung zweimal, nur mit anderem Gerät'],
   [/mehr als \d+ Übungen/, 'zu viele Übungen'],
   [/mehr als \d+ Sätze bis zum Versagen/, 'zu viele Sätze bis zum Versagen'],
   [/mehr als \d+ Sätze/, 'zu viele Sätze'],

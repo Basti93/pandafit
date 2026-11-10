@@ -51,6 +51,39 @@ describe('the focus card', () => {
     expect(focusOf('Bankdrücken').getByRole('button', { name: 'Satz 2: geschafft' })).toBeTruthy();
   });
 
+  it('öffnet die Sätze beim Tipp auf einen Satzpunkt bearbeitbar', async () => {
+    const { port } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    const sheet = await setsSheet(1);
+    expect(within(sheet).getByRole('button', { name: 'Satz 1 entfernen' })).toBeTruthy();
+  });
+
+  it('fragt beim Entfernen eines erledigten Satzes nach', async () => {
+    const { port, map } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    const sheet = await setsSheet(1);
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Satz 1 erledigt' }));
+    await waitFor(() => expect(sets(map, 0)[0]!.doneMs).toBe(100_000));
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Satz 1 entfernen' }));
+    expect(await within(sheet).findByRole('button', { name: 'Ja, entfernen' })).toBeTruthy();
+    expect(sets(map, 0)).toHaveLength(2);
+  });
+
+  it('hängt mit plus einen Satz an', async () => {
+    const { port, map } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz hinzufügen Bankdrücken' }));
+    await waitFor(() => expect(sets(map, 0)).toHaveLength(3));
+    expect(focusOf('Bankdrücken').getByRole('button', { name: 'Satz 3: offen' })).toBeTruthy();
+    await later();
+    const sheet = await setsSheet(1);
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Satz hinzufügen' }));
+    await waitFor(() => expect(sets(map, 0)).toHaveLength(4));
+  });
+
   it('in a superset the focus follows the rounds and Satz geschafft ticks only the shown set', async () => {
     const w = withExercises([
       { exerciseId: 'pf-bench-press', title: 'Bankdrücken', supersetId: 1, notes: '', sets: [set(60, 8, null), set(60, 8, null)] },
@@ -249,7 +282,7 @@ describe('the focus card', () => {
     const info = await screen.findByRole('dialog');
     expect(within(info).getByRole('note', { name: 'Anleitung Bankdrücken' })).toBeTruthy();
     fireEvent.click(within(info).getByRole('button', { name: 'Schließen' }));
-    fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Mehr zu Bankdrücken' }));
+    fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Menü Bankdrücken' }));
     expect(screen.getByRole('list', { name: 'Menü Bankdrücken' })).toBeTruthy();
   });
 });

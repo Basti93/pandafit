@@ -4,6 +4,9 @@ import type { ExerciseTemplate } from '../../../src/shared/gym/types';
 import { checkWorkout, reasonPhrase, type GymContext } from '../../../src/coach/gym/guardrails';
 import { gymMinutes } from '../../../src/shared/duration';
 import { ruleWorkout } from '../../../src/coach/gym/rules';
+import { ladderFor, suggestNext } from '../../../src/coach/gym/history';
+import { snapDown } from '../../../src/shared/loads';
+import { EXERCISES } from '../../../src/shared/exercises';
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 2, 12);
@@ -288,5 +291,110 @@ describe('time budget', () => {
     expect(sets3).toBe(true);
     expect(r.guard).toBeUndefined();
     expect(r.reason).toMatch(/Dauer ca\. \d+ Min\./);
+  });
+});
+
+describe('checkWorkout and the place in the workout', () => {
+  // Invented: an incline press so far done fresh at 40 kg, planned as the third chest exercise.
+  const ctx: GymContext = { ...CTX, templates: [...TEMPLATES, T('ip', 'barbell', 'chest')], workouts: [...CTX.workouts, ...two('ip', 40)] };
+  const ip = (w: ReturnType<typeof passes>) => w.exercises.find((e) => e.templateId === 'ip')!.sets.map((s) => s.weightKg);
+  it('kappt die Last nach der Stelle im Training', () => {
+    const third = passes(wo([ex('cp', [set(40, 8), set(40, 8), set(40, 8), set(40, 8)]), ex('bp', [set(80, 8), set(80, 8)]), ex('ip', [set(40, 8), set(40, 8)])]), ctx);
+    const ladder = ladderFor('ip', ctx.templates.at(-1), ctx.workouts, NOW);
+    const step2 = snapDown(40 * 0.88, ladder);
+    for (const kg of ip(third)) expect(kg).toBeLessThanOrEqual(step2);
+    expect(ip(third)).toEqual([snapDown(40 * 0.82, ladder), snapDown(40 * 0.82, ladder)]);
+  });
+  it('leaves the load alone when the exercise comes first', () => {
+    const first = passes(wo([ex('ip', [set(40, 8)]), ex('cp', [set(40, 8)])]), ctx);
+    expect(ip(first)).toEqual([40]);
+  });
+  it('the rule workout plans a later exercise for the same muscle with its lower load', () => {
+    const own: GymContext = { ...ctx, workouts: [...two('cp', 40), ...two('ip', 40)] };
+    const plan = ruleWorkout(own).workout;
+    expect(plan.exercises.map((e) => e.templateId)).toEqual(['cp', 'ip']);
+    const ladder = ladderFor('ip', ctx.templates.at(-1), own.workouts, NOW);
+    expect(ip(plan)).toEqual([0, 0, 0].map(() => snapDown(40 * 0.91, ladder)));
+  });
+  it('takes the refusal limit from the suggestion the prompt shows, and lowers only where the place demands', () => {
+    // Older session tired (after 4 chest-press sets), newer one fresh, both at the top of the range: the prompt says 42.5 kg.
+    const tiredDay: StrengthWorkout = { ...wk(14, 'ip', [[40, 12], [40, 12]]), exercises: [...wk(14, 'cp', [[40, 8], [40, 8], [40, 8], [40, 8]]).exercises, ...wk(14, 'ip', [[40, 12], [40, 12]]).exercises] };
+    const mixed: GymContext = { ...ctx, workouts: [...two('bp', 80), tiredDay, wk(7, 'ip', [[40, 12], [40, 12]])] };
+    expect(ip(passes(wo([ex('ip', [set(45, 6)]), ex('bp', [set(80, 8)])]), mixed))).toEqual([45]);
+    expect(ip(passes(wo([ex('cp', [set(40, 8), set(40, 8), set(40, 8), set(40, 8)]), ex('ip', [set(45, 6)])]), mixed))).toEqual([40]);
+  });
+  it('counts the pre-fatigue in the order the person sees, superset partners pulled together', () => {
+    const w = passes(wo([ex('cp', [set(40, 8), set(40, 8)], { supersetId: 1 }), ex('bp', [set(80, 8)]), ex('ip', [set(40, 8), set(40, 8)], { supersetId: 1 })]), ctx);
+    expect(w.exercises.map((e) => e.templateId)).toEqual(['cp', 'ip', 'bp']);
+    const ladder = ladderFor('bp', ctx.templates.find((t) => t.id === 'bp'), ctx.workouts, NOW);
+    expect(w.exercises[2]!.sets[0]!.weightKg).toBe(snapDown(80 * 0.88, ladder));
+  });
+  it('still refuses a weight above the fresh suggestion plus one step', () => {
+    refused(wo([ex('cp', [set(40, 8)]), ex('ip', [set(50, 8)])]), ctx);
+  });
+  // Invented: the incline press so far always came after six chest-press sets; the rule plan puts it after three.
+  const day = (daysAgo: number, ipReps: number): StrengthWorkout => ({
+    ...wk(daysAgo, 'ip', []),
+    exercises: [...wk(daysAgo, 'cp', Array.from({ length: 6 }, (): S => [40, 8])).exercises, ...wk(daysAgo, 'ip', [[40, ipReps], [40, ipReps]]).exercises],
+  });
+  const blindKg = (c: GymContext) => suggestNext('ip', c.workouts, NOW, c.templates.find((t) => t.id === 'ip')).weightKg!;
+  it('the rule workout passes its own check when the reps dropped twice at another place', () => {
+    const own: GymContext = { ...ctx, workouts: [day(21, 10), day(14, 9), day(7, 8)] };
+    const r = ruleWorkout(own);
+    expect(r.guard).toBeUndefined();
+    expect(r.workout.exercises.map((e) => e.templateId)).toEqual(['cp', 'ip']);
+    for (const kg of ip(r.workout)) expect(kg).toBeLessThanOrEqual(blindKg(own));
+  });
+  it('the rule workout passes its own check after a long break at another place', () => {
+    const own: GymContext = { ...ctx, workouts: [day(42, 8), day(35, 8)] };
+    const r = ruleWorkout(own);
+    expect(r.guard).toBeUndefined();
+    expect(r.workout.exercises.map((e) => e.templateId)).toEqual(['cp', 'ip']);
+    for (const kg of ip(r.workout)) expect(kg).toBeLessThanOrEqual(blindKg(own));
+  });
+});
+
+describe('checkWorkout refuses the same execution twice', () => {
+  const catalogTemplates: ExerciseTemplate[] = ['pf-triceps-rope', 'pf-triceps-pushdown', 'pf-overhead-triceps-cable'].map((id) => {
+    const e = EXERCISES.find((c) => c.id === id)!;
+    return { id, title: e.title, type: e.type, primaryMuscle: e.primaryMuscle, equipment: e.equipment };
+  });
+  const ctx: GymContext = {
+    workouts: ['pf-triceps-rope', 'pf-triceps-pushdown', 'pf-overhead-triceps-cable'].flatMap((id) => two(id, 20, 10)),
+    templates: catalogTemplates, nowMs: NOW, catalog: EXERCISES,
+  };
+  const row = (id: string) => ex(id, [set(20, 10)]);
+
+  it('lehnt dieselbe Ausführung zweimal ab', () => {
+    const r = checkWorkout(wo([row('pf-triceps-rope'), row('pf-triceps-pushdown')]), ctx);
+    expect(r).toEqual({ ok: false, reason: 'dieselbe Ausführung doppelt' });
+  });
+  it('finds the entry of a Hevy template through the link', () => {
+    const hevy: ExerciseTemplate = { id: 'hevy-1', title: 'Fremdname', type: 'weight_reps', primaryMuscle: 'triceps', equipment: 'machine' };
+    const c: GymContext = { ...ctx, templates: [...catalogTemplates, hevy], workouts: [...ctx.workouts, ...two('hevy-1', 20, 10)], links: { 'hevy-1': 'pf-triceps-rope' } };
+    expect(checkWorkout(wo([row('hevy-1'), row('pf-triceps-pushdown')]), c)).toEqual({ ok: false, reason: 'dieselbe Ausführung doppelt' });
+    passes(wo([row('hevy-1'), row('pf-triceps-pushdown')]), { ...c, links: {} });
+  });
+  it('lets another angle of the same muscle through', () => {
+    passes(wo([row('pf-triceps-rope'), row('pf-overhead-triceps-cable')]), ctx);
+  });
+  it('never refuses an exercise without a catalog entry', () => {
+    passes(wo([row('pf-triceps-rope'), row('pf-triceps-pushdown')]), { ...ctx, catalog: [] });
+  });
+  it('the rule workout takes only one of two executions done together', () => {
+    const both = (daysAgo: number): StrengthWorkout => ({
+      ...wk(daysAgo, 'x', []),
+      exercises: ['pf-triceps-rope', 'pf-triceps-pushdown', 'pf-overhead-triceps-cable'].flatMap((id) => wk(daysAgo, id, [[20, 10], [20, 10]]).exercises),
+    });
+    const r = ruleWorkout({ ...ctx, workouts: [both(14), both(7)] });
+    expect(r.guard).toBeUndefined();
+    expect(r.workout.name).toBe('Ganzkörper');
+    const ids = r.workout.exercises.map((e) => e.templateId);
+    expect(ids).toHaveLength(2);
+    expect(ids).toContain('pf-overhead-triceps-cable');
+    expect(ids.filter((id) => id === 'pf-triceps-rope' || id === 'pf-triceps-pushdown')).toHaveLength(1);
+  });
+  it('turns the reason into a phrase that completes the sentence', () => {
+    expect(reasonPhrase('dieselbe Ausführung doppelt')).toBe('dieselbe Übung zweimal, nur mit anderem Gerät');
   });
 });

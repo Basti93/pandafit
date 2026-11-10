@@ -300,3 +300,69 @@ describe('a swap for the next workout is resolved against the whole catalog', ()
     expect(m.nextChange).toBeUndefined();
   });
 });
+
+describe('an explicit yes in the chat takes the open rule draft', () => {
+  const coachMsg = (rule: string): TrackedRecord => ({ kind: 'chat', id: 'c0', updatedMs: NOW - 5000, deleted: false, body: { role: 'coach', text: 'Soll ich das als Regel merken?', atMs: NOW - 5000, rule } });
+  const draft = (kind: string, state = 'proposed'): TrackedRecord => ({ kind: 'rule', id: 'rule-d', updatedMs: 1, deleted: false, body: { kind, text: 'Kurze Pausen', sport: 'all', state, source: 'chat', atMs: 1, ...(kind === 'goal' ? { goal: { strength: 'muscle' } } : {}) } });
+  const yes = (extra = {}) => async () => ({ text: 'Gilt ab jetzt.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], tasks: [], nextChange: null, ruleDraft: null, acceptsRule: true, ...extra });
+  const rules = (s: ReturnType<typeof store>) => [...s.recs.values()].filter((r) => r.kind === 'rule');
+
+  test('takes the open draft on an explicit wish', async () => {
+    const s = store([coachMsg('rule-d'), draft('wish'), rider('r1', 'Trag das als Regel ein')]);
+    await coach(s, yes()).tick('p');
+    expect(rules(s)).toHaveLength(1);
+    expect(rules(s)[0]!.body).toMatchObject({ state: 'active' });
+    expect(replies(s).at(-1)!.rule).toBe('rule-d');
+  });
+
+  test('takes nothing without an open draft', async () => {
+    const done = draft('wish', 'active');
+    const s = store([coachMsg('rule-d'), done, rider('r1', 'Trag das ein')]);
+    await coach(s, yes()).tick('p');
+    expect(rules(s)).toEqual([done]);
+    expect(replies(s).at(-1)!.rule).toBeUndefined();
+    const s2 = store([rider('r1', 'Trag das ein')]);
+    await coach(s2, yes()).tick('p');
+    expect(rules(s2)).toEqual([]);
+  });
+
+  test('says so when there is no open proposal to take', async () => {
+    const s = store([rider('r1', 'Trag das ein')]);
+    await coach(s, yes()).tick('p');
+    expect(replies(s).at(-1)!.text).toBe('Gilt ab jetzt.\nIch sehe gerade keinen offenen Vorschlag, den ich übernehmen könnte. Deshalb gilt noch keine neue Regel.');
+    const taken = store([coachMsg('rule-d'), draft('wish'), rider('r1', 'Trag das als Regel ein')]);
+    await coach(taken, yes()).tick('p');
+    expect(replies(taken).at(-1)!.text).toBe('Gilt ab jetzt.');
+  });
+
+  describe('in a workout', () => {
+    const open: TrackedRecord = { kind: 'workout', id: 'w1', updatedMs: 1, deleted: false, body: { id: 'w1', title: 'Oberkörper', startMs: NOW - 20 * 60_000, endMs: null, source: 'pandafit', rest: null, exercises: [] } };
+    const yesInWorkout = async () => ({ text: 'Gilt ab jetzt.', newComplaint: null, complaintsOver: [], acceptsRule: true });
+    const inWorkout = (m: TrackedRecord): TrackedRecord => ({ ...m, body: { ...(m.body as object), inWorkout: 'w1' } });
+
+    test('takes the draft the coach proposed in the same workout', async () => {
+      const s = store([open, inWorkout(coachMsg('rule-d')), draft('wish'), rider('r1', 'Ja, trag das ein', NOW - 1000, { inWorkout: 'w1' })]);
+      await coach(s, yesInWorkout).tick('p');
+      expect(rules(s)[0]!.body).toMatchObject({ state: 'active' });
+      expect(replies(s).at(-1)).toMatchObject({ inWorkout: 'w1', rule: 'rule-d' });
+    });
+
+    test('never takes a draft from a message outside the workout', async () => {
+      const d = draft('wish');
+      const s = store([open, coachMsg('rule-d'), d, rider('r1', 'Ja, trag das ein', NOW - 1000, { inWorkout: 'w1' })]);
+      await coach(s, yesInWorkout).tick('p');
+      expect(rules(s)).toEqual([d]);
+      expect(replies(s).at(-1)!.rule).toBeUndefined();
+      expect(replies(s).at(-1)!.text).toContain('keinen offenen Vorschlag');
+    });
+  });
+
+  test('never takes a goal from the chat', async () => {
+    const g = draft('goal');
+    const s = store([coachMsg('rule-d'), g, rider('r1', 'Ja, trag ein')]);
+    await coach(s, yes()).tick('p');
+    expect(rules(s)).toEqual([g]);
+    expect(replies(s).at(-1)!.text).toContain('Übernehmen');
+    expect(replies(s).at(-1)!.rule).toBeUndefined();
+  });
+});

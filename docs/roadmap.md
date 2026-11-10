@@ -60,6 +60,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Dojo 3 Kraft und Ausdauer** | Kraft zeigt das nächste Training als Hauptkarte, das laufende Training den nächsten Satz groß; Ausdauer schaltet Rad und Laufen oben um. | Kraft-Umschalter Training/Routinen/Übungen |
 | ✅ | **Dojo 4 Essen und Profil** | Essen zeigt die nächste Mahlzeit groß und die Woche ruhig; ein Rezept trägt man auf der Seite in den Plan ein; Profil ist nur noch Einstellungen. | Tage/Einkauf-Umschalter, „In den Plan“-Sheet |
 | ✅ | **Dojo 5 Bos Orte und Logo** | Hinter jeder Pose von Bo steht seine Szene; das App-Logo zeigt Bos Gesicht mit Stirnband und Schweißtropfen, im Dock, auf dem Handy und als Favicon. | Altes Logo (Panda und Maus auf dem Rad) |
+| ✅ | **Kraft-Feedback 10.11.** | Das Gewicht folgt der Stelle im Training (spätere Übungen für denselben Muskel bekommen weniger), der Coach plant dieselbe Ausführung nie doppelt, „Trag das ein“ im Chat übernimmt den offenen Regelvorschlag, Sätze sind immer bearbeitbar, „+“ hängt einen Satz an, das Übungsmenü ist eine Liste. | Training und Chat 10.11.2026 |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -122,6 +123,14 @@ Fällt weg: Tage/Einkauf-Umschalter, „In den Plan“-Sheet. Nicht dabei: neue 
 Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 
 ## Parkplatz
+- Aus Kraft-Feedback 10.11.:
+  - Wochentage als feste Einstellung (Freitag gut, Wochenende lang, Montag kurz) statt freier Wunsch-Regel; prüfen, ob der Planer `wish`-Regeln für Tage liest.
+  - Der Ausblick nutzt Hevy-Titel statt der eigenen Übungsnamen.
+  - `repRange` je Satz einer Übung ist uneinheitlich (z. B. 8–12 und 6–12).
+  - Nach „Reihenfolge ändern“ im laufenden Training die Vorschläge neu berechnen.
+  - Den Anteil der Vorermüdung pro Person aus eigenen Daten lernen.
+  - „Nächstes Mal“-Zeile und Änderungsnotizen (`gym-coach.ts`) kennen die Stelle im Training noch nicht und können ein höheres Gewicht nennen als der Plan.
+  - Das Senken nach der Stelle macht eine geplante Pyramide flach.
 - ~~Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen.~~ Erledigt mit Dojo 4.
 - Aus Dojo 4: Ein gemeinsamer Kit-Rahmen `SubPage` für Unterseiten (heute `SubPage` in `Training.tsx` und `EssenPage` in `src/web/essen/`).
 - Aus Dojo 4: Tippt man auf den Tab, während eine Unterseite offen ist (Mahlzeit von Heute, Kraft-Unterseiten), bleibt die Unterseite stehen.

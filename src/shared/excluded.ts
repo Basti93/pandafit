@@ -19,3 +19,14 @@ export function isExcluded(e: { id?: string; templateId?: string; title?: string
   if (!title) return false;
   return catalog.some((c) => excluded.has(c.id) && exerciseTitles(c).some((t) => norm(t) === title));
 }
+
+/** The catalog entry of an exercise, resolved like `isExcluded` does: by id, by a Hevy link to an own id, else by an exact normalized known title. */
+export function resolveCatalogEntry(e: { id?: string; templateId?: string; title?: string }, catalog: readonly Exercise[], links?: Readonly<Record<string, string>>): Exercise | null {
+  for (const id of [e.id, e.templateId]) {
+    if (!id) continue;
+    const hit = catalog.find((c) => c.id === id) ?? (links?.[id] ? catalog.find((c) => c.id === links[id]) : undefined);
+    if (hit) return hit;
+  }
+  const title = e.title ? norm(e.title) : '';
+  return title ? catalog.find((c) => exerciseTitles(c).some((t) => norm(t) === title)) ?? null : null;
+}

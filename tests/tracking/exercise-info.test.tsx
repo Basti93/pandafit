@@ -51,10 +51,9 @@ describe('workout: Anleitung behind its round button on the focus card', () => {
 
   test('the menu has no Anleitung entry; the round button is the one way', async () => {
     await running();
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Menü Kniebeuge' }));
     expect(screen.getAllByRole('button', { name: 'Anleitung' })).toHaveLength(1); // only the round button, none in the menu
-    expect(within(screen.getByRole('list', { name: 'Mehr zu Kniebeuge' })).queryByText('Anleitung')).toBeNull();
+    expect(within(screen.getByRole('list', { name: 'Menü Kniebeuge' })).queryByText('Anleitung')).toBeNull();
   });
 
   test('an own text shows without a credit line', async () => {
@@ -234,13 +233,10 @@ describe('picker: info toggle per exercise', () => {
 });
 
 describe('long descriptions', () => {
-  test('a long text is clamped to three lines with a mehr toggle; the text itself stays whole', async () => {
+  test('zeigt die ganze Anleitung ohne mehr-Knopf', () => {
     const text = Array.from({ length: 120 }, (_, i) => `w${i}`).join(' ');
     render(<ExerciseInfo title="X" description={{ text, source: { kind: 'own' } }} video="https://example.com" />);
-    const p = screen.getByText(/w119/);
-    expect(p.className).toBe('tk-clamp');
-    fireEvent.click(screen.getByRole('button', { name: 'mehr' }));
-    expect(p.className).toBe('');
-    expect(screen.getByRole('button', { name: 'weniger' })).toBeTruthy();
+    expect(screen.getByText(/w119/).textContent).toBe(text);
+    expect(screen.queryByRole('button', { name: 'mehr' })).toBeNull();
   });
 });

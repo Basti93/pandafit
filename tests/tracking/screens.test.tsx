@@ -148,7 +148,7 @@ test('an exercise can be swapped from the workout screen', async () => {
   const { port, map } = fakePort([rec(open())]);
   render(<WorkoutScreen port={port} {...ids} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Mehr zu Bankdrücken' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Menü Bankdrücken' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Bankdrücken tauschen' }));
   const similar = await screen.findByRole('region', { name: 'Ähnliche Übungen' });
   expect(within(similar).getAllByRole('button').map((b) => b.textContent)[0]).toMatch(/Bankdrücken|Schrägbankdrücken/); // a built-in leads, not a base variant
@@ -160,7 +160,7 @@ test('a search in the picker finds the English Hevy name', async () => {
   const { port } = fakePort([rec(open())]);
   render(<WorkoutScreen port={port} {...ids} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Mehr zu Bankdrücken' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Menü Bankdrücken' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Bankdrücken tauschen' }));
   fireEvent.change(screen.getByLabelText('Suchen'), { target: { value: 'squat' } });
   expect(screen.getByRole('button', { name: 'Kniebeuge' })).toBeTruthy();
@@ -284,8 +284,8 @@ const twoEx = (): LoggedWorkout => open({ exercises: [
 ] });
 const resume = async () => fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
 // The exercise menu ("⋯"): sets are removed in edit mode, a note appears on request.
-const openMenu = async (title: string) => fireEvent.click(await screen.findByRole('button', { name: `Mehr zu ${title}` }));
-const editSets = async (title: string) => { await openMenu(title); fireEvent.click(screen.getByRole('button', { name: 'Mehr' })); fireEvent.click(screen.getByRole('button', { name: `Sätze bearbeiten ${title}` })); };
+const openMenu = async (title: string) => fireEvent.click(await screen.findByRole('button', { name: `Menü ${title}` }));
+const editSets = async (title: string) => { fireEvent.click(await screen.findByRole('button', { name: /^(Satz 1|Aufwärmsatz):/ })); };
 const noteField = async (title: string) => { await openMenu(title); fireEvent.click(screen.getByRole('button', { name: `Notiz hinzufügen ${title}` })); return (await screen.findByLabelText(`Notiz zu ${title}`)) as HTMLTextAreaElement; };
 
 test('a double tap on remove never removes the next row', async () => {
@@ -297,8 +297,7 @@ test('a double tap on remove never removes the next row', async () => {
   fireEvent.click(btn); fireEvent.click(btn);
   await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].sets).toHaveLength(1));
   fireEvent.click(within(screen.getByRole('dialog', { name: 'Bankdrücken' })).getByRole('button', { name: /^(Schließen|‹ Zurück)$/ }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Mehr zu Bankdrücken' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Menü Bankdrücken' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Entfernen' }));
   const ex = await screen.findByRole('button', { name: 'Ja' });
   fireEvent.click(ex); fireEvent.click(ex);
@@ -651,13 +650,13 @@ test('the set table: headers, chips, one grid, a clear done box and last time as
   await screen.findByLabelText('Gewicht Satz 1');
   const dialog = await setsSheet(1);
   const sheet = within(dialog);
-  expect(sheet.queryByRole('button', { name: 'Satz 1 entfernen' })).toBeNull(); // no × per set outside edit mode
+  expect(sheet.getByRole('button', { name: 'Satz 1 entfernen' })).toBeTruthy(); // the table is always editable
   const head = dialog.querySelector('.tk-head')!;
   expect(head.textContent).toBe('SatzkgWdh');
   const rows = [...dialog.querySelectorAll('.tk-set:not(.tk-head)')];
   expect(rows.map((r) => r.querySelector('.tk-chip')!.textContent)).toEqual(['Aufw.', '1', 'F']);
-  // every row and the header have the same four cells, whatever the set type
-  for (const r of [head, ...rows]) expect([...r.children].filter((c) => !c.matches('.tk-hint, .tk-plates, .tk-wide')).length).toBe(4);
+  // every row and the header have the same five cells (× first), whatever the set type
+  for (const r of [head, ...rows]) expect([...r.children].filter((c) => !c.matches('.tk-hint, .tk-plates, .tk-wide')).length).toBe(5);
   // full names in the choice
   expect([...(sheet.getByLabelText('Satztyp Satz 1') as HTMLSelectElement).options].map((o) => o.text)).toEqual(['Aufwärmen', 'Normaler Satz', 'Bis zum Versagen', 'Dropset']);
   // the hints belong to the next open set only (the warm-up has no earlier one)
@@ -671,12 +670,11 @@ test('the set table: headers, chips, one grid, a clear done box and last time as
   fireEvent.click(sheet.getByRole('button', { name: 'Schließen' }));
   // swap and remove live behind one menu
   expect(screen.queryByRole('button', { name: 'Kniebeuge tauschen' })).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Menü Kniebeuge' }));
   expect(screen.getByRole('button', { name: 'Kniebeuge tauschen' })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
   expect(screen.getByRole('button', { name: 'Entfernen' })).toBeTruthy();
   fireEvent.click(within(screen.getByRole('dialog', { name: 'Kniebeuge' })).getByRole('button', { name: 'Schließen' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Menü Kniebeuge' }));
   // the note is a growing text field, there when asked for
   expect(screen.queryByLabelText('Notiz zu Kniebeuge')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Notiz hinzufügen Kniebeuge' }));
@@ -708,8 +706,7 @@ test('two exercises can be joined to a superset and taken apart again from the m
   const { port, map } = fakePort([rec(w)]);
   render(<WorkoutScreen port={port} {...ids} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Mehr zu Bankdrücken' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Menü Bankdrücken' }));
   fireEvent.click(screen.getByRole('button', { name: /^Supersatz mit/ }));
   fireEvent.click(within(screen.getByRole('dialog', { name: 'Supersatz mit' })).getByRole('button', { name: 'Kniebeuge' }));
   await waitFor(() => {
@@ -718,8 +715,7 @@ test('two exercises can be joined to a superset and taken apart again from the m
     expect(g[0]).toBe(g[1]);
   });
   expect(await screen.findByText('Im Wechsel mit Kniebeuge.')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Bankdrücken' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Menü Bankdrücken' }));
   expect(screen.queryByRole('button', { name: /^Supersatz mit/ })).toBeNull(); // no partner left
   fireEvent.click(screen.getByRole('button', { name: 'Bankdrücken aus dem Superset lösen' }));
   await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises.map((e) => e.supersetId)).toEqual([null, null]));
@@ -783,7 +779,7 @@ test('the rest timer has 30 s mehr, and the per-exercise Pause select sets the r
   fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
   fireEvent.click(await screen.findByRole('button', { name: '30 s mehr' }));
   await waitFor(() => expect((bodyOf(map, 'workout:open1') as unknown as { rest: { durationS: number } }).rest.durationS).toBe(120));
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Bankdrücken' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Menü Bankdrücken' }));
   fireEvent.click(within(screen.getByRole('list', { name: 'Menü Bankdrücken' })).getByRole('button', { name: /^Pause ändern/ }));
   fireEvent.click(within(screen.getByRole('dialog', { name: 'Pause ändern' })).getByRole('button', { name: '180 s' }));
   await waitFor(() => expect((bodyOf(map, 'workout:open1').exercises[0] as unknown as { restS: number }).restS).toBe(180));
