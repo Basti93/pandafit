@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { driftTakeWrites, driftUndoWrites } from '../../shared/block-take';
+import { driftTakeWrites, driftUndoWrites, otherBlockActive, resumedBlockId } from '../../shared/block-take';
 import { readBlock } from '../../shared/block';
 import { chatThread, type ChatEntry, type ChatMessage } from '../../shared/chat';
 import { dateKey } from '../../shared/day-rating';
@@ -48,7 +48,9 @@ export function DriftCard({ port, now, newId, m }: { port: TrackingPort; now: ()
   const undo = once(async () => {
     const [cur, frame] = await Promise.all([port.list('block'), port.list('frame')]);
     const block = cur.find((r) => r.id === m.drift);
-    const writes = block ? driftUndoWrites({ block, frame, nowMs: now() }) : null;
+    const writes = block ? driftUndoWrites({ block, frame, blocks: cur, nowMs: now() }) : null;
+    // Refused in the meantime (a new section runs): nothing is written and the answer stays as it is.
+    if (!writes) return;
     for (const w of writes ?? []) await put(w);
     await say({ role: 'rider', text: 'Rückgängig gemacht.', atMs: now(), undoes: m.id });
   });
@@ -57,12 +59,21 @@ export function DriftCard({ port, now, newId, m }: { port: TrackingPort; now: ()
   if (answer === 'declined') return <div className="tk-nextchange"><p className="muted">Gut, wir bleiben beim festen Abschnitt.</p>{failNote}</div>;
   if (answer === 'undone') return <div className="tk-nextchange"><p className="muted">Du hast das rückgängig gemacht. Der feste Abschnitt gilt weiter.</p>{failNote}</div>;
   if (answer === 'taken') {
-    const canUndo = body?.state === 'ended' && !!body.end && dateKey(now()) <= body.end;
+    // A deleted record anywhere in the chain (a tombstone) would block the resumed record: then no Rückgängig.
+    let tombstone = false;
+    for (let cid = m.drift ?? ''; cid !== ''; cid = resumedBlockId(cid)) {
+      const r = (blocks ?? []).find((x) => x.id === cid);
+      if (!r) break;
+      if (r.deleted) { tombstone = true; break; }
+    }
+    const newer = otherBlockActive(blocks ?? [], m.drift ?? '');
+    const canUndo = body?.state === 'ended' && !!body.end && dateKey(now()) <= body.end && !tombstone && !newer;
     return (
       <div className="tk-nextchange">
         <div className="tk-row">
           <span className="muted">Ab jetzt plane ich wieder locker, dein Ziel bleibt.</span>
           {canUndo && <button type="button" className="link" disabled={busy} onClick={() => void undo()}>{UNDO}</button>}
+          {newer && <span className="muted">Inzwischen läuft ein neuer Abschnitt.</span>}
         </div>
         {failNote}
       </div>

@@ -132,13 +132,23 @@ export function blockChainHead(blocks: readonly TrackedRecord[], id: string): Tr
   return head;
 }
 
+/** Whether `id` is `root` or a record of its resume chain (`root-b`, `root-b-b`, ...). */
+const inChain = (id: string, root: string): boolean => id.startsWith(root) && /^(-b)*$/.test(id.slice(root.length));
+
+/** Another section than the chain of `id` is active: an ended section of that chain then cannot run on beside it. */
+export function otherBlockActive(blocks: readonly TrackedRecord[], id: string): boolean {
+  return blocks.some((r) => r.kind === 'block' && !r.deleted && !inChain(r.id, id) && readBlock(r.body)?.state === 'active');
+}
+
 /**
  * Undoes `driftTakeWrites`: the frame goes back to week mode only while it is still the one the take wrote; then the same section
- * runs on as a new `active` record (an `ended` record never moves back, see applyRecord). null when it is not `ended`.
+ * runs on as a new `active` record (an `ended` record never moves back, see applyRecord). null when it is not `ended`, or when
+ * another section is active by now (`blocks`).
  */
-export function driftUndoWrites(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; nowMs: number }): TrackedRecord[] | null {
+export function driftUndoWrites(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; /** All block records. */ blocks?: readonly TrackedRecord[]; nowMs: number }): TrackedRecord[] | null {
   const body = o.block.deleted ? null : readBlock(o.block.body);
   if (!body || body.state !== 'ended') return null;
+  if (otherBlockActive(o.blocks ?? [], o.block.id)) return null;
   const { rec, body: f } = frameBody(o.frame);
   const writes: TrackedRecord[] = [];
   let frameMs = body.frameMs;

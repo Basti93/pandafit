@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { blockRecord, blockWeeks, readBlock, type BlockBody, type BlockDay } from '../../src/shared/block';
-import { blockTakeWrites, blockUndoWrites, driftTakeWrites, driftUndoWrites } from '../../src/shared/block-take';
+import { blockTakeWrites, blockUndoWrites, driftTakeWrites, driftUndoWrites, otherBlockActive } from '../../src/shared/block-take';
 import { frameRecord, readFrame } from '../../src/shared/frame';
 import { applyRecord, type TrackedRecord } from '../../src/shared/records';
 
@@ -142,6 +142,16 @@ describe('driftUndoWrites', () => {
     expect(w).toHaveLength(1);
     expect(w[0]).toMatchObject({ id: 'block-m1-b', body: { state: 'active', frameMs: 50 } });
     expect((w[0]!.body as Record<string, unknown>).endedBy).toBeUndefined();
+  });
+  it('bringt den Abschnitt nicht zurück, wenn inzwischen ein anderer läuft', () => {
+    const other = blockRecord('block-m5', { ...(ended.body as unknown as BlockBody), state: 'active', start: '2026-12-21', end: '2027-01-31', endedBy: undefined } as BlockBody, 6);
+    const frame = [frameRecord({ mode: 'spontaneous', minutes: null }, 40)];
+    expect(driftUndoWrites({ block: ended, frame, blocks: [ended, other], nowMs: 100 })).toBeNull();
+    expect(otherBlockActive([ended, other], 'block-m1')).toBe(true);
+    // Its own resumed record is no other section.
+    const resumed = blockRecord('block-m1-b', { ...(ended.body as unknown as BlockBody), state: 'active', endedBy: undefined } as BlockBody, 6);
+    expect(otherBlockActive([ended, resumed], 'block-m1')).toBe(false);
+    expect(driftUndoWrites({ block: ended, frame, blocks: [ended], nowMs: 100 })).not.toBeNull();
   });
   it('markiert den Abschnitt beim Beenden mit der Nachricht', () => {
     const active = { ...ended, body: { ...ended.body, state: 'active', endedBy: undefined } };

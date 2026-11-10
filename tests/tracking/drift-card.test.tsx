@@ -116,3 +116,21 @@ it('zeigt Rückgängig auch, wenn die Antwort im Chat nicht gespeichert wurde', 
   await screen.findByRole('button', { name: 'Rückgängig' });
   expect(open(f)).toEqual([]);
 });
+
+const takenSeed = (): TrackedRecord[] => [
+  msg(), blockRecord('block-m0', { ...active, state: 'ended', endedBy: 'm1' }, 2), frameRecord({ mode: 'spontaneous', minutes: 45 }, 20), goal,
+];
+
+it('bietet kein Rückgängig, wenn inzwischen ein neuer Abschnitt läuft', async () => {
+  const other = blockRecord('block-m5', { ...active, start: '2026-12-21', end: '2027-01-31', takenFrom: 'm5' }, 3);
+  setup([...takenSeed(), other]);
+  await screen.findByText('Inzwischen läuft ein neuer Abschnitt.');
+  expect(screen.queryByRole('button', { name: 'Rückgängig' })).toBeNull();
+});
+
+it('bietet kein Rückgängig, wenn ein Eintrag des Abschnitts gelöscht ist', async () => {
+  const gone: TrackedRecord = { ...blockRecord('block-m0-b', active, 3), deleted: true };
+  setup([...takenSeed(), gone]);
+  await screen.findByText('Ab jetzt plane ich wieder locker, dein Ziel bleibt.');
+  expect(screen.queryByRole('button', { name: 'Rückgängig' })).toBeNull();
+});
