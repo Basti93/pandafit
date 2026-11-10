@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { blockRecord, blockWeeks, readBlock, type BlockBody, type BlockDay } from '../../src/shared/block';
-import { blockTakeWrites, blockUndoWrites } from '../../src/shared/block-take';
+import { blockTakeWrites, blockUndoWrites, driftTakeWrites, driftUndoWrites } from '../../src/shared/block-take';
 import { frameRecord, readFrame } from '../../src/shared/frame';
 import { applyRecord, type TrackedRecord } from '../../src/shared/records';
 
@@ -123,5 +123,20 @@ describe('blockUndoWrites', () => {
   });
   it('knows the weeks it wrote', () => {
     expect(blockWeeks(readBlock(run()!.at(-1)!.body)!)).toHaveLength(4);
+  });
+});
+
+describe('driftUndoWrites', () => {
+  const ended = { kind: 'block' as const, id: 'block-m1', updatedMs: 5, deleted: false, body: { state: 'ended', atMs: 1, start: '2026-11-30', end: '2026-12-27', priorMode: 'spontaneous', frameMs: 40, endedBy: 'd1', templates: [{ name: 'A', core: ['a', 'b', 'c'] }, { name: 'B', core: ['d', 'e', 'f'] }], rhythm: [{ sport: 'gym', hardness: 'hard', template: 0 }, { sport: 'bike', hardness: 'easy' }, { sport: 'gym', hardness: 'moderate', template: 1 }, { sport: 'rest', hardness: 'easy' }, { sport: 'bike', hardness: 'hard' }, { sport: 'run', hardness: 'easy' }, { sport: 'rest', hardness: 'easy' }] } };
+  it('nimmt bei einem Wiederholungsversuch den Stempel des Rahmens, der schon passt', () => {
+    const w = driftUndoWrites({ block: ended, frame: [frameRecord({ mode: 'week', minutes: null }, 50)], nowMs: 100 })!;
+    expect(w).toHaveLength(1);
+    expect(w[0]).toMatchObject({ id: 'block-m1-b', body: { state: 'active', frameMs: 50 } });
+    expect((w[0]!.body as Record<string, unknown>).endedBy).toBeUndefined();
+  });
+  it('markiert den Abschnitt beim Beenden mit der Nachricht', () => {
+    const active = { ...ended, body: { ...ended.body, state: 'active', endedBy: undefined } };
+    const w = driftTakeWrites({ block: active, frame: [frameRecord({ mode: 'week', minutes: null }, 40)], msgId: 'd1', nowMs: 100 })!;
+    expect(w.at(-1)!.body).toMatchObject({ state: 'ended', endedBy: 'd1' });
   });
 });

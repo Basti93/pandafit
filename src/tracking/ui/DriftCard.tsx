@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react';
 import { driftTakeWrites, driftUndoWrites } from '../../shared/block-take';
 import { readBlock } from '../../shared/block';
-import { chatThread, proposalAnswer, type ChatEntry, type ChatMessage } from '../../shared/chat';
+import { chatThread, type ChatEntry, type ChatMessage } from '../../shared/chat';
 import { dateKey } from '../../shared/day-rating';
 import type { TrackedRecord } from '../../shared/records';
 import { UNDO } from '../../shared/wording';
 import type { TrackingPort } from '../ports';
+import { driftAnswer } from './chat-open';
 import { usePortRecords } from './hooks';
 
 const FAILED = 'Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.';
@@ -21,7 +22,7 @@ export function DriftCard({ port, now, newId, m }: { port: TrackingPort; now: ()
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
-  const answer = proposalAnswer(chatThread(chat ?? []), m.id);
+  const answer = driftAnswer(chatThread(chat ?? []), m, blocks ?? []);
   const rec = (blocks ?? []).find((r) => r.id === m.drift);
   const body = rec && !rec.deleted ? readBlock(rec.body) : null;
 
@@ -38,7 +39,7 @@ export function DriftCard({ port, now, newId, m }: { port: TrackingPort; now: ()
     const [cur, frame] = await Promise.all([port.list('block'), port.list('frame')]);
     const block = cur.find((r) => r.id === m.drift);
     if (!block) return;
-    const writes = driftTakeWrites({ block, frame, nowMs: now() });
+    const writes = driftTakeWrites({ block, frame, msgId: m.id, nowMs: now() });
     // A section that ended in the meantime is not written again; the answer still counts.
     for (const w of writes ?? []) await put(w);
     await say({ role: 'rider', text: 'Ja, locker planen.', atMs: now(), takes: m.id });

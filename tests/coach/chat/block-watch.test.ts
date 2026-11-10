@@ -54,10 +54,6 @@ describe('blockEndDue', () => {
   it('meldet es nur einmal', () => {
     expect(blockEndDue({ ...o, sent: { blockEnd: 'block-m1' } })).toBe(false);
   });
-  it('schweigt, wenn am letzten Tag ein Rückblick kam', () => {
-    expect(blockEndDue({ ...o, sent: { review: '2026-12-27' } })).toBe(false);
-    expect(blockEndDue({ ...o, sent: { review: '2026-11-29' } })).toBe(true);
-  });
   it('meldet nichts für einen Abschnitt, der nicht aktiv ist', () => {
     expect(blockEndDue({ ...o, block: { ...o.block, state: 'ended' } })).toBe(false);
   });
@@ -81,7 +77,7 @@ describe('announceBlockEnd', () => {
   const run = (frame: TrackedRecord[], fail = false) => {
     const log: string[] = [];
     const sent = announceBlockEnd({
-      block: rec, frame, nowMs: 100,
+      block: rec, frame, nowMs: 100, message: true,
       put: (r) => { log.push(r.kind); if (fail && r.kind === 'block') throw new Error('x'); },
       say: (t) => { log.push('say'); expect(t).toBe('Dein fester Abschnitt ist vorbei. Ab jetzt plane ich wieder locker, dein Ziel bleibt.'); },
       mark: () => { log.push('mark'); },
@@ -99,7 +95,7 @@ describe('announceBlockEnd', () => {
   });
   it('schreibt den Rahmen mit dem früheren Modus', () => {
     const writes: TrackedRecord[] = [];
-    announceBlockEnd({ block: rec, frame: [frameRecord({ mode: 'week', minutes: null }, 10)], nowMs: 100, put: (r) => { writes.push(r); }, say: () => {}, mark: () => {} });
+    announceBlockEnd({ block: rec, frame: [frameRecord({ mode: 'week', minutes: null }, 10)], nowMs: 100, message: true, put: (r) => { writes.push(r); }, say: () => {}, mark: () => {} });
     expect(readFrame(writes[0]!.body)?.mode).toBe('spontaneous');
     expect(writes[1]!.body).toMatchObject({ state: 'ended' });
   });
@@ -112,13 +108,13 @@ describe('watchBlock', () => {
     body: { weekStart: monday, days: RHYTHM.map((d, i) => ({ date: addDay(monday, i), sport: d.sport, hardness: d.hardness, fixed: false })), fromMessage: 'm', acceptedMs: 1 },
   });
   const addDay = (key: string, n: number) => { const [y, m, d] = key.split('-').map(Number); return new Date(Date.UTC(y!, m! - 1, d! + n)).toISOString().slice(0, 10); };
-  const setup = (today: string, over: { gymDates?: string[]; sent?: Record<string, string>; frame?: TrackedRecord[] } = {}) => {
+  const setup = (today: string, over: { gymDates?: string[]; sent?: Record<string, string>; frame?: TrackedRecord[]; askAllowed?: boolean } = {}) => {
     const marks: Record<string, string> = { ...over.sent };
     const log: string[] = [];
     const planned = new PlannedWeeks(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wb-')), 'p.json'));
     planned.note('p', '2026-11-30', 2); planned.note('p', '2026-12-07', 2);
     const run = () => watchBlock({
-      today, nowMs: 100, blocks: [rec], weekplans: [plan('2026-12-14'), plan('2026-12-21')], frame: over.frame ?? [frameRecord({ mode: 'week', minutes: null }, 10)], gymDates: over.gymDates ?? [], id: 'p',
+      today, nowMs: 100, askAllowed: over.askAllowed ?? true, blocks: [rec], weekplans: [plan('2026-12-14'), plan('2026-12-21')], frame: over.frame ?? [frameRecord({ mode: 'week', minutes: null }, 10)], gymDates: over.gymDates ?? [], id: 'p',
       sent: { get: () => marks, mark: (_i, k, v) => { marks[k] = v; } }, planned,
       ask: (b) => log.push(`ask:${b}`), say: () => log.push('say'), put: (r) => log.push(r.kind),
     });
@@ -135,6 +131,21 @@ describe('watchBlock', () => {
   it('fragt nicht, wenn die Einheiten stattfanden', () => {
     const s = setup('2026-12-14', { gymDates: ['2026-12-01', '2026-12-03', '2026-12-08', '2026-12-09'] });
     expect(s.run()).toBeNull();
+  });
+  it('beendet den Abschnitt und stellt den Rahmen zurück, auch wenn am letzten Tag ein Rückblick kam, ohne Nachricht', () => {
+    const s = setup('2026-12-28', { sent: { review: '2026-12-27' } });
+    expect(s.run()).toBe('end');
+    expect(s.log).toEqual(['frame', 'block']);
+    expect(s.marks.blockEnd).toBe('block-m1');
+    expect(s.run()).toBeNull();
+  });
+  it('fragt nicht, wenn die Frage nicht erlaubt ist, beendet aber trotzdem', () => {
+    const s = setup('2026-12-14', { askAllowed: false });
+    expect(s.run()).toBeNull();
+    expect(s.log).toEqual([]);
+    expect(s.marks.drift).toBeUndefined();
+    const e = setup('2026-12-28', { askAllowed: false });
+    expect(e.run()).toBe('end');
   });
   it('meldet das Ende einmal', () => {
     const s = setup('2026-12-28');

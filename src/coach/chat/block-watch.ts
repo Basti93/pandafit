@@ -56,22 +56,22 @@ export function driftDue(o: { block: BlockBody; planned: (monday: string) => num
   return true;
 }
 
-/** The section ran out: the day after its end, once, and not when the monthly review came on the last day (it says the same). */
-export function blockEndDue(o: { block: BlockBody & { id: string }; sent: Pick<Sent, 'blockEnd' | 'review'>; today: string }): boolean {
+/** The section ran out: the day after its end, once per section. The section is ended and the frame restored whatever else was said. */
+export function blockEndDue(o: { block: BlockBody & { id: string }; sent: Pick<Sent, 'blockEnd'>; today: string }): boolean {
   const { block } = o;
   if (block.state !== 'active' || !block.end || o.today <= block.end) return false;
-  return o.sent.review !== block.end && o.sent.blockEnd !== block.id;
+  return o.sent.blockEnd !== block.id;
 }
 
 /**
- * Announces the end of a section. The frame goes back first (only if the take's frame is unchanged), then the message, then the
- * mark, and the section becomes `ended` last: a failure on the way never loses the message or repeats the frame change.
+ * Ends a section. The frame goes back first (only if the take's frame is unchanged), then the message (`message` false: the monthly
+ * review of that day already said it), then the mark, and the section becomes `ended` last: a failure on the way never loses the message or repeats the frame change.
  */
-export function announceBlockEnd(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; nowMs: number; put: (r: TrackedRecord) => void; say: (text: string) => void; mark: () => void }): boolean {
+export function announceBlockEnd(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; nowMs: number; message: boolean; put: (r: TrackedRecord) => void; say: (text: string) => void; mark: () => void }): boolean {
   const writes = blockEndWrites({ block: o.block, frame: o.frame, nowMs: o.nowMs });
   if (!writes) return false;
   for (const w of writes.slice(0, -1)) o.put(w);
-  o.say(BLOCK_END_TEXT);
+  if (o.message) o.say(BLOCK_END_TEXT);
   o.mark();
   o.put(writes[writes.length - 1]!);
   return true;
@@ -84,6 +84,8 @@ export function announceBlockEnd(o: { block: TrackedRecord; frame: readonly Trac
 export function watchBlock(o: {
   today: string; nowMs: number; blocks: readonly TrackedRecord[]; weekplans: TrackedRecord[]; frame: readonly TrackedRecord[]; gymDates: readonly string[];
   id: string; sent: Pick<SentPrompts, 'get' | 'mark'>; planned: PlannedWeeks;
+  /** No other question went out in this scan; without it the drift question waits for a later scan. The end runs anyway. */
+  askAllowed: boolean;
   ask: (blockId: string) => void; say: (text: string) => void; put: (r: TrackedRecord) => void;
 }): 'drift' | 'end' | null {
   const running = activeBlock(o.blocks, o.today);
@@ -91,7 +93,7 @@ export function watchBlock(o: {
     const monday = mondayOf(o.today);
     const week = planOfWeek(o.weekplans, monday);
     if (week) o.planned.note(o.id, monday, week.days.filter((d) => hasSport(d, 'gym')).length);
-    if (driftDue({ block: running, planned: (m) => o.planned.get(o.id, m), gymDates: o.gymDates, sent: o.sent.get(o.id), today: o.today })) {
+    if (o.askAllowed && driftDue({ block: running, planned: (m) => o.planned.get(o.id, m), gymDates: o.gymDates, sent: o.sent.get(o.id), today: o.today })) {
       o.ask(running.id);
       o.sent.mark(o.id, 'drift', o.today);
       return 'drift';
@@ -104,7 +106,7 @@ export function watchBlock(o: {
   }
   if (over && blockEndDue({ block: over.block, sent: o.sent.get(o.id), today: o.today })) {
     const { rec, block } = over;
-    return announceBlockEnd({ block: rec, frame: o.frame, nowMs: o.nowMs, put: o.put, say: o.say, mark: () => o.sent.mark(o.id, 'blockEnd', block.id) }) ? 'end' : null;
+    return announceBlockEnd({ block: rec, frame: o.frame, nowMs: o.nowMs, message: o.sent.get(o.id).review !== block.end, put: o.put, say: o.say, mark: () => o.sent.mark(o.id, 'blockEnd', block.id) }) ? 'end' : null;
   }
   return null;
 }

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { blockDates, blockWeeks, readBlock } from '../../shared/block';
-import { blockTakeWrites, blockUndoWrites } from '../../shared/block-take';
+import { blockChainHead, blockTakeWrites, blockUndoWrites } from '../../shared/block-take';
 import { dateKey } from '../../shared/day-rating';
 import { dayMonthOfKey } from '../../shared/dates';
 import { above } from '../../shared/exercise-links';
@@ -29,7 +29,8 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
   // One take or undo at a time: a fast double tap must not write twice.
   const inFlight = useRef(false);
   const [busy, setBusy] = useState(false);
-  const rec = (blocks.all ?? []).find((r) => r.id === blockId);
+  // A section that a drift answer ended and the undo resumed runs on in a later record of the chain.
+  const rec = blockChainHead(blocks.all ?? [], blockId);
   const body = rec && !rec.deleted ? readBlock(rec.body) : null;
   if (!rec || !body) return rec?.deleted && undone ? <div className="tk-nextchange"><p className="muted">Du hast den Abschnitt rückgängig gemacht.</p></div> : null;
   const titleOf = (id: string) => catalog.find((e) => e.id === id)?.title ?? id;
@@ -41,7 +42,7 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
     try {
       const nowMs = now();
       const [blockRecs, frame, weekplans] = await Promise.all([port.list('block'), port.list('frame'), port.list('weekplan')]);
-      const cur = blockRecs.find((r) => r.id === blockId);
+      const cur = blockChainHead(blockRecs, blockId);
       if (!cur) return;
       let writes;
       if (to === 'take') writes = blockTakeWrites({ block: cur, frame, plans: weekplans, blocks: blockRecs, msgId, today: dateKey(nowMs), nowMs });

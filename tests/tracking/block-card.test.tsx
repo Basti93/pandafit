@@ -102,3 +102,12 @@ it('meldet, wenn etwas nicht gespeichert wurde, und lässt den Abschnitt vorgesc
   await screen.findByText(/nicht gespeichert/);
   expect(f.map.get('block:block-m1')!.body).toMatchObject({ state: 'proposed' });
 });
+
+it('folgt der Fortsetzung des Abschnitts und sagt nicht, er sei zu Ende', async () => {
+  const taken: BlockBody = { ...proposed, state: 'active', start: '2026-11-30', end: '2026-12-27', takenFrom: 'm1' };
+  const recs = [chatRec, blockRecord('block-m1', { ...taken, state: 'ended', endedBy: 'd1' }, 1), blockRecord('block-m1-b', taken, 2)];
+  const f = fakePort(recs);
+  render(<BlockCard history port={f.port} blockId="block-m1" msgId="m1" now={() => NOW} />);
+  await screen.findByText('Du hast den festen Abschnitt bis 27. Dez. übernommen.');
+  expect(screen.queryByText('Der feste Abschnitt ist zu Ende.')).toBeNull();
+});

@@ -128,7 +128,7 @@ describe('blockLine', () => {
   it('says the week of the section and what comes next', () => {
     const b = block();
     expect(blockLine(b, '2026-12-08', plans(b))).toBe('Woche 2 von 4 im festen Abschnitt. Als Nächstes kommt Unterkörper B am Mittwoch.');
-    expect(blockLine(b, '2026-12-09', plans(b))).toBe('Woche 2 von 4 im festen Abschnitt. Als Nächstes kommt Unterkörper B heute.');
+    expect(blockLine(b, '2026-12-09', plans(b))).toBe('Woche 2 von 4 im festen Abschnitt. Heute kommt Unterkörper B.');
   });
   it('names the light last week', () => {
     const b = block();

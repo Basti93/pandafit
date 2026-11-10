@@ -103,7 +103,7 @@ export function blockEndWrites(o: { block: TrackedRecord; frame: readonly Tracke
  * "Ja, locker planen": the frame goes to spontaneous and the section ends. Week plans and the goal stay as they are.
  * `frameMs` of the section then names the frame this wrote, so the undo restores it only while it is unchanged. null when the section is not `active`.
  */
-export function driftTakeWrites(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; nowMs: number }): TrackedRecord[] | null {
+export function driftTakeWrites(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; /** The chat message that asks; the section is marked with it. */ msgId: string; nowMs: number }): TrackedRecord[] | null {
   const body = o.block.deleted ? null : readBlock(o.block.body);
   if (!body || body.state !== 'active') return null;
   const { body: f } = frameBody(o.frame);
@@ -113,12 +113,19 @@ export function driftTakeWrites(o: { block: TrackedRecord; frame: readonly Track
     const w = frameWith(o.frame, 'spontaneous', o.nowMs);
     if (w) { writes.push(w); frameMs = w.updatedMs; }
   }
-  writes.push({ ...o.block, updatedMs: above(o.nowMs, o.block), body: { ...body, state: 'ended', ...(frameMs !== undefined ? { frameMs } : {}) } });
+  writes.push({ ...o.block, updatedMs: above(o.nowMs, o.block), body: { ...body, state: 'ended', endedBy: o.msgId, ...(frameMs !== undefined ? { frameMs } : {}) } });
   return writes;
 }
 
 /** The id of the section that continues an ended one after the undo. A record never moves back from `ended`, so the undo writes a new record. */
 export const resumedBlockId = (endedId: string): string => `${endedId}-b`;
+
+/** The newest record of a section's resume chain (`id`, `id-b`, `id-b-b`, ...), also a deleted one; `id` itself when it was not resumed. */
+export function blockChainHead(blocks: readonly TrackedRecord[], id: string): TrackedRecord | undefined {
+  let head = blocks.find((r) => r.kind === 'block' && r.id === id);
+  for (let next = blocks.find((r) => r.id === resumedBlockId(head?.id ?? '')); head && next; next = blocks.find((r) => r.id === resumedBlockId(head!.id))) head = next;
+  return head;
+}
 
 /**
  * Undoes `driftTakeWrites`: the frame goes back to week mode only while it is still the one the take wrote; then the same section
@@ -133,7 +140,11 @@ export function driftUndoWrites(o: { block: TrackedRecord; frame: readonly Track
   if (rec && f && f.mode === 'spontaneous' && body.frameMs !== undefined && rec.updatedMs === body.frameMs) {
     const w = frameWith(o.frame, 'week', o.nowMs);
     if (w) { writes.push(w); frameMs = w.updatedMs; }
+  } else if (rec && f && f.mode === 'week') {
+    // A retry: an earlier try wrote the frame already, so its stamp is the one the section names.
+    frameMs = rec.updatedMs;
   }
-  writes.push(blockRecord(resumedBlockId(o.block.id), { ...body, state: 'active', ...(frameMs !== undefined ? { frameMs } : {}) }, o.nowMs));
+  const { endedBy: _e, ...resumed } = body;
+  writes.push(blockRecord(resumedBlockId(o.block.id), { ...resumed, state: 'active', ...(frameMs !== undefined ? { frameMs } : {}) }, o.nowMs));
   return writes;
 }

@@ -32,7 +32,7 @@ const setup = (records = seed()) => {
   render(<DriftCard port={f.port} now={() => ++clock} newId={() => `r${String(++n).padStart(3, '0')}`} m={entry} />);
   return f;
 };
-const open = (f: ReturnType<typeof setup>) => {
+const open = (f: { map: Map<string, TrackedRecord> }) => {
   const recs = [...f.map.values()];
   return openProposals(chatThread(recs), [], [], [], '2026-12-14', recs.filter((r) => r.kind === 'block'));
 };
@@ -101,4 +101,18 @@ it('meldet einen Fehler beim Speichern', async () => {
   f.state.failPuts = true;
   await yes();
   await screen.findByText(/nicht gespeichert/);
+});
+
+it('zeigt Rückgängig auch, wenn die Antwort im Chat nicht gespeichert wurde', async () => {
+  const f = fakePort(seed());
+  const port = { ...f.port, put: (r: TrackedRecord) => (r.kind === 'chat' ? Promise.reject(new Error('disk')) : f.port.put(r)) };
+  const entry = { ...(msg().body as object), id: 'm1' } as never;
+  const view = render(<DriftCard port={port} now={() => ++clock} newId={() => 'r1'} m={entry} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Ja, locker planen' }));
+  await screen.findByRole('button', { name: 'Rückgängig' });
+  expect(f.map.get('block:block-m0')!.body).toMatchObject({ state: 'ended', endedBy: 'm1' });
+  view.unmount();
+  render(<DriftCard port={f.port} now={() => ++clock} newId={() => 'r2'} m={entry} />);
+  await screen.findByRole('button', { name: 'Rückgängig' });
+  expect(open(f)).toEqual([]);
 });

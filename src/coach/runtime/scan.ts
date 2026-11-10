@@ -286,6 +286,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
               if (opened) mealsChanged([p.id]);
             }).catch((e) => log.error('chat month review', e)).finally(() => { reviewOpen.delete(p.id); publish(); });
           }
+          let pushAsked = false;
           if (due.week && !tried && now - (weekTried.get(p.id) ?? 0) >= WEEK_RETRY_MS) {
             weekTried.set(p.id, now);
             const monday = mondayOf(dateKey(now));
@@ -301,6 +302,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
               ...(triedMs !== undefined ? { reviewTriedMs: triedMs } : {}), ...(lastPushMs !== undefined ? { lastPushMs } : {}), ...(s.lastQuestionMs !== undefined ? { lastQuestionMs: s.lastQuestionMs } : {}),
             })) {
               chat.askPush(p.id);
+              pushAsked = true;
               sentPrompts.mark(p.id, 'pushAsk', dateKey(now));
               coach.questionAsked(p.id);
               mealsChanged([p.id]);
@@ -309,8 +311,8 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
           // The fixed section: Bo asks when the last weeks looked different than planned, and says when it is over.
           const watched = watchBlock({
             today: dateKey(now), nowMs: now, blocks: records.all(p.id, 'block'), weekplans: records.all(p.id, 'weekplan'), frame: records.all(p.id, 'frame'),
-            gymDates: gymDoneDates(p.id), id: p.id, sent: sentPrompts, planned: plannedWeeks,
-            ask: (blockId) => chat.askDrift(p.id, blockId), say: (text) => chat.say(p.id, { role: 'coach', text, atMs: now, push: true }), put: (r) => { records.put(p.id, r); },
+            gymDates: gymDoneDates(p.id), id: p.id, sent: sentPrompts, planned: plannedWeeks, askAllowed: !tried && !due.week && !due.evening && !pushAsked,
+            ask: (blockId) => { chat.askDrift(p.id, blockId); coach.questionAsked(p.id); }, say: (text) => chat.say(p.id, { role: 'coach', text, atMs: now, push: true }), put: (r) => { records.put(p.id, r); },
           });
           if (watched) mealsChanged([p.id]);
         } catch { /* next scan */ }

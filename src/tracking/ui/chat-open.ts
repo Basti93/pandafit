@@ -3,6 +3,7 @@ import { changesOf } from '../../shared/changes';
 import { rulesOf } from '../../shared/personal';
 import type { TrackedRecord } from '../../shared/records';
 import { readBlock } from '../../shared/block';
+import { resumedBlockId } from '../../shared/block-take';
 import { weekTaken } from '../week-take';
 
 export type Thread = ReturnType<typeof chatThread>;
@@ -14,11 +15,13 @@ export const weekAnswer = (chat: 'taken' | 'declined' | 'undone' | null, undone:
   weekTaken(stored, id) ? 'taken' : undone ? 'undone' : chat;
 
 /** The messages with a proposal that still waits for an answer: a week plan (not for a week that is over), a next change, a rule, a fixed section, the question whether the section still fits, the push question. They are pinned above the input. */
-/** Pinned while the section it asks about still runs. */
-const driftOpen = (thread: Thread, m: ChatEntry, blockRecs: TrackedRecord[]): boolean => {
+/** The answer to the question whether the section still fits. The stored sections win over the chat, like `weekAnswer`: a section ended by this message is taken, one that runs on in its `-b` record is undone. */
+export function driftAnswer(thread: Thread, m: ChatEntry, blockRecs: readonly TrackedRecord[]): 'taken' | 'declined' | 'undone' | null {
+  if (blockRecs.some((x) => x.id === resumedBlockId(m.drift ?? '') && !x.deleted)) return 'undone';
   const r = blockRecs.find((x) => x.id === m.drift && !x.deleted);
-  return !!r && readBlock(r.body)?.state === 'active' && proposalAnswer(thread, m.id) === null;
-};
+  if (r && readBlock(r.body)?.endedBy === m.id) return 'taken';
+  return proposalAnswer(thread, m.id);
+}
 
 export function openProposals(thread: Thread, plans: TrackedRecord[], changeRecs: TrackedRecord[], ruleRecs: TrackedRecord[], monday: string, blockRecs: TrackedRecord[] = []): ChatEntry[] {
   const changes = changesOf(changeRecs);
@@ -29,7 +32,7 @@ export function openProposals(thread: Thread, plans: TrackedRecord[], changeRecs
     if (m.nextChange) return changes.find((c) => c.id === m.nextChange)?.state === 'proposed';
     if (m.rule) return rules.find((r) => r.id === m.rule)?.state === 'proposed';
     if (m.block) { const r = blockRecs.find((x) => x.id === m.block && !x.deleted); return !!r && readBlock(r.body)?.state === 'proposed'; }
-    if (m.drift) return driftOpen(thread, m, blockRecs);
+    if (m.drift) { const r = blockRecs.find((x) => x.id === m.drift && !x.deleted); return !!r && readBlock(r.body)?.state === 'active' && driftAnswer(thread, m, blockRecs) === null; }
     if (m.askPush) return proposalAnswer(thread, m.id) === null;
     return false;
   });

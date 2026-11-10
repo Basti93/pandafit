@@ -14,7 +14,7 @@ export type BlockState = 'proposed' | 'active' | 'ended' | 'declined';
 export type BlockDay = { sport: Sport; hardness: Hardness; legs?: boolean; long?: boolean; template?: number };
 export type BlockTemplate = { name: string; core: string[] };
 /** `start`, `end`: Monday and Sunday, set when the person takes it. `priorMode`: the plan mode to go back to. `takenFrom`: the chat message the take is marked with; `frameMs`: the stamp of the frame the take wrote. */
-export type BlockBody = { state: BlockState; templates: BlockTemplate[]; rhythm: BlockDay[]; start?: string; end?: string; priorMode?: PlanMode; takenFrom?: string; frameMs?: number; atMs: number };
+export type BlockBody = { state: BlockState; templates: BlockTemplate[]; rhythm: BlockDay[]; start?: string; end?: string; priorMode?: PlanMode; takenFrom?: string; frameMs?: number; /** The chat message whose answer ended the section ("Ja, locker planen"); the stored data then says the question was answered. */ endedBy?: string; atMs: number };
 
 export const blockId = (msgId: string): string => `block-${msgId}`;
 
@@ -87,6 +87,7 @@ export function readBlock(body: unknown): BlockBody | null {
   if (body.priorMode !== undefined) { if (body.priorMode !== 'week' && body.priorMode !== 'spontaneous') return null; out.priorMode = body.priorMode; }
   if (body.takenFrom !== undefined) { if (typeof body.takenFrom !== 'string' || body.takenFrom === '') return null; out.takenFrom = body.takenFrom; }
   if (body.frameMs !== undefined) { if (typeof body.frameMs !== 'number' || !Number.isFinite(body.frameMs)) return null; out.frameMs = body.frameMs; }
+  if (body.endedBy !== undefined) { if (typeof body.endedBy !== 'string' || body.endedBy === '') return null; out.endedBy = body.endedBy; }
   return out;
 }
 
@@ -160,7 +161,7 @@ export function blockLine(b: BlockBody | null, today: string, plans: readonly Tr
     const plan = planFor([...plans], d);
     if (!plan || !hasSport(plan, 'gym')) continue;
     const template = templateFor(b, d);
-    if (template) return `${head} Als Nächstes kommt ${template.name} ${d === today ? 'heute' : `am ${WEEKDAY_LABEL[weekdayIndex(d)]}`}.`;
+    if (template) return d === today ? `${head} Heute kommt ${template.name}.` : `${head} Als Nächstes kommt ${template.name} am ${WEEKDAY_LABEL[weekdayIndex(d)]}.`;
   }
   return head;
 }
