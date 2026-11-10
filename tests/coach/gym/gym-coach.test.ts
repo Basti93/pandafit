@@ -17,7 +17,8 @@ import type { Complaint } from '../../../src/coach/motivation';
 import { RecordStore } from '../../../src/coach/tracking/store';
 import { mergeCatalog } from '../../../src/shared/catalog';
 import { studioRecord } from '../../../src/shared/studio';
-import { blockRecord, type BlockBody } from '../../../src/shared/block';
+import { blockRecord, blockWeeks, type BlockBody } from '../../../src/shared/block';
+import type { TrackedRecord } from '../../../src/shared/records';
 import { goalRecord } from '../../../src/shared/personal';
 import { linkRecord } from '../../../src/shared/exercise-links';
 import { EXERCISES, linkHevyTemplates } from '../../../src/shared/exercises';
@@ -1264,6 +1265,33 @@ describe('Abschnitt', () => {
     });
     await coach.tick('p1');
     expect(block(calls[0]!.prompt, 'abschnitt-nur-daten').vorlage).toBe('Oberkörper A');
+  });
+  const runPlanned = async (now: number, workouts: StrengthWorkout[], reply: unknown) => {
+    const store = new RecordStore({ dir: path.join(tmp, 'tracking') });
+    const weeks = blockWeeks(body()).map((w): TrackedRecord => ({ kind: 'weekplan', id: w.weekStart, updatedMs: 1, deleted: false, body: { ...w, fromMessage: 'm1', acceptedMs: 1 } }));
+    store.putMany('p1', [blockRecord('block-m1', body(), NOW), ...weeks]);
+    const calls: Input[] = [];
+    const coach = new GymCoach({
+      dir, nowMs: () => now, store, ask: async (i) => { calls.push(i); return reply; },
+      workouts: () => workouts, templates: async () => TPL, refreshTemplates: async () => TPL, ready: () => true,
+      bike: () => ({ summaries: [], complaints: [] }), complaint: () => {}, writer: () => null,
+    });
+    await coach.tick('p1');
+    return { coach, calls };
+  };
+  it('plant nach der erledigten Montagseinheit für den nächsten Krafttag dessen Vorlage', async () => {
+    const evening = NOW + 8 * 3_600_000; // Monday 2026-11-02, 20:00
+    const doneA = { ...wk(0, 'h3', [{ t: 'a1', kg: 40, reps: 10 }, { t: 'a2', kg: 40, reps: 10 }, { t: 'a3', kg: 40, reps: 10 }]), startMs: NOW + 3_600_000 };
+    const { calls } = await runPlanned(evening, [...past(), doneA], planOf(['b1', 'b2', 'b3']));
+    expect(block(calls[0]!.prompt, 'abschnitt-nur-daten').vorlage).toBe('Unterkörper B');
+  });
+  it('plant am Sonntag für den Montag der leichten Woche schon leicht', async () => {
+    const sunday = Date.UTC(2026, 10, 22, 12); // the light week starts on Monday 2026-11-23
+    const { calls } = await runPlanned(sunday, past(), planOf(['a1', 'a2', 'a3']));
+    const a = block(calls[0]!.prompt, 'abschnitt-nur-daten');
+    expect(a.leichteWoche).toBe(true);
+    expect(a.woche).toBe(4);
+    expect(a.vorlage).toBe('Oberkörper A');
   });
   it('markiert im Prompt die Kernübungen, die der Plan weglassen darf', async () => {
     const complaint: Complaint = { id: 'c1', text: 'Die Schulter zwickt', status: 'healing', startedMs: NOW, updatedMs: NOW };

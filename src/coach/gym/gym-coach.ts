@@ -36,7 +36,7 @@ import { studiosOf } from '../tracking/studios';
 import { loadStepsOf } from '../tracking/load-steps';
 import { takenChangesOf } from '../tracking/changes';
 import { excludedOf, goalOfProfile, migrateRules, wishesOf } from '../tracking/personal';
-import { gymBudgetOf } from '../tracking/frame';
+import { gymBudgetOf, gymPlanDateOf } from '../tracking/frame';
 import { dateKey } from '../day-load';
 import { durationNote } from '../../shared/duration';
 import { considered } from '../../shared/changes';
@@ -174,20 +174,21 @@ export class GymCoach {
     }));
   }
   /**
-   * The fixed section of today, for the guardrail and the prompt; null outside a section. Today's template is that of the rhythm
-   * day; on a day without one it is the one after the template trained last in the section (a missed session is never made up).
+   * The fixed section on the day the plan is for (the next open gym day of the week plan in week mode, else today), for the
+   * guardrail and the prompt; null outside a section. That day's template is that of the rhythm day; on a day without one it is
+   * the one after the template trained last in the section (a missed session is never made up).
    */
   private section(id: string, real: StrengthWorkout[], templates: ExerciseTemplate[], now: number, open: Complaint[], avoidLegs: boolean, excluded: Set<string>): { block: NonNullable<GymContext['block']>; prompt: NonNullable<PromptInput['abschnitt']> } | null {
     if (!this.deps.store) return null;
-    const today = dateKey(now);
-    const b = activeBlock(this.deps.store.all(id, 'block'), today);
+    const planDate = gymPlanDateOf(this.deps.store, id, dateKey(now), real.map((w) => dateKey(w.startMs)));
+    const b = activeBlock(this.deps.store.all(id, 'block'), planDate);
     if (!b?.start) return null;
     const links = this.state(id).links;
     const catalog = this.catalog(id);
-    const week = blockWeek(b, today);
+    const week = blockWeek(b, planDate);
     const hasCore = (w: StrengthWorkout, core: string): boolean => w.exercises.some((e) => isCoreExercise({ templateId: e.templateId ?? '', title: e.title }, core, { catalog, links }));
     const inBlock = real.filter((w) => dateKey(w.startMs) >= b.start!).sort((a, c) => c.startMs - a.startMs);
-    const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
+    const weekday = (new Date(`${planDate}T00:00:00Z`).getUTCDay() + 6) % 7;
     let index = b.rhythm[weekday]?.template;
     if (index === undefined) {
       const overlap = (w: StrengthWorkout, i: number): number => b.templates[i]!.core.filter((c) => hasCore(w, c)).length;

@@ -141,6 +141,11 @@ describe('blockLine', () => {
     expect(blockLine(block({ state: 'ended' }), '2026-12-08', [])).toBeNull();
     expect(blockLine(null, '2026-12-08', [])).toBeNull();
   });
+  it('skips the rhythm days already done', () => {
+    const b = block();
+    expect(blockLine(b, '2026-12-09', plans(b), ['2026-12-09'])).toBe('Woche 2 von 4 im festen Abschnitt. Als Nächstes kommt Oberkörper A am Montag.');
+    expect(blockLine(b, '2026-12-07', plans(b), ['2026-12-07'])).toBe('Woche 2 von 4 im festen Abschnitt. Als Nächstes kommt Unterkörper B am Mittwoch.');
+  });
   it('leaves out the next day when no plan has one', () => {
     expect(blockLine(block(), '2026-12-08', [])).toBe('Woche 2 von 4 im festen Abschnitt.');
   });

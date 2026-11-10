@@ -30,3 +30,11 @@ it('zeigt ohne Abschnitt nichts', async () => {
   await new Promise((r) => setTimeout(r, 20));
   expect(container.textContent).toBe('');
 });
+
+it('nennt nach der erledigten Einheit von heute den nächsten Krafttag', async () => {
+  const monday = new Date(2026, 11, 7, 18).getTime();
+  const done: TrackedRecord = { kind: 'workout', id: 'w1', updatedMs: 1, deleted: false, body: { startMs: new Date(2026, 11, 7, 9).getTime(), endMs: new Date(2026, 11, 7, 10).getTime(), exercises: [] } };
+  const f = fakePort([blockRecord('block-m1', active, 1), ...weekplans(), done]);
+  render(<BlockLine port={f.port} now={() => monday} />);
+  await screen.findByText('Woche 2 von 4 im festen Abschnitt. Als Nächstes kommt Unterkörper B am Mittwoch.');
+});

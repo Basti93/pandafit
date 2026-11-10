@@ -150,14 +150,17 @@ export function templateFor(b: BlockBody, planDate: string): BlockTemplate | nul
 
 /**
  * The one line for Woche and Kraft: the week of the section and which strength day comes next (from the stored week plans),
- * or the note for the light last week. null for anything but a running section.
+ * or the note for the light last week. `done`: the days with a finished strength session; such a day is passed over, so
+ * "Heute kommt" only stands while today's session is still open. null for anything but a running section.
  */
-export function blockLine(b: BlockBody | null, today: string, plans: readonly TrackedRecord[]): string | null {
+export function blockLine(b: BlockBody | null, today: string, plans: readonly TrackedRecord[], done: Iterable<string> = []): string | null {
   if (!b || b.state !== 'active' || !b.start || !b.end || today < b.start || today > b.end) return null;
   const { n, of, light } = blockWeek(b, today);
   if (light) return 'Letzte Woche im Abschnitt, sie ist leichter.';
   const head = `Woche ${n} von ${of} im festen Abschnitt.`;
+  const doneDays = new Set(done);
   for (let d = today; d <= b.end; d = addDays(d, 1)) {
+    if (doneDays.has(d)) continue;
     const plan = planFor([...plans], d);
     if (!plan || !hasSport(plan, 'gym')) continue;
     const template = templateFor(b, d);
