@@ -61,7 +61,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Dojo 4 Essen und Profil** | Essen zeigt die nächste Mahlzeit groß und die Woche ruhig; ein Rezept trägt man auf der Seite in den Plan ein; Profil ist nur noch Einstellungen. | Tage/Einkauf-Umschalter, „In den Plan“-Sheet |
 | ✅ | **Dojo 5 Bos Orte und Logo** | Hinter jeder Pose von Bo steht seine Szene; das App-Logo zeigt Bos Gesicht mit Stirnband und Schweißtropfen, im Dock, auf dem Handy und als Favicon. | Altes Logo (Panda und Maus auf dem Rad) |
 | ✅ | **Kraft-Feedback 10.11.** | Das Gewicht folgt der Stelle im Training (spätere Übungen für denselben Muskel bekommen weniger), der Coach plant dieselbe Ausführung nie doppelt, „Trag das ein“ im Chat übernimmt den offenen Regelvorschlag, Sätze sind immer bearbeitbar, „+“ hängt einen Satz an, das Übungsmenü ist eine Liste. | Training und Chat 10.11.2026 |
-| ⬜ | **Monatsrückblick, Härte, Abschnitt** | Bo blickt am Monatsende im Sensai-Chat auf drei Monate zurück, ermutigt, fragt nach Beschwerden und schlägt die nächsten Wochen vor (Stufe A ✅). Härte pro Person (Stufe B) und optional ein fester Abschnitt mit Kernübungen und leichter Woche (Stufe C) folgen. | Konzept 2026-11-10-monatsrueckblick-design.md |
+| ⬜ | **Monatsrückblick, Härte, Abschnitt** | Bo blickt am Monatsende im Sensai-Chat auf drei Monate zurück, ermutigt, fragt nach Beschwerden und schlägt die nächsten Wochen vor (Stufe A ✅). Härte pro Person „Vorsichtig“, „Normal“, „Fordere mich“ (Stufe B ✅). Optional ein fester Abschnitt mit Kernübungen und leichter Woche (Stufe C) folgt. | Konzept 2026-11-10-monatsrueckblick-design.md |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -130,6 +130,8 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - `repRange` je Satz einer Übung ist uneinheitlich (z. B. 8–12 und 6–12).
   - Nach „Reihenfolge ändern“ im laufenden Training die Vorschläge neu berechnen.
   - Den Anteil der Vorermüdung pro Person aus eigenen Daten lernen.
+  - Aus Stufe B: Eine Beschwerde mitten im offenen Training ändert schon geplante Versagenssätze nicht; erst das nächste Training wird vorsichtig geplant.
+  - Aus Stufe B: Die Frage-Karte zur Härte bleibt angeheftet, auch wenn die Härte schon im Profil gewählt wurde.
   - „Nächstes Mal“-Zeile und Änderungsnotizen (`gym-coach.ts`) kennen die Stelle im Training noch nicht und können ein höheres Gewicht nennen als der Plan.
   - Das Senken nach der Stelle macht eine geplante Pyramide flach.
 - ~~Aus Dojo 1: Hauptknöpfe ohne `class="primary"` (z. B. `RecipesScreen.tsx`) haben noch das schlichte Aussehen.~~ Erledigt mit Dojo 4.
