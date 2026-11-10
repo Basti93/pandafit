@@ -1,7 +1,7 @@
 import { ChatCoach, REVIEW_SYSTEM_PROMPT } from '../../../src/coach/chat/chat-coach';
 import { startReview, type ReviewReason } from '../../../src/coach/chat/month-review';
 import type { Sent } from '../../../src/coach/chat/prompts';
-import { DEFAULT_PREFS, chatThread } from '../../../src/shared/chat';
+import { DEFAULT_PREFS, MAX_CHAT_TEXT, chatThread } from '../../../src/shared/chat';
 import type { RecordKind, TrackedRecord } from '../../../src/shared/records';
 
 const NOW = new Date(2026, 10, 29, 18).getTime(); // Sunday 2026-11-29, the last Sunday of November
@@ -49,6 +49,29 @@ it('liest nicht den Chat-Verlauf', async () => {
   expect(await c.openReview('p', 'pause')).toBe(true);
   expect(prompts[0]).not.toContain('GEHEIM');
   expect(prompts[0]).toContain('anlass');
+});
+
+it('baut die Nachricht in fester Reihenfolge', async () => {
+  const s = store([complaint('k1', 'Knie')]);
+  const c = coach(s, async () => answer({ observations: [obs(1), obs(2)], complaintQuestions: [{ id: 'k1', question: 'Wie geht es dem Knie?' }] }));
+  expect(await c.openReview('p', 'month')).toBe(true);
+  expect(messages(s)[0]!.text).toBe('Ein guter Monat mit vielen ruhigen Wochen.\n\nBeobachtung 1. Grund 1.\nBeobachtung 2. Grund 2.\n\nWie geht es dem Knie?\n\nLass uns so weitermachen.');
+});
+
+it('passt immer ganz in den Chat, Fragen und Vorschlag bleiben', async () => {
+  const long = (w: string) => `${w} `.repeat(400).trim();
+  const s = store([complaint('k1', long('Knie').slice(0, 200)), complaint('k2', long('Schulter').slice(0, 200))]);
+  const c = coach(s, async () => answer({
+    opening: long('Anfang'), observations: [1, 2, 3].map(() => ({ text: long('Satz'), reason: long('Grund') })),
+    complaintQuestions: [{ id: 'k1', question: `${long('Knie')} FRAGE1?` }], nextWeeks: `ENDE ${long('Weiter')}`,
+  }));
+  expect(await c.openReview('p', 'month')).toBe(true);
+  const raw = [...s.recs.values()].find((r) => r.kind === 'chat')!.body as { text: string };
+  expect(raw.text.length).toBeLessThanOrEqual(MAX_CHAT_TEXT);
+  const parts = raw.text.split('\n\n');
+  expect(parts[parts.length - 1]).toMatch(/^ENDE Weiter/);
+  expect(parts[parts.length - 2]!.split('\n')).toHaveLength(2);
+  expect(parts[parts.length - 2]).toContain('Wie geht es dir inzwischen mit Schulter');
 });
 
 it('sendet mit Push', async () => {
