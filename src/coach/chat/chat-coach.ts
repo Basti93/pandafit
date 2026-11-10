@@ -14,7 +14,7 @@ import { dataBlock } from '../meals/prompt';
 import type { RecordStore } from '../tracking/store';
 import { excludedOf, goalOfProfile, wishesOf } from '../tracking/personal';
 import { FAMILY_IDS, isExcludableFamily, MAX_FAMILIES } from '../../shared/families';
-import { FOCUS_GROUPS, MAX_EXCLUDED, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
+import { FOCUS_GROUPS, MAX_EXCLUDED, moveRule, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
 import { LONG_TERM_GUIDE, weekHistory } from './long-term';
 import { titleHash } from '../../shared/exercise-links';
 import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
@@ -24,7 +24,7 @@ const EXCLUDABLE = FAMILY_IDS.filter((f) => f !== 'other');
 type Draft = { ops: NextOp[]; reason: string; refused?: string[] };
 /** A rule or goal change the coach proposes: valid, and `note` when it had to be weakened to a wish. */
 type RuleOut = { draft: RuleDraft; note?: string };
-type Answer = ChatMessage & { draft?: Draft; ruleDraft?: RuleDraft };
+type Answer = ChatMessage & { draft?: Draft; ruleDraft?: RuleDraft; acceptsRule?: boolean };
 type Ask = (input: { prompt: string; systemPrompt: string; schema: object }) => Promise<unknown>;
 type Deps = {
   store: Pick<RecordStore, 'all' | 'put'>;
@@ -54,7 +54,7 @@ Du planst mit der Person ihre Woche: welche Sportart an welchem Tag und wie hart
 Die einzelnen Einheiten (Übungen, Sätze, Watt, Laufminuten) plant jeweils eine eigene Planung für Rad (bike), Kraft (gym) und Laufen (run); was sie als Nächstes geplant haben, steht in einheiten (beim Rad auch FTP und Phase, und radFahrten sind die letzten Fahrten). Fragen dazu beantwortest du selbst, fachlich und sportwissenschaftlich begründet. Verweise die Person nie an eine andere Stelle oder ins Training..
 Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib der zuständigen Planung in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false, forDate (JJJJ-MM-TT), wenn die Person einen Tag nennt ("am Montag"), sonst null ("das nächste Training"). Die Planung plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
 Will die Person etwas fürs nächste Training ändern (etwa "nächstes Mal ohne Kniebeugen"), setze nextChange: ops mit exerciseId aus einheiten, und reason als ein Satz, warum. Für Tausch fürs nächste Training: nenne toId aus katalog oder toTitle; kennst du die id nicht, nenne toTitle. Ohne so einen Wunsch ist nextChange null. Es gilt erst, wenn die Person es übernimmt.
-Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt.
+Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false.
 Die Person kann Mengen nennen ("2× Kraft, 3× Rad"), feste Tage ("Freitag Studio") oder dich vorschlagen lassen; oft eine Mischung. Feste Wünsche der Person markierst du mit fixed true.
 Stelle höchstens eine Frage auf einmal und nur, wenn die Antwort den Plan ändert. Wenn du genug weißt, mach einen Vorschlag.
 Ein Vorschlag (proposal) ist immer eine ganze Woche von Montag bis Sonntag (sieben Tage, date im Format JJJJ-MM-TT, aus wocheJetzt oder wocheNaechste) mit sport bike, gym, run, mobility oder rest und hardness easy, moderate oder hard. Bei Krafttagen sagt legs, ob Beine trainiert werden; long markiert die lange Rad- oder Laufeinheit. note ist optional und kurz. Zwei Einheiten an einem Tag (also mit sport und hardness, optional minutes) setzt du nur, wenn die Person eine Kombination ausdrücklich will, und höchstens eine davon ist hart; sonst ist ein Tag eine Einheit. Ein Wunsch wie „15–20 Min. Ausdauer im Gym“ ist also mit minutes (der kleinere Wert, ganze Minuten von 5 bis 90), keine Notiz. Ohne Vorschlag ist proposal null. Du änderst nie etwas still: Ein Vorschlag gilt erst, wenn die Person ihn übernimmt.
@@ -69,7 +69,7 @@ export const WORKOUT_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit und begleitest d
 Sie sagt dir etwa "Gerät belegt", "Schulter zwickt" oder "nur noch 30 Minuten". Schlag dann vor, wie der Rest dieses Trainings aussieht, als change mit ops; ohne Änderung ist change null.
 ops: drop (die offenen Sätze einer Übung fallen weg), swap (die offenen Sätze wandern zu einer anderen Übung aus katalog, to ist deren id, nimm eine mit demselben Muskel und einem Gerät, das frei ist), sets (open: so viele offene Sätze bleiben), lighter (pct 5 bis 30: die offenen Sätze werden um so viel Prozent leichter). ex ist immer die ex-Kennung einer Übung aus training, die noch offene Sätze hat. Erledigte Sätze änderst du nie.
 Bei Schmerzen: die betroffene Bewegung weglassen oder deutlich leichter, nie durchziehen; keine medizinischen Ratschläge. Erzählt die Person von einem neuen Schmerz, setze newComplaint auf einen kurzen Text in ihren Worten; sonst null. Sagt sie, eine Beschwerde aus beschwerden ist vorbei, nenne deren id in complaintsOver.
-Meint die Person das nächste Training statt dieses ("nächstes Mal"), setze statt change nextChange: ops mit exerciseId (die Übungs-id aus katalog oder training) und reason als ein Satz; für einen Tausch nenne toId aus katalog oder toTitle, kennst du die id nicht, nenne toTitle; sonst null. Nichts ändert sich, bevor die Person den Vorschlag übernimmt. Sagt sie "künftig/immer/nie", setze ruleDraft (kind exclude mit exerciseIds aus katalog, wish oder goal; text, sport); sonst null. text: ein bis zwei Sätze.`;
+Meint die Person das nächste Training statt dieses ("nächstes Mal"), setze statt change nextChange: ops mit exerciseId (die Übungs-id aus katalog oder training) und reason als ein Satz; für einen Tausch nenne toId aus katalog oder toTitle, kennst du die id nicht, nenne toTitle; sonst null. Nichts ändert sich, bevor die Person den Vorschlag übernimmt. Sagt sie "künftig/immer/nie", setze ruleDraft (kind exclude mit exerciseIds aus katalog, wish oder goal; text, sport); sonst null. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false. text: ein bis zwei Sätze.`;
 
 const nextChangeSchema = { anyOf: [{ type: 'null' }, {
   type: 'object', additionalProperties: false, required: ['ops', 'reason'],
@@ -95,9 +95,10 @@ const ruleDraftSchema = { anyOf: [{ type: 'null' }, {
 }] };
 
 const workoutSchema = {
-  type: 'object', additionalProperties: false, required: ['text', 'change', 'newComplaint', 'complaintsOver', 'nextChange', 'ruleDraft'],
+  type: 'object', additionalProperties: false, required: ['text', 'change', 'newComplaint', 'complaintsOver', 'nextChange', 'ruleDraft', 'acceptsRule'],
   properties: {
     text: { type: 'string' },
+    acceptsRule: { type: 'boolean' },
     nextChange: nextChangeSchema,
     ruleDraft: ruleDraftSchema,
     newComplaint: { anyOf: [{ type: 'null' }, { type: 'string' }] },
@@ -113,9 +114,10 @@ const workoutSchema = {
 };
 
 const answerSchema = {
-  type: 'object', additionalProperties: false, required: ['text', 'proposal', 'riderAskedForMore', 'newComplaint', 'complaintsOver', 'tasks', 'nextChange', 'ruleDraft'],
+  type: 'object', additionalProperties: false, required: ['text', 'proposal', 'riderAskedForMore', 'newComplaint', 'complaintsOver', 'tasks', 'nextChange', 'ruleDraft', 'acceptsRule'],
   properties: {
     text: { type: 'string' },
+    acceptsRule: { type: 'boolean' },
     nextChange: nextChangeSchema,
     ruleDraft: ruleDraftSchema,
     tasks: tasksJsonSchema,
@@ -169,10 +171,33 @@ export class ChatCoach {
         const limit = e instanceof ClaudeError && e.kind === 'limit';
         answer = { role: 'coach', text: limit ? 'Mein Claude-Kontingent ist gerade aufgebraucht. Schreib mir später nochmal.' : 'Ich komme gerade nicht durch. Schreib mir gleich nochmal.', atMs: this.deps.nowMs(), failed: true };
       }
-      const { draft, ruleDraft, ...msg } = answer;
-      this.put(id, { ...msg, replyTo: waiting.id, ...(waiting.inWorkout ? { inWorkout: waiting.inWorkout } : {}) }, draft, ruleDraft);
+      const { draft, ruleDraft, acceptsRule, ...msg } = answer;
+      const accepted = acceptsRule && !answer.failed ? this.acceptOpenRule(id, thread, waiting, now, msg) : false;
+      this.put(id, { ...msg, replyTo: waiting.id, ...(waiting.inWorkout ? { inWorkout: waiting.inWorkout } : {}) }, draft, accepted ? null : ruleDraft);
       return true;
     } catch { return false; } finally { this.busy.delete(id); }
+  }
+
+  /**
+   * The rider's explicit yes to the open rule draft: the draft of the coach message right before hers becomes active, the same
+   * move as the Übernehmen button. A goal is never taken from the chat. Sets `rule` on the reply (the card then shows Rückgängig).
+   * Returns whether the rule was taken.
+   */
+  private acceptOpenRule(id: string, thread: ChatEntry[], waiting: ChatEntry, now: number, msg: ChatMessage): boolean {
+    const before = thread.slice(0, thread.findIndex((m) => m.id === waiting.id));
+    const rid = before.reverse().find((m) => m.role === 'coach')?.rule;
+    const cur = rid ? this.deps.store.all(id, 'rule').find((r) => r.id === rid) : undefined;
+    const open = cur ? readRule(cur.id, cur.body) : null;
+    if (!cur || !open || open.state !== 'proposed') return false;
+    if (open.kind === 'goal') {
+      if (!msg.text.includes('Übernehmen')) msg.text += '\nEin neues Ziel übernimmst du selbst mit „Übernehmen“ auf der Karte.';
+      return false;
+    }
+    const next = moveRule(cur, 'active', now);
+    if (!next) return false;
+    this.deps.store.put(id, next);
+    msg.rule = cur.id;
+    return true;
   }
 
   private async answer(id: string, prompt: string, now: number, fromRider = true): Promise<Answer> {
@@ -187,6 +212,7 @@ export class ChatCoach {
         draft: this.draftOf(id, raw.nextChange),
         nextRaw: raw.nextChange,
         ruleRaw: raw.ruleDraft,
+        accepts: raw.acceptsRule === true,
       };
     };
     let a = await ask(prompt);
@@ -205,7 +231,7 @@ export class ChatCoach {
       try { a = await ask(`${prompt}\nDein Vorschlag bricht diese Regeln: ${broken.join(' ')} Korrigiere ihn.`); } catch { /* the first answer decides */ }
       broken = a.proposal ? checkWeekPlan(a.proposal.days) : [];
     }
-    const msg: Answer = { role: 'coach', text: a.text || 'Okay.', atMs: this.deps.nowMs() };
+    const msg: Answer = { role: 'coach', text: a.text || 'Okay.', atMs: this.deps.nowMs(), ...(fromRider && a.accepts ? { acceptsRule: true } : {}) };
     // Only the rider's own words propose a change for the next workout.
     if (fromRider && a.draft) {
       const line = gehtNicht(a.draft.refused ?? []);
@@ -255,7 +281,7 @@ export class ChatCoach {
     if (!isObj(raw) || typeof raw.text !== 'string') throw new ClaudeError('invalid', 'Keine Antwort.');
     this.applyComplaints(id, typeof raw.newComplaint === 'string' && raw.newComplaint.trim() ? raw.newComplaint.trim().slice(0, 200) : null,
       Array.isArray(raw.complaintsOver) ? raw.complaintsOver.filter((x): x is string => typeof x === 'string') : []);
-    const msg: Answer = { role: 'coach', text: raw.text.trim().slice(0, 1000) || 'Okay.', atMs: this.deps.nowMs(), inWorkout: w.id };
+    const msg: Answer = { role: 'coach', text: raw.text.trim().slice(0, 1000) || 'Okay.', atMs: this.deps.nowMs(), inWorkout: w.id, ...(raw.acceptsRule === true ? { acceptsRule: true } : {}) };
     const draft = this.draftOf(id, raw.nextChange);
     if (draft) {
       const refusal = gehtNicht(draft.refused ?? []);

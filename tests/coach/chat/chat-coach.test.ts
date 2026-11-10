@@ -300,3 +300,38 @@ describe('a swap for the next workout is resolved against the whole catalog', ()
     expect(m.nextChange).toBeUndefined();
   });
 });
+
+describe('an explicit yes in the chat takes the open rule draft', () => {
+  const coachMsg = (rule: string): TrackedRecord => ({ kind: 'chat', id: 'c0', updatedMs: NOW - 5000, deleted: false, body: { role: 'coach', text: 'Soll ich das als Regel merken?', atMs: NOW - 5000, rule } });
+  const draft = (kind: string, state = 'proposed'): TrackedRecord => ({ kind: 'rule', id: 'rule-d', updatedMs: 1, deleted: false, body: { kind, text: 'Kurze Pausen', sport: 'all', state, source: 'chat', atMs: 1, ...(kind === 'goal' ? { goal: { strength: 'muscle' } } : {}) } });
+  const yes = (extra = {}) => async () => ({ text: 'Gilt ab jetzt.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], tasks: [], nextChange: null, ruleDraft: null, acceptsRule: true, ...extra });
+  const rules = (s: ReturnType<typeof store>) => [...s.recs.values()].filter((r) => r.kind === 'rule');
+
+  test('takes the open draft on an explicit wish', async () => {
+    const s = store([coachMsg('rule-d'), draft('wish'), rider('r1', 'Trag das als Regel ein')]);
+    await coach(s, yes()).tick('p');
+    expect(rules(s)).toHaveLength(1);
+    expect(rules(s)[0]!.body).toMatchObject({ state: 'active' });
+    expect(replies(s).at(-1)!.rule).toBe('rule-d');
+  });
+
+  test('takes nothing without an open draft', async () => {
+    const done = draft('wish', 'active');
+    const s = store([coachMsg('rule-d'), done, rider('r1', 'Trag das ein')]);
+    await coach(s, yes()).tick('p');
+    expect(rules(s)).toEqual([done]);
+    expect(replies(s).at(-1)!.rule).toBeUndefined();
+    const s2 = store([rider('r1', 'Trag das ein')]);
+    await coach(s2, yes()).tick('p');
+    expect(rules(s2)).toEqual([]);
+  });
+
+  test('never takes a goal from the chat', async () => {
+    const g = draft('goal');
+    const s = store([coachMsg('rule-d'), g, rider('r1', 'Ja, trag ein')]);
+    await coach(s, yes()).tick('p');
+    expect(rules(s)).toEqual([g]);
+    expect(replies(s).at(-1)!.text).toContain('Übernehmen');
+    expect(replies(s).at(-1)!.rule).toBeUndefined();
+  });
+});
