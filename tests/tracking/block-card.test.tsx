@@ -111,3 +111,35 @@ it('folgt der Fortsetzung des Abschnitts und sagt nicht, er sei zu Ende', async 
   await screen.findByText('Du hast den festen Abschnitt bis 27. Dez. übernommen.');
   expect(screen.queryByText('Der feste Abschnitt ist zu Ende.')).toBeNull();
 });
+
+it('bietet nach einem verweigerten Rückgängig an, den Abschnitt zu beenden', async () => {
+  const f = setup();
+  await take();
+  await screen.findByText('Gilt ab 30. Nov.');
+  const wp = f.map.get('weekplan:2026-12-07')!;
+  await f.port.put({ ...wp, updatedMs: wp.updatedMs + 10, body: { ...(wp.body as object), days: [] } });
+  const end = await screen.findByRole('button', { name: 'Abschnitt beenden' });
+  fireEvent.click(end);
+  fireEvent.click(end);
+  await waitFor(() => expect(f.map.get('block:block-m1')!.body).toMatchObject({ state: 'ended' }));
+  expect(readFrame(f.map.get('frame:frame')!.body)?.mode).toBe('spontaneous');
+  // The changed week plan stays as the person left it.
+  expect(f.map.get('weekplan:2026-12-07')!.body).toMatchObject({ days: [] });
+  const lines = [...f.map.values()].filter((r) => r.kind === 'chat' && (r.body as { text: string }).text === 'Gut, der feste Abschnitt ist beendet. Dein Ziel bleibt.');
+  expect(lines).toHaveLength(1);
+  expect(lines[0]!.body).toMatchObject({ role: 'coach' });
+  expect(f.state.puts.filter((r) => r.kind === 'block' && (r.body as { state: string }).state === 'ended')).toHaveLength(1);
+});
+
+it('meldet beim Beenden, wenn etwas nicht gespeichert wurde, und lässt den Abschnitt laufen', async () => {
+  const f = setup();
+  await take();
+  await screen.findByText('Gilt ab 30. Nov.');
+  const wp = f.map.get('weekplan:2026-12-07')!;
+  await f.port.put({ ...wp, updatedMs: wp.updatedMs + 10, body: { ...(wp.body as object), days: [] } });
+  const end = await screen.findByRole('button', { name: 'Abschnitt beenden' });
+  f.state.failPuts = true;
+  fireEvent.click(end);
+  await screen.findByText(/nicht gespeichert/);
+  expect(f.map.get('block:block-m1')!.body).toMatchObject({ state: 'active' });
+});

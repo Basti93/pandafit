@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { blockDates, blockWeeks, readBlock } from '../../shared/block';
-import { blockChainHead, blockTakeWrites, blockUndoWrites } from '../../shared/block-take';
+import { blockChainHead, blockEndWrites, blockTakeWrites, blockUndoWrites } from '../../shared/block-take';
 import { dateKey } from '../../shared/day-rating';
 import { dayMonthOfKey } from '../../shared/dates';
 import { above } from '../../shared/exercise-links';
@@ -14,6 +14,8 @@ const list = (items: string[]): string => (items.length < 2 ? items.join('') : `
 /** A sentence ends with one full stop, also when the date label already ends with one. */
 const sentence = (t: string): string => (t.endsWith('.') ? t : `${t}.`);
 const FAILED = 'Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.';
+const END = 'Abschnitt beenden';
+const ENDED_LINE = 'Gut, der feste Abschnitt ist beendet. Dein Ziel bleibt.';
 
 /**
  * The monthly review's proposal of a fixed section: the dates, per template the core exercises, the week rhythm, Übernehmen / Nein danke.
@@ -35,7 +37,7 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
   if (!rec || !body) return rec?.deleted && undone ? <div className="tk-nextchange"><p className="muted">Du hast den Abschnitt rückgängig gemacht.</p></div> : null;
   const titleOf = (id: string) => catalog.find((e) => e.id === id)?.title ?? id;
 
-  const go = async (to: 'take' | 'decline' | 'undo') => {
+  const go = async (to: 'take' | 'decline' | 'undo' | 'end') => {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -45,7 +47,11 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
       const cur = blockChainHead(blockRecs, blockId);
       if (!cur) return;
       let writes;
-      if (to === 'take') writes = blockTakeWrites({ block: cur, frame, plans: weekplans, blocks: blockRecs, msgId, today: dateKey(nowMs), nowMs });
+      // The way out when the undo is refused: the same end as the natural one (frame only if unchanged, section last), then Bo's line.
+      if (to === 'end') {
+        const end = blockEndWrites({ block: cur, frame, nowMs });
+        writes = end ? [...end, { kind: 'chat' as const, id: `${cur.id}-ende`, updatedMs: nowMs, deleted: false, body: { role: 'coach', text: ENDED_LINE, atMs: nowMs } }] : null;
+      } else if (to === 'take') writes = blockTakeWrites({ block: cur, frame, plans: weekplans, blocks: blockRecs, msgId, today: dateKey(nowMs), nowMs });
       else if (to === 'undo') {
         const r = blockUndoWrites({ block: cur, frame, plans: weekplans, msgId, nowMs });
         if ('refused' in r) { setMessage(r.refused); return; }
@@ -75,6 +81,7 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
         <span className="muted">{line}</span>
         {canUndo && <button type="button" className="link" disabled={busy} onClick={() => void go('undo')}>{UNDO}</button>}
         {why && <span className="muted">{why}</span>}
+        {why && <button type="button" className="link" disabled={busy} onClick={() => void go('end')}>{END}</button>}
         {message && <span role="status" className="tk-note">{message}</span>}
       </div>
     );
@@ -102,6 +109,7 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
           <span className="muted">{sentence(`Gilt ab ${dayMonthOfKey(body.start!)}`)}</span>
           {canUndo && <button type="button" className="link" disabled={busy} onClick={() => void go('undo')}>{UNDO}</button>}
           {why && <span className="muted">{why}</span>}
+          {why && <button type="button" className="link" disabled={busy} onClick={() => void go('end')}>{END}</button>}
         </div>
       )}
       {body.state === 'declined' && <p className="muted">{DECLINED}.</p>}
