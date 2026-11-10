@@ -180,15 +180,19 @@ export class ChatCoach {
 
   /**
    * The rider's explicit yes to the open rule draft: the draft of the coach message right before hers becomes active, the same
-   * move as the Übernehmen button. A goal is never taken from the chat. Sets `rule` on the reply (the card then shows Rückgängig).
+   * move as the Übernehmen button. In a workout only the coach messages of that workout count. A goal is never taken from the
+   * chat. Sets `rule` on the reply (the card then shows Rückgängig); without an open draft the reply says so.
    * Returns whether the rule was taken.
    */
   private acceptOpenRule(id: string, thread: ChatEntry[], waiting: ChatEntry, now: number, msg: ChatMessage): boolean {
     const before = thread.slice(0, thread.findIndex((m) => m.id === waiting.id));
-    const rid = before.reverse().find((m) => m.role === 'coach')?.rule;
+    const rid = before.reverse().find((m) => m.role === 'coach' && (!waiting.inWorkout || m.inWorkout === waiting.inWorkout))?.rule;
     const cur = rid ? this.deps.store.all(id, 'rule').find((r) => r.id === rid) : undefined;
     const open = cur ? readRule(cur.id, cur.body) : null;
-    if (!cur || !open || open.state !== 'proposed') return false;
+    if (!cur || !open || open.state !== 'proposed') {
+      msg.text += '\nIch sehe gerade keinen offenen Vorschlag, den ich übernehmen könnte. Deshalb gilt noch keine neue Regel.';
+      return false;
+    }
     if (open.kind === 'goal') {
       if (!msg.text.includes('Übernehmen')) msg.text += '\nEin neues Ziel übernimmst du selbst mit „Übernehmen“ auf der Karte.';
       return false;

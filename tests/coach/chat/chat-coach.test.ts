@@ -326,6 +326,37 @@ describe('an explicit yes in the chat takes the open rule draft', () => {
     expect(rules(s2)).toEqual([]);
   });
 
+  test('says so when there is no open proposal to take', async () => {
+    const s = store([rider('r1', 'Trag das ein')]);
+    await coach(s, yes()).tick('p');
+    expect(replies(s).at(-1)!.text).toBe('Gilt ab jetzt.\nIch sehe gerade keinen offenen Vorschlag, den ich übernehmen könnte. Deshalb gilt noch keine neue Regel.');
+    const taken = store([coachMsg('rule-d'), draft('wish'), rider('r1', 'Trag das als Regel ein')]);
+    await coach(taken, yes()).tick('p');
+    expect(replies(taken).at(-1)!.text).toBe('Gilt ab jetzt.');
+  });
+
+  describe('in a workout', () => {
+    const open: TrackedRecord = { kind: 'workout', id: 'w1', updatedMs: 1, deleted: false, body: { id: 'w1', title: 'Oberkörper', startMs: NOW - 20 * 60_000, endMs: null, source: 'pandafit', rest: null, exercises: [] } };
+    const yesInWorkout = async () => ({ text: 'Gilt ab jetzt.', newComplaint: null, complaintsOver: [], acceptsRule: true });
+    const inWorkout = (m: TrackedRecord): TrackedRecord => ({ ...m, body: { ...(m.body as object), inWorkout: 'w1' } });
+
+    test('takes the draft the coach proposed in the same workout', async () => {
+      const s = store([open, inWorkout(coachMsg('rule-d')), draft('wish'), rider('r1', 'Ja, trag das ein', NOW - 1000, { inWorkout: 'w1' })]);
+      await coach(s, yesInWorkout).tick('p');
+      expect(rules(s)[0]!.body).toMatchObject({ state: 'active' });
+      expect(replies(s).at(-1)).toMatchObject({ inWorkout: 'w1', rule: 'rule-d' });
+    });
+
+    test('never takes a draft from a message outside the workout', async () => {
+      const d = draft('wish');
+      const s = store([open, coachMsg('rule-d'), d, rider('r1', 'Ja, trag das ein', NOW - 1000, { inWorkout: 'w1' })]);
+      await coach(s, yesInWorkout).tick('p');
+      expect(rules(s)).toEqual([d]);
+      expect(replies(s).at(-1)!.rule).toBeUndefined();
+      expect(replies(s).at(-1)!.text).toContain('keinen offenen Vorschlag');
+    });
+  });
+
   test('never takes a goal from the chat', async () => {
     const g = draft('goal');
     const s = store([coachMsg('rule-d'), g, rider('r1', 'Ja, trag ein')]);
