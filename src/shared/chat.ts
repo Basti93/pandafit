@@ -39,6 +39,8 @@ export type ChatMessage = {
   nextChange?: string;
   /** The id of the `rule` record (a rule or goal change) this message proposes. */
   rule?: string;
+  /** The id of the `block` record (a fixed section) the monthly review proposes. */
+  block?: string;
   /** The monthly review: the observations Bo made, each with its reason (also in `text`). */
   review?: { observations: { text: string; reason: string }[] };
   /** Bo asks how hard he may push; the card offers the three choices and "Später". */
@@ -71,6 +73,7 @@ export function readChat(x: unknown): ChatMessage | null {
   if (x.push === true) m.push = true;
   if (typeof x.nextChange === 'string') m.nextChange = x.nextChange;
   if (typeof x.rule === 'string') m.rule = x.rule;
+  if (typeof x.block === 'string') m.block = x.block;
   if (x.askPush === true) m.askPush = true;
   if (x.pushChange !== undefined) { const c = readPushChange(x.pushChange); if (!c) return null; m.pushChange = c; }
   if (x.workoutChange !== undefined) { const c = readWorkoutChange(x.workoutChange); if (!c) return null; m.workoutChange = c; }
