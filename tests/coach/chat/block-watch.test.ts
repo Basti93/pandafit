@@ -5,6 +5,7 @@ import { announceBlockEnd, blockEndDue, driftDue, PlannedWeeks, watchBlock } fro
 import { blockRecord, type BlockBody } from '../../../src/shared/block';
 import { frameRecord, readFrame } from '../../../src/shared/frame';
 import type { TrackedRecord } from '../../../src/shared/records';
+import { QUESTION_GAP_DAYS } from '../../../src/coach/motivation';
 
 const RHYTHM: BlockBody['rhythm'] = [
   { sport: 'gym', hardness: 'hard', template: 0 }, { sport: 'bike', hardness: 'easy' }, { sport: 'gym', hardness: 'moderate', template: 1 },
@@ -171,6 +172,20 @@ describe('watchBlock', () => {
     expect(s.marks.drift).toBeUndefined();
     const e = setup('2026-12-28', { askAllowed: false });
     expect(e.run()).toBe('end');
+  });
+  it('fragt nicht, während ein Rückblick geschrieben wird oder kurz nach Bos letzter Frage', () => {
+    const run = (o: { reviewOpen?: boolean; lastQuestionMs?: number }) => {
+      const marks: Record<string, string> = {};
+      const planned = new PlannedWeeks(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wb-')), 'p.json'));
+      planned.note('p', '2026-11-30', 2); planned.note('p', '2026-12-07', 2);
+      return watchBlock({
+        today: '2026-12-14', nowMs: Date.UTC(2026, 11, 14, 12), askAllowed: true, ...o, blocks: [rec], weekplans: [], frame: [], gymDates: [], id: 'p',
+        sent: { get: () => marks, mark: (_i, k, v) => { marks[k] = v; } }, planned, ask: () => {}, say: () => {}, put: () => {},
+      });
+    };
+    expect(run({ reviewOpen: true })).toBeNull();
+    expect(run({ lastQuestionMs: Date.UTC(2026, 11, 14, 12) - 86_400_000 })).toBeNull();
+    expect(run({ lastQuestionMs: Date.UTC(2026, 11, 14, 12) - (QUESTION_GAP_DAYS + 1) * 86_400_000 })).toBe('drift');
   });
   it('meldet das Ende einmal', () => {
     const s = setup('2026-12-28');

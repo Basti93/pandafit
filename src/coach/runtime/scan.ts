@@ -309,7 +309,9 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
             }
           }
           // The fixed section: Bo asks when the last weeks looked different than planned, and says when it is over.
+          const lastQuestionMs = coach.state(p.id).lastQuestionMs;
           const watched = watchBlock({
+            reviewOpen: reviewOpen.has(p.id), ...(lastQuestionMs !== undefined ? { lastQuestionMs } : {}),
             today: dateKey(now), nowMs: now, blocks: records.all(p.id, 'block'), weekplans: records.all(p.id, 'weekplan'), frame: records.all(p.id, 'frame'),
             gymDates: gymDoneDates(p.id), id: p.id, sent: sentPrompts, planned: plannedWeeks, askAllowed: !tried && !due.week && !due.evening && !pushAsked,
             ask: (blockId) => { chat.askDrift(p.id, blockId); coach.questionAsked(p.id); }, say: (text) => chat.say(p.id, { role: 'coach', text, atMs: now, push: true }), put: (r) => { records.put(p.id, r); },

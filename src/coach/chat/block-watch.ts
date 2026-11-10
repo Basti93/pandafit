@@ -7,6 +7,7 @@ import { ruleNumber } from '../../shared/training-policy';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
 import { addDays, hasSport, mondayOf, planOfWeek } from '../../shared/week-plan';
 import type { Sent, SentPrompts } from './prompts';
+import { QUESTION_GAP_DAYS } from '../motivation';
 
 export const DRIFT_QUESTION = 'Die letzten zwei Wochen sahen anders aus als geplant. Sollen wir wieder locker planen?';
 export const BLOCK_END_TEXT = 'Dein fester Abschnitt ist vorbei. Ab jetzt plane ich wieder locker, dein Ziel bleibt.';
@@ -88,6 +89,10 @@ export function watchBlock(o: {
   id: string; sent: Pick<SentPrompts, 'get' | 'mark'>; planned: PlannedWeeks;
   /** No other question went out in this scan; without it the drift question waits for a later scan. The end runs anyway. */
   askAllowed: boolean;
+  /** A monthly review is being written now: it may ask itself, so the drift question waits. */
+  reviewOpen?: boolean;
+  /** When Bo last asked a question; the drift question keeps QUESTION_GAP_DAYS away from it. */
+  lastQuestionMs?: number;
   ask: (blockId: string) => void; say: (text: string) => void; put: (r: TrackedRecord) => void;
 }): 'drift' | 'end' | null {
   const running = activeBlock(o.blocks, o.today);
@@ -95,7 +100,8 @@ export function watchBlock(o: {
     const monday = mondayOf(o.today);
     const week = planOfWeek(o.weekplans, monday);
     if (week) o.planned.note(o.id, monday, week.days.filter((d) => hasSport(d, 'gym')).length);
-    if (o.askAllowed && driftDue({ block: running, planned: (m) => o.planned.get(o.id, m), gymDates: o.gymDates, sent: o.sent.get(o.id), today: o.today })) {
+    const quiet = !o.reviewOpen && (o.lastQuestionMs === undefined || o.nowMs - o.lastQuestionMs >= QUESTION_GAP_DAYS * 86_400_000);
+    if (o.askAllowed && quiet && driftDue({ block: running, planned: (m) => o.planned.get(o.id, m), gymDates: o.gymDates, sent: o.sent.get(o.id), today: o.today })) {
       o.ask(running.id);
       o.sent.mark(o.id, 'drift', o.today);
       return 'drift';
