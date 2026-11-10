@@ -493,7 +493,7 @@ export class ChatCoach {
         .flatMap((o) => { const text = isObj(o) ? clip(o.text, MAX_OBSERVATION_CHARS) : '', why = isObj(o) ? clip(o.reason, MAX_OBSERVATION_CHARS) : ''; return text && why ? [{ text, reason: why }] : []; })
         .slice(0, ruleNumber('review.max-observations'));
       const asked = Array.isArray(raw.complaintQuestions) ? raw.complaintQuestions.filter(isObj) : [];
-      const questions = complaints.map((c) => clip(asked.find((q) => q.id === c.id)?.question, 200) || `Wie geht es dir inzwischen mit ${c.text}?`);
+      const questions = complaints.map((c) => clip(asked.find((q) => q.id === c.id)?.question, 200) || `Du hattest „${c.text}“ erwähnt. Wie geht es dir damit inzwischen?`);
       const compose = () => [[clip(raw.opening, 300)], observations.map((o) => `${o.text} ${o.reason}`), questions, [clip(raw.nextWeeks, 300)]]
         .filter((part) => part.length > 0).map((part) => part.join('\n')).join('\n\n');
       // The whole message must fit into a chat message: observations go from the end first, never the questions or the suggestion.
@@ -502,6 +502,13 @@ export class ChatCoach {
       this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations } });
       return true;
     } catch { return false; } finally { this.busy.delete(id); }
+  }
+
+  /** The week history without the weeks before the first day the stats record covers: those would look empty, not unknown. */
+  private coveredWeeks(id: string, now: number, weeks: number): ReturnType<typeof weekHistory> {
+    const stats = this.deps.store.all(id, 'stats');
+    const first = readStats(stats.find((r) => r.id === STATS_ID && !r.deleted)?.body)?.days[0]?.date;
+    return weekHistory(stats, now, weeks).filter((w) => !first || addDays(w.woche, 6) >= first);
   }
 
   /** The data of the monthly review: stored trainings, goal, rules and complaints of the last weeks; no chat thread. */
@@ -523,7 +530,7 @@ export class ChatCoach {
       ...this.wishLines(id, ['gym', 'bike', 'run']),
       dataBlock('ausschluesse', this.catalogOf(id).filter((e) => out.has(e.id)).map((e) => e.title)),
       dataBlock('beschwerden', complaints),
-      dataBlock('wochen', weekHistory(this.deps.store.all(id, 'stats'), now, weeks)),
+      dataBlock('wochen', this.coveredWeeks(id, now, weeks)),
       dataBlock('kraft', kraft),
       dataBlock('geplant', geplant),
       dataBlock('anlass', REVIEW_REASON[reason]),

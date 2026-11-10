@@ -1,7 +1,9 @@
 import { ChatCoach, REVIEW_SYSTEM_PROMPT } from '../../../src/coach/chat/chat-coach';
 import { startReview, type ReviewReason } from '../../../src/coach/chat/month-review';
 import type { Sent } from '../../../src/coach/chat/prompts';
-import { DEFAULT_PREFS, MAX_CHAT_TEXT, chatThread } from '../../../src/shared/chat';
+import { DEFAULT_PREFS, MAX_CHAT_TEXT, chatThread, readChat } from '../../../src/shared/chat';
+import { lastDates } from '../../../src/coach/stats/stats-days';
+import { ruleNumber } from '../../../src/shared/training-policy';
 import type { RecordKind, TrackedRecord } from '../../../src/shared/records';
 
 const NOW = new Date(2026, 10, 29, 18).getTime(); // Sunday 2026-11-29, the last Sunday of November
@@ -38,7 +40,7 @@ it('fragt jede offene Beschwerde genau einmal', async () => {
   const text = messages(s)[0]!.text;
   expect(text).toContain('Wie geht es dem Knie?');
   expect(text).not.toContain('Und das Knie nochmal?');
-  expect(text).toContain('Wie geht es dir inzwischen mit Schulter?');
+  expect(text).toContain('Du hattest „Schulter“ erwähnt. Wie geht es dir damit inzwischen?');
   expect(text).not.toContain('Rücken');
 });
 
@@ -71,7 +73,7 @@ it('passt immer ganz in den Chat, Fragen und Vorschlag bleiben', async () => {
   const parts = raw.text.split('\n\n');
   expect(parts[parts.length - 1]).toMatch(/^ENDE Weiter/);
   expect(parts[parts.length - 2]!.split('\n')).toHaveLength(2);
-  expect(parts[parts.length - 2]).toContain('Wie geht es dir inzwischen mit Schulter');
+  expect(parts[parts.length - 2]).toContain('Wie geht es dir damit inzwischen?');
 });
 
 it('sendet mit Push', async () => {
@@ -85,6 +87,24 @@ it('schreibt nichts, wenn Claude ausfällt', async () => {
   const c = coach(s, async () => { throw new Error('down'); });
   expect(await c.openReview('p', 'month')).toBe(false);
   expect([...s.recs.values()].some((r) => r.kind === 'chat')).toBe(false);
+});
+
+it('nennt nur Wochen, die der Statistik-Zeitraum abdeckt', async () => {
+  const days = lastDates(NOW, 9).map((date) => ({ date, minutes: { bike: 30, strength: 0, run: 0, mobility: 0, other: 0 }, hardness: 'easy', legs: false }));
+  const stats: TrackedRecord = { kind: 'stats', id: 'stats', updatedMs: 1, deleted: false, body: { type: 'stats', atMs: 1, goal: null, days, muscles: {} } };
+  const prompts: string[] = [];
+  const c = coach(store([stats]), async ({ prompt }) => { prompts.push(prompt); return answer(); });
+  expect(await c.openReview('p', 'month')).toBe(true);
+  const wochen = JSON.parse(/<wochen-nur-daten>\s*([\s\S]*?)\s*<\/wochen-nur-daten>/.exec(prompts[0]!)![1]!) as { woche: string }[];
+  expect(wochen.length).toBeLessThanOrEqual(9);
+  expect(wochen.length).toBeGreaterThan(0);
+  expect(wochen.every((w) => w.woche >= '2026-09-28')).toBe(true);
+});
+
+it('readChat behält eine Nachricht mit zu vielen Beobachtungen und kürzt sie', () => {
+  const many = Array.from({ length: ruleNumber('review.max-observations') + 2 }, (_, i) => obs(i));
+  const m = readChat({ role: 'coach', text: 'x', atMs: 1, review: { observations: many } });
+  expect(m?.review?.observations).toHaveLength(ruleNumber('review.max-observations'));
 });
 
 describe('startReview', () => {
