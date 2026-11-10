@@ -349,6 +349,12 @@ describe('checkWorkout refuses the same execution twice', () => {
     const r = checkWorkout(wo([row('pf-triceps-rope'), row('pf-triceps-pushdown')]), ctx);
     expect(r).toEqual({ ok: false, reason: 'dieselbe Ausführung doppelt' });
   });
+  it('finds the entry of a Hevy template through the link', () => {
+    const hevy: ExerciseTemplate = { id: 'hevy-1', title: 'Fremdname', type: 'weight_reps', primaryMuscle: 'triceps', equipment: 'machine' };
+    const c: GymContext = { ...ctx, templates: [...catalogTemplates, hevy], workouts: [...ctx.workouts, ...two('hevy-1', 20, 10)], links: { 'hevy-1': 'pf-triceps-rope' } };
+    expect(checkWorkout(wo([row('hevy-1'), row('pf-triceps-pushdown')]), c)).toEqual({ ok: false, reason: 'dieselbe Ausführung doppelt' });
+    passes(wo([row('hevy-1'), row('pf-triceps-pushdown')]), { ...c, links: {} });
+  });
   it('lets another angle of the same muscle through', () => {
     passes(wo([row('pf-triceps-rope'), row('pf-overhead-triceps-cable')]), ctx);
   });

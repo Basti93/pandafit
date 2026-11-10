@@ -7,9 +7,9 @@ import { hardSetsOf, muscleOfFrom, preFatigue } from './pre-fatigue';
 import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
 import { studioName, type Renames } from '../../shared/studio';
 import { repRangeOf } from '../../shared/muscle-targets';
-import { isExcluded } from '../../shared/excluded';
+import { isExcluded, resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
-import { catalogEntryOf, EXERCISES, type Exercise } from '../../shared/exercises';
+import { EXERCISES, type Exercise } from '../../shared/exercises';
 import { gymLimit, gymMinutes } from '../../shared/duration';
 
 export type GymContext = { workouts: StrengthWorkout[]; templates: ExerciseTemplate[]; nowMs: number; /** Leave leg exercises out of rule workouts, e.g. for an open leg complaint. */ avoidLegs?: boolean;
@@ -124,6 +124,10 @@ function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, re
   }
 }
 
+/** The execution key of each planned exercise that has one; the catalog entry is resolved the way the exclusion check does it. */
+const executionKeysOf = (exercises: GymExercise[], ctx: GymContext): string[] =>
+  exercises.map((e) => { const c = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links); return c ? executionKey(c) : null; }).filter((k): k is string => k !== null);
+
 /**
  * Hard limits for an AI workout. Anything outside them is refused whole. Only weights are fitted: snapped to reachable steps and
  * lowered to what the place of the exercise in the workout allows.
@@ -139,7 +143,7 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     const exercises = parsed.map((p) => p.ex);
     if (exercises.some((e) => isExcluded(e, ctx.excluded, ctx.catalog ?? [], ctx.links))) return no('Übung ausgeschlossen (Regel der Person)');
     // The same execution twice (only the equipment differs) is refused; an exercise without a catalog entry has no key.
-    const keys = exercises.map((e) => { const c = catalogEntryOf(e, ctx.catalog ?? []); return c ? executionKey(c) : null; }).filter((k): k is string => k !== null);
+    const keys = executionKeysOf(exercises, ctx);
     if (new Set(keys).size < keys.length) return no('dieselbe Ausführung doppelt');
     if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Keine Beine in dieser Einheit');
     const all = exercises.flatMap((e) => e.sets);
