@@ -221,6 +221,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     complaints: (id) => (coach.state(id).complaints ?? []).map((c) => ({ id: c.id, text: c.text, status: c.status })),
     addComplaint: (id, text) => coach.addComplaintFromText(id, text),
     endComplaint: (id, cid) => coach.updateComplaint(id, cid, 'over', nowMs()),
+    healComplaint: (id, cid) => coach.updateComplaint(id, cid, 'healing', nowMs()),
     sessions: (id) => sessionsOf(id),
     giveTask: (id, t) => giveTask(id, 'chat', t),
   });

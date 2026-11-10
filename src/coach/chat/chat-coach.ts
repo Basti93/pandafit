@@ -39,11 +39,15 @@ type Deps = {
   addComplaint?: (profileId: string, text: string) => void;
   /** Ends a complaint the rider said is over. */
   endComplaint?: (profileId: string, complaintId: string) => void;
+  /** Sets a complaint the rider said is getting better, but is not gone, to healing. */
+  healComplaint?: (profileId: string, complaintId: string) => void;
   /** What the bike, gym and run coach have planned next, for answers about a single session. */
   sessions?: (profileId: string) => object | null;
   /** Hands a change the rider asked for to the coach in charge, who plans again at once. */
   giveTask?: (profileId: string, task: GivenTask) => void;
 };
+
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 
 /** A rider message older than this gets no late answer. */
 const STALE_MS = 2 * 86_400_000;
@@ -61,14 +65,14 @@ Ein Vorschlag (proposal) ist immer eine ganze Woche von Montag bis Sonntag (sieb
 Regeln, die der Code prüft: höchstens zwei harte Tage pro Woche; kein harter Rad- oder Lauftag am Tag nach einem harten Beintag; die lange Einheit nicht am Tag nach einem Beintag; höchstens zwei Einheiten pro Tag, die zweite nur auf Wunsch.
 Will die Person ausdrücklich mehr als die Regeln erlauben, sag einmal klar und ohne Drama, was du davon hältst, und setze riderAskedForMore auf true; sonst ist es false. Bei offenen Beschwerden (beschwerden) bleibst du vorsichtig, das gilt immer.
 Plane nur Sportarten, die die Person macht oder ausdrücklich will (siehe letzteTage). Hevy und Garmin sind optional; erwähne sie nicht.
-Beschwerden kommen jetzt über diesen Chat: Erzählt die Person von einem neuen Schmerz oder Zwicken (etwa "Knie zwickt"), setze newComplaint auf einen kurzen Text in ihren Worten und plane vorsichtig; sonst ist newComplaint null. Sagt sie, dass eine Beschwerde aus beschwerden vorbei ist, nenne deren id in complaintsOver; sonst ist complaintsOver leer. Frag nicht nach, ob du sie eintragen sollst.
+Beschwerden kommen jetzt über diesen Chat: Erzählt die Person von einem neuen Schmerz oder Zwicken (etwa "Knie zwickt"), setze newComplaint auf einen kurzen Text in ihren Worten und plane vorsichtig; sonst ist newComplaint null. Sagt sie, dass eine Beschwerde aus beschwerden vorbei ist, nenne deren id in complaintsOver; sonst ist complaintsOver leer. Sagt sie, dass eine Beschwerde besser wird, aber noch nicht weg ist, nenne deren id in complaintsHealing; sonst ist complaintsHealing leer. Ohne klare Aussage änderst du nichts. Frag nicht nach, ob du sie eintragen sollst.
 ${LONG_TERM_GUIDE} Wenn es passt, sag in einem Halbsatz, wo die Person gerade steht (etwa „dritte volle Woche, nächste Woche darf leichter werden“).
 Antworte in text in ein bis vier Sätzen. Medizinische Ratschläge gibst du nicht.`;
 
 export const WORKOUT_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit und begleitest die Person gerade in ihrem laufenden Krafttraining. Du sprichst Deutsch, sehr kurz und warm, duzt; sie steht im Studio und liest zwischen zwei Sätzen.
 Sie sagt dir etwa "Gerät belegt", "Schulter zwickt" oder "nur noch 30 Minuten". Schlag dann vor, wie der Rest dieses Trainings aussieht, als change mit ops; ohne Änderung ist change null.
 ops: drop (die offenen Sätze einer Übung fallen weg), swap (die offenen Sätze wandern zu einer anderen Übung aus katalog, to ist deren id, nimm eine mit demselben Muskel und einem Gerät, das frei ist), sets (open: so viele offene Sätze bleiben), lighter (pct 5 bis 30: die offenen Sätze werden um so viel Prozent leichter). ex ist immer die ex-Kennung einer Übung aus training, die noch offene Sätze hat. Erledigte Sätze änderst du nie.
-Bei Schmerzen: die betroffene Bewegung weglassen oder deutlich leichter, nie durchziehen; keine medizinischen Ratschläge. Erzählt die Person von einem neuen Schmerz, setze newComplaint auf einen kurzen Text in ihren Worten; sonst null. Sagt sie, eine Beschwerde aus beschwerden ist vorbei, nenne deren id in complaintsOver.
+Bei Schmerzen: die betroffene Bewegung weglassen oder deutlich leichter, nie durchziehen; keine medizinischen Ratschläge. Erzählt die Person von einem neuen Schmerz, setze newComplaint auf einen kurzen Text in ihren Worten; sonst null. Sagt sie, eine Beschwerde aus beschwerden ist vorbei, nenne deren id in complaintsOver. Sagt sie, dass eine Beschwerde besser wird, aber noch nicht weg ist, nenne deren id in complaintsHealing; sonst ist complaintsHealing leer. Ohne klare Aussage änderst du nichts.
 Meint die Person das nächste Training statt dieses ("nächstes Mal"), setze statt change nextChange: ops mit exerciseId (die Übungs-id aus katalog oder training) und reason als ein Satz; für einen Tausch nenne toId aus katalog oder toTitle, kennst du die id nicht, nenne toTitle; sonst null. Nichts ändert sich, bevor die Person den Vorschlag übernimmt. Sagt sie "künftig/immer/nie", setze ruleDraft (kind exclude mit exerciseIds aus katalog, wish oder goal; text, sport); sonst null. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false. text: ein bis zwei Sätze.`;
 
 const nextChangeSchema = { anyOf: [{ type: 'null' }, {
@@ -95,7 +99,7 @@ const ruleDraftSchema = { anyOf: [{ type: 'null' }, {
 }] };
 
 const workoutSchema = {
-  type: 'object', additionalProperties: false, required: ['text', 'change', 'newComplaint', 'complaintsOver', 'nextChange', 'ruleDraft', 'acceptsRule'],
+  type: 'object', additionalProperties: false, required: ['text', 'change', 'newComplaint', 'complaintsOver', 'complaintsHealing', 'nextChange', 'ruleDraft', 'acceptsRule'],
   properties: {
     text: { type: 'string' },
     acceptsRule: { type: 'boolean' },
@@ -103,6 +107,7 @@ const workoutSchema = {
     ruleDraft: ruleDraftSchema,
     newComplaint: { anyOf: [{ type: 'null' }, { type: 'string' }] },
     complaintsOver: { type: 'array', items: { type: 'string' } },
+    complaintsHealing: { type: 'array', items: { type: 'string' } },
     change: { anyOf: [{ type: 'null' }, {
       type: 'object', additionalProperties: false, required: ['ops'],
       properties: { ops: { type: 'array', items: {
@@ -114,7 +119,7 @@ const workoutSchema = {
 };
 
 const answerSchema = {
-  type: 'object', additionalProperties: false, required: ['text', 'proposal', 'riderAskedForMore', 'newComplaint', 'complaintsOver', 'tasks', 'nextChange', 'ruleDraft', 'acceptsRule'],
+  type: 'object', additionalProperties: false, required: ['text', 'proposal', 'riderAskedForMore', 'newComplaint', 'complaintsOver', 'complaintsHealing', 'tasks', 'nextChange', 'ruleDraft', 'acceptsRule'],
   properties: {
     text: { type: 'string' },
     acceptsRule: { type: 'boolean' },
@@ -123,6 +128,7 @@ const answerSchema = {
     tasks: tasksJsonSchema,
     newComplaint: { anyOf: [{ type: 'null' }, { type: 'string' }] },
     complaintsOver: { type: 'array', items: { type: 'string' } },
+    complaintsHealing: { type: 'array', items: { type: 'string' } },
     riderAskedForMore: { type: 'boolean' },
     proposal: {
       anyOf: [{ type: 'null' }, {
@@ -211,7 +217,8 @@ export class ChatCoach {
       return {
         text: raw.text.trim().slice(0, 1500), proposal: this.proposalOf(raw.proposal, now), more: raw.riderAskedForMore === true,
         complaint: typeof raw.newComplaint === 'string' && raw.newComplaint.trim() ? raw.newComplaint.trim().slice(0, 200) : null,
-        over: Array.isArray(raw.complaintsOver) ? raw.complaintsOver.filter((x): x is string => typeof x === 'string') : [],
+        over: strings(raw.complaintsOver),
+        healing: strings(raw.complaintsHealing),
         tasks: readTasks(raw.tasks),
         draft: this.draftOf(id, raw.nextChange),
         nextRaw: raw.nextChange,
@@ -225,7 +232,7 @@ export class ChatCoach {
       try { a = await ask(`${prompt}\n${this.catalogBlock(id)}\nNenne in ruleDraft.exerciseIds und bei einem Tausch in nextChange als toId die ids aus katalog.`); } catch { /* the first answer decides */ }
     }
     // Only the rider's own words start or end a complaint, never a message the coach opened by itself.
-    if (fromRider) this.applyComplaints(id, a.complaint, a.over);
+    if (fromRider) this.applyComplaints(id, a.complaint, a.over, a.healing);
     // Only the rider's own words change a session; a message the coach opened by itself never does.
     // A lasting wish of the rider is a rule she confirms, not a task; a one-off request is a task.
     if (fromRider) for (const t of a.tasks) { try { if (t.lasting) this.proposeWish(id, t, now); else this.deps.giveTask?.(id, t); } catch { /* the rider can ask again */ } }
@@ -260,10 +267,12 @@ export class ChatCoach {
   }
 
   /** Complaints apply at once, from the first answer: they only ever make the coaches more careful. */
-  private applyComplaints(id: string, complaint: string | null, over: string[]): void {
+  private applyComplaints(id: string, complaint: string | null, over: string[], healing: string[]): void {
     const open = this.complaintList(id);
     if (complaint && !open.some((c) => c.text.toLowerCase() === complaint.toLowerCase())) { try { this.deps.addComplaint?.(id, complaint); } catch { /* the rider can say it again */ } }
     for (const cid of over) if (open.some((c) => c.id === cid)) { try { this.deps.endComplaint?.(id, cid); } catch { /* stays open */ } }
+    // An id in both lists counts as over.
+    for (const cid of healing) if (!over.includes(cid) && open.some((c) => c.id === cid && c.status !== 'healing')) { try { this.deps.healComplaint?.(id, cid); } catch { /* stays as it is */ } }
   }
 
   /** An answer about the rest of the open workout the message was written in. */
@@ -284,7 +293,7 @@ export class ChatCoach {
     const raw = await this.deps.ask({ prompt, systemPrompt: WORKOUT_SYSTEM_PROMPT, schema: workoutSchema });
     if (!isObj(raw) || typeof raw.text !== 'string') throw new ClaudeError('invalid', 'Keine Antwort.');
     this.applyComplaints(id, typeof raw.newComplaint === 'string' && raw.newComplaint.trim() ? raw.newComplaint.trim().slice(0, 200) : null,
-      Array.isArray(raw.complaintsOver) ? raw.complaintsOver.filter((x): x is string => typeof x === 'string') : []);
+      strings(raw.complaintsOver), strings(raw.complaintsHealing));
     const msg: Answer = { role: 'coach', text: raw.text.trim().slice(0, 1000) || 'Okay.', atMs: this.deps.nowMs(), inWorkout: w.id, ...(raw.acceptsRule === true ? { acceptsRule: true } : {}) };
     const draft = this.draftOf(id, raw.nextChange);
     if (draft) {
