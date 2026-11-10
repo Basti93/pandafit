@@ -43,3 +43,11 @@ export const weekdayOfKey = (key: string): string => { const [y, m, d] = key.spl
 
 /** "11. November" from a YYYY-MM-DD key (month in full). */
 export const dayMonthLongOfKey = (key: string): string => { const [y, m, d] = key.split('-').map(Number); return new Date(y!, m! - 1, d!, 12).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' }); };
+
+/** The last Sunday of the month of a YYYY-MM-DD key, as a key. */
+export function lastSundayOf(date: string): string {
+  const [y, m] = date.split('-').map(Number);
+  const last = new Date(Date.UTC(y!, m!, 0)); // day 0 of the next month = last day of this month
+  last.setUTCDate(last.getUTCDate() - last.getUTCDay());
+  return last.toISOString().slice(0, 10);
+}
