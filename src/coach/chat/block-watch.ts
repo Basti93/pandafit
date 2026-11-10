@@ -10,6 +10,7 @@ import type { Sent, SentPrompts } from './prompts';
 
 export const DRIFT_QUESTION = 'Die letzten zwei Wochen sahen anders aus als geplant. Sollen wir wieder locker planen?';
 export const BLOCK_END_TEXT = 'Dein fester Abschnitt ist vorbei. Ab jetzt plane ich wieder locker, dein Ziel bleibt.';
+export const BLOCK_END_WEEK_TEXT = 'Dein fester Abschnitt ist vorbei. Ab jetzt planen wir wieder Woche für Woche, dein Ziel bleibt.';
 
 const dayNumber = (key: string): number => { const [y, m, d] = key.split('-').map(Number); return Date.UTC(y!, m! - 1, d!) / 86_400_000; };
 
@@ -64,16 +65,17 @@ export function blockEndDue(o: { block: BlockBody & { id: string }; sent: Pick<S
 }
 
 /**
- * Ends a section. The frame goes back first (only if the take's frame is unchanged), then the message (`message` false: the monthly
- * review of that day already said it), then the mark, and the section becomes `ended` last: a failure on the way never loses the message or repeats the frame change.
+ * Ends a section. The frame goes back first (only if the take's frame is unchanged), then the message by the plan mode it goes back
+ * to (`message` false: a section that follows is already active, its take said enough), then the section becomes `ended`, and the
+ * mark comes last, only after the section was written: a failure on the way never loses the message or repeats the frame change.
  */
 export function announceBlockEnd(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; nowMs: number; message: boolean; put: (r: TrackedRecord) => void; say: (text: string) => void; mark: () => void }): boolean {
   const writes = blockEndWrites({ block: o.block, frame: o.frame, nowMs: o.nowMs });
   if (!writes) return false;
   for (const w of writes.slice(0, -1)) o.put(w);
-  if (o.message) o.say(BLOCK_END_TEXT);
-  o.mark();
+  if (o.message) o.say(readBlock(o.block.body)?.priorMode === 'week' ? BLOCK_END_WEEK_TEXT : BLOCK_END_TEXT);
   o.put(writes[writes.length - 1]!);
+  o.mark();
   return true;
 }
 
@@ -106,7 +108,9 @@ export function watchBlock(o: {
   }
   if (over && blockEndDue({ block: over.block, sent: o.sent.get(o.id), today: o.today })) {
     const { rec, block } = over;
-    return announceBlockEnd({ block: rec, frame: o.frame, nowMs: o.nowMs, message: o.sent.get(o.id).review !== block.end, put: o.put, say: o.say, mark: () => o.sent.mark(o.id, 'blockEnd', block.id) }) ? 'end' : null;
+    // A section that follows is already active: its take said what happens, so the old one ends without a message.
+    const successor = running !== null && running.id !== block.id;
+    return announceBlockEnd({ block: rec, frame: o.frame, nowMs: o.nowMs, message: !successor, put: o.put, say: o.say, mark: () => o.sent.mark(o.id, 'blockEnd', block.id) }) ? 'end' : null;
   }
   return null;
 }

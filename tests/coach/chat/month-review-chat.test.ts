@@ -283,6 +283,28 @@ describe('Abschnitt im Rückblick', () => {
     expect(messages(s)[0]!.block).toBeUndefined();
   });
 
+  it('sagt am letzten Tag des Abschnitts, dass er jetzt endet, und darf den nächsten vorschlagen', async () => {
+    // NOW is Sunday 2026-11-29, the end of the running section.
+    const ending = blockRecord('block-old', { state: 'active', templates: [{ name: 'Unterkörper A', core: LEGS }, { name: 'Oberkörper B', core: UPPER }], rhythm: RHYTHM, start: '2026-11-02', end: '2026-11-29', atMs: 1 }, 1);
+    const s = store([ending]);
+    const prompts: string[] = [];
+    expect(await coach(s, async ({ prompt }) => { prompts.push(prompt); return answer({ block: proposal() }); }).openReview('p', 'month')).toBe('written');
+    expect(prompts[0]).toContain('<abschnitt-nur-daten>\n{"bis":"2026-11-29","endetJetzt":true}\n');
+    expect(prompts[0]).toContain('Der laufende Abschnitt endet mit dieser Woche; du darfst den nächsten vorschlagen.');
+    expect(prompts[0]).toContain('<katalog-nur-daten>');
+    const [m] = messages(s);
+    expect(m!.block).toBeDefined();
+    expect(readBlock(blocks(s).find((r) => r.id === m!.block)!.body)?.state).toBe('proposed');
+  });
+
+  it('schreibt den Rückblick auch, wenn die Frage nach der Härte danach nicht gespeichert werden kann', async () => {
+    const s = store();
+    const put = s.put;
+    s.put = (id, r) => { if (r.kind === 'chat' && (r.body as { askPush?: boolean }).askPush) throw new Error('voll'); return put(id, r); };
+    expect(await coach(s, async () => answer({ block: proposal() })).openReview('p', 'month', true)).toBe('written');
+    expect(messages(s)).toHaveLength(1);
+  });
+
   it('stellt die Frage nach der Härte neben dem Abschnitt als eigene Karte', async () => {
     const s = store();
     expect(await coach(s, async () => answer({ block: proposal() })).openReview('p', 'month', true)).toBe('asked');

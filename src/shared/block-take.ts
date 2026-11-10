@@ -25,14 +25,19 @@ const frameBody = (frame: readonly TrackedRecord[]) => {
 export function blockTakeWrites(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; plans: readonly TrackedRecord[]; /** All block records: a second section cannot run beside an active one. */ blocks?: readonly TrackedRecord[]; msgId: string; today: string; nowMs: number }): TrackedRecord[] | null {
   const body = o.block.deleted ? null : readBlock(o.block.body);
   if (!body || body.state !== 'proposed') return null;
-  const running = (o.blocks ?? []).some((r) => {
+  const dates = blockDates(o.today);
+  // A section still active at the new start overlaps and refuses the take; one that ends before it (on the review day) does not.
+  let ending: BlockBody | null = null;
+  for (const r of o.blocks ?? []) {
     const b = r.kind === 'block' && r.id !== o.block.id && !r.deleted ? readBlock(r.body) : null;
-    return b?.state === 'active' && !!b.end && b.end >= o.today;
-  });
-  if (running) return null;
+    if (b?.state !== 'active' || !b.end || b.end < o.today) continue;
+    if (b.end >= dates.start) return null;
+    ending = b;
+  }
   const { rec: frameRec, body: f } = frameBody(o.frame);
   const frameWrite = frameRecord({ mode: 'week', minutes: f?.minutes ?? null, ...(f?.today ? { today: f.today } : {}) }, o.nowMs, frameRec);
-  const active: BlockBody = { ...body, state: 'active', ...blockDates(o.today), priorMode: f?.mode ?? 'week', takenFrom: o.msgId, frameMs: frameWrite.updatedMs };
+  // After a section that ends now, the plan mode to go back to is the one from before that section.
+  const active: BlockBody = { ...body, state: 'active', ...dates, priorMode: ending?.priorMode ?? f?.mode ?? 'week', takenFrom: o.msgId, frameMs: frameWrite.updatedMs };
   // The section comes last: if a write fails on the way, it is still proposed and the rider can try again.
   const writes: TrackedRecord[] = [];
   for (const week of blockWeeks(active)) {

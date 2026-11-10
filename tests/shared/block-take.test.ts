@@ -44,6 +44,15 @@ describe('blockTakeWrites', () => {
     expect(run({ blocks: [other] })).toBeNull();
     expect(run({ blocks: [blockRec] })).not.toBeNull();
   });
+  it('takes the next section on the last day of a running one, which then ends before the new start', () => {
+    const ending = blockRecord('block-m0', { ...proposed, state: 'active', start: '2026-11-02', end: '2026-11-29', priorMode: 'spontaneous', frameMs: 5 }, 2);
+    const w = run({ blocks: [ending], frame: [frame('week')] })!;
+    expect(w).not.toBeNull();
+    // The plan mode to go back to is the one before the running section.
+    expect(readBlock(w.at(-1)!.body)).toMatchObject({ state: 'active', start: '2026-11-30', priorMode: 'spontaneous' });
+    const overlapping = blockRecord('block-m0', { ...proposed, state: 'active', start: '2026-11-02', end: '2026-12-06' }, 2);
+    expect(run({ blocks: [overlapping] })).toBeNull();
+  });
   it('keeps the first prior when a retry writes the same take again', () => {
     const old: TrackedRecord = { kind: 'weekplan', id: '2026-12-07', updatedMs: 10, deleted: false, body: { weekStart: '2026-12-07', days: [] } };
     const first = run({ plans: [old] })!;

@@ -84,20 +84,33 @@ describe('announceBlockEnd', () => {
     });
     return { log, sent };
   };
-  it('stellt den Rahmen zurück, sagt es, merkt es sich und setzt den Abschnitt zuletzt auf beendet', () => {
+  it('stellt den Rahmen zurück, sagt es, setzt den Abschnitt auf beendet und merkt es sich erst danach', () => {
     const frame = [frameRecord({ mode: 'week', minutes: null }, 10)];
     const { log } = run(frame);
-    expect(log).toEqual(['frame', 'say', 'mark', 'block']);
+    expect(log).toEqual(['frame', 'say', 'block', 'mark']);
   });
   it('lässt einen geänderten Rahmen in Ruhe', () => {
     const { log } = run([frameRecord({ mode: 'week', minutes: null }, 11)]);
-    expect(log).toEqual(['say', 'mark', 'block']);
+    expect(log).toEqual(['say', 'block', 'mark']);
   });
   it('schreibt den Rahmen mit dem früheren Modus', () => {
     const writes: TrackedRecord[] = [];
     announceBlockEnd({ block: rec, frame: [frameRecord({ mode: 'week', minutes: null }, 10)], nowMs: 100, message: true, put: (r) => { writes.push(r); }, say: () => {}, mark: () => {} });
     expect(readFrame(writes[0]!.body)?.mode).toBe('spontaneous');
     expect(writes[1]!.body).toMatchObject({ state: 'ended' });
+  });
+  it('merkt sich nichts, wenn der Abschnitt nicht gespeichert werden konnte', () => {
+    const log: string[] = [];
+    expect(() => announceBlockEnd({
+      block: rec, frame: [], nowMs: 100, message: true, say: () => log.push('say'), mark: () => log.push('mark'),
+      put: (r) => { if (r.kind === 'block') throw new Error('x'); },
+    })).toThrow();
+    expect(log).toEqual(['say']);
+  });
+  it('sagt nach einem Abschnitt aus dem Wochenmodus, dass wieder Woche für Woche geplant wird', () => {
+    const texts: string[] = [];
+    announceBlockEnd({ block: blockRecord('block-m1', { ...block, priorMode: 'week' }, 5), frame: [], nowMs: 100, message: true, put: () => {}, say: (t) => { texts.push(t); }, mark: () => {} });
+    expect(texts).toEqual(['Dein fester Abschnitt ist vorbei. Ab jetzt planen wir wieder Woche für Woche, dein Ziel bleibt.']);
   });
 });
 
@@ -132,12 +145,24 @@ describe('watchBlock', () => {
     const s = setup('2026-12-14', { gymDates: ['2026-12-01', '2026-12-03', '2026-12-08', '2026-12-09'] });
     expect(s.run()).toBeNull();
   });
-  it('beendet den Abschnitt und stellt den Rahmen zurück, auch wenn am letzten Tag ein Rückblick kam, ohne Nachricht', () => {
+  it('beendet den Abschnitt mit Nachricht, auch wenn am letzten Tag ein Rückblick kam', () => {
     const s = setup('2026-12-28', { sent: { review: '2026-12-27' } });
     expect(s.run()).toBe('end');
-    expect(s.log).toEqual(['frame', 'block']);
+    expect(s.log).toEqual(['frame', 'say', 'block']);
     expect(s.marks.blockEnd).toBe('block-m1');
     expect(s.run()).toBeNull();
+  });
+  it('beendet den alten Abschnitt ohne Nachricht, wenn schon ein neuer läuft', () => {
+    const next = blockRecord('block-m2', { ...block, start: '2026-12-28', end: '2027-01-31', frameMs: 20 }, 6);
+    const marks: Record<string, string> = {};
+    const log: string[] = [];
+    const out = watchBlock({
+      today: '2026-12-28', nowMs: 100, askAllowed: false, blocks: [rec, next], weekplans: [], frame: [frameRecord({ mode: 'week', minutes: null }, 20)], gymDates: [], id: 'p',
+      sent: { get: () => marks, mark: (_i, k, v) => { marks[k] = v; } }, planned: new PlannedWeeks(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wb-')), 'p.json')),
+      ask: () => log.push('ask'), say: () => log.push('say'), put: (r) => log.push(`${r.kind}:${r.id}`),
+    });
+    expect(out).toBe('end');
+    expect(log).toEqual(['block:block-m1']);
   });
   it('fragt nicht, wenn die Frage nicht erlaubt ist, beendet aber trotzdem', () => {
     const s = setup('2026-12-14', { askAllowed: false });

@@ -21,7 +21,7 @@ import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
 import type { StrengthFacts } from '../gym/review-facts';
 import { ruleNumber, ruleRange } from '../../shared/training-policy';
 import { blockTakeWrites } from '../../shared/block-take';
-import { activeBlock, blockId, blockRecord, readBlock, type BlockBody } from '../../shared/block';
+import { activeBlock, blockDates, blockId, blockRecord, readBlock, type BlockBody } from '../../shared/block';
 import { resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
 import type { ReviewOpened, ReviewReason } from './month-review';
@@ -95,7 +95,7 @@ opening: ein ehrlicher, ermutigender Satz zu diesem Monat.
 observations: höchstens drei Beobachtungen aus den drei Monaten, die für das Ziel wirklich zählen. text ist die Beobachtung als ganzer Satz, reason ein ganzer Satz, warum sie zählt. Lieber weniger als belanglose.
 complaintQuestions: für jede Beschwerde aus beschwerden genau eine kurze, freundliche Frage, wie es damit inzwischen geht, mit ihrer id.
 nextWeeks: ein bis zwei Sätze als Vorschlag für die nächsten Wochen, passend zum Ziel.
-block: ein fester Abschnitt für die nächsten 4 bis 6 Wochen, oder null. templates sind die Vorlagen der Krafttage, je mit name (etwa „Oberkörper A“) und core, den Kernübungen. rhythm ist eine Woche von Montag bis Sonntag, sieben Tage mit sport bike, gym, run, mobility oder rest und hardness easy, moderate oder hard; legs sagt bei Krafttagen, ob Beine trainiert werden, long markiert die lange Rad- oder Laufeinheit, template ist bei Krafttagen die Stelle der Vorlage in templates, ab 0. Für den Rhythmus gelten die Regeln für Erholung, auch von Sonntag auf Montag: höchstens zwei harte Tage pro Woche, kein harter Rad- oder Lauftag am Tag nach einem harten Beintag, die lange Einheit nicht am Tag nach einem Beintag. Läuft schon ein Abschnitt (abschnitt), ist block null. Schlag einen festen Abschnitt nur vor, wenn er zum Ziel und zu den letzten Wochen passt; sonst bleib locker. Kernübungen nach Ziel, Vorlieben und Regeln der Person, nie ausgeschlossene, 3 bis 4 je Vorlage, ids aus katalog.
+block: ein fester Abschnitt für die nächsten 4 bis 6 Wochen, oder null. templates sind die Vorlagen der Krafttage, je mit name (etwa „Oberkörper A“) und core, den Kernübungen. rhythm ist eine Woche von Montag bis Sonntag, sieben Tage mit sport bike, gym, run, mobility oder rest und hardness easy, moderate oder hard; legs sagt bei Krafttagen, ob Beine trainiert werden, long markiert die lange Rad- oder Laufeinheit, template ist bei Krafttagen die Stelle der Vorlage in templates, ab 0. Für den Rhythmus gelten die Regeln für Erholung, auch von Sonntag auf Montag: höchstens zwei harte Tage pro Woche, kein harter Rad- oder Lauftag am Tag nach einem harten Beintag, die lange Einheit nicht am Tag nach einem Beintag. Läuft schon ein Abschnitt (abschnitt), ist block null, außer er endet mit dieser Woche (endetJetzt). Schlag einen festen Abschnitt nur vor, wenn er zum Ziel und zu den letzten Wochen passt; sonst bleib locker. Kernübungen nach Ziel, Vorlieben und Regeln der Person, nie ausgeschlossene, 3 bis 4 je Vorlage, ids aus katalog.
 Keine Vorwürfe, keine Serien, nie „du hast nur“. Hat die Person weniger trainiert, passt du den Rahmen an und sagst ehrlich, was das für ihr Ziel bedeutet. Sprich nie über Körpergewicht, Kalorien oder Aussehen. Schlag nichts vor, was gegen ihre Ausschlüsse, Wünsche oder Beschwerden geht. Medizinische Ratschläge gibst du nicht.`;
 
 const reviewSchema = {
@@ -550,7 +550,10 @@ export class ChatCoach {
       const block = this.blockOf(id, raw.block, now);
       // One card per message: with a section proposed, the push question follows as its own message, so both stay open to answer.
       this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...(ask && !block ? { askPush: true as const } : {}) }, null, null, block);
-      if (ask && block) this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: now + 1, askPush: true });
+      if (ask && block) {
+        // The review is written: a question that cannot be stored now does not make it count as failed; it is asked later.
+        try { this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: now + 1, askPush: true }); } catch { return 'written'; }
+      }
       return ask ? 'asked' : 'written';
     } catch { return false; } finally { this.busy.delete(id); }
   }
@@ -562,7 +565,7 @@ export class ChatCoach {
    * section runs.
    */
   private blockOf(id: string, x: unknown, now: number): BlockBody | null {
-    if (!isObj(x) || !Array.isArray(x.templates) || activeBlock(this.deps.store.all(id, 'block'), dateKey(now))) return null;
+    if (!isObj(x) || !Array.isArray(x.templates) || !this.blockFree(id, dateKey(now))) return null;
     const catalog = this.catalogOf(id);
     const out = excludedOf(this.deps.store, id, catalog);
     const templates = x.templates.map((t) => {
@@ -580,6 +583,12 @@ export class ChatCoach {
       return { name: typeof t.name === 'string' ? t.name.replace(/\s+/g, ' ').trim() : t.name, core };
     });
     return readBlock({ state: 'proposed', templates, rhythm: x.rhythm, atMs: now });
+  }
+
+  /** No section runs on `today`, or the running one ends before a section taken today would start: then a new one may be proposed. */
+  private blockFree(id: string, today: string): boolean {
+    const running = activeBlock(this.deps.store.all(id, 'block'), today);
+    return !running?.end || running.end < blockDates(today).start;
   }
 
   /** The week history without the weeks before the first day the stats record covers: those would look empty, not unknown. */
@@ -601,6 +610,9 @@ export class ChatCoach {
     });
     const out = excludedOf(this.deps.store, id, this.catalogOf(id));
     const running = activeBlock(this.deps.store.all(id, 'block'), today);
+    // The section ends with this week, before a new one taken today would start (its end is the review day): Bo says so and may propose the next one.
+    const free = this.blockFree(id, today);
+    const endsNow = !!running && free;
     let kraft: StrengthFacts | null = null;
     try { kraft = this.deps.strengthFacts?.(id) ?? null; } catch { /* the review goes without */ }
     return [
@@ -613,8 +625,9 @@ export class ChatCoach {
       dataBlock('kraft', kraft),
       dataBlock('geplant', geplant),
       dataBlock('anlass', REVIEW_REASON[reason]),
-      dataBlock('abschnitt', running ? { bis: running.end } : null),
-      ...(running ? [] : [this.catalogBlock(id)]),
+      dataBlock('abschnitt', running ? { bis: running.end, ...(endsNow ? { endetJetzt: true } : {}) } : null),
+      ...(endsNow ? ['Der laufende Abschnitt endet mit dieser Woche; du darfst den nächsten vorschlagen.'] : []),
+      ...(free ? [this.catalogBlock(id)] : []),
       'Schreib den Monatsrückblick.',
     ].join('\n');
   }
