@@ -1,5 +1,5 @@
 /** The one list of record kinds. Every screen, store and route derives from it. */
-export const RECORD_KINDS = ['workout', 'routine', 'exercise', 'mobility', 'complaint', 'plan', 'mealplan', 'together', 'run', 'stats', 'chat', 'weekplan', 'coachprefs', 'loadstep', 'studio', 'change', 'goal', 'rule', 'frame', 'task', 'contact', 'bike', 'ride', 'health', 'activities', 'daytext'] as const;
+export const RECORD_KINDS = ['workout', 'routine', 'exercise', 'mobility', 'complaint', 'plan', 'mealplan', 'together', 'run', 'stats', 'chat', 'weekplan', 'coachprefs', 'loadstep', 'studio', 'change', 'goal', 'rule', 'block', 'frame', 'task', 'contact', 'bike', 'ride', 'health', 'activities', 'daytext'] as const;
 export type RecordKind = (typeof RECORD_KINDS)[number];
 /** Stored with sync cursors: a version that did not know a kind skipped its records, so a changed list fetches everything again. */
 export const RECORD_KINDS_SIGNATURE = [...RECORD_KINDS].sort().join(',');
@@ -18,7 +18,8 @@ export type LoggedWorkout = { id: string; title: string; startMs: number; endMs:
 
 const CHANGE_RANK: Record<string, number> = { proposed: 0, taken: 1, declined: 1, undone: 2, used: 3 };
 const RULE_RANK: Record<string, number> = { proposed: 0, active: 1, paused: 1, declined: 2 };
-const changeRank = (r: TrackedRecord): number => { if (r.deleted) return 4; const s = (r.body as { state?: unknown } | null)?.state; return typeof s === 'string' ? (r.kind === 'rule' ? RULE_RANK : CHANGE_RANK)[s] ?? 0 : 0; };
+const BLOCK_RANK: Record<string, number> = { proposed: 0, active: 1, ended: 2, declined: 2 };
+const changeRank = (r: TrackedRecord): number => { if (r.deleted) return 4; const s = (r.body as { state?: unknown } | null)?.state; return typeof s === 'string' ? (r.kind === 'rule' ? RULE_RANK : r.kind === 'block' ? BLOCK_RANK : CHANGE_RANK)[s] ?? 0 : 0; };
 
 /** Newer wins; a tie goes to the greater JSON text so every device ends the same. The loser is returned, never dropped silently. */
 export function applyRecord(current: TrackedRecord | undefined, incoming: TrackedRecord): { keep: TrackedRecord; overwritten: TrackedRecord | null } {
@@ -26,7 +27,7 @@ export function applyRecord(current: TrackedRecord | undefined, incoming: Tracke
   if (current.kind !== incoming.kind || current.id !== incoming.id) throw new Error('applyRecord: records differ in kind or id');
   // A change only moves forward: the furthest state wins whatever the stamps say, so an older device cannot revive a used one.
   // A tombstone is the end of the line, so the outcome does not depend on the order the two meet in.
-  if (current.kind === 'change' || current.kind === 'rule') {
+  if (current.kind === 'change' || current.kind === 'rule' || current.kind === 'block') {
     const ra = changeRank(current), rb = changeRank(incoming);
     if (ra !== rb) return rb > ra ? { keep: incoming, overwritten: current } : { keep: current, overwritten: incoming };
   }
