@@ -9,7 +9,7 @@ const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object
 const storedWeek = (plans: readonly TrackedRecord[], weekStart: string): TrackedRecord | undefined => plans.find((r) => r.kind === 'weekplan' && r.id === weekStart);
 /** The fields a take adds; a plan restored from `prior` carries none of them. */
 const plain = (body: Record<string, unknown>): Record<string, unknown> => {
-  const { takenFrom: _t, prior: _p, baseMs: _b, ...rest } = body;
+  const { takenFrom: _t, prior: _p, baseMs: _b, undoneFrom: _u, ...rest } = body;
   return rest;
 };
 const frameBody = (frame: readonly TrackedRecord[]) => {
@@ -62,13 +62,17 @@ export function blockUndoWrites(o: { block: TrackedRecord; frame: readonly Track
   const restores: TrackedRecord[] = [];
   for (const week of weeks) {
     const have = storedWeek(o.plans, week.weekStart);
+    // Restored by an undo that stopped on the way: the retry leaves it as it is.
+    if (have && isObj(have.body) && (have.deleted ? have.body.takenFrom === taken : have.body.undoneFrom === taken)) continue;
     if (!have || have.deleted || !isObj(have.body) || have.body.takenFrom !== taken || JSON.stringify(have.body.days) !== JSON.stringify(week.days)) return { refused: BLOCK_UNDO_REFUSED };
     const prior = isObj(have.body.prior) ? plain(have.body.prior) : null;
-    restores.push({ kind: 'weekplan', id: week.weekStart, updatedMs: above(o.nowMs, have), deleted: prior === null, body: prior ?? have.body });
+    restores.push({ kind: 'weekplan', id: week.weekStart, updatedMs: above(o.nowMs, have), deleted: prior === null, body: prior ? { ...prior, undoneFrom: taken } : have.body });
   }
   const { rec: frameRec, body: f } = frameBody(o.frame);
-  const writes: TrackedRecord[] = [{ ...o.block, updatedMs: above(o.nowMs, o.block), deleted: true }];
+  // The section is deleted last: if a write fails on the way, it stays active and the undo can be tried again.
+  const writes: TrackedRecord[] = [...restores];
   // The frame goes back only while it is still the one the take wrote.
   if (f && frameRec && body.priorMode && f.mode !== body.priorMode && (body.frameMs === undefined || frameRec.updatedMs === body.frameMs)) writes.push(frameRecord({ mode: body.priorMode, minutes: f.minutes, ...(f.today ? { today: f.today } : {}) }, o.nowMs, frameRec));
-  return [...writes, ...restores];
+  writes.push({ ...o.block, updatedMs: above(o.nowMs, o.block), deleted: true });
+  return writes;
 }

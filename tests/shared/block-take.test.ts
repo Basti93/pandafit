@@ -83,7 +83,32 @@ describe('blockUndoWrites', () => {
     const after = store(recs, undo(recs) as TrackedRecord[]);
     const back = after.find((r) => r.kind === 'weekplan' && r.id === '2026-12-07')!;
     expect(back.deleted).toBe(false);
-    expect(back.body).toEqual({ weekStart: '2026-12-07', days: [] });
+    expect(back.body).toMatchObject({ weekStart: '2026-12-07', days: [] });
+  });
+  it('writes the week plans first, then the frame, and the section last', () => {
+    const w = undo(taken()) as TrackedRecord[];
+    expect(w.map((r) => r.kind)).toEqual(['weekplan', 'weekplan', 'weekplan', 'weekplan', 'frame', 'block']);
+  });
+  it('a retry after a failure on the way finishes the undo', () => {
+    const old: TrackedRecord = { kind: 'weekplan', id: '2026-12-07', updatedMs: 10, deleted: false, body: { weekStart: '2026-12-07', days: [] } };
+    const recs = store([blockRec, frame('spontaneous'), old], run({ plans: [old] })!);
+    const first = undo(recs) as TrackedRecord[];
+    // Only the first two restores were written, then the app stopped.
+    const partway = store(recs, first.slice(0, 2));
+    const second = undo(partway);
+    if ('refused' in second) throw new Error(second.refused);
+    const after = store(partway, second);
+    expect(after.find((r) => r.kind === 'block')!.deleted).toBe(true);
+    expect(readFrame(after.find((r) => r.kind === 'frame')!.body)?.mode).toBe('spontaneous');
+    expect(after.find((r) => r.kind === 'weekplan' && r.id === '2026-12-07')!.body).toMatchObject({ weekStart: '2026-12-07', days: [] });
+    expect(after.find((r) => r.kind === 'weekplan' && r.id === '2026-12-07')!.deleted).toBe(false);
+    expect(after.filter((r) => r.kind === 'weekplan' && r.id !== '2026-12-07').every((r) => r.deleted)).toBe(true);
+  });
+  it('a plan changed by the person after a partial undo is still refused', () => {
+    const recs = taken();
+    const first = undo(recs) as TrackedRecord[];
+    const partway = store(recs, first.slice(0, 1)).map((r) => (r.kind === 'weekplan' && r.id === '2026-12-07' ? { ...r, updatedMs: 900, body: { ...(r.body as object), days: [] } } : r));
+    expect(undo(partway)).toEqual({ refused: expect.stringContaining('Wochenplan') });
   });
   it('leaves a frame alone that was changed since the take', () => {
     const recs = taken().map((r) => (r.kind === 'frame' ? frameRecord({ mode: 'week', minutes: 30 }, 500, r) : r));

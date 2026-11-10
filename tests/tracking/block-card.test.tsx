@@ -92,7 +92,7 @@ it('zwei schnelle Taps übernehmen einmal, Rückgängig stellt den alten Wochenp
   fireEvent.click(screen.getByRole('button', { name: 'Rückgängig' }));
   await screen.findByText('Du hast den Abschnitt rückgängig gemacht.');
   expect(f.map.get('weekplan:2026-12-07')!.deleted).toBe(false);
-  expect(f.map.get('weekplan:2026-12-07')!.body).toEqual({ weekStart: '2026-12-07', days: [] });
+  expect(f.map.get('weekplan:2026-12-07')!.body).toMatchObject({ weekStart: '2026-12-07', days: [] });
 });
 
 it('meldet, wenn etwas nicht gespeichert wurde, und lässt den Abschnitt vorgeschlagen', async () => {

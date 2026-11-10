@@ -28,10 +28,12 @@ it('die Antwort auf "machen wir" zeigt Rückgängig statt einer falschen Absage'
     chat('r2', { role: 'coach', text: 'Gilt ab jetzt.', atMs: NOW - 3000, block: 'block-m1', replyTo: 'r1' }),
     ...writes,
   ];
-  const { port } = fakePort(seed);
+  const { port, map } = fakePort(seed);
   render(<CoachScreen port={port} now={() => NOW} newId={() => 'new-id'} />);
   await openChat();
   await waitFor(() => expect(screen.getAllByRole('button', { name: 'Rückgängig' }).length).toBeGreaterThan(0));
   expect(screen.queryByText(/Das geht nicht/)).toBeNull();
   fireEvent.click(screen.getAllByRole('button', { name: 'Rückgängig' })[0]!);
+  await waitFor(() => expect(map.get('block:block-m1')!.deleted).toBe(true));
+  expect([...map.values()].filter((r) => r.kind === 'weekplan').every((r) => r.deleted)).toBe(true);
 });
