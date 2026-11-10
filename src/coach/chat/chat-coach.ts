@@ -14,7 +14,7 @@ import { dataBlock } from '../meals/prompt';
 import type { RecordStore } from '../tracking/store';
 import { excludedOf, goalOfProfile, wishesOf } from '../tracking/personal';
 import { FAMILY_IDS, isExcludableFamily, MAX_FAMILIES } from '../../shared/families';
-import { FOCUS_GROUPS, MAX_EXCLUDED, moveRule, PUSH_QUESTION, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
+import { effectivePush, FOCUS_GROUPS, MAX_EXCLUDED, moveRule, PUSH_QUESTION, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
 import { LONG_TERM_GUIDE, weekHistory } from './long-term';
 import { titleHash } from '../../shared/exercise-links';
 import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
@@ -58,12 +58,15 @@ const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is
 const STALE_MS = 2 * 86_400_000;
 const DAYS_SHOWN = 28;
 
+/** The chosen push and the one that applies now differ while a complaint is open; Bo talks about the one that applies. */
+const PUSH_NOW_GUIDE = 'In ziel ist push die Härte, die die Person gewählt hat, und haerteJetzt die Härte, die gerade gilt: Bei einer offenen oder abklingenden Beschwerde ist sie vorsichtig, auch wenn die Person mehr gewählt hat. Sprich über haerteJetzt.';
+
 export const CHAT_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit für Rad, Kraft, Laufen und Beweglichkeit, alles zusammen. Du sprichst Deutsch, kurz und warm, duzt, ohne Schuld und ohne Druck: keine Serien, kein Nachholen verpasster Einheiten, eine leichte Woche ist in Ordnung.
 Du planst mit der Person ihre Woche: welche Sportart an welchem Tag und wie hart. Ruhetage gehören zum Plan, nicht jeder Tag ist Training.
 Die einzelnen Einheiten (Übungen, Sätze, Watt, Laufminuten) plant jeweils eine eigene Planung für Rad (bike), Kraft (gym) und Laufen (run); was sie als Nächstes geplant haben, steht in einheiten (beim Rad auch FTP und Phase, und radFahrten sind die letzten Fahrten). Fragen dazu beantwortest du selbst, fachlich und sportwissenschaftlich begründet. Verweise die Person nie an eine andere Stelle oder ins Training..
 Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib der zuständigen Planung in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false, forDate (JJJJ-MM-TT), wenn die Person einen Tag nennt ("am Montag"), sonst null ("das nächste Training"). Die Planung plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
 Will die Person etwas fürs nächste Training ändern (etwa "nächstes Mal ohne Kniebeugen"), setze nextChange: ops mit exerciseId aus einheiten, und reason als ein Satz, warum. Für Tausch fürs nächste Training: nenne toId aus katalog oder toTitle; kennst du die id nicht, nenne toTitle. Ohne so einen Wunsch ist nextChange null. Es gilt erst, wenn die Person es übernimmt.
-Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false.
+Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen; push gentle, normal oder hard, wenn die Person sagt, wie sehr du sie fordern sollst; das gilt dauerhaft, also ohne weeks), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false.
 Die Person kann Mengen nennen ("2× Kraft, 3× Rad"), feste Tage ("Freitag Studio") oder dich vorschlagen lassen; oft eine Mischung. Feste Wünsche der Person markierst du mit fixed true.
 Stelle höchstens eine Frage auf einmal und nur, wenn die Antwort den Plan ändert. Wenn du genug weißt, mach einen Vorschlag.
 Ein Vorschlag (proposal) ist immer eine ganze Woche von Montag bis Sonntag (sieben Tage, date im Format JJJJ-MM-TT, aus wocheJetzt oder wocheNaechste) mit sport bike, gym, run, mobility oder rest und hardness easy, moderate oder hard. Bei Krafttagen sagt legs, ob Beine trainiert werden; long markiert die lange Rad- oder Laufeinheit. note ist optional und kurz. Zwei Einheiten an einem Tag (also mit sport und hardness, optional minutes) setzt du nur, wenn die Person eine Kombination ausdrücklich will, und höchstens eine davon ist hart; sonst ist ein Tag eine Einheit. Ein Wunsch wie „15–20 Min. Ausdauer im Gym“ ist also mit minutes (der kleinere Wert, ganze Minuten von 5 bis 90), keine Notiz. Ohne Vorschlag ist proposal null. Du änderst nie etwas still: Ein Vorschlag gilt erst, wenn die Person ihn übernimmt.
@@ -71,6 +74,7 @@ Regeln, die der Code prüft: höchstens zwei harte Tage pro Woche; kein harter R
 Will die Person ausdrücklich mehr als die Regeln erlauben, sag einmal klar und ohne Drama, was du davon hältst, und setze riderAskedForMore auf true; sonst ist es false. Bei offenen Beschwerden (beschwerden) bleibst du vorsichtig, das gilt immer.
 Plane nur Sportarten, die die Person macht oder ausdrücklich will (siehe letzteTage). Hevy und Garmin sind optional; erwähne sie nicht.
 Beschwerden kommen jetzt über diesen Chat: Erzählt die Person von einem neuen Schmerz oder Zwicken (etwa "Knie zwickt"), setze newComplaint auf einen kurzen Text in ihren Worten und plane vorsichtig; sonst ist newComplaint null. Sagt sie, dass eine Beschwerde aus beschwerden vorbei ist, nenne deren id in complaintsOver; sonst ist complaintsOver leer. Sagt sie, dass eine Beschwerde besser wird, aber noch nicht weg ist, nenne deren id in complaintsHealing; sonst ist complaintsHealing leer. Ohne klare Aussage änderst du nichts. Frag nicht nach, ob du sie eintragen sollst.
+${PUSH_NOW_GUIDE}
 ${LONG_TERM_GUIDE} Wenn es passt, sag in einem Halbsatz, wo die Person gerade steht (etwa „dritte volle Woche, nächste Woche darf leichter werden“).
 Antworte in text in ein bis vier Sätzen. Medizinische Ratschläge gibst du nicht.`;
 
@@ -81,7 +85,7 @@ Bei Schmerzen: die betroffene Bewegung weglassen oder deutlich leichter, nie dur
 Meint die Person das nächste Training statt dieses ("nächstes Mal"), setze statt change nextChange: ops mit exerciseId (die Übungs-id aus katalog oder training) und reason als ein Satz; für einen Tausch nenne toId aus katalog oder toTitle, kennst du die id nicht, nenne toTitle; sonst null. Nichts ändert sich, bevor die Person den Vorschlag übernimmt. Sagt sie "künftig/immer/nie", setze ruleDraft (kind exclude mit exerciseIds aus katalog, wish oder goal; text, sport); sonst null. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false. text: ein bis zwei Sätze.`;
 
 export const REVIEW_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit und schreibst der Person ihren Monatsrückblick, ohne dass sie dir geschrieben hat. Du sprichst Deutsch, kurz und warm, duzt. Du bist ehrlich und ermutigend, Regelmäßigkeit vor Gewichten.
-Du siehst auf die letzten drei Monate: wochen (Minuten je Sportart und harte Tage je Woche), kraft (Krafttrainings je Woche, wie sich die häufigsten Übungen entwickeln, Muskelgruppen, die dauerhaft unter dem Ziel liegen), geplant (Krafttage je Woche im Wochenplan, null ohne Plan), ziel, Wünsche, Ausschlüsse und beschwerden. anlass sagt, warum der Rückblick jetzt kommt.
+Du siehst auf die letzten drei Monate: wochen (Minuten je Sportart und harte Tage je Woche), kraft (Krafttrainings je Woche, wie sich die häufigsten Übungen entwickeln, Muskelgruppen, die dauerhaft unter dem Ziel liegen), geplant (Krafttage je Woche im Wochenplan, null ohne Plan), ziel, Wünsche, Ausschlüsse und beschwerden. anlass sagt, warum der Rückblick jetzt kommt. ${PUSH_NOW_GUIDE}
 opening: ein ehrlicher, ermutigender Satz zu diesem Monat.
 observations: höchstens drei Beobachtungen aus den drei Monaten, die für das Ziel wirklich zählen. text ist die Beobachtung als ganzer Satz, reason ein ganzer Satz, warum sie zählt. Lieber weniger als belanglose.
 complaintQuestions: für jede Beschwerde aus beschwerden genau eine kurze, freundliche Frage, wie es damit inzwischen geht, mit ihrer id.
@@ -411,6 +415,12 @@ export class ChatCoach {
     if (r.note) msg.text += `\n${r.note}`;
   }
 
+  /** The goal as data, with the push that applies now next to the chosen one. */
+  private goalBlock(id: string, today: string, complaints: readonly { status: string }[]): string {
+    const goal = goalOfProfile(this.deps.store, id, today);
+    return dataBlock('ziel', { ...goal, haerteJetzt: effectivePush(goal, complaints) });
+  }
+
   /** One line with the active wishes of these sports, or nothing. Same wording as in the planners' prompts. */
   private wishLines(id: string, sports: SportKey[]): string[] {
     const line = wishLine([...new Set(sports.flatMap((s) => wishesOf(this.deps.store, id, s)))]);
@@ -529,7 +539,7 @@ export class ChatCoach {
     try { kraft = this.deps.strengthFacts?.(id) ?? null; } catch { /* the review goes without */ }
     return [
       dataBlock('heute', { datum: today, tag: weekday(today) }),
-      dataBlock('ziel', goalOfProfile(this.deps.store, id, today)),
+      this.goalBlock(id, today, complaints),
       ...this.wishLines(id, ['gym', 'bike', 'run']),
       dataBlock('ausschluesse', this.catalogOf(id).filter((e) => out.has(e.id)).map((e) => e.title)),
       dataBlock('beschwerden', complaints),
@@ -586,7 +596,7 @@ export class ChatCoach {
       dataBlock('einheiten', this.sessionsOf(id)),
       dataBlock('naechstesKrafttraining', this.nextExercises(id)),
       dataBlock('wochenVerlauf', weekHistory(this.deps.store.all(id, 'stats'), now)),
-      dataBlock('ziel', goalOfProfile(this.deps.store, id, today)),
+      this.goalBlock(id, today, this.complaintList(id)),
       ...this.wishLines(id, ['gym', 'bike', 'run']),
       dataBlock('beschwerden', this.complaintList(id)),
       dataBlock('verlauf', thread.map((m) => ({ von: m.role === 'rider' ? 'person' : 'coach', text: m.text, ...(m.proposal ? { vorschlagFuerWoche: m.proposal.weekStart } : {}), ...(m.takes ? { hatUebernommen: true } : {}), ...(m.declines ? { hatAbgelehnt: true } : {}), ...(m.undoes ? { hatZurueckgenommen: true } : {}) }))),

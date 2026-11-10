@@ -189,3 +189,14 @@ describe('startReview', () => {
     expect(open).toHaveBeenCalledTimes(2);
   });
 });
+
+it('nennt im Ziel auch die Härte, die gerade gilt', async () => {
+  const goal: TrackedRecord = { kind: 'goal', id: 'goal', updatedMs: 1, deleted: false, body: { strength: 'muscle', focus: [], sports: {}, push: 'hard', atMs: 1 } };
+  const s = store([goal, complaint('k1', 'Knie', 'healing')]);
+  const prompts: string[] = [];
+  const c = coach(s, async ({ prompt }) => { prompts.push(prompt); return answer(); });
+  expect(await c.openReview('p', 'month')).toBe(true);
+  expect(prompts[0]).toContain('"push":"hard"');
+  expect(prompts[0]).toContain('"haerteJetzt":"gentle"');
+  expect(REVIEW_SYSTEM_PROMPT).toContain('haerteJetzt');
+});
