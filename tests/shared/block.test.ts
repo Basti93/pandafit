@@ -63,12 +63,23 @@ describe('readBlock', () => {
   });
 });
 
+describe('readBlock rhythm and templates fit', () => {
+  it('refuses a template index on a day that is not a gym day', () => {
+    expect(readBlock(block({ rhythm: RHYTHM.map((d, i) => (i === 1 ? { ...d, template: 0 } : d)) }))).toBeNull();
+  });
+  it('refuses a gym day without a template', () => {
+    expect(readBlock(block({ rhythm: RHYTHM.map((d, i) => (i === 2 ? day('gym', 'moderate') : d)) }))).toBeNull();
+  });
+  it('refuses a template that no day uses', () => {
+    expect(readBlock(block({ rhythm: RHYTHM.map((d, i) => (i === 2 ? day('gym', 'moderate', { template: 0 }) : d)) }))).toBeNull();
+  });
+});
+
 describe('readBlock dates and weekly turn', () => {
   it('checks the Sunday to Monday turn', () => {
     const r = RHYTHM.map((d) => ({ ...d }));
     r[6] = day('gym', 'hard', { template: 0, legs: true });
     r[0] = day('bike', 'hard');
-    r[2] = day('rest', 'easy');
     r[4] = day('bike', 'easy');
     expect(readBlock(block({ rhythm: r.map((d, i) => (i === 0 ? day('bike', 'easy') : d)) }))).not.toBeNull();
     expect(readBlock(block({ rhythm: r }))).toBeNull();

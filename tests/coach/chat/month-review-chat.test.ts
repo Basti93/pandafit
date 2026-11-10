@@ -276,7 +276,7 @@ describe('Abschnitt im Rückblick', () => {
   });
 
   it('schlägt keinen Abschnitt vor, während einer läuft', async () => {
-    const running = blockRecord('block-old', { state: 'active', templates: [{ name: 'Unterkörper A', core: LEGS }], rhythm: RHYTHM.map(({ template: _t, ...d }) => d), start: '2026-11-23', end: '2026-12-27', atMs: 1 }, 1);
+    const running = blockRecord('block-old', { state: 'active', templates: [{ name: 'Unterkörper A', core: LEGS }, { name: 'Oberkörper B', core: UPPER }], rhythm: RHYTHM, start: '2026-11-23', end: '2026-12-27', atMs: 1 }, 1);
     const s = store([running]);
     expect(await coach(s, async () => answer({ block: proposal() })).openReview('p', 'month')).toBe('written');
     expect(blocks(s).map((r) => r.id)).toEqual(['block-old']);

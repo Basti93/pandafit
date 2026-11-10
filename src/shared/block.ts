@@ -71,6 +71,9 @@ export function readBlock(body: unknown): BlockBody | null {
   if (!Array.isArray(body.rhythm) || body.rhythm.length !== 7) return null;
   const rhythm: BlockDay[] = [];
   for (const d of body.rhythm) { const day = readDay(d, templates.length); if (!day) return null; rhythm.push(day); }
+  // Templates and strength days belong together: a template only on a gym day, every gym day has one, every template is used.
+  if (rhythm.some((d) => (d.sport === 'gym') !== (d.template !== undefined))) return null;
+  if (templates.some((_, i) => !rhythm.some((d) => d.template === i))) return null;
   // The rhythm repeats weekly: check it as a week, and again from Sunday so the turn to Monday counts.
   if (checkWeekPlan(toPlanDays(rhythm, SAMPLE_MONDAY)).length > 0) return null;
   if (checkWeekPlan(toPlanDays([rhythm[6]!, ...rhythm.slice(0, 6)], addDays(SAMPLE_MONDAY, -1))).length > 0) return null;
