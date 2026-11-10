@@ -476,3 +476,49 @@ test('askDrift writes the question about the fixed section without AI', () => {
   coach(s, async () => { throw new Error('no AI'); }).askDrift('p', 'block-m1');
   expect(replies(s)).toMatchObject([{ text: 'Die letzten zwei Wochen sahen anders aus als geplant. Sollen wir wieder locker planen?', push: true, drift: 'block-m1' }]);
 });
+
+describe('the fixed section in the chat', () => {
+  const RHYTHM = [
+    { sport: 'gym', hardness: 'hard', template: 0 }, { sport: 'bike', hardness: 'easy' }, { sport: 'gym', hardness: 'moderate', template: 1 },
+    { sport: 'rest', hardness: 'easy' }, { sport: 'bike', hardness: 'hard' }, { sport: 'run', hardness: 'easy' }, { sport: 'rest', hardness: 'easy' },
+  ];
+  const section = (start: string, end: string): TrackedRecord => ({
+    kind: 'block', id: 'block-m0', updatedMs: 1, deleted: false,
+    body: { state: 'active', atMs: 1, start, end, rhythm: RHYTHM, templates: [{ name: 'Oberkörper A', core: ['a', 'b', 'c'] }, { name: 'Unterkörper B', core: ['d', 'e', 'f'] }] },
+  });
+  const LINE = 'Im festen Abschnitt bleibt der Rhythmus; schlag eine andere Woche nur auf Wunsch vor.';
+
+  test('the chat prompt names the running section and keeps its rhythm', async () => {
+    const s = store([rider('r1', 'Wie sieht die Woche aus?'), section('2026-11-02', '2026-11-29')]);
+    const prompts: string[] = [];
+    await coach(s, async ({ prompt }) => { prompts.push(prompt); return { text: 'So.', proposal: null, riderAskedForMore: false }; }).tick('p');
+    expect(prompts[0]).toContain('<abschnitt-nur-daten>\n{"woche":1,"von":4,"leichteWoche":false,"vorlagen":["Oberkörper A","Unterkörper B"],"bis":"2026-11-29"}\n');
+    expect(prompts[0]).toContain(LINE);
+  });
+
+  test('without a section the prompt has neither', async () => {
+    const s = store([rider('r1', 'Hallo')]);
+    const prompts: string[] = [];
+    await coach(s, async ({ prompt }) => { prompts.push(prompt); return { text: 'Hi.', proposal: null, riderAskedForMore: false }; }).tick('p');
+    expect(prompts[0]).not.toContain('abschnitt-nur-daten');
+    expect(prompts[0]).not.toContain(LINE);
+  });
+
+  test('the week conversation proposes no new week while the next week is in the section', async () => {
+    const s = store([section('2026-11-02', '2026-11-29')]);
+    const prompts: string[] = [];
+    const c = coach(s, async ({ prompt }) => { prompts.push(prompt); return { text: 'Weiter so.', proposal: { weekStart: '2026-11-09', days: days('2026-11-09', [1, 3]) }, riderAskedForMore: false }; });
+    expect(await c.openWeek('p')).toBe(true);
+    const [m] = replies(s);
+    expect(m!.proposal).toBeUndefined();
+    expect(prompts[0]).toContain(LINE);
+    expect(prompts[0]).not.toContain('schlag die nächste Woche vor');
+  });
+
+  test('the week conversation proposes the next week when the section ends this week', async () => {
+    const s = store([section('2026-10-12', '2026-11-08')]);
+    const c = coach(s, async () => ({ text: 'Hier.', proposal: { weekStart: '2026-11-09', days: days('2026-11-09', [1, 3]) }, riderAskedForMore: false }));
+    expect(await c.openWeek('p')).toBe(true);
+    expect(replies(s)[0]!.proposal?.weekStart).toBe('2026-11-09');
+  });
+});

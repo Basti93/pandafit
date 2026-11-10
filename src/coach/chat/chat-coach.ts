@@ -21,7 +21,7 @@ import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
 import type { StrengthFacts } from '../gym/review-facts';
 import { ruleNumber, ruleRange } from '../../shared/training-policy';
 import { blockTakeWrites } from '../../shared/block-take';
-import { activeBlock, blockDates, blockId, blockRecord, readBlock, type BlockBody } from '../../shared/block';
+import { activeBlock, blockDates, blockId, blockRecord, blockWeek, readBlock, type BlockBody } from '../../shared/block';
 import { resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
 import type { ReviewOpened, ReviewReason } from './month-review';
@@ -513,8 +513,13 @@ export class ChatCoach {
     try {
       const now = this.deps.nowMs();
       const thread = chatThread(this.deps.store.all(id, 'chat'));
-      const prompt = this.prompt(id, thread.slice(-CHAT_CONTEXT), now, 'Das ist das Wochengespräch, die Person hat dir gerade nicht geschrieben. Blick in einem Halbsatz auf die letzte Woche zurück, ohne Schuld, und schlag die nächste Woche vor (wocheNaechste). Frag kurz, ob es so passt.');
+      // Next week belongs to a fixed section: its plan stands, so Bo proposes no other week unless the person asks.
+      const inBlock = activeBlock(this.deps.store.all(id, 'block'), addDays(mondayOf(dateKey(now)), 7)) !== null;
+      const prompt = this.prompt(id, thread.slice(-CHAT_CONTEXT), now, inBlock
+        ? 'Das ist das Wochengespräch, die Person hat dir gerade nicht geschrieben. Blick in einem Halbsatz auf die letzte Woche zurück, ohne Schuld. Die nächste Woche steht im festen Abschnitt schon fest (wocheNaechste); sag kurz, was kommt, und gib proposal null.'
+        : 'Das ist das Wochengespräch, die Person hat dir gerade nicht geschrieben. Blick in einem Halbsatz auf die letzte Woche zurück, ohne Schuld, und schlag die nächste Woche vor (wocheNaechste). Frag kurz, ob es so passt.');
       const msg = await this.answer(id, prompt, now, false);
+      if (inBlock) delete msg.proposal;
       this.put(id, { ...msg, push: true });
       return true;
     } catch { return false; } finally { this.busy.delete(id); }
@@ -668,6 +673,8 @@ export class ChatCoach {
     const days = (stats?.days ?? []).filter((d) => d.date >= from && d.date <= today)
       .map((d) => ({ date: d.date, tag: weekday(d.date), minuten: Object.fromEntries(Object.entries(d.minutes).filter(([, m]) => m > 0)), hart: d.hardness, beine: d.legs }))
       .filter((d) => Object.keys(d.minuten).length > 0);
+    const running = activeBlock(this.deps.store.all(id, 'block'), today);
+    const runningWeek = running ? blockWeek(running, today) : null;
     const week = (m: string) => planOfWeek(plans, m)?.days.map(({ date, sport, hardness, fixed, legs, long, note, also }) => ({ date, tag: weekday(date), sport, hardness, fixed, legs, long, note, also })) ?? null;
     return [
       dataBlock('heute', { datum: today, tag: weekday(today) }),
@@ -680,6 +687,10 @@ export class ChatCoach {
       this.goalBlock(id, today, this.complaintList(id)),
       ...this.wishLines(id, ['gym', 'bike', 'run']),
       dataBlock('beschwerden', this.complaintList(id)),
+      ...(running && runningWeek ? [
+        dataBlock('abschnitt', { woche: runningWeek.n, von: runningWeek.of, leichteWoche: runningWeek.light, vorlagen: running.templates.map((t) => t.name), bis: running.end }),
+        'Im festen Abschnitt bleibt der Rhythmus; schlag eine andere Woche nur auf Wunsch vor.',
+      ] : []),
       dataBlock('verlauf', thread.map((m) => ({ von: m.role === 'rider' ? 'person' : 'coach', text: m.text, ...(m.proposal ? { vorschlagFuerWoche: m.proposal.weekStart } : {}), ...(m.takes ? { hatUebernommen: true } : {}), ...(m.declines ? { hatAbgelehnt: true } : {}), ...(m.undoes ? { hatZurueckgenommen: true } : {}) }))),
       instruction,
     ].join('\n');
