@@ -14,7 +14,7 @@ import { dataBlock } from '../meals/prompt';
 import type { RecordStore } from '../tracking/store';
 import { excludedOf, goalOfProfile, wishesOf } from '../tracking/personal';
 import { FAMILY_IDS, isExcludableFamily, MAX_FAMILIES } from '../../shared/families';
-import { FOCUS_GROUPS, MAX_EXCLUDED, moveRule, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
+import { FOCUS_GROUPS, MAX_EXCLUDED, moveRule, PUSH_QUESTION, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
 import { LONG_TERM_GUIDE, weekHistory } from './long-term';
 import { titleHash } from '../../shared/exercise-links';
 import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
@@ -479,9 +479,10 @@ export class ChatCoach {
    * The monthly review: Bo writes it without being asked, with a push. The structure is fixed here (opening, at most
    * `review.max-observations` observations with their reasons, one question per open complaint, a suggestion for the next
    * weeks); only the words come from the model. It reads the stored data, never the chat thread. Returns whether it wrote the
-   * message; false while busy or when Claude fails. Never throws.
+   * message; false while busy or when Claude fails. Never throws. With `askPush` (the first review) it also asks how hard Bo may
+   * push, unless that was chosen or a complaint is open (then gentle applies by itself).
    */
-  async openReview(id: string, reason: ReviewReason): Promise<boolean> {
+  async openReview(id: string, reason: ReviewReason, askPush = false): Promise<boolean> {
     if (this.busy.has(id)) return false;
     this.busy.add(id);
     try {
@@ -500,7 +501,8 @@ export class ChatCoach {
       // The whole message must fit into a chat message: observations go from the end first, never the questions or the suggestion.
       let text = compose();
       while (text.length > MAX_CHAT_TEXT && observations.length > 0) { observations.pop(); text = compose(); }
-      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations } });
+      const ask = askPush && complaints.length === 0 && goalOfProfile(this.deps.store, id, dateKey(now)).push === undefined;
+      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...(ask ? { askPush: true as const } : {}) });
       return true;
     } catch { return false; } finally { this.busy.delete(id); }
   }
@@ -594,6 +596,10 @@ export class ChatCoach {
 
   /** Writes a coach message the rider did not ask for. */
   say(id: string, m: ChatMessage): void { this.put(id, m); }
+  /** Bo asks how hard he may push, without AI: the card under the message holds the choices. */
+  askPush(id: string): void {
+    this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: this.deps.nowMs(), push: true, askPush: true });
+  }
 
   /** The change record is written first, so the message never points at nothing. The coach only ever writes it as `proposed`. */
   private put(id: string, m: ChatMessage, draft?: Draft | null, rule?: RuleDraft | null): void {

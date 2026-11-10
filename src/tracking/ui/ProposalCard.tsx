@@ -4,6 +4,7 @@ import type { TrackingPort } from '../ports';
 import { DECLINE, TAKE } from '../../shared/wording';
 import { NextChangeCard } from './NextChangeCard';
 import { RuleCard } from './RuleCard';
+import { PushCard } from './PushCard';
 import { Week } from './WeekList';
 import { planRows } from './done-days';
 import { useCatalog, usePortRecords } from './hooks';
@@ -13,7 +14,7 @@ import { BO_LINES } from './bo';
 
 type Env = { port: TrackingPort; now: () => number; newId: () => string };
 
-/** A proposal that waits for an answer: a week plan (seven days, Übernehmen, Nein danke), a swap for the next workout or a rule. It reads its own records. */
+/** A proposal that waits for an answer: a week plan (seven days, Übernehmen, Nein danke), a swap for the next workout, a rule or the push question. It reads its own records. */
 export function ProposalCard({ port, now, newId, m }: Env & { m: ChatEntry }) {
   const plans = usePortRecords(port, 'weekplan').all;
   const changeRecs = usePortRecords(port, 'change').all;
@@ -22,6 +23,7 @@ export function ProposalCard({ port, now, newId, m }: Env & { m: ChatEntry }) {
   const { take, decline, error } = useProposalActions(port, now, newId);
   if (m.nextChange) return <NextChangeCard port={port} changeId={m.nextChange} records={changeRecs} now={now} />;
   if (m.rule) return <RuleCard port={port} ruleId={m.rule} records={ruleRecs} catalog={catalog} now={now} />;
+  if (m.askPush) return <PushCard port={port} now={now} newId={newId} m={m} />;
   if (!m.proposal) return null;
   const p = m.proposal;
   return (

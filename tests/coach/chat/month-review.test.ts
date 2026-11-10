@@ -1,4 +1,5 @@
-import { reviewDue, sportsKeyOf } from '../../../src/coach/chat/month-review';
+import { pushAskDue, reviewDue, sportsKeyOf } from '../../../src/coach/chat/month-review';
+import { QUESTION_GAP_DAYS } from '../../../src/coach/motivation';
 import { DEFAULT_PREFS } from '../../../src/shared/chat';
 import { lastSundayOf } from '../../../src/shared/dates';
 
@@ -58,4 +59,34 @@ it('schweigt, wenn abgeschaltet', () => {
 
 it('sportsKeyOf ist unabhängig von der Reihenfolge', () => {
   expect(sportsKeyOf({ sports: { run: 'high', bike: 'low' } as never })).toBe(sportsKeyOf({ sports: { bike: 'low', run: 'high' } as never }));
+});
+
+describe('pushAskDue', () => {
+  const DAY = 86_400_000;
+  const now = at(12, 9);
+  const three = ['2026-11-02', '2026-11-05', '2026-11-09'];
+  const ask = { goal: {}, complaints: [], gymDates: three, sent: {}, nowMs: now };
+
+  it('fragt nach dem dritten Krafttraining', () => {
+    expect(pushAskDue(ask)).toBe(true);
+    expect(pushAskDue({ ...ask, gymDates: three.slice(0, 2) })).toBe(false);
+    // Two workouts on the same day count as one strength day; a day in the future does not count yet.
+    expect(pushAskDue({ ...ask, gymDates: ['2026-11-02', '2026-11-02', '2026-11-05'] })).toBe(false);
+    expect(pushAskDue({ ...ask, gymDates: [...three.slice(0, 2), '2026-11-20'] })).toBe(false);
+  });
+
+  it('fragt nicht bei Beschwerde, nach dem ersten Rückblick oder zweimal', () => {
+    expect(pushAskDue({ ...ask, complaints: [{ status: 'active' }] })).toBe(false);
+    expect(pushAskDue({ ...ask, complaints: [{ status: 'healing' }] })).toBe(false);
+    expect(pushAskDue({ ...ask, complaints: [{ status: 'over' }] })).toBe(true);
+    expect(pushAskDue({ ...ask, sent: { review: '2026-10-25' } })).toBe(false);
+    expect(pushAskDue({ ...ask, sent: { pushAsk: '2026-11-09' } })).toBe(false);
+    expect(pushAskDue({ ...ask, goal: { push: 'normal' } })).toBe(false);
+  });
+
+  it('hält drei Tage Abstand zur letzten Frage', () => {
+    expect(QUESTION_GAP_DAYS).toBe(3);
+    expect(pushAskDue({ ...ask, lastQuestionMs: now - 2 * DAY })).toBe(false);
+    expect(pushAskDue({ ...ask, lastQuestionMs: now - QUESTION_GAP_DAYS * DAY })).toBe(true);
+  });
 });

@@ -24,6 +24,8 @@ export type TemporaryFocus = { focus?: MuscleGroup[]; sports?: Partial<Record<Sp
 /** How hard the coach pushes. A goal without `push` counts as normal, so code can tell that it was never chosen. */
 export type Push = 'gentle' | 'normal' | 'hard';
 export const PUSH_LABEL: Record<Push, string> = { gentle: 'Vorsichtig', normal: 'Normal', hard: 'Fordere mich' };
+/** Bo's question for the push, asked once (docs/superpowers/specs/2026-11-10-monatsrueckblick-design.md §4). */
+export const PUSH_QUESTION = 'Wie sehr soll ich dich beim Krafttraining fordern? Du kannst das jederzeit im Profil ändern.';
 export type GoalBody = { strength: Strength; focus: MuscleGroup[]; sports: Partial<Record<SportKey, Prio>>; push?: Push; temporary?: TemporaryFocus; atMs: number };
 export const DEFAULT_GOAL: Omit<GoalBody, 'atMs'> = { strength: 'muscle', focus: [], sports: {} };
 export const MAX_WEEKS = 12;
@@ -33,7 +35,7 @@ export type EffectiveGoal = Omit<GoalBody, 'atMs' | 'temporary'> & { temporary?:
 const STRENGTHS: Strength[] = ['muscle', 'strength', 'fitness'];
 const PRIOS: Prio[] = ['focus', 'equal', 'keep'];
 const SPORT_KEYS: SportKey[] = ['gym', 'bike', 'run'];
-const PUSHES: Push[] = ['gentle', 'normal', 'hard'];
+export const PUSHES: readonly Push[] = ['gentle', 'normal', 'hard'];
 
 /** The hardness that applies now: gentle while a complaint is active or healing, else the chosen one (normal if never chosen). */
 export const effectivePush = (goal: { push?: Push }, complaints: readonly { status: string }[]): Push =>

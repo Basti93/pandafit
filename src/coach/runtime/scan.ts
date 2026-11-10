@@ -22,7 +22,7 @@ import { mirrorExercises } from '../tracking/mirror-exercises';
 import { gymLegsKeyOf } from '../tracking/frame';
 import { PlanSeen, adviceKey, weekPlanKey } from '../chat/plan-seen';
 import { duePrompts, SentPrompts } from '../chat/prompts';
-import { sportsKeyOf, startReview } from '../chat/month-review';
+import { pushAskDue, sportsKeyOf, startReview } from '../chat/month-review';
 import { goalOfProfile } from '../tracking/personal';
 import { addDays, mondayOf, planFor, planOfWeek } from '../../shared/week-plan';
 import { runView } from '../../tracking/ui/run-view';
@@ -271,13 +271,22 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
           // The review goes first and the week conversation waits for a later scan, so it sees the review in the thread.
           const tried = startReview({
             id: p.id, prefs: prefsOf(records.all(p.id, 'coachprefs')), sportsKey: sportsKeyOf(goalOfProfile(records, p.id, dateKey(now))),
-            gymDates: gymDoneDates(p.id), sent: sentPrompts, nowMs: now, tried: reviewTried, retryMs: WEEK_RETRY_MS, open: (id, reason) => chat.openReview(id, reason),
+            gymDates: gymDoneDates(p.id), sent: sentPrompts, nowMs: now, tried: reviewTried, retryMs: WEEK_RETRY_MS, open: (id, reason, askPush) => chat.openReview(id, reason, askPush),
           });
           if (tried) void tried.then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('chat month review', e)).finally(publish);
           if (due.week && !tried && now - (weekTried.get(p.id) ?? 0) >= WEEK_RETRY_MS) {
             weekTried.set(p.id, now);
             const monday = mondayOf(dateKey(now));
             void chat.openWeek(p.id).then((wrote) => { if (wrote) { sentPrompts.mark(p.id, 'week', monday); mealsChanged([p.id]); } }).catch((e) => log.error('chat open week', e)).finally(publish);
+          } else if (!tried && !due.week && !due.evening) {
+            // The push question comes alone: never in the same scan as the review, the week conversation or the evening message.
+            const s = coach.state(p.id);
+            if (pushAskDue({ goal: goalOfProfile(records, p.id, dateKey(now)), complaints: s.complaints ?? [], gymDates: gymDoneDates(p.id), sent: sentPrompts.get(p.id), ...(s.lastQuestionMs !== undefined ? { lastQuestionMs: s.lastQuestionMs } : {}), nowMs: now })) {
+              chat.askPush(p.id);
+              sentPrompts.mark(p.id, 'pushAsk', dateKey(now));
+              coach.questionAsked(p.id);
+              mealsChanged([p.id]);
+            }
           }
         } catch { /* next scan */ }
       }

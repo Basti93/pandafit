@@ -107,6 +107,49 @@ it('readChat behält eine Nachricht mit zu vielen Beobachtungen und kürzt sie',
   expect(m?.review?.observations).toHaveLength(ruleNumber('review.max-observations'));
 });
 
+const goalRec = (push?: string): TrackedRecord => ({ kind: 'goal', id: 'goal', updatedMs: 1, deleted: false, body: { strength: 'muscle', focus: [], sports: {}, ...(push ? { push } : {}), atMs: 1 } });
+
+it('fragt beim ersten Rückblick nach der Härte', async () => {
+  const s = store();
+  const c = coach(s, async () => answer());
+  expect(await c.openReview('p', 'month', true)).toBe(true);
+  expect(messages(s)[0]!.askPush).toBe(true);
+  expect(await c.openReview('p', 'month', false)).toBe(true);
+  expect(messages(s)[1]!.askPush).toBeUndefined();
+});
+
+it('fragt beim ersten Rückblick nicht, wenn die Härte gewählt ist oder eine Beschwerde offen ist', async () => {
+  const chosen = store([goalRec('hard')]);
+  expect(await coach(chosen, async () => answer()).openReview('p', 'month', true)).toBe(true);
+  expect(messages(chosen)[0]!.askPush).toBeUndefined();
+  const hurt = store([complaint('k1', 'Knie', 'healing')]);
+  expect(await coach(hurt, async () => answer()).openReview('p', 'month', true)).toBe(true);
+  expect(messages(hurt)[0]!.askPush).toBeUndefined();
+});
+
+it('askPush fragt ohne KI nach der Härte', () => {
+  const s = store();
+  const ask = vi.fn(async () => answer());
+  coach(s, ask).askPush('p');
+  expect(ask).not.toHaveBeenCalled();
+  const [m] = messages(s);
+  expect(m!.text).toBe('Wie sehr soll ich dich beim Krafttraining fordern? Du kannst das jederzeit im Profil ändern.');
+  expect(m!.push).toBe(true);
+  expect(m!.askPush).toBe(true);
+  expect(readChat({ role: 'coach', text: 'x', atMs: 1, askPush: true })?.askPush).toBe(true);
+});
+
+it('startReview sagt, ob es der erste Rückblick ist', async () => {
+  const open = vi.fn(async () => true);
+  const mk = (sent: Sent) => ({ get: () => sent, mark: () => {} });
+  const o = { id: 'p', prefs: DEFAULT_PREFS, sportsKey: 'bike:focus', gymDates: ['2026-10-05', '2026-10-15', '2026-11-02', '2026-11-08'], nowMs: NOW, retryMs: 0, open };
+  await startReview({ ...o, sent: mk({ reviewSports: 'bike:focus' }), tried: new Map() });
+  await startReview({ ...o, sent: mk({ reviewSports: 'bike:focus', review: '2026-10-25' }), tried: new Map() });
+  // Bo already asked on his own: the first review does not ask a second time.
+  await startReview({ ...o, sent: mk({ reviewSports: 'bike:focus', pushAsk: '2026-11-20' }), tried: new Map() });
+  expect(open.mock.calls).toEqual([['p', 'month', true], ['p', 'month', false], ['p', 'month', false]]);
+});
+
 describe('startReview', () => {
   const gymDates = ['2026-10-05', '2026-10-15', '2026-11-02', '2026-11-08'];
   const sentStore = (init: Sent = {}) => {
@@ -128,7 +171,7 @@ describe('startReview', () => {
     const sent = sentStore({ reviewSports: 'bike:keep' });
     const open = vi.fn(async () => true);
     expect(await run(sent, new Map(), open)).toBe(true);
-    expect(open).toHaveBeenCalledWith('p', 'sports');
+    expect(open).toHaveBeenCalledWith('p', 'sports', true);
     expect(sent.now()).toEqual({ review: '2026-11-29', reviewSports: 'bike:focus' });
     // Nothing is due any more, not even a minute later.
     expect(run(sent, new Map(), open, NOW + 60_000)).toBeNull();

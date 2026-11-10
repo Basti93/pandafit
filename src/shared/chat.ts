@@ -1,4 +1,5 @@
 import type { TrackedRecord } from './records';
+import { PUSHES, type Push } from './personal';
 import { ruleNumber } from './training-policy';
 import { parseProposal, type WeekProposal } from './week-plan';
 
@@ -40,6 +41,10 @@ export type ChatMessage = {
   rule?: string;
   /** The monthly review: the observations Bo made, each with its reason (also in `text`). */
   review?: { observations: { text: string; reason: string }[] };
+  /** Bo asks how hard he may push; the card offers the three choices and "Später". */
+  askPush?: true;
+  /** On the rider's answer to that question: the push before (null: never chosen) and the one chosen, so Rückgängig restores it exactly. */
+  pushChange?: { from: Push | null; to: Push };
 };
 export type ChatEntry = ChatMessage & { id: string };
 
@@ -66,11 +71,18 @@ export function readChat(x: unknown): ChatMessage | null {
   if (x.push === true) m.push = true;
   if (typeof x.nextChange === 'string') m.nextChange = x.nextChange;
   if (typeof x.rule === 'string') m.rule = x.rule;
+  if (x.askPush === true) m.askPush = true;
+  if (x.pushChange !== undefined) { const c = readPushChange(x.pushChange); if (!c) return null; m.pushChange = c; }
   if (x.workoutChange !== undefined) { const c = readWorkoutChange(x.workoutChange); if (!c) return null; m.workoutChange = c; }
   if (x.proposal !== undefined) { const p = parseProposal(x.proposal); if (!p) return null; m.proposal = p; }
   if (x.warnings !== undefined) { if (!strings(x.warnings)) return null; m.warnings = x.warnings; }
   if (x.review !== undefined) { const r = readReview(x.review); if (!r) return null; m.review = r; }
   return m;
+}
+
+function readPushChange(x: unknown): ChatMessage['pushChange'] | null {
+  if (!isObj(x) || !PUSHES.includes(x.to as Push) || (x.from !== null && !PUSHES.includes(x.from as Push))) return null;
+  return { from: x.from as Push | null, to: x.to as Push };
 }
 
 function readReview(x: unknown): ChatMessage['review'] | null {

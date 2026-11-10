@@ -1,8 +1,9 @@
 import { DEFAULT_PREFS, type CoachPrefs } from '../../shared/chat';
 import { lastSundayOf } from '../../shared/dates';
-import type { GoalBody } from '../../shared/personal';
+import type { GoalBody, Push } from '../../shared/personal';
 import { ruleNumber } from '../../shared/training-policy';
 import { dateKey } from '../day-load';
+import { QUESTION_GAP_DAYS } from '../motivation';
 import type { SentPrompts } from './prompts';
 
 export type ReviewReason = 'month' | 'sports' | 'pause';
@@ -46,7 +47,8 @@ export function reviewDue(o: {
 export function startReview(o: {
   id: string; prefs: CoachPrefs; sportsKey: string; gymDates: readonly string[]; nowMs: number;
   sent: Pick<SentPrompts, 'get' | 'mark'>; tried: Map<string, number>; retryMs: number;
-  open: (id: string, reason: ReviewReason) => Promise<boolean>;
+  /** `askPush`: the first review (none written before, and Bo has not asked on his own yet) also asks how hard Bo may push. */
+  open: (id: string, reason: ReviewReason, askPush: boolean) => Promise<boolean>;
 }): Promise<boolean> | null {
   const had = o.sent.get(o.id);
   if (had.reviewSports === undefined) { o.sent.mark(o.id, 'reviewSports', o.sportsKey); return null; }
@@ -54,8 +56,24 @@ export function startReview(o: {
   if (!reason || o.nowMs - (o.tried.get(o.id) ?? 0) < o.retryMs) return null;
   o.tried.set(o.id, o.nowMs);
   const today = dateKey(o.nowMs);
-  return o.open(o.id, reason).then((wrote) => {
+  return o.open(o.id, reason, had.review === undefined && had.pushAsk === undefined).then((wrote) => {
     if (wrote) { o.sent.mark(o.id, 'review', today); o.sent.mark(o.id, 'reviewSports', o.sportsKey); }
     return wrote;
   });
+}
+
+/**
+ * Whether Bo asks now, outside a review, how hard he may push: never chosen, no open or healing complaint (then gentle applies
+ * by itself), at least `push.ask-after-workouts` strength days, no review yet (the first review asks) and no earlier ask, and
+ * the last question of Bo at least QUESTION_GAP_DAYS ago.
+ */
+export function pushAskDue(o: {
+  goal: { push?: Push }; complaints: readonly { status: string }[]; gymDates: readonly string[];
+  sent: { review?: string; pushAsk?: string }; lastQuestionMs?: number; nowMs: number;
+}): boolean {
+  if (o.goal.push !== undefined || o.sent.review !== undefined || o.sent.pushAsk !== undefined) return false;
+  if (o.complaints.some((c) => c.status === 'active' || c.status === 'healing')) return false;
+  if (o.lastQuestionMs !== undefined && o.nowMs - o.lastQuestionMs < QUESTION_GAP_DAYS * 86_400_000) return false;
+  const today = dateKey(o.nowMs);
+  return new Set(o.gymDates.filter((d) => d <= today)).size >= ruleNumber('push.ask-after-workouts');
 }
