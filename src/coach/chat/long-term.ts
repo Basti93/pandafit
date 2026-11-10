@@ -13,11 +13,11 @@ export const LONG_TERM_GUIDE = `Langfristig: Die Person will über Monate fitter
 const WEEKS = 8;
 
 /** The last weeks as data: minutes per sport and hard days, oldest first, from the stats record. Empty without one. */
-export function weekHistory(stats: TrackedRecord[], nowMs: number): { woche: string; minuten: Record<string, number>; harteTage: number; aktuell?: true }[] {
+export function weekHistory(stats: TrackedRecord[], nowMs: number, weeks = WEEKS): { woche: string; minuten: Record<string, number>; harteTage: number; aktuell?: true }[] {
   const body = readStats(stats.find((r) => r.id === STATS_ID && !r.deleted)?.body);
   if (!body) return [];
   const thisMonday = mondayOf(dateKey(nowMs));
-  return Array.from({ length: WEEKS }, (_, i) => addDays(thisMonday, -7 * (WEEKS - 1 - i))).map((monday) => {
+  return Array.from({ length: weeks }, (_, i) => addDays(thisMonday, -7 * (weeks - 1 - i))).map((monday) => {
     const end = addDays(monday, 6);
     const days = body.days.filter((d) => d.date >= monday && d.date <= end);
     const minuten: Record<string, number> = {};
@@ -28,7 +28,7 @@ export function weekHistory(stats: TrackedRecord[], nowMs: number): { woche: str
 
 /** The long-term view for a coach's prompt: the week history and the guide. Empty without a stats record. */
 export function longTermHint(stats: TrackedRecord[], nowMs: number): string {
-  const weeks = weekHistory(stats, nowMs);
-  if (weeks.length === 0) return '';
-  return `\n${dataBlock('wochenVerlauf', weeks)}\n${LONG_TERM_GUIDE}`;
+  const history = weekHistory(stats, nowMs);
+  if (history.length === 0) return '';
+  return `\n${dataBlock('wochenVerlauf', history)}\n${LONG_TERM_GUIDE}`;
 }

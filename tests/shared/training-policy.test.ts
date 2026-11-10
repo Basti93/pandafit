@@ -2,7 +2,7 @@ import { POLICY_VERSION, RULES, SCENARIOS, SOURCES, policyRule, ruleNumber, rule
 
 describe('training policy register', () => {
   it('has a version and unique ids', () => {
-    expect(POLICY_VERSION).toBe('2026-11-10.2');
+    expect(POLICY_VERSION).toBe('2026-11-10.3');
     for (const list of [SOURCES, RULES, SCENARIOS]) expect(new Set(list.map((x) => x.id)).size).toBe(list.length);
   });
 
@@ -31,6 +31,22 @@ describe('training policy register', () => {
     const ids = new Set(SCENARIOS.map((s) => s.id));
     for (const s of SCENARIOS) expect(s.task).toBeGreaterThanOrEqual(1);
     for (const r of RULES) for (const s of r.scenarioIds) expect(ids.has(s)).toBe(true);
+  });
+
+  it('registers the monthly review rules with scenarios M01 to M04', () => {
+    expect(ruleNumber('review.window-days')).toBe(90);
+    expect(ruleNumber('review.min-workouts')).toBe(4);
+    expect(ruleNumber('review.min-gap-days')).toBe(14);
+    expect(ruleNumber('review.pause-days')).toBe(21);
+    expect(ruleNumber('review.weeks')).toBe(13);
+    expect(ruleNumber('review.max-observations')).toBe(3);
+    const ids = new Set(SCENARIOS.map((s) => s.id));
+    for (const m of ['M01', 'M02', 'M03', 'M04']) expect(ids.has(m)).toBe(true);
+    for (const r of RULES.filter((x) => x.id.startsWith('review.'))) {
+      expect(r.status.state).toBe('active');
+      expect(r.scenarioIds.length).toBeGreaterThan(0);
+      for (const s of r.scenarioIds) expect(ids.has(s)).toBe(true);
+    }
   });
 
   it('replaced the global gym range and step rules by per-exercise ones', () => {

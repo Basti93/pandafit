@@ -159,6 +159,42 @@ test('the week conversation never starts or ends complaints by itself', async ()
   expect(ended).toEqual([]);
 });
 
+describe('a complaint that heals', () => {
+  const run = async (ask: () => Promise<unknown>, week = false) => {
+    const healed: string[] = [], ended: string[] = [];
+    const s = week ? store() : store([rider('r1', 'Das Knie wird besser')]);
+    const c = new ChatCoach({
+      store: s as never, nowMs: () => NOW, newId: () => `c${++n}`,
+      complaints: () => [{ id: 'c1', text: 'Knie', status: 'active' }],
+      healComplaint: (_i, id) => healed.push(id), endComplaint: (_i, id) => ended.push(id),
+      ask: ask as never,
+    });
+    if (week) await c.openWeek('p'); else await c.tick('p');
+    return { healed, ended };
+  };
+  const answer = (extra: object) => async () => ({ text: 'Schön.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], complaintsHealing: [], ...extra });
+
+  it('setzt eine Beschwerde auf heilt, wenn die Person es sagt', async () => {
+    expect((await run(answer({ complaintsHealing: ['c1'] }))).healed).toEqual(['c1']);
+  });
+  it('lässt den Status ohne klare Antwort', async () => {
+    const r = await run(answer({}));
+    expect(r.healed).toEqual([]);
+    expect(r.ended).toEqual([]);
+  });
+  it('ignoriert ids, die nicht offen sind', async () => {
+    expect((await run(answer({ complaintsHealing: ['x'] }))).healed).toEqual([]);
+  });
+  it('zählt eine id in beiden Listen als vorbei', async () => {
+    const r = await run(answer({ complaintsOver: ['c1'], complaintsHealing: ['c1'] }));
+    expect(r.ended).toEqual(['c1']);
+    expect(r.healed).toEqual([]);
+  });
+  it('ändert keine Beschwerde aus einer Nachricht, die Bo selbst eröffnet', async () => {
+    expect((await run(answer({ complaintsHealing: ['c1'] }), true)).healed).toEqual([]);
+  });
+});
+
 describe('reviewWeek after a new activity', () => {
   const plan = (monday: string): TrackedRecord => ({ kind: 'weekplan', id: monday, updatedMs: 1, deleted: false, body: { weekStart: monday, days: days(monday, [1, 3]), fromMessage: 'm0', acceptedMs: 1 } });
   const run = [{ tag: '2026-11-04', uhrzeit: '16:52', art: 'running', titel: 'Lauf <x>', minuten: 42 }];

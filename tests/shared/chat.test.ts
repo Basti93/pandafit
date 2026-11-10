@@ -1,4 +1,4 @@
-import { chatThread, proposalAnswer, readChat, waitingMessage } from '../../src/shared/chat';
+import { readCoachPrefs, latestReview, chatThread, proposalAnswer, readChat, waitingMessage } from '../../src/shared/chat';
 import type { TrackedRecord } from '../../src/shared/records';
 
 const rec = (id: string, body: object, deleted = false): TrackedRecord => ({ kind: 'chat', id, updatedMs: 1, deleted, body });
@@ -34,4 +34,36 @@ test('a second rider message sent while the first is being answered still waits;
   const note = rec('n', { role: 'coach', text: 'Morgen: Rad', atMs: 4, push: true });
   expect(waitingMessage(chatThread([a, b, ansA, note]))?.id).toBe('b');
   expect(waitingMessage(chatThread([a, ansA, note]))).toBeNull();
+});
+
+test('the monthly review is on unless switched off', () => {
+  expect(readCoachPrefs({ week: {}, evening: {} }).review.on).toBe(true);
+  expect(readCoachPrefs({ review: { on: false } }).review.on).toBe(false);
+  expect(readCoachPrefs({ review: { on: true } }).review.on).toBe(true);
+});
+
+test('a review is cut to three observations made of strings', () => {
+  const o = (i: number) => ({ text: `Satz ${i}.`, reason: `Grund ${i}.` });
+  const base = { role: 'coach', text: 'Rückblick', atMs: 1 };
+  expect(readChat({ ...base, review: { observations: [1, 2, 3, 4].map(o) } })).toEqual({ ...base, review: { observations: [1, 2, 3].map(o) } });
+  expect(readChat({ ...base, review: { observations: [{ text: 1, reason: 'x' }] } })).toBeNull();
+  expect(readChat({ ...base, review: { observations: [1, 2].map(o) } })).toEqual({ ...base, review: { observations: [1, 2].map(o) } });
+});
+
+test('latestReview nimmt die jüngste Coach-Nachricht mit Rückblick', () => {
+  const obs = (t: string) => ({ observations: [{ text: t, reason: 'weil' }] });
+  const t = chatThread([
+    rec('a', { role: 'coach', text: 'alt', atMs: 1, review: obs('alt') }),
+    rec('b', { role: 'coach', text: 'neu', atMs: 5, review: obs('neu') }),
+    rec('c', { role: 'coach', text: 'später ohne', atMs: 9 }),
+    rec('d', { role: 'rider', text: 'Hallo', atMs: 10 }),
+  ]);
+  expect(latestReview(t)).toEqual({ atMs: 5, observations: [{ text: 'neu', reason: 'weil' }] });
+  expect(latestReview([])).toBeNull();
+});
+
+test('ein gespeicherter Rückblick wird auf 150 Zeichen je Text und Grund gekürzt', () => {
+  const long = 'x'.repeat(1000);
+  const m = readChat({ role: 'coach', text: 'Rückblick', atMs: 1, review: { observations: [{ text: long, reason: long }] } });
+  expect(m?.review?.observations[0]).toEqual({ text: 'x'.repeat(150), reason: 'x'.repeat(150) });
 });

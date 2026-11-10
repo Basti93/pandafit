@@ -1,4 +1,5 @@
 import type { TrackedRecord } from './records';
+import { ruleNumber } from './training-policy';
 import { parseProposal, type WeekProposal } from './week-plan';
 
 /**
@@ -37,6 +38,8 @@ export type ChatMessage = {
   nextChange?: string;
   /** The id of the `rule` record (a rule or goal change) this message proposes. */
   rule?: string;
+  /** The monthly review: the observations Bo made, each with its reason (also in `text`). */
+  review?: { observations: { text: string; reason: string }[] };
 };
 export type ChatEntry = ChatMessage & { id: string };
 
@@ -45,6 +48,8 @@ export const CHAT_KEEP_MS = 90 * 86_400_000;
 /** The coach sees this many of the latest messages. */
 export const CHAT_CONTEXT = 30;
 export const MAX_CHAT_TEXT = 2000;
+/** Product format limit for one review observation: its text and its reason are each at most this long. */
+export const MAX_OBSERVATION_CHARS = 150;
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every((s) => typeof s === 'string');
@@ -64,13 +69,33 @@ export function readChat(x: unknown): ChatMessage | null {
   if (x.workoutChange !== undefined) { const c = readWorkoutChange(x.workoutChange); if (!c) return null; m.workoutChange = c; }
   if (x.proposal !== undefined) { const p = parseProposal(x.proposal); if (!p) return null; m.proposal = p; }
   if (x.warnings !== undefined) { if (!strings(x.warnings)) return null; m.warnings = x.warnings; }
+  if (x.review !== undefined) { const r = readReview(x.review); if (!r) return null; m.review = r; }
   return m;
+}
+
+function readReview(x: unknown): ChatMessage['review'] | null {
+  if (!isObj(x) || !Array.isArray(x.observations)) return null;
+  const observations: { text: string; reason: string }[] = [];
+  for (const o of x.observations.slice(0, ruleNumber('review.max-observations'))) {
+    if (!isObj(o) || typeof o.text !== 'string' || typeof o.reason !== 'string') return null;
+    observations.push({ text: o.text.slice(0, MAX_OBSERVATION_CHARS), reason: o.reason.slice(0, MAX_OBSERVATION_CHARS) });
+  }
+  return { observations };
 }
 
 /** The thread, oldest first, unreadable and deleted records skipped. */
 export const chatThread = (records: TrackedRecord[]): ChatEntry[] =>
   records.flatMap((r) => { if (r.kind !== 'chat' || r.deleted) return []; const m = readChat(r.body); return m ? [{ ...m, id: r.id }] : []; })
     .sort((a, b) => a.atMs - b.atMs || (a.id < b.id ? -1 : 1));
+
+/** The observations of the newest monthly review in the thread, or null. */
+export function latestReview(thread: ChatEntry[]): { atMs: number; observations: { text: string; reason: string }[] } | null {
+  for (let i = thread.length - 1; i >= 0; i--) {
+    const m = thread[i];
+    if (m.role === 'coach' && m.review) return { atMs: m.atMs, observations: m.review.observations };
+  }
+  return null;
+}
 
 /**
  * The rider message still waiting for the coach: the latest rider message (not a take or decline) without an answer. Coach
@@ -110,19 +135,20 @@ export function readWorkoutChange(x: unknown): WorkoutChange | null {
 }
 
 /**
- * When the coach writes by itself, per profile (record kind coachprefs, id "prefs"). Both off by default. `day` is 0 for Monday;
+ * When the coach writes by itself, per profile (record kind coachprefs, id "prefs"). Week and evening are off by default, the monthly review is on. `day` is 0 for Monday;
  * hours are local hours of the coaching side.
  */
-export type CoachPrefs = { week: { on: boolean; day: number; hour: number }; evening: { on: boolean; hour: number } };
+export type CoachPrefs = { week: { on: boolean; day: number; hour: number }; evening: { on: boolean; hour: number }; review: { on: boolean } };
 export const COACH_PREFS_ID = 'prefs';
-export const DEFAULT_PREFS: CoachPrefs = { week: { on: false, day: 6, hour: 18 }, evening: { on: false, hour: 19 } };
+export const DEFAULT_PREFS: CoachPrefs = { week: { on: false, day: 6, hour: 18 }, evening: { on: false, hour: 19 }, review: { on: true } };
 const hour = (x: unknown, d: number) => (Number.isInteger(x) && (x as number) >= 0 && (x as number) <= 23 ? (x as number) : d);
 export function readCoachPrefs(x: unknown): CoachPrefs {
   if (!isObj(x)) return DEFAULT_PREFS;
-  const w = isObj(x.week) ? x.week : {}, e = isObj(x.evening) ? x.evening : {};
+  const w = isObj(x.week) ? x.week : {}, e = isObj(x.evening) ? x.evening : {}, v = isObj(x.review) ? x.review : {};
   return {
     week: { on: w.on === true, day: Number.isInteger(w.day) && (w.day as number) >= 0 && (w.day as number) <= 6 ? (w.day as number) : 6, hour: hour(w.hour, 18) },
     evening: { on: e.on === true, hour: hour(e.hour, 19) },
+    review: { on: v.on !== false },
   };
 }
 export const prefsOf = (records: TrackedRecord[]): CoachPrefs => readCoachPrefs(records.find((r) => r.kind === 'coachprefs' && r.id === COACH_PREFS_ID && !r.deleted)?.body);

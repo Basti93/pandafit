@@ -42,3 +42,11 @@ test('the evening message names both sessions of a combination day', () => {
   expect(eveningText({ date: '2026-11-05', sport: 'gym', hardness: 'moderate', fixed: false, also: { sport: 'bike', hardness: 'easy' } }, null))
     .toBe('Morgen: Kraft, mittel + Rad, locker. Passt das, oder lieber etwas anderes?');
 });
+
+test('marking the review keeps week and evening', () => {
+  const s = sent();
+  s.mark('p', 'week', '2026-11-02');
+  s.mark('p', 'evening', '2026-11-08');
+  s.mark('p', 'review', '2026-11-29');
+  expect(s.get('p')).toEqual({ week: '2026-11-02', evening: '2026-11-08', review: '2026-11-29' });
+});

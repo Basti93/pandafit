@@ -6,21 +6,21 @@ import { addDays, dayLabel, mondayOf, planFor, type PlanDay } from '../../shared
 import { dateKey } from '../day-load';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
-type Sent = Record<string, { week?: string; evening?: string }>;
+export type Sent = { week?: string; evening?: string; review?: string; reviewSports?: string; pushAsk?: string; drift?: string; blockEnd?: string };
 
 /** Remembers what was sent per profile (the Monday of the week conversation, the date of the evening suggestion), in a file. */
 export class SentPrompts {
-  private sent: Sent | null = null;
+  private sent: Record<string, Sent> | null = null;
   constructor(private file: string) {}
-  get(id: string): { week?: string; evening?: string } { return this.load()[id] ?? {}; }
-  mark(id: string, k: 'week' | 'evening', v: string): void {
+  get(id: string): Sent { return this.load()[id] ?? {}; }
+  mark(id: string, k: keyof Sent, v: string): void {
     const s = this.load();
     s[id] = { ...s[id], [k]: v };
     try { fs.mkdirSync(path.dirname(this.file), { recursive: true }); writeJsonAtomic(this.file, s); } catch { /* sent again at worst once more */ }
   }
-  private load(): Sent {
+  private load(): Record<string, Sent> {
     if (this.sent) return this.sent;
-    try { const x = JSON.parse(fs.readFileSync(this.file, 'utf8')) as unknown; this.sent = x && typeof x === 'object' && !Array.isArray(x) ? x as Sent : {}; } catch { this.sent = {}; }
+    try { const x = JSON.parse(fs.readFileSync(this.file, 'utf8')) as unknown; this.sent = x && typeof x === 'object' && !Array.isArray(x) ? x as Record<string, Sent> : {}; } catch { this.sent = {}; }
     return this.sent;
   }
 }
