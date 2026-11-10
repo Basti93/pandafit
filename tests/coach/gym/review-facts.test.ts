@@ -36,14 +36,24 @@ describe('strengthFacts', () => {
     expect(strengthFacts(many, templates, [], goal, NOW).uebungen).toHaveLength(5);
   });
 
-  it('nennt nur dauerhaft niedrige Muskeln', () => {
-    // Brust ist heute im Ziel (18 Sätze), vor 28 und 56 Tagen aber nicht; Seitliche Schulter nur heute zu wenig.
-    const lasting = [workout(1, 'LR', 'Lateral Raise (Dumbbell)', 8, 1)];
-    const f = strengthFacts(lasting, templates, [], goal, NOW);
-    expect(f.untenDauerhaft).toContain('Brust');
-    const chestNow = strengthFacts([workout(1, 'BP', 'Bench Press (Barbell)', 40, 14)], templates, [], goal, NOW);
-    expect(chestNow.untenDauerhaft).not.toContain('Brust');
-    const sideOnlyNow = strengthFacts([workout(29, 'LR', 'Lateral Raise (Dumbbell)', 8, 14), workout(57, 'LR', 'Lateral Raise (Dumbbell)', 8, 14)], templates, [], goal, NOW);
-    expect(sideOnlyNow.untenDauerhaft).not.toContain('Schulter seitlich');
+  it('nennt nur Muskeln, die trainiert wurden und in allen drei Fenstern unter dem Ziel lagen', () => {
+    const lasting = [1, 29, 57].map((d) => workout(d, 'BP', 'Bench Press (Barbell)', 40, 2));
+    expect(strengthFacts(lasting, templates, [], goal, NOW).untenDauerhaft).toEqual(['Brust']);
+  });
+
+  it('nennt einen nie trainierten Muskel nicht', () => {
+    expect(strengthFacts([], templates, [], goal, NOW).untenDauerhaft).toEqual([]);
+    expect(strengthFacts([workout(1, 'BP', 'Bench Press (Barbell)', 40, 2)], templates, [], goal, NOW).untenDauerhaft).not.toContain('Schulter seitlich');
+  });
+
+  it('nennt einen Muskel nicht, der nur heute unter dem Ziel liegt', () => {
+    const f = strengthFacts([workout(29, 'LR', 'Lateral Raise (Dumbbell)', 8, 14), workout(57, 'LR', 'Lateral Raise (Dumbbell)', 8, 14), workout(1, 'LR', 'Lateral Raise (Dumbbell)', 8, 1)], templates, [], goal, NOW);
+    expect(f.untenDauerhaft).not.toContain('Schulter seitlich');
+  });
+
+  it('wertet bei unterstützten Übungen weniger Gewicht als Fortschritt', () => {
+    const assisted = [...templates, { id: 'AP', title: 'Assisted Pull Up', type: 'bodyweight_assisted_reps', primaryMuscle: 'lats', equipment: 'machine' }];
+    const f = strengthFacts([workout(40, 'AP', 'Assisted Pull Up', 40), workout(2, 'AP', 'Assisted Pull Up', 30)], assisted, [], goal, NOW);
+    expect(f.uebungen[0]!.trend).toBe('steigt');
   });
 });
