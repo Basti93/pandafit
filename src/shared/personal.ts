@@ -98,11 +98,11 @@ export function goalOf(records: readonly TrackedRecord[], today: string): Effect
   return t.endedSeenMs === undefined && today <= noticeUntil ? { ...base, ended: { until: t.until, focus: t.focus ?? [], sports: t.sports ?? {} } } : base;
 }
 
-/** A goal change applied to the stored goal. With `weeks`, focus and sports go into a temporary focus until then; the strength stays a base change. */
+/** A goal change applied to the stored goal. With `weeks`, focus and sports go into a temporary focus until then; strength and push stay base changes. */
 export function applyGoalPatch(prior: Omit<GoalBody, 'atMs'>, patch: NonNullable<Rule['goal']>, today: string): Omit<GoalBody, 'atMs'> {
   const { weeks, ...rest } = patch;
   if (!weeks) return { ...prior, ...rest };
-  return { ...prior, ...(rest.strength ? { strength: rest.strength } : {}), temporary: { ...(rest.focus ? { focus: rest.focus } : {}), ...(rest.sports ? { sports: rest.sports } : {}), until: addDays(today, weeks * 7) } };
+  return { ...prior, ...(rest.strength ? { strength: rest.strength } : {}), ...(rest.push ? { push: rest.push } : {}), temporary: { ...(rest.focus ? { focus: rest.focus } : {}), ...(rest.sports ? { sports: rest.sports } : {}), until: addDays(today, weeks * 7) } };
 }
 
 export type RuleKind = 'exclude' | 'wish' | 'goal';

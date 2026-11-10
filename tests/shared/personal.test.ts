@@ -123,6 +123,12 @@ describe('push (Härte) in the goal', () => {
     expect(readRule('rule-a', { kind: 'goal', text: 't', sport: 'all', goal: { push: 'hard' }, state: 'proposed', source: 'chat', atMs: 1 })?.goal).toEqual({ push: 'hard' });
     expect(readRule('rule-a', { kind: 'goal', text: 't', sport: 'all', goal: { push: 'x' }, state: 'proposed', source: 'chat', atMs: 1 })).toBeNull();
   });
+  it('push is a base change even with weeks; focus stays temporary', () => {
+    const g = applyGoalPatch({ strength: 'muscle', focus: [], sports: {} }, { push: 'hard', weeks: 4, focus: ['chest'] }, TODAY);
+    expect(g.push).toBe('hard');
+    expect(g.temporary?.focus).toEqual(['chest']);
+    expect(g.focus).toEqual([]);
+  });
   it('the stored goal passes push on when set', () => {
     const rec = goalRecord({ strength: 'muscle', focus: [], sports: {}, push: 'hard' }, 5);
     expect(storedGoalOf([rec]).push).toBe('hard');
