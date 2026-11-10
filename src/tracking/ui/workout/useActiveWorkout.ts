@@ -20,7 +20,7 @@ export type Ask = { question: 'nothing-confirmed' } | { question: 'open-sets'; o
 
 export type UiState = {
   picker: Picker; ask: Ask;
-  /** The exercise whose menu is open, and whether it shows the "Mehr" half. */
+  /** The exercise whose menu is open. */
   menu: string | null;
   topMenu: boolean; studioOpen: boolean; coachAsk: number;
   reorder: DragStart | null;
