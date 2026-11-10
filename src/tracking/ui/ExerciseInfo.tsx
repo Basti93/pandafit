@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type SyntheticEvent } from 'react';
+import { type ReactNode, type SyntheticEvent } from 'react';
 import { descriptionCredit, type ExerciseDescription } from '../../shared/exercise-descriptions';
 import type { ExerciseImage } from '../../shared/exercise-images';
 import { ruleNumbers } from '../../shared/training-policy';
@@ -16,18 +16,9 @@ const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
 /** A picture that is not there (generated media missing) takes its frame with it. */
 const hideFigure = (e: SyntheticEvent<HTMLImageElement>) => { const f = e.currentTarget.closest('figure'); if (f) f.hidden = true; };
 
-const LONG = 36;
-
-/** Up to three lines of the text; a longer one has a "mehr" toggle. The stored text is never shortened, only clamped. */
+/** The whole text, never clamped. */
 function DescriptionText({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  const long = text.split(/\s+/).filter(Boolean).length > LONG;
-  return (
-    <div className="tk-desc">
-      <p className={long && !open ? 'tk-clamp' : undefined}>{text}</p>
-      {long && <button type="button" className="link" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'weniger' : 'mehr'}</button>}
-    </div>
-  );
+  return <div className="tk-desc"><p>{text}</p></div>;
 }
 
 /** Picture and text credits as one small muted line at the end. */

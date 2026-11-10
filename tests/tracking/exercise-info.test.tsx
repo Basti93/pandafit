@@ -234,13 +234,10 @@ describe('picker: info toggle per exercise', () => {
 });
 
 describe('long descriptions', () => {
-  test('a long text is clamped to three lines with a mehr toggle; the text itself stays whole', async () => {
+  test('zeigt die ganze Anleitung ohne mehr-Knopf', () => {
     const text = Array.from({ length: 120 }, (_, i) => `w${i}`).join(' ');
     render(<ExerciseInfo title="X" description={{ text, source: { kind: 'own' } }} video="https://example.com" />);
-    const p = screen.getByText(/w119/);
-    expect(p.className).toBe('tk-clamp');
-    fireEvent.click(screen.getByRole('button', { name: 'mehr' }));
-    expect(p.className).toBe('');
-    expect(screen.getByRole('button', { name: 'weniger' })).toBeTruthy();
+    expect(screen.getByText(/w119/).textContent).toBe(text);
+    expect(screen.queryByRole('button', { name: 'mehr' })).toBeNull();
   });
 });
