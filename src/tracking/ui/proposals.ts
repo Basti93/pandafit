@@ -13,7 +13,8 @@ export function useOpenProposals(port: TrackingPort, nowMs: number): ChatEntry[]
   const plans = usePortRecords(port, 'weekplan').all;
   const changes = usePortRecords(port, 'change').all;
   const rules = usePortRecords(port, 'rule').all;
-  const open = openProposals(chatThread(chat ?? []), plans ?? [], changes ?? [], rules ?? [], mondayOf(localDayKey(nowMs)));
+  const blocks = usePortRecords(port, 'block').all;
+  const open = openProposals(chatThread(chat ?? []), plans ?? [], changes ?? [], rules ?? [], mondayOf(localDayKey(nowMs)), blocks ?? []);
   return [...open].sort((a, b) => Number(!!b.proposal) - Number(!!a.proposal));
 }
 

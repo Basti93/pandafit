@@ -371,6 +371,35 @@ describe('an explicit yes in the chat takes the open rule draft', () => {
     expect(replies(taken).at(-1)!.text).toBe('Gilt ab jetzt.');
   });
 
+  describe('a proposed section', () => {
+    const RHYTHM = [
+      { sport: 'gym', hardness: 'hard', template: 0 }, { sport: 'bike', hardness: 'easy' }, { sport: 'gym', hardness: 'moderate', template: 1 }, { sport: 'rest', hardness: 'easy' },
+      { sport: 'bike', hardness: 'hard' }, { sport: 'run', hardness: 'easy' }, { sport: 'rest', hardness: 'easy' },
+    ];
+    const blockBody = (state: string) => ({ state, atMs: 1, rhythm: RHYTHM, templates: [{ name: 'Oberkörper A', core: ['pf-a', 'pf-b', 'pf-c'] }, { name: 'Unterkörper B', core: ['pf-d', 'pf-e', 'pf-f'] }], ...(state === 'active' ? { start: '2026-11-09', end: '2026-12-06' } : {}) });
+    const blockRec = (state = 'proposed'): TrackedRecord => ({ kind: 'block', id: 'block-c0', updatedMs: 1, deleted: false, body: blockBody(state) });
+    const coachBlockMsg: TrackedRecord = { kind: 'chat', id: 'c0', updatedMs: NOW - 5000, deleted: false, body: { role: 'coach', text: 'Das schlage ich als festen Abschnitt vor.', atMs: NOW - 5000, block: 'block-c0' } };
+    const blocks = (st: ReturnType<typeof store>) => [...st.recs.values()].filter((r) => r.kind === 'block');
+
+    test('takes the open section on an explicit wish', async () => {
+      const s = store([coachBlockMsg, blockRec(), rider('r1', 'Ja, machen wir')]);
+      await coach(s, yes()).tick('p');
+      expect(blocks(s)[0]!.body).toMatchObject({ state: 'active', start: '2026-11-09', end: '2026-12-20', priorMode: 'week' });
+      expect(replies(s).at(-1)!.block).toBe('block-c0');
+      expect([...s.recs.values()].filter((r) => r.kind === 'weekplan').map((r) => r.id)).toEqual(['2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14']);
+      expect(replies(s).at(-1)!.text).toBe('Gilt ab jetzt.');
+    });
+
+    test('takes nothing without an open section', async () => {
+      const done = blockRec('active');
+      const s = store([coachBlockMsg, done, rider('r1', 'Ja, machen wir')]);
+      await coach(s, yes()).tick('p');
+      expect(blocks(s)).toEqual([done]);
+      expect(replies(s).at(-1)!.block).toBeUndefined();
+      expect(replies(s).at(-1)!.text).toContain('keinen offenen Vorschlag');
+    });
+  });
+
   describe('in a workout', () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w1', updatedMs: 1, deleted: false, body: { id: 'w1', title: 'Oberkörper', startMs: NOW - 20 * 60_000, endMs: null, source: 'pandafit', rest: null, exercises: [] } };
     const yesInWorkout = async () => ({ text: 'Gilt ab jetzt.', newComplaint: null, complaintsOver: [], acceptsRule: true });

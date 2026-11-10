@@ -20,6 +20,7 @@ import { titleHash } from '../../shared/exercise-links';
 import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
 import type { StrengthFacts } from '../gym/review-facts';
 import { ruleNumber, ruleRange } from '../../shared/training-policy';
+import { blockTakeWrites } from '../../shared/block-take';
 import { activeBlock, blockId, blockRecord, readBlock, type BlockBody } from '../../shared/block';
 import { resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
@@ -233,6 +234,19 @@ export class ChatCoach {
     } catch { return false; } finally { this.busy.delete(id); }
   }
 
+  /** The yes to an open section: the same writes as the Übernehmen button. Sets `block` on the reply (the card then shows Rückgängig). */
+  private acceptOpenBlock(id: string, prev: ChatEntry, now: number, msg: ChatMessage): boolean {
+    const rec = this.deps.store.all(id, 'block').find((r) => r.id === prev.block);
+    const writes = rec ? blockTakeWrites({ block: rec, frame: this.deps.store.all(id, 'frame'), plans: this.deps.store.all(id, 'weekplan'), msgId: prev.id, today: dateKey(now), nowMs: now }) : null;
+    if (!writes) {
+      msg.text += '\nIch sehe gerade keinen offenen Vorschlag, den ich übernehmen könnte. Deshalb gilt noch kein neuer Abschnitt.';
+      return false;
+    }
+    for (const w of writes) this.deps.store.put(id, w);
+    msg.block = prev.block;
+    return true;
+  }
+
   /**
    * The rider's explicit yes to the open rule draft: the draft of the coach message right before hers becomes active, the same
    * move as the Übernehmen button. In a workout only the coach messages of that workout count. A goal is never taken from the
@@ -241,7 +255,10 @@ export class ChatCoach {
    */
   private acceptOpenRule(id: string, thread: ChatEntry[], waiting: ChatEntry, now: number, msg: ChatMessage): boolean {
     const before = thread.slice(0, thread.findIndex((m) => m.id === waiting.id));
-    const rid = before.reverse().find((m) => m.role === 'coach' && (!waiting.inWorkout || m.inWorkout === waiting.inWorkout))?.rule;
+    // The Härte question that follows a review is no proposal: the yes still means the message before it.
+    const prev = before.reverse().find((m) => m.role === 'coach' && !m.askPush && (!waiting.inWorkout || m.inWorkout === waiting.inWorkout));
+    if (prev?.block) return this.acceptOpenBlock(id, prev, now, msg);
+    const rid = prev?.rule;
     const cur = rid ? this.deps.store.all(id, 'rule').find((r) => r.id === rid) : undefined;
     const open = cur ? readRule(cur.id, cur.body) : null;
     if (!cur || !open || open.state !== 'proposed') {
