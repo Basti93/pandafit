@@ -41,6 +41,17 @@ it('kommt bei neuem Schwerpunkt', () => {
   expect(reviewDue({ ...o, gymDates: four.slice(0, 3), sent: { reviewSports: 'run:high' } })).toBeNull();
 });
 
+it('kommt auch beim Standard-Schwerpunkt, dessen Schlüssel leer ist', () => {
+  expect(reviewDue({ ...base, sportsKey: 'bike:high', nowMs: at(12, 9), sent: { reviewSports: '' } })).toBe('sports');
+});
+
+it('nutzt ohne Wochengespräch die Standard-Uhrzeit statt der gespeicherten', () => {
+  const prefs = { ...DEFAULT_PREFS, week: { on: false, day: 6, hour: 7 } };
+  expect(reviewDue({ ...base, prefs, nowMs: at(29, 17) })).toBeNull();
+  expect(reviewDue({ ...base, prefs, nowMs: at(29, DEFAULT_PREFS.week.hour) })).toBe('month');
+  expect(reviewDue({ ...base, prefs: { ...prefs, week: { ...prefs.week, on: true } }, nowMs: at(29, 7) })).toBe('month');
+});
+
 it('schweigt, wenn abgeschaltet', () => {
   expect(reviewDue({ ...base, prefs: { ...DEFAULT_PREFS, review: { on: false } } })).toBeNull();
 });

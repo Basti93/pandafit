@@ -1,4 +1,4 @@
-import type { CoachPrefs } from '../../shared/chat';
+import { DEFAULT_PREFS, type CoachPrefs } from '../../shared/chat';
 import { lastSundayOf } from '../../shared/dates';
 import type { GoalBody } from '../../shared/personal';
 import { ruleNumber } from '../../shared/training-policy';
@@ -32,8 +32,8 @@ export function reviewDue(o: {
   const window = ruleNumber('review.window-days');
   const enough = days.filter((d) => now - dayNumber(d) < window).length >= ruleNumber('review.min-workouts');
   if (!enough) return null;
-  if (o.sent.reviewSports && o.sent.reviewSports !== o.sportsKey) return 'sports';
-  if (today === lastSundayOf(today) && new Date(o.nowMs).getHours() >= o.prefs.week.hour && o.sent.review !== today) return 'month';
+  if (o.sent.reviewSports !== undefined && o.sent.reviewSports !== o.sportsKey) return 'sports';
+  if (today === lastSundayOf(today) && new Date(o.nowMs).getHours() >= (o.prefs.week.on ? o.prefs.week.hour : DEFAULT_PREFS.week.hour) && o.sent.review !== today) return 'month';
   return null;
 }
 
