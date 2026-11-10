@@ -1,4 +1,5 @@
 import type { TrackedRecord } from './records';
+import { ruleNumber } from './training-policy';
 import { parseProposal, type WeekProposal } from './week-plan';
 
 /**
@@ -37,6 +38,8 @@ export type ChatMessage = {
   nextChange?: string;
   /** The id of the `rule` record (a rule or goal change) this message proposes. */
   rule?: string;
+  /** The monthly review: the observations Bo made, each with its reason (also in `text`). */
+  review?: { observations: { text: string; reason: string }[] };
 };
 export type ChatEntry = ChatMessage & { id: string };
 
@@ -64,7 +67,18 @@ export function readChat(x: unknown): ChatMessage | null {
   if (x.workoutChange !== undefined) { const c = readWorkoutChange(x.workoutChange); if (!c) return null; m.workoutChange = c; }
   if (x.proposal !== undefined) { const p = parseProposal(x.proposal); if (!p) return null; m.proposal = p; }
   if (x.warnings !== undefined) { if (!strings(x.warnings)) return null; m.warnings = x.warnings; }
+  if (x.review !== undefined) { const r = readReview(x.review); if (!r) return null; m.review = r; }
   return m;
+}
+
+function readReview(x: unknown): ChatMessage['review'] | null {
+  if (!isObj(x) || !Array.isArray(x.observations) || x.observations.length > ruleNumber('review.max-observations')) return null;
+  const observations: { text: string; reason: string }[] = [];
+  for (const o of x.observations) {
+    if (!isObj(o) || typeof o.text !== 'string' || typeof o.reason !== 'string') return null;
+    observations.push({ text: o.text, reason: o.reason });
+  }
+  return { observations };
 }
 
 /** The thread, oldest first, unreadable and deleted records skipped. */

@@ -3,6 +3,7 @@ import { lastSundayOf } from '../../shared/dates';
 import type { GoalBody } from '../../shared/personal';
 import { ruleNumber } from '../../shared/training-policy';
 import { dateKey } from '../day-load';
+import type { SentPrompts } from './prompts';
 
 export type ReviewReason = 'month' | 'sports' | 'pause';
 
@@ -34,4 +35,27 @@ export function reviewDue(o: {
   if (o.sent.reviewSports && o.sent.reviewSports !== o.sportsKey) return 'sports';
   if (today === lastSundayOf(today) && new Date(o.nowMs).getHours() >= o.prefs.week.hour && o.sent.review !== today) return 'month';
   return null;
+}
+
+/**
+ * The scan's step for the monthly review of one profile. The first time it only remembers the sports focus, so a review is never
+ * sent just because nothing was remembered yet. When a review is due and the last try is at least `retryMs` ago, it opens the
+ * review; only a review really written marks the day and the sports focus, so a failing Claude tries again later and a written
+ * one is never sent twice. Returns the attempt, or null when nothing was tried.
+ */
+export function startReview(o: {
+  id: string; prefs: CoachPrefs; sportsKey: string; gymDates: readonly string[]; nowMs: number;
+  sent: Pick<SentPrompts, 'get' | 'mark'>; tried: Map<string, number>; retryMs: number;
+  open: (id: string, reason: ReviewReason) => Promise<boolean>;
+}): Promise<boolean> | null {
+  const had = o.sent.get(o.id);
+  if (had.reviewSports === undefined) { o.sent.mark(o.id, 'reviewSports', o.sportsKey); return null; }
+  const reason = reviewDue({ prefs: o.prefs, sportsKey: o.sportsKey, gymDates: o.gymDates, sent: had, nowMs: o.nowMs });
+  if (!reason || o.nowMs - (o.tried.get(o.id) ?? 0) < o.retryMs) return null;
+  o.tried.set(o.id, o.nowMs);
+  const today = dateKey(o.nowMs);
+  return o.open(o.id, reason).then((wrote) => {
+    if (wrote) { o.sent.mark(o.id, 'review', today); o.sent.mark(o.id, 'reviewSports', o.sportsKey); }
+    return wrote;
+  });
 }

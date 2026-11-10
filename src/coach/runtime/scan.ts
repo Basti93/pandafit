@@ -22,6 +22,8 @@ import { mirrorExercises } from '../tracking/mirror-exercises';
 import { gymLegsKeyOf } from '../tracking/frame';
 import { PlanSeen, adviceKey, weekPlanKey } from '../chat/plan-seen';
 import { duePrompts, SentPrompts } from '../chat/prompts';
+import { sportsKeyOf, startReview } from '../chat/month-review';
+import { goalOfProfile } from '../tracking/personal';
 import { addDays, mondayOf, planFor, planOfWeek } from '../../shared/week-plan';
 import { runView } from '../../tracking/ui/run-view';
 import { readStats, STATS_ID } from '../../shared/stats';
@@ -31,7 +33,7 @@ import { WeeklyMailer, type WeeklyMailBase } from '../weekly-mail';
 import { contactOfProfile } from '../tracking/contact';
 import { weekMinutes, weekSessions } from '../../tracking/stats';
 import { statsView } from '../../tracking/stats-node';
-import { chatThread } from '../../shared/chat';
+import { chatThread, prefsOf } from '../../shared/chat';
 import { openProposals } from '../../tracking/ui/chat-open';
 import type { RuntimeCtx } from './ctx';
 import { STATS_EVERY_MS } from './ctx';
@@ -71,6 +73,8 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
   /** The week conversation is tried at most this often while it fails. */
   const WEEK_RETRY_MS = 30 * 60_000;
   const weekTried = new Map<string, number>();
+  /** The monthly review waits as long between failed tries; only a written review is marked as sent. */
+  const reviewTried = new Map<string, number>();
   const detailOf = (id: string, sport: string): string | null => {
     if (sport === 'gym') return gym.state(id).next?.workout.name ?? null;
     if (sport === 'bike') return coach.state(id).next?.session.name ?? null;
@@ -269,6 +273,11 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
             const monday = mondayOf(dateKey(now));
             void chat.openWeek(p.id).then((wrote) => { if (wrote) { sentPrompts.mark(p.id, 'week', monday); mealsChanged([p.id]); } }).catch((e) => log.error('chat open week', e)).finally(publish);
           }
+          const tried = startReview({
+            id: p.id, prefs: prefsOf(records.all(p.id, 'coachprefs')), sportsKey: sportsKeyOf(goalOfProfile(records, p.id, dateKey(now))),
+            gymDates: gymDoneDates(p.id), sent: sentPrompts, nowMs: now, tried: reviewTried, retryMs: WEEK_RETRY_MS, open: (id, reason) => chat.openReview(id, reason),
+          });
+          if (tried) void tried.then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('chat month review', e)).finally(publish);
         } catch { /* next scan */ }
       }
       },

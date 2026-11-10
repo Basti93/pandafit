@@ -41,3 +41,11 @@ test('the monthly review is on unless switched off', () => {
   expect(readCoachPrefs({ review: { on: false } }).review.on).toBe(false);
   expect(readCoachPrefs({ review: { on: true } }).review.on).toBe(true);
 });
+
+test('a review keeps at most three observations made of strings', () => {
+  const o = (i: number) => ({ text: `Satz ${i}.`, reason: `Grund ${i}.` });
+  const base = { role: 'coach', text: 'Rückblick', atMs: 1 };
+  expect(readChat({ ...base, review: { observations: [1, 2, 3, 4].map(o) } })).toBeNull();
+  expect(readChat({ ...base, review: { observations: [{ text: 1, reason: 'x' }] } })).toBeNull();
+  expect(readChat({ ...base, review: { observations: [1, 2].map(o) } })).toEqual({ ...base, review: { observations: [1, 2].map(o) } });
+});

@@ -18,6 +18,9 @@ import { FOCUS_GROUPS, MAX_EXCLUDED, moveRule, readRule, ruleId, ruleRecord, RUL
 import { LONG_TERM_GUIDE, weekHistory } from './long-term';
 import { titleHash } from '../../shared/exercise-links';
 import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
+import type { StrengthFacts } from '../gym/review-facts';
+import { ruleNumber } from '../../shared/training-policy';
+import type { ReviewReason } from './month-review';
 
 const EXCLUDABLE = FAMILY_IDS.filter((f) => f !== 'other');
 
@@ -45,6 +48,8 @@ type Deps = {
   sessions?: (profileId: string) => object | null;
   /** Hands a change the rider asked for to the coach in charge, who plans again at once. */
   giveTask?: (profileId: string, task: GivenTask) => void;
+  /** The strength facts of the last weeks for the monthly review; null when the gym coach cannot tell them yet. */
+  strengthFacts?: (profileId: string) => StrengthFacts | null;
 };
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
@@ -74,6 +79,31 @@ Sie sagt dir etwa "Gerät belegt", "Schulter zwickt" oder "nur noch 30 Minuten".
 ops: drop (die offenen Sätze einer Übung fallen weg), swap (die offenen Sätze wandern zu einer anderen Übung aus katalog, to ist deren id, nimm eine mit demselben Muskel und einem Gerät, das frei ist), sets (open: so viele offene Sätze bleiben), lighter (pct 5 bis 30: die offenen Sätze werden um so viel Prozent leichter). ex ist immer die ex-Kennung einer Übung aus training, die noch offene Sätze hat. Erledigte Sätze änderst du nie.
 Bei Schmerzen: die betroffene Bewegung weglassen oder deutlich leichter, nie durchziehen; keine medizinischen Ratschläge. Erzählt die Person von einem neuen Schmerz, setze newComplaint auf einen kurzen Text in ihren Worten; sonst null. Sagt sie, eine Beschwerde aus beschwerden ist vorbei, nenne deren id in complaintsOver. Sagt sie, dass eine Beschwerde besser wird, aber noch nicht weg ist, nenne deren id in complaintsHealing; sonst ist complaintsHealing leer. Ohne klare Aussage änderst du nichts.
 Meint die Person das nächste Training statt dieses ("nächstes Mal"), setze statt change nextChange: ops mit exerciseId (die Übungs-id aus katalog oder training) und reason als ein Satz; für einen Tausch nenne toId aus katalog oder toTitle, kennst du die id nicht, nenne toTitle; sonst null. Nichts ändert sich, bevor die Person den Vorschlag übernimmt. Sagt sie "künftig/immer/nie", setze ruleDraft (kind exclude mit exerciseIds aus katalog, wish oder goal; text, sport); sonst null. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false. text: ein bis zwei Sätze.`;
+
+export const REVIEW_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit und schreibst der Person ihren Monatsrückblick, ohne dass sie dir geschrieben hat. Du sprichst Deutsch, kurz und warm, duzt. Du bist ehrlich und ermutigend, Regelmäßigkeit vor Gewichten.
+Du siehst auf die letzten drei Monate: wochen (Minuten je Sportart und harte Tage je Woche), kraft (Krafttrainings je Woche, wie sich die häufigsten Übungen entwickeln, Muskelgruppen, die dauerhaft unter dem Ziel liegen), geplant (Krafttage je Woche im Wochenplan, null ohne Plan), ziel, Wünsche, Ausschlüsse und beschwerden. anlass sagt, warum der Rückblick jetzt kommt.
+opening: ein ehrlicher, ermutigender Satz zu diesem Monat.
+observations: höchstens drei Beobachtungen aus den drei Monaten, die für das Ziel wirklich zählen. text ist die Beobachtung als ganzer Satz, reason ein ganzer Satz, warum sie zählt. Lieber weniger als belanglose.
+complaintQuestions: für jede Beschwerde aus beschwerden genau eine kurze, freundliche Frage, wie es damit inzwischen geht, mit ihrer id.
+nextWeeks: ein bis zwei Sätze als Vorschlag für die nächsten Wochen, passend zum Ziel.
+Keine Vorwürfe, keine Serien, nie „du hast nur“. Hat die Person weniger trainiert, passt du den Rahmen an und sagst ehrlich, was das für ihr Ziel bedeutet. Sprich nie über Körpergewicht, Kalorien oder Aussehen. Schlag nichts vor, was gegen ihre Ausschlüsse, Wünsche oder Beschwerden geht. Medizinische Ratschläge gibst du nicht.`;
+
+const reviewSchema = {
+  type: 'object', additionalProperties: false, required: ['opening', 'observations', 'complaintQuestions', 'nextWeeks'],
+  properties: {
+    opening: { type: 'string' },
+    observations: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['text', 'reason'], properties: { text: { type: 'string' }, reason: { type: 'string' } } } },
+    complaintQuestions: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['id', 'question'], properties: { id: { type: 'string' }, question: { type: 'string' } } } },
+    nextWeeks: { type: 'string' },
+  },
+};
+
+/** Why the review comes now, in the words the prompt gives the model. */
+const REVIEW_REASON: Record<ReviewReason, string> = {
+  month: 'Der Monat ist zu Ende.',
+  sports: 'Der Schwerpunkt im Ziel hat sich geändert.',
+  pause: 'Die Person trainiert nach einer längeren Pause wieder Kraft.',
+};
 
 const nextChangeSchema = { anyOf: [{ type: 'null' }, {
   type: 'object', additionalProperties: false, required: ['ops', 'reason'],
@@ -442,6 +472,60 @@ export class ChatCoach {
       this.put(id, { ...msg, push: true });
       return true;
     } catch { return false; } finally { this.busy.delete(id); }
+  }
+
+  /**
+   * The monthly review: Bo writes it without being asked, with a push. The structure is fixed here (opening, at most
+   * `review.max-observations` observations with their reasons, one question per open complaint, a suggestion for the next
+   * weeks); only the words come from the model. It reads the stored data, never the chat thread. Returns whether it wrote the
+   * message; false while busy or when Claude fails. Never throws.
+   */
+  async openReview(id: string, reason: ReviewReason): Promise<boolean> {
+    if (this.busy.has(id)) return false;
+    this.busy.add(id);
+    try {
+      const now = this.deps.nowMs();
+      const complaints = this.complaintList(id);
+      const raw = await this.deps.ask({ prompt: this.reviewPrompt(id, now, complaints, reason), systemPrompt: REVIEW_SYSTEM_PROMPT, schema: reviewSchema });
+      if (!isObj(raw) || typeof raw.opening !== 'string' || typeof raw.nextWeeks !== 'string' || !raw.opening.trim() || !raw.nextWeeks.trim()) return false;
+      const clip = (x: unknown, max: number) => (typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, max) : '');
+      const observations = (Array.isArray(raw.observations) ? raw.observations : [])
+        .flatMap((o) => { const text = isObj(o) ? clip(o.text, 300) : '', why = isObj(o) ? clip(o.reason, 300) : ''; return text && why ? [{ text, reason: why }] : []; })
+        .slice(0, ruleNumber('review.max-observations'));
+      const asked = Array.isArray(raw.complaintQuestions) ? raw.complaintQuestions.filter(isObj) : [];
+      const questions = complaints.map((c) => clip(asked.find((q) => q.id === c.id)?.question, 200) || `Wie geht es dir inzwischen mit ${c.text}?`);
+      const text = [[clip(raw.opening, 400)], observations.map((o) => `${o.text} ${o.reason}`), questions, [clip(raw.nextWeeks, 500)]]
+        .filter((part) => part.length > 0).map((part) => part.join('\n')).join('\n\n');
+      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations } });
+      return true;
+    } catch { return false; } finally { this.busy.delete(id); }
+  }
+
+  /** The data of the monthly review: stored trainings, goal, rules and complaints of the last weeks; no chat thread. */
+  private reviewPrompt(id: string, now: number, complaints: { id: string; text: string; status: string }[], reason: ReviewReason): string {
+    const today = dateKey(now);
+    const weeks = ruleNumber('review.weeks');
+    const thisMonday = mondayOf(today);
+    const plans = this.deps.store.all(id, 'weekplan');
+    const geplant = Array.from({ length: weeks }, (_, i) => addDays(thisMonday, -7 * (weeks - 1 - i))).map((montag) => {
+      const plan = planOfWeek(plans, montag);
+      return { montag, kraft: plan ? plan.days.filter((d) => d.sport === 'gym' || d.also?.sport === 'gym').length : null };
+    });
+    const out = excludedOf(this.deps.store, id, this.catalogOf(id));
+    let kraft: StrengthFacts | null = null;
+    try { kraft = this.deps.strengthFacts?.(id) ?? null; } catch { /* the review goes without */ }
+    return [
+      dataBlock('heute', { datum: today, tag: weekday(today) }),
+      dataBlock('ziel', goalOfProfile(this.deps.store, id, today)),
+      ...this.wishLines(id, ['gym', 'bike', 'run']),
+      dataBlock('ausschluesse', this.catalogOf(id).filter((e) => out.has(e.id)).map((e) => e.title)),
+      dataBlock('beschwerden', complaints),
+      dataBlock('wochen', weekHistory(this.deps.store.all(id, 'stats'), now, weeks)),
+      dataBlock('kraft', kraft),
+      dataBlock('geplant', geplant),
+      dataBlock('anlass', REVIEW_REASON[reason]),
+      'Schreib den Monatsrückblick.',
+    ].join('\n');
   }
 
   /**

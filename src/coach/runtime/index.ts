@@ -224,6 +224,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     healComplaint: (id, cid) => coach.updateComplaint(id, cid, 'healing', nowMs()),
     sessions: (id) => sessionsOf(id),
     giveTask: (id, t) => giveTask(id, 'chat', t),
+    strengthFacts: (id) => gym.reviewFacts(id),
   });
   /** What the three coaches have planned next, short, for the week chat. */
   const sessionsOf = (id: string): object => {
