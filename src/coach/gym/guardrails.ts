@@ -167,8 +167,9 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Keine Beine in dieser Einheit');
     const all = exercises.flatMap((e) => e.sets);
     if (all.filter((s) => s.type !== 'warmup').length > MAX_SETS) return no(`mehr als ${MAX_SETS} Sätze`);
+    // Gentle comes first, so the AI hears the reason that matters; a widowmaker is all-out in practice, so it counts too.
+    if (ctx.push === 'gentle' && (all.filter((s) => s.type === 'failure' || s.type === 'dropset').length > GENTLE_FAILURE_SETS || exercises.some((e) => isWidowmaker(e.notes)))) return no('Versagen passt nicht zur Härte');
     if (all.filter((s) => s.type === 'failure').length > MAX_FAILURE_SETS) return no(`mehr als ${MAX_FAILURE_SETS} Sätze bis zum Versagen`);
-    if (ctx.push === 'gentle' && all.filter((s) => s.type === 'failure' || s.type === 'dropset').length > GENTLE_FAILURE_SETS) return no('Versagen passt nicht zur Härte');
     if (exercises.filter((e) => isWidowmaker(e.notes)).length > MAX_WIDOWMAKERS) return no(`mehr als ${MAX_WIDOWMAKERS} Widowmaker`);
     const ids = exercises.map((e) => e.supersetId).filter((v): v is number => v !== null);
     for (const id of new Set(ids)) if (ids.filter((v) => v === id).length < 2) return no('Superset mit nur einer Übung');

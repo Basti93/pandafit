@@ -95,7 +95,7 @@ export type PromptInput = {
 
 const STRENGTH_WORDS = { muscle: 'Muskelaufbau', strength: 'Kraft', fitness: 'Fitness' } as const;
 const PUSH_RULES: Record<Push, string> = {
-  gentle: 'Keine Versagens- und keine Drop-Sätze.',
+  gentle: 'Keine Versagens-, keine Drop-Sätze und keine Widowmaker.',
   normal: 'Versagen höchstens im letzten Satz an sicheren Geräten.',
   hard: 'Versagens- und Drop-Sätze sind an sicheren Geräten erlaubt, innerhalb der Grenze für Versagenssätze.',
 };

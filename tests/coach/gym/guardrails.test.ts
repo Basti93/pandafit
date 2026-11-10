@@ -413,6 +413,15 @@ describe('Härte', () => {
       refused(wo([ex('cp', Array.from({ length: 5 }, () => set(40, 8, 'failure')))]), { ...CTX, push });
     }
   });
+  it('lehnt bei vorsichtiger Härte auch einen Widowmaker ab', () => {
+    const w = { notes: 'Widowmaker: 20 Wiederholungen' };
+    passes(wo([ex('cp', [set(40, 20)], w)]), { ...CTX, push: 'normal' });
+    expect(checkWorkout(wo([ex('cp', [set(40, 20)], w)]), { ...CTX, push: 'gentle' })).toEqual({ ok: false, reason: 'Versagen passt nicht zur Härte' });
+  });
+  it('nennt bei vorsichtiger Härte zuerst die Härte, auch bei zu vielen Versagenssätzen', () => {
+    const five = wo([ex('cp', Array.from({ length: 5 }, () => set(40, 8, 'failure')))]);
+    expect(checkWorkout(five, { ...CTX, push: 'gentle' })).toEqual({ ok: false, reason: 'Versagen passt nicht zur Härte' });
+  });
   it('der Regelplan für eine vorsichtige Person kommt ohne Ablehnung durch', () => {
     const plan = ruleWorkout({ ...CTX, push: 'gentle' });
     expect(plan.guard).toBeUndefined();

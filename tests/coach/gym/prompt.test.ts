@@ -26,7 +26,7 @@ describe('Gym-Prompt und Härte', () => {
   it('vorsichtig: Reserve aus dem Register, keine Versagens- und Drop-Sätze', () => {
     const p = buildGymPrompt({ ...base, push: 'gentle' });
     expect(p).toContain(`Härte: Vorsichtig. ${reserve('gentle')}`);
-    expect(p).toContain('Keine Versagens- und keine Drop-Sätze.');
+    expect(p).toContain('Keine Versagens-, keine Drop-Sätze und keine Widowmaker.');
   });
   it('normal: Versagen höchstens im letzten Satz', () => {
     const p = buildGymPrompt({ ...base, push: 'normal' });

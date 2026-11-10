@@ -231,6 +231,6 @@ export const RULES: PolicyRule[] = [
   r('review.max-observations', 'planner', 'product', 'checked', 'Bo nennt im Rückblick höchstens 3 Beobachtungen.', 'Monatsrückblick', active, { value: 3, unit: 'Beobachtungen', scenarioIds: ['M01', 'M02'] }),
   // Härte (docs/superpowers/specs/2026-11-10-monatsrueckblick-design.md §4): how hard the coach pushes, set in the goal.
   r('push.rir', 'gym', 'product', 'weighed', 'Wiederholungen in Reserve je Härte: Vorsichtig 2–3, Normal 1–3, Fordere mich 0–2.', 'Härte', active, { value: { min: 1, max: 3 }, ranges: { gentle: { min: 2, max: 3 }, normal: { min: 1, max: 3 }, hard: { min: 0, max: 2 } }, unit: 'RIR', scenarioIds: ['M01', 'M02'] }),
-  r('push.gentle-no-failure', 'gym', 'product', 'checked', 'Bei Vorsichtig gibt es keine Versagens- und Drop-Sätze.', 'Härte', active, { value: 0, unit: 'Sätze', scenarioIds: ['M01', 'M02'] }),
+  r('push.gentle-no-failure', 'gym', 'product', 'checked', 'Bei Vorsichtig gibt es keine Versagens-, keine Drop-Sätze und keine Widowmaker.', 'Härte', active, { value: 0, unit: 'Sätze', scenarioIds: ['M01', 'M02'] }),
   r('push.ask-after-workouts', 'gym', 'product', 'checked', 'Wurde die Härte nie gewählt, fragt Bo nach 3 Krafttrainings danach.', 'Härte', active, { value: 3, unit: 'Krafttrainings', scenarioIds: ['M01', 'M02'] }),
 ];
