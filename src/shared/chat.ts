@@ -74,9 +74,9 @@ export function readChat(x: unknown): ChatMessage | null {
 }
 
 function readReview(x: unknown): ChatMessage['review'] | null {
-  if (!isObj(x) || !Array.isArray(x.observations) || x.observations.length > ruleNumber('review.max-observations')) return null;
+  if (!isObj(x) || !Array.isArray(x.observations)) return null;
   const observations: { text: string; reason: string }[] = [];
-  for (const o of x.observations) {
+  for (const o of x.observations.slice(0, ruleNumber('review.max-observations'))) {
     if (!isObj(o) || typeof o.text !== 'string' || typeof o.reason !== 'string') return null;
     observations.push({ text: o.text.slice(0, MAX_OBSERVATION_CHARS), reason: o.reason.slice(0, MAX_OBSERVATION_CHARS) });
   }
