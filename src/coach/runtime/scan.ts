@@ -268,16 +268,17 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
         try {
           const due = duePrompts({ id: p.id, records: { prefs: records.all(p.id, 'coachprefs'), weekplan: records.all(p.id, 'weekplan') }, nowMs: now, sent: sentPrompts, detail: (s) => detailOf(p.id, s) });
           if (due.evening) { chat.say(p.id, due.evening); mealsChanged([p.id]); }
-          if (due.week && now - (weekTried.get(p.id) ?? 0) >= WEEK_RETRY_MS) {
-            weekTried.set(p.id, now);
-            const monday = mondayOf(dateKey(now));
-            void chat.openWeek(p.id).then((wrote) => { if (wrote) { sentPrompts.mark(p.id, 'week', monday); mealsChanged([p.id]); } }).catch((e) => log.error('chat open week', e)).finally(publish);
-          }
+          // The review goes first and the week conversation waits for a later scan, so it sees the review in the thread.
           const tried = startReview({
             id: p.id, prefs: prefsOf(records.all(p.id, 'coachprefs')), sportsKey: sportsKeyOf(goalOfProfile(records, p.id, dateKey(now))),
             gymDates: gymDoneDates(p.id), sent: sentPrompts, nowMs: now, tried: reviewTried, retryMs: WEEK_RETRY_MS, open: (id, reason) => chat.openReview(id, reason),
           });
           if (tried) void tried.then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('chat month review', e)).finally(publish);
+          if (due.week && !tried && now - (weekTried.get(p.id) ?? 0) >= WEEK_RETRY_MS) {
+            weekTried.set(p.id, now);
+            const monday = mondayOf(dateKey(now));
+            void chat.openWeek(p.id).then((wrote) => { if (wrote) { sentPrompts.mark(p.id, 'week', monday); mealsChanged([p.id]); } }).catch((e) => log.error('chat open week', e)).finally(publish);
+          }
         } catch { /* next scan */ }
       }
       },

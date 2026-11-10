@@ -13,6 +13,7 @@ import type { CoachServerMessage } from '../../src/coach/protocol';
 import { sealedTokens } from '../../src/coach/secrets/garmin-tokens';
 import { sealedCodec } from '../../src/coach/secrets/secret-box';
 import { CHAT_SYSTEM_PROMPT } from '../../src/coach/meals/chat';
+import { REVIEW_SYSTEM_PROMPT } from '../../src/coach/chat/chat-coach';
 import { CHAT_SYSTEM_PROMPT as WEEK_CHAT_PROMPT } from '../../src/coach/chat/chat-coach';
 import { MealCoach } from '../../src/coach/meals/meal-coach';
 import { computeTogether } from '../../src/coach/together';
@@ -487,6 +488,32 @@ test('a change asked for in the week chat goes to the coach in charge, who plans
   const bike = prompts.filter((p) => p.system !== WEEK_CHAT_PROMPT && p.prompt.includes('<auftraege-nur-daten>'));
   expect(bike.length).toBeGreaterThan(0);
   expect(bike[0]!.prompt).toContain('Nächste Fahrt kürzer');
+});
+
+describe('the last Sunday of the month', () => {
+  const SUNDAY = new Date(2026, 10, 29, 18, 5).getTime();
+  const workout = (day: number, month = 9) => { const startMs = new Date(2026, month, day, 10).getTime(); return { kind: 'workout' as const, id: `w${month}-${day}`, updatedMs: 1, deleted: false, body: { id: `w${month}-${day}`, title: 'Kraft', startMs, endMs: startMs + 3600_000, exercises: [] } }; };
+
+  test('the monthly review comes first; the week conversation follows in a later scan and sees it', async () => {
+    const calls: { system: string; prompt: string }[] = [];
+    const ask = vi.fn(async (input: { prompt: string; systemPrompt: string }) => {
+      calls.push({ system: input.systemPrompt, prompt: input.prompt });
+      if (input.systemPrompt === REVIEW_SYSTEM_PROMPT) return { opening: 'Ein guter Monat.', observations: [], complaintQuestions: [], nextWeeks: 'Weiter so.' };
+      if (input.systemPrompt === WEEK_CHAT_PROMPT) return { text: 'Hier ist die nächste Woche.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], tasks: [] };
+      return answer;
+    });
+    const { root, runtime } = make({ ask: ask as never, nowMs: () => SUNDAY });
+    const dir = path.join(root, 'coach', 'chat');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'prompts-sent.json'), JSON.stringify({ pa: { reviewSports: '' } }));
+    runtime.records.put('pa', { kind: 'coachprefs', id: 'prefs', updatedMs: 1, deleted: false, body: { week: { on: true, day: 6, hour: 18 }, evening: { on: false, hour: 19 }, review: { on: true } } });
+    runtime.records.putMany('pa', [workout(5), workout(15), workout(2, 10), workout(8, 10)]);
+    const order = () => calls.map((c) => (c.system === REVIEW_SYSTEM_PROMPT ? 'review' : c.system === WEEK_CHAT_PROMPT ? 'week' : 'other')).filter((x) => x !== 'other');
+    runtime.scan(); await settle();
+    expect(order()).toEqual(['review']);
+    for (let i = 0; i < 3; i++) { runtime.scan(); await settle(); }
+    expect(order()).toEqual(['review', 'week']);
+  });
 });
 
 describe('the weekly mail in the runtime', () => {
