@@ -3,7 +3,8 @@ import { RECENT_DAYS } from './limits';
 import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
 import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork, suggestNext } from './history';
 import { isExcluded } from '../../shared/excluded';
-import { checkWorkout, type GymContext } from './guardrails';
+import { checkWorkout, gymPlan, type GymContext } from './guardrails';
+import { muscleOfFrom, preFatigue } from './pre-fatigue';
 import { warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
 import { durationNote, gymLimit, gymMinutes } from '../../shared/duration';
@@ -14,12 +15,19 @@ const SETS = 3;
 const START_REPS = 10;
 const FALLBACK_MUSCLES = ['quadriceps', 'chest', 'lats', 'front_delts', 'side_delts', 'hamstrings', 'triceps', 'biceps'];
 
-function exerciseOf(t: ExerciseTemplate, ctx: GymContext): GymExercise {
-  const s = suggestNext(t.id, ctx.workouts, ctx.nowMs, t, { studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames });
+function exerciseOf(t: ExerciseTemplate, ctx: GymContext, preSets: number): GymExercise {
+  const s = suggestNext(t.id, ctx.workouts, ctx.nowMs, t, gymPlan(ctx), preSets);
   const range = repRangeOf(t);
   const reps = s.why === 'none' ? Math.min(range.max, Math.max(range.min, START_REPS)) : s.reps;
   const sets = Array.from({ length: SETS }, () => ({ type: 'normal' as const, weightKg: s.weightKg, reps }));
   return { templateId: t.id, title: t.title, restS: null, supersetId: null, notes: '', sets };
+}
+
+/** The exercises in this order, each with the load its place allows. */
+function exercisesOf(templates: ExerciseTemplate[], ctx: GymContext): GymExercise[] {
+  const muscleOf = muscleOfFrom(ctx.templates, ctx.catalog ?? []);
+  const pre = preFatigue(templates.map((t) => ({ primaryMuscle: muscleOf(t.id), hardSets: SETS, supersetId: null })));
+  return templates.map((t, i) => exerciseOf(t, ctx, pre[i]!));
 }
 
 /** The first exercise of each muscle group gets the warm-up ramp before its work sets, when its working weight is known. Warm-up sets are outside the set limit. */
@@ -64,7 +72,7 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
     .slice(0, CORE_SIZE);
   if (!machinesOnly && core.length > 0) {
     return {
-      workout: { name: HISTORY_NAME, exercises: withRamps(core, core.map((t) => exerciseOf(t, ctx)), ctx) },
+      workout: { name: HISTORY_NAME, exercises: withRamps(core, exercisesOf(core, ctx), ctx) },
       reason: legsTired && !recentLegs
         ? 'Heute gibt es deine häufigsten Übungen der letzten Monate, ohne Beinarbeit, damit die Beine geschont bleiben.'
         : legsTired
@@ -77,7 +85,7 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
   if (picked.length === 0) {
     return { workout: { name: 'Ganzkörper', exercises: [] }, reason: 'Ich habe keine passenden Übungen gefunden, deshalb gibt es gerade kein Training. Sobald Hevy mehr Übungen liefert, geht es weiter.' };
   }
-  const exercises = withRamps(picked, picked.map((t) => exerciseOf(t, ctx)), ctx);
+  const exercises = withRamps(picked, exercisesOf(picked, ctx), ctx);
   const hasHistory = ctx.workouts.some((w) => w.startMs <= ctx.nowMs);
   const withWeights = exercises.some((e) => e.sets.some((s) => s.weightKg !== null));
   return {

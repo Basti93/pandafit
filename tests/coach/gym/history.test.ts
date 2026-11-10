@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { StrengthWorkout, SetType } from '../../../src/coach/hevy';
-import { availableExercises, isAssisted, ladderFor, isRepBased, recentLegWork, suggestNext } from '../../../src/coach/gym/history';
+import { availableExercises, isAssisted, ladderFor, isRepBased, REASONS, recentLegWork, suggestNext } from '../../../src/coach/gym/history';
+import { snapDown } from '../../../src/shared/loads';
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 2, 12);
@@ -251,5 +252,48 @@ describe('suggestNext says why, one sentence per decision path', () => {
   });
   it('no history has no reason to give', () => {
     expect(suggestNext('sq', [], NOW, PLATES).reason).toBe('');
+  });
+});
+
+describe('suggestNext and the place in the workout', () => {
+  // Invented: a chest press done before the incline press in some workouts; both chest.
+  const CHEST: Record<string, string> = { cp: 'chest', ip: 'chest' };
+  const plan = { muscleOf: (id: string) => CHEST[id] };
+  const tired = (daysAgo: number, presses: number, sets: S[]): StrengthWorkout => {
+    const fresh = wk(daysAgo, sets, 'ip', 'Incline');
+    const press = wk(daysAgo, Array.from({ length: presses }, (): S => [50, 10]), 'cp', 'Press').exercises[0]!;
+    return { ...fresh, exercises: [press, ...fresh.exercises] };
+  };
+  const why = (r: ReturnType<typeof suggestNext>) => ({ weightKg: r.weightKg, why: r.why, reason: r.reason });
+
+  it('nimmt nur Verlauf mit ähnlicher Vorermüdung', () => {
+    const ws = [wk(14, [[40, 8], [40, 8]], 'ip'), wk(7, [[40, 8], [40, 8]], 'ip')];
+    const ladder = ladderFor('ip', PLATES, ws, NOW, plan);
+    expect(why(suggestNext('ip', ws, NOW, PLATES, plan, 4))).toEqual({ weightKg: snapDown(40 * 0.88, ladder), why: 'keep', reason: REASONS['other-position'] });
+    expect(snapDown(40 * 0.88, ladder)).toBeLessThan(40);
+  });
+  it('springt nicht hoch, wenn der Verlauf nur müde war', () => {
+    const ws = [tired(14, 6, [[30, 12], [30, 12]]), tired(7, 6, [[30, 12], [30, 12]])];
+    expect(why(suggestNext('ip', ws, NOW, PLATES, plan, 0))).toEqual({ weightKg: 30, why: 'keep', reason: REASONS['other-position'] });
+  });
+  it('never lowers by more than the floor share', () => {
+    const ws = [wk(7, [[40, 8], [40, 8]], 'ip')];
+    const ladder = ladderFor('ip', PLATES, ws, NOW, plan);
+    expect(suggestNext('ip', ws, NOW, PLATES, plan, 20).weightKg).toBe(snapDown(40 * 0.75, ladder));
+  });
+  it('plans from the comparable sessions only when there are some', () => {
+    const ws = [wk(21, [[40, 8], [40, 8]], 'ip'), wk(14, [[40, 8], [40, 9]], 'ip'), tired(7, 6, [[30, 8], [30, 8]])];
+    expect(suggest('ip', ws, NOW, PLATES, plan)).toEqual({ weightKg: 40, reps: 9, why: 'progress' });
+    expect(suggestNext('ip', ws, NOW, PLATES, plan, 6)).toMatchObject({ weightKg: 30, why: 'keep', reason: REASONS['few-sessions'] });
+  });
+  it('keeps bodyweight and assisted work as it is', () => {
+    const body = [wk(7, [[null, 10], [null, 10]], 'ip')];
+    expect(suggestNext('ip', body, NOW, { type: 'bodyweight_reps', primaryMuscle: 'chest' }, plan, 6)).toMatchObject({ weightKg: null, why: 'keep' });
+    const help = [wk(7, [[20, 10], [20, 10]], 'ip')];
+    expect(suggestNext('ip', help, NOW, { type: 'bodyweight_assisted', equipment: 'machine', primaryMuscle: 'chest' }, plan, 6)).toMatchObject({ weightKg: 20, why: 'keep' });
+  });
+  it('without a muscle lookup every past session counts as fresh', () => {
+    const ws = [tired(14, 6, [[30, 8], [30, 8]]), tired(7, 6, [[30, 8], [30, 9]])];
+    expect(suggest('ip', ws, NOW)).toEqual({ weightKg: 30, reps: 9, why: 'progress' });
   });
 });

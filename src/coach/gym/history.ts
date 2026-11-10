@@ -5,7 +5,8 @@ import { extendDown, ladderFrom, nextUp, snapDown, type Ladder, type LoadStepOve
 import { LEG_MUSCLES } from '../../shared/legs';
 import { repRangeOf } from '../../shared/muscle-targets';
 import { mainStudio, studioKey, resolveStudio, type Renames } from '../../shared/studio';
-import { COMPARABLE_DAYS, DROP_STEP_BACK, LONG_BREAK_DAYS, MIN_COMPARABLE, RECENT_DAYS, STEP_BACK } from './limits';
+import { COMPARABLE_DAYS, DROP_STEP_BACK, LONG_BREAK_DAYS, MIN_COMPARABLE, PRE_FATIGUE_SHARE_MIN, PRE_FATIGUE_SHARE_PER_SET, PRE_FATIGUE_TOLERANCE, RECENT_DAYS, STEP_BACK } from './limits';
+import { hardSetsOf, preFatigue, type MuscleOf } from './pre-fatigue';
 
 const DAY_MS = 86_400_000;
 export { LEG_MUSCLES };
@@ -19,7 +20,7 @@ export const isRepBased = (t: ExerciseTemplate): boolean => REP_TYPES.includes(t
 
 export type Availability = { templateId: string; title: string; lastMs: number; recent: boolean };
 /** Which way the decision went; the key into REASONS. */
-type Path = 'none' | 'all-reps' | 'not-all-reps' | 'few-sessions' | 'zero-left' | 'plenty-left' | 'dropped' | 'long-break' | 'assisted';
+type Path = 'none' | 'all-reps' | 'not-all-reps' | 'few-sessions' | 'zero-left' | 'plenty-left' | 'dropped' | 'long-break' | 'assisted' | 'other-position';
 /** The words for each decision path, shown to the person as the reason of the next step. */
 export const REASONS: Record<Path, string> = {
   none: '',
@@ -31,6 +32,7 @@ export const REASONS: Record<Path, string> = {
   dropped: 'weil die Leistung zweimal gesunken ist',
   'long-break': 'weil die letzte Einheit lange her ist',
   assisted: 'weil die Hilfe gleich bleibt',
+  'other-position': 'weil die Übung diesmal an anderer Stelle im Training steht',
 };
 export type Suggestion = { weightKg: number | null; reps: number; why: 'progress' | 'keep' | 'step-back' | 'none'; reason: string };
 const done = (weightKg: number | null, reps: number, why: Suggestion['why'], path: Path): Suggestion => ({ weightKg, reps, why, reason: REASONS[path] });
@@ -53,26 +55,37 @@ export function availableExercises(workouts: StrengthWorkout[], nowMs: number): 
 
 /** What progression needs to know about an exercise: the catalog entry's fields. */
 export type ExerciseInfo = { type?: string; equipment?: string; primaryMuscle?: string | null };
-/** Where the plan is for: the studio (undefined: the main one) and the person's weight-step overrides. */
-export type Plan = { studio?: string; overrides?: LoadStepOverrides; renames?: Renames };
+/**
+ * Where the plan is for: the studio (undefined: the main one) and the person's weight-step overrides. `muscleOf` lets the history
+ * see where an exercise stood in each past workout; without it every past session counts as done fresh.
+ */
+export type Plan = { studio?: string; overrides?: LoadStepOverrides; renames?: Renames; muscleOf?: MuscleOf };
 
 type Sets = StrengthWorkout['exercises'][number]['workSets'];
-type Session = { ms: number; weightKg: number | null; minReps: number; sets: number[]; effort?: Effort };
+/** `preSets`: hard sets for the same muscle before the exercise in that workout. */
+type Session = { ms: number; weightKg: number | null; minReps: number; sets: number[]; preSets: number; effort?: Effort };
+type Occurrence = { ms: number; sets: Sets; preSets: number; effort?: Effort };
 
 /** The bucket the plan is for. No studio known means the main studio, or the one shared bucket. */
 export const plannedKey = (workouts: StrengthWorkout[], plan: Plan | undefined): string => (plan?.studio ? resolveStudio(plan.studio, plan.renames) : undefined) ?? mainStudio(workouts, plan?.renames) ?? '';
 
-/** The exercise's sessions in the planned studio only, oldest first. Several occurrences in one workout are one session. */
-function occurrences(templateId: string, workouts: StrengthWorkout[], nowMs: number, plan: Plan | undefined): { ms: number; sets: Sets; effort?: Effort }[] {
+/**
+ * The exercise's sessions in the planned studio only, oldest first. Several occurrences in one workout are one session; its
+ * pre-fatigue is the one of the first occurrence.
+ */
+function occurrences(templateId: string, workouts: StrengthWorkout[], nowMs: number, plan: Plan | undefined): Occurrence[] {
   const main = mainStudio(workouts, plan?.renames);
   const key = plannedKey(workouts, plan);
-  const out: { ms: number; sets: Sets; effort?: Effort }[] = [];
+  const muscleOf = plan?.muscleOf;
+  const out: Occurrence[] = [];
   for (const w of workouts) {
     if (w.startMs > nowMs || studioKey(w, main, plan?.renames) !== key) continue;
     const mine = w.exercises.filter((e) => e.templateId === templateId);
     if (mine.length === 0) continue;
     const effort = [...mine].reverse().find((e) => e.effort)?.effort;
-    out.push({ ms: w.startMs, sets: mine.flatMap((e) => e.workSets), ...(effort ? { effort } : {}) });
+    const pre = muscleOf ? preFatigue(w.exercises.map((e) => ({ primaryMuscle: muscleOf(e.templateId), hardSets: hardSetsOf(e.workSets), supersetId: null }))) : [];
+    const preSets = pre[w.exercises.findIndex((e) => e.templateId === templateId)] ?? 0;
+    out.push({ ms: w.startMs, sets: mine.flatMap((e) => e.workSets), preSets, ...(effort ? { effort } : {}) });
   }
   return out.sort((a, b) => a.ms - b.ms);
 }
@@ -85,7 +98,7 @@ function sessionsOf(templateId: string, workouts: StrengthWorkout[], nowMs: numb
     if (work.length === 0) continue;
     const top = Math.max(...work.map((s) => s.weightKg ?? 0));
     const atTop = work.filter((s) => (s.weightKg ?? 0) === top).map((s) => s.reps as number);
-    out.push({ ms: o.ms, weightKg: top > 0 ? top : null, minReps: Math.min(...atTop), sets: atTop, ...(o.effort ? { effort: o.effort } : {}) });
+    out.push({ ms: o.ms, weightKg: top > 0 ? top : null, minReps: Math.min(...atTop), sets: atTop, preSets: o.preSets, ...(o.effort ? { effort: o.effort } : {}) });
   }
   return out;
 }
@@ -111,18 +124,27 @@ export const stepWords = (l: Ladder): string => `in ${String(l.stepKg).replace('
  * session did at least as many reps as the lowest set of the session before it, at the same or a lower weight.
  * The rep range is the exercise's own, the weight steps are the ones reachable in the planned studio. Only sessions
  * of that studio count. "0 left" is no reason on its own to hold or lower the weight: the numbers decide.
+ * `preSets` is today's hard sets for the same muscle before the exercise. Only sessions with a similar pre-fatigue are compared;
+ * with none of those, the newest session is kept, lowered by a share when today comes more tired than it did, never raised.
  */
-export function suggestNext(templateId: string, workouts: StrengthWorkout[], nowMs: number, ex?: ExerciseInfo, plan?: Plan): Suggestion {
-  const sessions = templateId ? sessionsOf(templateId, workouts, nowMs, plan) : [];
+export function suggestNext(templateId: string, workouts: StrengthWorkout[], nowMs: number, ex?: ExerciseInfo, plan?: Plan, preSets = 0): Suggestion {
+  const all = templateId ? sessionsOf(templateId, workouts, nowMs, plan) : [];
+  const sessions = all.filter((s) => Math.abs(s.preSets - preSets) <= PRE_FATIGUE_TOLERANCE);
   const range = repRangeOf({ primaryMuscle: ex?.primaryMuscle });
-  const last = sessions[sessions.length - 1];
-  if (!last) return done(null, range.min, 'none', 'none');
+  const newest = all[all.length - 1];
+  if (!newest) return done(null, range.min, 'none', 'none');
+  const last = sessions[sessions.length - 1] ?? newest;
   // Weighted work stays in the rep range; bodyweight work has no upper limit, since reps are its only progression.
   const fit = (r: number): number => last.weightKg === null ? Math.max(1, r) : Math.min(range.max, Math.max(range.min, r));
   const reps = fit(last.minReps);
   const assisted = isAssisted(ex?.type);
   const ladder = ladderFor(templateId, ex, workouts, nowMs, plan);
   const stepBack = (kg: number): number => snapDown(kg * STEP_BACK, ladder);
+  if (sessions.length === 0) {
+    if (last.weightKg === null || assisted || preSets <= last.preSets) return done(last.weightKg, reps, 'keep', 'other-position');
+    const share = Math.max(PRE_FATIGUE_SHARE_MIN, 1 - PRE_FATIGUE_SHARE_PER_SET * (preSets - last.preSets));
+    return done(snapDown(last.weightKg * share, ladder), reps, 'keep', 'other-position');
+  }
   if (nowMs - last.ms > LONG_BREAK_DAYS * DAY_MS) {
     return done(last.weightKg === null || assisted ? last.weightKg : stepBack(last.weightKg), reps, 'step-back', 'long-break');
   }
