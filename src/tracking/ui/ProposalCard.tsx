@@ -5,6 +5,7 @@ import { DECLINE, TAKE } from '../../shared/wording';
 import { NextChangeCard } from './NextChangeCard';
 import { RuleCard } from './RuleCard';
 import { BlockCard } from './BlockCard';
+import { DriftCard } from './DriftCard';
 import { PushCard } from './PushCard';
 import { Week } from './WeekList';
 import { planRows } from './done-days';
@@ -25,6 +26,7 @@ export function ProposalCard({ port, now, newId, m }: Env & { m: ChatEntry }) {
   if (m.nextChange) return <NextChangeCard port={port} changeId={m.nextChange} records={changeRecs} now={now} />;
   if (m.rule) return <RuleCard port={port} ruleId={m.rule} records={ruleRecs} catalog={catalog} now={now} />;
   if (m.block) return <BlockCard port={port} blockId={m.block} msgId={m.id} now={now} />;
+  if (m.drift) return <DriftCard port={port} now={now} newId={newId} m={m} />;
   if (m.askPush) return <PushCard port={port} now={now} newId={newId} m={m} />;
   if (!m.proposal) return null;
   const p = m.proposal;

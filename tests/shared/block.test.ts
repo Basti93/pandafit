@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { activeBlock, blockDates, blockId, blockRecord, blockWeek, blockWeeks, readBlock, templateFor, type BlockBody, type BlockDay } from '../../src/shared/block';
+import { activeBlock, blockLine, blockDates, blockId, blockRecord, blockWeek, blockWeeks, readBlock, templateFor, type BlockBody, type BlockDay } from '../../src/shared/block';
 import { validBody } from '../../src/web/validate';
 
 const day = (sport: BlockDay['sport'], hardness: BlockDay['hardness'], extra: Partial<BlockDay> = {}): BlockDay => ({ sport, hardness, ...extra });
@@ -120,5 +120,28 @@ describe('blockWeeks and ids', () => {
     expect(blockId('m1')).toBe('block-m1');
     expect(validBody('block', block())).toBe(true);
     expect(validBody('block', { state: 'active' })).toBe(false);
+  });
+});
+
+describe('blockLine', () => {
+  const plans = (b: BlockBody) => blockWeeks(b).map((w) => ({ kind: 'weekplan' as const, id: w.weekStart, updatedMs: 1, deleted: false, body: { ...w, fromMessage: 'm', acceptedMs: 1 } }));
+  it('says the week of the section and what comes next', () => {
+    const b = block();
+    expect(blockLine(b, '2026-12-08', plans(b))).toBe('Woche 2 von 4 im festen Abschnitt. Als Nächstes kommt Unterkörper B am Mittwoch.');
+    expect(blockLine(b, '2026-12-09', plans(b))).toBe('Woche 2 von 4 im festen Abschnitt. Als Nächstes kommt Unterkörper B heute.');
+  });
+  it('names the light last week', () => {
+    const b = block();
+    expect(blockLine(b, '2026-12-22', plans(b))).toBe('Letzte Woche im Abschnitt, sie ist leichter.');
+  });
+  it('says nothing for a section that is not running', () => {
+    const b = block();
+    expect(blockLine(b, '2026-12-28', plans(b))).toBeNull();
+    expect(blockLine(b, '2026-11-29', plans(b))).toBeNull();
+    expect(blockLine(block({ state: 'ended' }), '2026-12-08', [])).toBeNull();
+    expect(blockLine(null, '2026-12-08', [])).toBeNull();
+  });
+  it('leaves out the next day when no plan has one', () => {
+    expect(blockLine(block(), '2026-12-08', [])).toBe('Woche 2 von 4 im festen Abschnitt.');
   });
 });

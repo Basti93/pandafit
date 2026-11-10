@@ -6,6 +6,7 @@ import { PageHead, RowCard, StandCard, useBackEntry } from '../../tracking/ui/ki
 import { ExercisesScreen, RoutinesScreen, WorkoutScreen } from '../../tracking/ui';
 import { usePortRecords } from '../../tracking/ui/hooks';
 import { exercisesSentence, routinesSentence } from '../../tracking/ui/kraft-view';
+import { BlockLine } from '../../tracking/ui/BlockLine';
 import { useSportWeek } from '../../tracking/ui/sport-week';
 import { liftTrends } from '../../tracking/progress';
 import { useApp } from '../AppContext';
@@ -52,6 +53,7 @@ export function Training({ entry, onEntryDone, onDone, onLive }: { entry: 'resum
         <div className="tk-screen tk-headblock">
           <h1 className="tk-sr">Kraft</h1>
           {week.loaded && <StandCard kicker="Kraft · diese Woche" text={week.text} marks={week.marks} marksLabel={week.label} />}
+          <BlockLine port={port} now={env.now} />
         </div>
       )}
       <WorkoutScreen key={routine ? 'routine' : 'plan'} port={port} resume={entry === 'resume'} onActive={(v) => { setRunning(v); onLive?.(v); }} onDone={onDone} plan={plan?.workout ?? null} routine={routine}

@@ -16,6 +16,7 @@ import { LookBack } from './StatsScreen';
 import { HealthCard, HealthPage } from './HealthPage';
 import { healthOf } from './health-view';
 import { DaySheet } from './DaySheet';
+import { BlockLine } from './BlockLine';
 import { ProposalsSheet } from './ProposalCard';
 import { useOpenProposals } from './proposals';
 import { isRest, KIND_ICON, SPORT_ICON, restDaysText, shortDay, weekRangeText, weekSentence } from './week-path';
@@ -95,6 +96,7 @@ export function CoachScreen({ port, now, newId, openChat = false, onChatClosed }
         <p className="tk-weeksentence">
           {spontaneous ? `Heute: ${fr.advice.line}` : current ? weekSentence(dayRows, today, current.days) : loaded ? 'Für diese Woche gibt es noch keinen Plan.' : ''}
         </p>
+        <BlockLine port={port} now={now} />
         <div className="tk-weekgoal">
           <span className="tk-weekgoal-icon" aria-hidden="true"><Icon name="ziel" size={22} /></span>
           <p><b>Dein Ziel:</b> {goalSentence(goal)}{!goalChosen && <> <span className="muted">Das ist ein Vorschlag.</span></>}</p>

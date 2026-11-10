@@ -1,4 +1,4 @@
-import { blockDates, blockWeeks, readBlock, type BlockBody } from './block';
+import { blockDates, blockRecord, blockWeeks, readBlock, type BlockBody } from './block';
 import { FRAME_ID, readFrame, frameRecord } from './frame';
 import { above } from './exercise-links';
 import type { TrackedRecord } from './records';
@@ -74,5 +74,66 @@ export function blockUndoWrites(o: { block: TrackedRecord; frame: readonly Track
   // The frame goes back only while it is still the one the take wrote.
   if (f && frameRec && body.priorMode && f.mode !== body.priorMode && (body.frameMs === undefined || frameRec.updatedMs === body.frameMs)) writes.push(frameRecord({ mode: body.priorMode, minutes: f.minutes, ...(f.today ? { today: f.today } : {}) }, o.nowMs, frameRec));
   writes.push({ ...o.block, updatedMs: above(o.nowMs, o.block), deleted: true });
+  return writes;
+}
+
+const frameWith = (frame: readonly TrackedRecord[], mode: 'week' | 'spontaneous', nowMs: number): TrackedRecord | null => {
+  const { rec, body } = frameBody(frame);
+  return rec && body ? frameRecord({ mode, minutes: body.minutes, ...(body.today ? { today: body.today } : {}) }, nowMs, rec) : null;
+};
+
+/**
+ * The natural end of a section: the frame goes back to the earlier mode, but only while it is still the one the take wrote;
+ * then the section is `ended`. The frame comes first and the section last. null when the section is not `active`.
+ */
+export function blockEndWrites(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; nowMs: number }): TrackedRecord[] | null {
+  const body = o.block.deleted ? null : readBlock(o.block.body);
+  if (!body || body.state !== 'active') return null;
+  const { rec, body: f } = frameBody(o.frame);
+  const writes: TrackedRecord[] = [];
+  if (rec && f && body.priorMode && f.mode !== body.priorMode && body.frameMs !== undefined && rec.updatedMs === body.frameMs) {
+    const w = frameWith(o.frame, body.priorMode, o.nowMs);
+    if (w) writes.push(w);
+  }
+  writes.push({ ...o.block, updatedMs: above(o.nowMs, o.block), body: { ...body, state: 'ended' } });
+  return writes;
+}
+
+/**
+ * "Ja, locker planen": the frame goes to spontaneous and the section ends. Week plans and the goal stay as they are.
+ * `frameMs` of the section then names the frame this wrote, so the undo restores it only while it is unchanged. null when the section is not `active`.
+ */
+export function driftTakeWrites(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; nowMs: number }): TrackedRecord[] | null {
+  const body = o.block.deleted ? null : readBlock(o.block.body);
+  if (!body || body.state !== 'active') return null;
+  const { body: f } = frameBody(o.frame);
+  const writes: TrackedRecord[] = [];
+  let frameMs = body.frameMs;
+  if (f && f.mode !== 'spontaneous') {
+    const w = frameWith(o.frame, 'spontaneous', o.nowMs);
+    if (w) { writes.push(w); frameMs = w.updatedMs; }
+  }
+  writes.push({ ...o.block, updatedMs: above(o.nowMs, o.block), body: { ...body, state: 'ended', ...(frameMs !== undefined ? { frameMs } : {}) } });
+  return writes;
+}
+
+/** The id of the section that continues an ended one after the undo. A record never moves back from `ended`, so the undo writes a new record. */
+export const resumedBlockId = (endedId: string): string => `${endedId}-b`;
+
+/**
+ * Undoes `driftTakeWrites`: the frame goes back to week mode only while it is still the one the take wrote; then the same section
+ * runs on as a new `active` record (an `ended` record never moves back, see applyRecord). null when it is not `ended`.
+ */
+export function driftUndoWrites(o: { block: TrackedRecord; frame: readonly TrackedRecord[]; nowMs: number }): TrackedRecord[] | null {
+  const body = o.block.deleted ? null : readBlock(o.block.body);
+  if (!body || body.state !== 'ended') return null;
+  const { rec, body: f } = frameBody(o.frame);
+  const writes: TrackedRecord[] = [];
+  let frameMs = body.frameMs;
+  if (rec && f && f.mode === 'spontaneous' && body.frameMs !== undefined && rec.updatedMs === body.frameMs) {
+    const w = frameWith(o.frame, 'week', o.nowMs);
+    if (w) { writes.push(w); frameMs = w.updatedMs; }
+  }
+  writes.push(blockRecord(resumedBlockId(o.block.id), { ...body, state: 'active', ...(frameMs !== undefined ? { frameMs } : {}) }, o.nowMs));
   return writes;
 }

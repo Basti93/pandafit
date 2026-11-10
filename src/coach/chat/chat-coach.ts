@@ -25,6 +25,7 @@ import { activeBlock, blockId, blockRecord, readBlock, type BlockBody } from '..
 import { resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
 import type { ReviewOpened, ReviewReason } from './month-review';
+import { DRIFT_QUESTION } from './block-watch';
 
 const EXCLUDABLE = FAMILY_IDS.filter((f) => f !== 'other');
 
@@ -676,6 +677,11 @@ export class ChatCoach {
   /** Bo asks how hard he may push, without AI: the card under the message holds the choices. */
   askPush(id: string): void {
     this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: this.deps.nowMs(), push: true, askPush: true });
+  }
+
+  /** Bo asks whether the fixed section still fits, without AI: the card under the message holds the answers. */
+  askDrift(id: string, blockId: string): void {
+    this.put(id, { role: 'coach', text: DRIFT_QUESTION, atMs: this.deps.nowMs(), push: true, drift: blockId });
   }
 
   /** The change, rule or block record is written first, so the message never points at nothing. The coach only ever writes it as `proposed`. */

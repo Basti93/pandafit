@@ -2,7 +2,7 @@ import type { TrackedRecord } from './records';
 import { above } from './exercise-links';
 import { lastSundayOf } from './dates';
 import type { PlanMode } from './frame';
-import { addDays, checkWeekPlan, mondayOf, parseProposal, type Hardness, type PlanDay, type Sport, type WeekProposal } from './week-plan';
+import { addDays, checkWeekPlan, hasSport, mondayOf, parseProposal, planFor, WEEKDAY_LABEL, type Hardness, type PlanDay, type Sport, type WeekProposal } from './week-plan';
 import { ruleNumber, ruleRange } from './training-policy';
 
 /**
@@ -145,4 +145,22 @@ export function templateFor(b: BlockBody, planDate: string): BlockTemplate | nul
     if (t !== undefined) return b.templates[t] ?? null;
   }
   return null;
+}
+
+/**
+ * The one line for Woche and Kraft: the week of the section and which strength day comes next (from the stored week plans),
+ * or the note for the light last week. null for anything but a running section.
+ */
+export function blockLine(b: BlockBody | null, today: string, plans: readonly TrackedRecord[]): string | null {
+  if (!b || b.state !== 'active' || !b.start || !b.end || today < b.start || today > b.end) return null;
+  const { n, of, light } = blockWeek(b, today);
+  if (light) return 'Letzte Woche im Abschnitt, sie ist leichter.';
+  const head = `Woche ${n} von ${of} im festen Abschnitt.`;
+  for (let d = today; d <= b.end; d = addDays(d, 1)) {
+    const plan = planFor([...plans], d);
+    if (!plan || !hasSport(plan, 'gym')) continue;
+    const template = templateFor(b, d);
+    if (template) return `${head} Als Nächstes kommt ${template.name} ${d === today ? 'heute' : `am ${WEEKDAY_LABEL[weekdayIndex(d)]}`}.`;
+  }
+  return head;
 }

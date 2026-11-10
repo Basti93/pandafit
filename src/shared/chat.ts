@@ -43,6 +43,8 @@ export type ChatMessage = {
   block?: string;
   /** The monthly review: the observations Bo made, each with its reason (also in `text`). */
   review?: { observations: { text: string; reason: string }[] };
+  /** The id of the `block` record (a fixed section) Bo asks about: the last weeks looked different than planned. */
+  drift?: string;
   /** Bo asks how hard he may push; the card offers the three choices and "Später". */
   askPush?: true;
   /** On the rider's answer to that question: the push before (null: never chosen) and the one chosen, so Rückgängig restores it exactly. */
@@ -74,6 +76,7 @@ export function readChat(x: unknown): ChatMessage | null {
   if (typeof x.nextChange === 'string') m.nextChange = x.nextChange;
   if (typeof x.rule === 'string') m.rule = x.rule;
   if (typeof x.block === 'string') m.block = x.block;
+  if (typeof x.drift === 'string') m.drift = x.drift;
   if (x.askPush === true) m.askPush = true;
   if (x.pushChange !== undefined) { const c = readPushChange(x.pushChange); if (!c) return null; m.pushChange = c; }
   if (x.workoutChange !== undefined) { const c = readWorkoutChange(x.workoutChange); if (!c) return null; m.workoutChange = c; }

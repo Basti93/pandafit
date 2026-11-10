@@ -470,3 +470,9 @@ describe('Härte im Chat', () => {
     expect(CHAT_SYSTEM_PROMPT).toContain('haerteJetzt');
   });
 });
+
+test('askDrift writes the question about the fixed section without AI', () => {
+  const s = store();
+  coach(s, async () => { throw new Error('no AI'); }).askDrift('p', 'block-m1');
+  expect(replies(s)).toMatchObject([{ text: 'Die letzten zwei Wochen sahen anders aus als geplant. Sollen wir wieder locker planen?', push: true, drift: 'block-m1' }]);
+});
