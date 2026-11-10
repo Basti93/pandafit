@@ -48,6 +48,8 @@ export const CHAT_KEEP_MS = 90 * 86_400_000;
 /** The coach sees this many of the latest messages. */
 export const CHAT_CONTEXT = 30;
 export const MAX_CHAT_TEXT = 2000;
+/** Product format limit for one review observation: its text and its reason are each at most this long. */
+export const MAX_OBSERVATION_CHARS = 150;
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every((s) => typeof s === 'string');
@@ -76,7 +78,7 @@ function readReview(x: unknown): ChatMessage['review'] | null {
   const observations: { text: string; reason: string }[] = [];
   for (const o of x.observations) {
     if (!isObj(o) || typeof o.text !== 'string' || typeof o.reason !== 'string') return null;
-    observations.push({ text: o.text, reason: o.reason });
+    observations.push({ text: o.text.slice(0, MAX_OBSERVATION_CHARS), reason: o.reason.slice(0, MAX_OBSERVATION_CHARS) });
   }
   return { observations };
 }

@@ -61,3 +61,9 @@ test('latestReview nimmt die jüngste Coach-Nachricht mit Rückblick', () => {
   expect(latestReview(t)).toEqual({ atMs: 5, observations: [{ text: 'neu', reason: 'weil' }] });
   expect(latestReview([])).toBeNull();
 });
+
+test('ein gespeicherter Rückblick wird auf 150 Zeichen je Text und Grund gekürzt', () => {
+  const long = 'x'.repeat(1000);
+  const m = readChat({ role: 'coach', text: 'Rückblick', atMs: 1, review: { observations: [{ text: long, reason: long }] } });
+  expect(m?.review?.observations[0]).toEqual({ text: 'x'.repeat(150), reason: 'x'.repeat(150) });
+});

@@ -1,6 +1,6 @@
 import { BO_PERSONA } from '../../shared/bo';
 import { changeId, changeRecord, readNextOps, type NextOp } from '../../shared/changes';
-import { CHAT_CONTEXT, CHAT_KEEP_MS, MAX_CHAT_TEXT, chatThread, readWorkoutChange, waitingMessage, type ChatEntry, type ChatMessage } from '../../shared/chat';
+import { CHAT_CONTEXT, CHAT_KEEP_MS, MAX_CHAT_TEXT, MAX_OBSERVATION_CHARS, chatThread, readWorkoutChange, waitingMessage, type ChatEntry, type ChatMessage } from '../../shared/chat';
 import { EXERCISES, exerciseTitles, type Exercise } from '../../shared/exercises';
 import { checkOps } from '../../tracking/workout-change';
 import { gehtNicht } from '../../shared/wording';
@@ -490,7 +490,7 @@ export class ChatCoach {
       if (!isObj(raw) || typeof raw.opening !== 'string' || typeof raw.nextWeeks !== 'string' || !raw.opening.trim() || !raw.nextWeeks.trim()) return false;
       const clip = (x: unknown, max: number) => (typeof x === 'string' ? x.replace(/\s+/g, ' ').trim().slice(0, max) : '');
       const observations = (Array.isArray(raw.observations) ? raw.observations : [])
-        .flatMap((o) => { const text = isObj(o) ? clip(o.text, 150) : '', why = isObj(o) ? clip(o.reason, 150) : ''; return text && why ? [{ text, reason: why }] : []; })
+        .flatMap((o) => { const text = isObj(o) ? clip(o.text, MAX_OBSERVATION_CHARS) : '', why = isObj(o) ? clip(o.reason, MAX_OBSERVATION_CHARS) : ''; return text && why ? [{ text, reason: why }] : []; })
         .slice(0, ruleNumber('review.max-observations'));
       const asked = Array.isArray(raw.complaintQuestions) ? raw.complaintQuestions.filter(isObj) : [];
       const questions = complaints.map((c) => clip(asked.find((q) => q.id === c.id)?.question, 200) || `Wie geht es dir inzwischen mit ${c.text}?`);

@@ -10,10 +10,9 @@ describe('Gym-Prompt und Rückblick', () => {
     expect(p).toContain('<rueckblick-nur-daten>');
     expect(p).toContain('Beobachtung Eins');
     expect(p).toContain('Beobachtung Zwei');
-    expect(p).toContain('rueckblick-nur-daten');
   });
   it('lässt den Block ohne Rückblick weg', () => {
-    expect(buildGymPrompt(base)).not.toContain('rueckblick-nur-daten>\n');
+    expect(buildGymPrompt(base)).not.toContain('rueckblick');
   });
   it('wägt Muskellücken ab', () => {
     expect(GYM_SYSTEM_PROMPT).toContain('gegen Ziel und Schwerpunkt ab');
