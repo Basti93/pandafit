@@ -1,15 +1,18 @@
 import { ClaudeError } from '../claude-client';
 import type { StrengthWorkout } from '../hevy';
-import { isAssisted, suggestNext } from './history';
+import { isAssisted, LEG_MUSCLES, recentLegWork, stagnates, suggestNext } from './history';
+import { hardSetsOf } from './pre-fatigue';
+import { activeBlock, blockWeek } from '../../shared/block';
+import { addDays } from '../../shared/week-plan';
 import { strengthFacts, type StrengthFacts } from './review-facts';
 import { addNote, type ChangeNote } from '../../shared/change-notes';
 import type { NextStep } from '../../shared/stats';
 import type { RideSummary } from '../metrics';
 import { complaintFromNote, type Complaint } from '../motivation';
-import { checkWorkout, reasonPhrase, WIDOWMAKER_REPS, type GymContext } from './guardrails';
+import { checkWorkout, isCoreExercise, reasonPhrase, WIDOWMAKER_REPS, type GymContext } from './guardrails';
 import { HevyError, type HevyRoutines } from './hevy-routines';
-import { LONG_BREAK_DAYS, MAX_SETS } from './limits';
-import { buildGymPrompt, gymAnswerJsonSchema, gymAnswerSchema, GYM_SYSTEM_PROMPT, honestFigures, NEUTRAL_REASON, type GymAnswer } from './prompt';
+import { LIGHT_SHARE, LONG_BREAK_DAYS, MAX_SETS } from './limits';
+import { buildGymPrompt, gymAnswerJsonSchema, gymAnswerSchema, GYM_SYSTEM_PROMPT, honestFigures, NEUTRAL_REASON, type GymAnswer, type PromptInput } from './prompt';
 import { ruleWorkout } from './rules';
 import { mergeCatalog } from '../../shared/catalog';
 import { isExcluded } from '../../shared/excluded';
@@ -170,6 +173,56 @@ export class GymCoach {
       return statt && nimm ? [{ statt, nimm }] : [];
     }));
   }
+  /**
+   * The fixed section of today, for the guardrail and the prompt; null outside a section. Today's template is that of the rhythm
+   * day; on a day without one it is the one after the template trained last in the section (a missed session is never made up).
+   */
+  private section(id: string, real: StrengthWorkout[], templates: ExerciseTemplate[], now: number, open: Complaint[], avoidLegs: boolean, excluded: Set<string>): { block: NonNullable<GymContext['block']>; prompt: NonNullable<PromptInput['abschnitt']> } | null {
+    if (!this.deps.store) return null;
+    const today = dateKey(now);
+    const b = activeBlock(this.deps.store.all(id, 'block'), today);
+    if (!b?.start) return null;
+    const links = this.state(id).links;
+    const catalog = this.catalog(id);
+    const week = blockWeek(b, today);
+    const hasCore = (w: StrengthWorkout, core: string): boolean => w.exercises.some((e) => isCoreExercise({ templateId: e.templateId ?? '', title: e.title }, core, { catalog, links }));
+    const inBlock = real.filter((w) => dateKey(w.startMs) >= b.start!).sort((a, c) => c.startMs - a.startMs);
+    const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
+    let index = b.rhythm[weekday]?.template;
+    if (index === undefined) {
+      const last = inBlock.map((w) => b.templates.findIndex((t) => t.core.some((c) => hasCore(w, c)))).find((i) => i >= 0);
+      index = last !== undefined ? (last + 1) % b.templates.length : undefined;
+    }
+    if (index === undefined) {
+      for (let k = 1; k <= 7 && index === undefined; k++) index = b.rhythm[(weekday + k) % 7]?.template;
+    }
+    const template = b.templates[index ?? 0]!;
+    const swapped = new Set(takenChangesOf(this.deps.store, id).flatMap((c) => c.ops.flatMap((o) => (o.op === 'swap' ? [o.exerciseId] : []))));
+    const legsTired = avoidLegs || recentLegWork(real, templates, now);
+    const exempt = new Set<string>();
+    const core: NonNullable<PromptInput['abschnitt']>['core'] = [];
+    for (const c of template.core) {
+      const t = templates.find((x) => isCoreExercise({ templateId: x.id, title: x.title }, c, { catalog, links }));
+      const entry = catalog.find((e) => e.id === c);
+      const title = t?.title ?? entry?.title ?? c;
+      const stag = [c, ...Object.entries(links).filter(([, own]) => own === c).map(([hevy]) => hevy)].some((tid) => stagnates(tid, real, now));
+      const muscle = entry?.primaryMuscle ?? t?.primaryMuscle;
+      const gone = isExcluded({ id: c, templateId: t?.id, title }, excluded, catalog, links) || swapped.has(c);
+      if (!t || stag || gone || open.length > 0 || (legsTired && muscle !== undefined && LEG_MUSCLES.includes(muscle))) exempt.add(c);
+      if (t && !gone) core.push({ templateId: t.id, title, stagnates: stag });
+    }
+    let lightCap: number | null = null;
+    if (week.light) {
+      const lightMonday = addDays(b.start, (week.of - 1) * 7);
+      const before = real.filter((w) => dateKey(w.startMs) >= b.start! && dateKey(w.startMs) < lightMonday).map((w) => w.exercises.reduce((n, e) => n + hardSetsOf(e.workSets), 0));
+      if (before.length > 0) lightCap = Math.floor(LIGHT_SHARE * (before.reduce((a, n) => a + n, 0) / before.length));
+    }
+    return {
+      block: { core: template.core, exempt, light: week.light, lightCap },
+      prompt: { n: week.n, of: week.of, template: template.name, light: week.light, core },
+    };
+  }
+
   private loadSteps(id: string): LoadStepOverrides {
     if (this.deps.loadSteps) return this.deps.loadSteps(id);
     return this.deps.store ? loadStepsOf(this.deps.store, id, this.studios(id).renames) : new Map();
@@ -463,7 +516,8 @@ export class GymCoach {
       const goal = this.deps.store ? goalOfProfile(this.deps.store, id, dateKey(now)) : goalOf([], dateKey(now));
       // Computed once: the guardrail and the prompt must hold the same push.
       const push = effectivePush(goal, open);
-      const ctx: GymContext = { workouts: real, templates, nowMs: now, push, excluded, catalog: this.catalog(id), links: this.state(id).links, ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, ...(avoidLegs ? { avoidLegs: true } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) };
+      const section = this.section(id, real, templates, now, open, avoidLegs, excluded);
+      const ctx: GymContext = { ...(section ? { block: section.block } : {}), workouts: real, templates, nowMs: now, push, excluded, catalog: this.catalog(id), links: this.state(id).links, ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, ...(avoidLegs ? { avoidLegs: true } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) };
       const rule = ruleWorkout(ctx);
       if (rule.guard) console.warn(`Regel-Training: erster Plan verworfen (${rule.guard})`);
       if (open.length > 0 && rule.workout.exercises.length > 0) rule.reason = `${rule.reason} ${COMPLAINT_HINT}`;
@@ -484,7 +538,7 @@ export class GymCoach {
       });
       const review = this.deps.store ? latestReview(chatThread(this.deps.store.all(id, 'chat'))) : null;
       const ask = (rejection?: string) => this.deps.ask({
-        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), swaps: this.swapsTaken(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, excluded, ...(avoidLegs ? { avoidLegs: true } : {}), goal, push, ...(this.deps.store ? { wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(review ? { review } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
+        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), swaps: this.swapsTaken(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, excluded, ...(avoidLegs ? { avoidLegs: true } : {}), goal, push, ...(this.deps.store ? { wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(review ? { review } : {}), ...(section ? { abschnitt: section.prompt } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
         systemPrompt: GYM_SYSTEM_PROMPT, schema: gymAnswerJsonSchema,
       });
       let raw = await ask();

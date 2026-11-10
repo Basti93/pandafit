@@ -17,6 +17,7 @@ import type { Complaint } from '../../../src/coach/motivation';
 import { RecordStore } from '../../../src/coach/tracking/store';
 import { mergeCatalog } from '../../../src/shared/catalog';
 import { studioRecord } from '../../../src/shared/studio';
+import { blockRecord, type BlockBody } from '../../../src/shared/block';
 import { goalRecord } from '../../../src/shared/personal';
 import { linkRecord } from '../../../src/shared/exercise-links';
 import { EXERCISES, linkHevyTemplates } from '../../../src/shared/exercises';
@@ -1190,5 +1191,61 @@ describe('Härte', () => {
     expect(outside(calls[0]!.prompt)).toContain('Härte: Fordere mich.');
     expect(calls).toHaveLength(1);
     expect(coach.state('p1').next?.source).toBe('claude');
+  });
+});
+
+describe('Abschnitt', () => {
+  const THU = Date.UTC(2026, 10, 5, 12);
+  const TPL = ['a1', 'a2', 'a3', 'b1', 'b2', 'b3'].map((id) => T(id, 'machine', id.startsWith('a') ? 'chest' : 'lats'));
+  const past = (): StrengthWorkout[] => [
+    wk(24, 'h1', TPL.map((t) => ({ t: t.id, kg: 40, reps: 8 }))),
+    wk(17, 'h2', TPL.map((t) => ({ t: t.id, kg: 40, reps: 9 }))),
+  ];
+  const day = (sport: string, hardness: string, template?: number) => ({ sport, hardness, ...(template !== undefined ? { template } : {}) });
+  const body = (): BlockBody => ({
+    state: 'active', atMs: 1, start: '2026-11-02', end: '2026-11-29',
+    templates: [{ name: 'Oberkörper A', core: ['a1', 'a2', 'a3'] }, { name: 'Unterkörper B', core: ['b1', 'b2', 'b3'] }],
+    rhythm: [day('gym', 'moderate', 0), day('bike', 'easy'), day('rest', 'easy'), day('gym', 'moderate', 1), day('rest', 'easy'), day('bike', 'moderate'), day('rest', 'easy')] as BlockBody['rhythm'],
+  });
+  const run = async (now: number, workouts: StrengthWorkout[], reply: unknown) => {
+    const store = new RecordStore({ dir: path.join(tmp, 'tracking') });
+    store.putMany('p1', [blockRecord('block-m1', body(), NOW)]);
+    const calls: Input[] = [];
+    const coach = new GymCoach({
+      dir, nowMs: () => now, store, ask: async (i) => { calls.push(i); return reply; },
+      workouts: () => workouts, templates: async () => TPL, refreshTemplates: async () => TPL, ready: () => true,
+      bike: () => ({ summaries: [], complaints: [] }), complaint: () => {}, writer: () => null,
+    });
+    await coach.tick('p1');
+    return { coach, calls };
+  };
+  const planOf = (ids: string[]) => answer({ workout: { name: 'Plan', exercises: ids.map((id) => ex(id, [set(40, 10), set(40, 10)])) } });
+  it('plant nach einer ausgefallenen Einheit die nächste Vorlage', async () => {
+    const { coach, calls } = await run(THU, past(), planOf(['b1', 'b2', 'b3']));
+    const a = block(calls[0]!.prompt, 'abschnitt-nur-daten');
+    expect(a.vorlage).toBe('Unterkörper B');
+    expect(a.kernuebungen.map((k: any) => k.templateId)).toEqual(['b1', 'b2', 'b3']);
+    expect(a.woche).toBe(1);
+    expect(coach.state('p1').next?.source).toBe('claude');
+  });
+  it('nimmt an einem Tag ohne Krafttraining die Vorlage nach der zuletzt trainierten', async () => {
+    const fri = Date.UTC(2026, 10, 6, 12);
+    const trained = [...past(), wk(0, 'h3', [{ t: 'a1', kg: 40, reps: 10 }, { t: 'a2', kg: 40, reps: 10 }, { t: 'a3', kg: 40, reps: 10 }])];
+    const { calls } = await run(fri, trained, planOf(['a1', 'a2', 'a3']));
+    expect(block(calls[0]!.prompt, 'abschnitt-nur-daten').vorlage).toBe('Unterkörper B');
+  });
+  it('lehnt einen Plan ohne Kernübung ab und fällt auf den Regelplan mit Kernübungen zurück', async () => {
+    const { coach, calls } = await run(THU, past(), planOf(['a1', 'a2']));
+    expect(calls).toHaveLength(2);
+    expect(block(calls[1]!.prompt, 'ablehnung-nur-daten')).toBe('Kernübung fehlt');
+    const next = coach.state('p1').next!;
+    expect(next.source).toBe('rules');
+    expect(next.workout.exercises.map((e) => e.templateId)).toEqual(expect.arrayContaining(['b1', 'b2', 'b3']));
+  });
+  it('plant nach dem Ende wieder locker', async () => {
+    const after = Date.UTC(2026, 11, 3, 12);
+    const { calls } = await run(after, past(), planOf(['a1', 'a2', 'a3']));
+    expect(calls[0]!.prompt).not.toContain('abschnitt-nur-daten');
+    expect(outside(calls[0]!.prompt)).not.toContain('Im Abschnitt bleiben');
   });
 });

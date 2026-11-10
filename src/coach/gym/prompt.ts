@@ -91,6 +91,8 @@ export type PromptInput = {
   review?: { observations: { text: string; reason: string }[] };
   /** How hard the person trains, an open or healing complaint already counted in. Without it, from the goal and the complaints. */
   push?: Push;
+  /** The fixed section of today: week n of `of`, today's template with its core exercises (stagnating ones marked). */
+  abschnitt?: { n: number; of: number; template: string; light: boolean; core: { templateId: string; title: string; stagnates: boolean }[] };
 };
 
 const STRENGTH_WORDS = { muscle: 'Muskelaufbau', strength: 'Kraft', fitness: 'Fitness' } as const;
@@ -103,6 +105,8 @@ const pushLine = (push: Push): string => {
   const r = reserveFor(push);
   return `Härte: ${PUSH_LABEL[push]}. Plane die Arbeitssätze mit ${r.min} bis ${r.max} Wiederholungen Reserve. ${PUSH_RULES[push]}`;
 };
+
+const ABSCHNITT_LINE = 'Die Person trainiert in einem festen Abschnitt; der Block abschnitt-nur-daten zeigt Woche, Vorlage und Kernübungen, stagnierende sind markiert. Im Abschnitt bleiben die Kernübungen; Ergänzungen wählst du frei. Woche 1 an der oberen Reserve der Härte, jede Woche eine Wiederholung weniger Reserve bis zur unteren Grenze; die leichte Woche mit etwa zwei Dritteln der Sätze bei gleicher Last. Verpasste Einheiten holt niemand nach.';
 
 export function buildGymPrompt(i: PromptInput): string {
   const days = (ms: number) => Math.round((i.nowMs - ms) / DAY_MS * 10) / 10;
@@ -152,6 +156,10 @@ export function buildGymPrompt(i: PromptInput): string {
     ...(i.mobility ? [dataBlock('beweglichkeit', i.mobility)] : []),
     ...(i.rejection ? [dataBlock('ablehnung', i.rejection)] : []),
     ...(i.review?.observations.length ? [dataBlock('rueckblick', i.review.observations.map((o) => ({ text: o.text, grund: o.reason })))] : []),
+    ...(i.abschnitt ? [dataBlock('abschnitt', {
+      woche: i.abschnitt.n, von: i.abschnitt.of, vorlage: i.abschnitt.template, leichteWoche: i.abschnitt.light,
+      kernuebungen: i.abschnitt.core.map((c) => ({ templateId: c.templateId, titel: c.title, ...(c.stagnates ? { stagniert: true } : {}) })),
+    })] : []),
     ...(i.swaps?.length ? [dataBlock('tausch', i.swaps.map((t) => ({ statt: t.statt, nimm: t.nimm })))] : []),
   ];
   const names = [...excluded].flatMap((x) => { const t = byId.get(x)?.title ?? titleOf.get(x); return t ? [t] : []; });
@@ -168,6 +176,7 @@ export function buildGymPrompt(i: PromptInput): string {
     i.mobility ? 'Beweglichkeit (Dehnen) bietet die App selbst an, der Block beweglichkeit-nur-daten zeigt sie. Plane sie nicht und verspreche dazu weder Erholung noch Verletzungsschutz.' : null,
     i.swaps?.length ? 'Bestätigte Tausche gelten: plane die Übung aus nimm statt der aus statt. Sie stehen im Block tausch-nur-daten.' : null,
     i.review?.observations.length ? 'Der Block rueckblick-nur-daten zeigt die Beobachtungen des letzten Monatsrückblicks. Berücksichtige sie als Hinweis, nicht als Pflicht.' : null,
+    i.abschnitt ? ABSCHNITT_LINE : null,
     'Plane jetzt das nächste Training.',
     i.wantNote ? 'Es gab neue Trainings: Schreibe in note eine kurze Rückmeldung dazu und stelle höchstens zwei freiwillige Rückfragen.' : 'Lasse note und questions leer.',
   ].filter((x): x is string => x !== null).join(' ');

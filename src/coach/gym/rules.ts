@@ -3,8 +3,8 @@ import { RECENT_DAYS } from './limits';
 import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
 import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork } from './history';
 import { isExcluded } from '../../shared/excluded';
-import { checkWorkout, executionKeyOf, placedSuggestion, type GymContext } from './guardrails';
-import { muscleOfFrom, preFatigue } from './pre-fatigue';
+import { checkWorkout, executionKeyOf, isCoreExercise, placedSuggestion, type GymContext } from './guardrails';
+import { hardSetsOf, muscleOfFrom, preFatigue } from './pre-fatigue';
 import { warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
 import { durationNote, gymLimit, gymMinutes } from '../../shared/duration';
@@ -67,7 +67,11 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
   const lastMs = new Map(availableExercises(ctx.workouts, ctx.nowMs).map((a) => [a.templateId, a.lastMs]));
   // The same execution only once (the more frequent one); the next most frequent exercise fills the place.
   const keys = new Set<string>();
-  const core = [...count.keys()]
+  // Inside a section the core exercises come first; the most frequent ones fill the rest.
+  const mustHave = (ctx.block?.core ?? []).filter((c) => !ctx.block!.exempt.has(c))
+    .flatMap((c) => { const t = ctx.templates.find((x) => allowed(x) && isCoreExercise({ templateId: x.id, title: x.title }, c, ctx)); return t ? [t] : []; });
+  for (const t of mustHave) { const key = executionKeyOf({ templateId: t.id, title: t.title }, ctx); if (key !== null) keys.add(key); }
+  const frequent = [...count.keys()]
     .map((id) => byId.get(id))
     .filter((t): t is ExerciseTemplate => !!t && allowed(t))
     .sort((a, b) => (count.get(b.id)! - count.get(a.id)!) || ((lastMs.get(b.id) ?? 0) - (lastMs.get(a.id) ?? 0)) || a.id.localeCompare(b.id))
@@ -78,7 +82,8 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
       keys.add(key);
       return true;
     })
-    .slice(0, CORE_SIZE);
+    .filter((t) => !mustHave.some((m) => m.id === t.id));
+  const core = [...mustHave, ...frequent].slice(0, Math.max(CORE_SIZE, mustHave.length));
   if (!machinesOnly && core.length > 0) {
     return {
       workout: { name: HISTORY_NAME, exercises: withRamps(core, exercisesOf(core, ctx), ctx) },
@@ -90,7 +95,8 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
     };
   }
   const machines = ctx.templates.filter((t) => t.equipment === 'machine' && allowed(t));
-  const picked = FALLBACK_MUSCLES.map((m) => machines.find((t) => t.primaryMuscle === m)).filter((t): t is ExerciseTemplate => !!t).slice(0, CORE_SIZE);
+  const fill = FALLBACK_MUSCLES.map((m) => machines.find((t) => t.primaryMuscle === m)).filter((t): t is ExerciseTemplate => !!t && !mustHave.some((m) => m.id === t.id));
+  const picked = [...mustHave, ...fill].slice(0, Math.max(CORE_SIZE, mustHave.length));
   if (picked.length === 0) {
     return { workout: { name: 'Ganzkörper', exercises: [] }, reason: 'Ich habe keine passenden Übungen gefunden, deshalb gibt es gerade kein Training. Sobald Hevy mehr Übungen liefert, geht es weiter.' };
   }
@@ -120,6 +126,21 @@ function trimToLimit(w: GymWorkout, limit: number, catalog: readonly Exercise[])
   return out;
 }
 
+/** The light week: from the last exercises, sets are taken away until the hard sets fit the cap. Without a cap, the workout stays. */
+function capLightWeek(w: GymWorkout, ctx: GymContext): GymWorkout {
+  const cap = ctx.block?.light ? ctx.block.lightCap : null;
+  if (cap === null || cap === undefined) return w;
+  const exercises = w.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
+  const hard = (e: GymExercise): number => hardSetsOf(e.sets);
+  while (exercises.reduce((n, e) => n + hard(e), 0) > cap) {
+    const long = [...exercises].reverse().find((e) => hard(e) > 1);
+    if (long) { const i = long.sets.map((s) => s.type).lastIndexOf('normal'); long.sets.splice(i, 1); }
+    else if (exercises.length > 1) exercises.pop();
+    else break;
+  }
+  return { ...w, exercises };
+}
+
 /**
  * The workout used when the AI answer fails the check twice, or when there is no AI. It goes through the same check as an
  * AI plan: with a time budget it is trimmed to fit first. A history plan that still fails a guardrail is replaced by the
@@ -136,13 +157,13 @@ export function ruleWorkout(ctx: GymContext): Plan & { guard?: string } {
   const fromHistory = first.workout.name === HISTORY_NAME;
   let guard: string | undefined;
   if (fromHistory) {
-    const checked = checkWorkout(trimToLimit(first.workout, limit, catalog), ctx);
+    const checked = checkWorkout(capLightWeek(trimToLimit(first.workout, limit, catalog), ctx), ctx);
     if (checked.ok) return finish(first, checked.workout);
     guard = checked.reason;
   }
   const minimal = fromHistory ? plainWorkout(ctx, true) : first;
   if (minimal.workout.exercises.length === 0) return { ...minimal, ...(guard ? { guard } : {}) };
-  const fit = trimToLimit(minimal.workout, limit, catalog);
+  const fit = capLightWeek(trimToLimit(minimal.workout, limit, catalog), ctx);
   const again = checkWorkout(fit, ctx);
   const done = finish(minimal, again.ok ? again.workout : fit);
   // Even the smallest plan is longer than the time: say so instead of a number that looks like it fits.

@@ -429,3 +429,49 @@ describe('Härte', () => {
     expect(plan.workout.exercises.flatMap((e) => e.sets).some((s) => s.type === 'failure' || s.type === 'dropset')).toBe(false);
   });
 });
+
+describe('Abschnitt', () => {
+  const block = (over: Partial<NonNullable<GymContext['block']>> = {}): NonNullable<GymContext['block']> => ({ core: ['cp', 'lr'], exempt: new Set<string>(), light: false, lightCap: null, ...over });
+  const full = () => wo([ex('cp', [set(40, 9), set(40, 9)]), ex('lr', [set(50, 9), set(50, 9)])]);
+  it('lehnt einen Plan ohne Kernübung ab', () => {
+    const ctx = { ...CTX, workouts: [...CTX.workouts, ...two('lr', 50)], block: block() };
+    passes(full(), ctx);
+    expect(refused(wo([ex('cp', [set(40, 9), set(40, 9)])]), ctx)).toBe('Kernübung fehlt');
+  });
+  it('lässt eine ausgenommene Kernübung weg', () => {
+    const ctx = { ...CTX, workouts: [...CTX.workouts, ...two('lr', 50)], block: block({ exempt: new Set(['lr']) }) };
+    passes(wo([ex('cp', [set(40, 9), set(40, 9)])]), ctx);
+  });
+  it('erkennt eine Kernübung über den Link auf die eigene Id', () => {
+    const ctx = { ...CTX, links: { cp: 'own-chest' }, block: block({ core: ['own-chest'] }) };
+    passes(wo([ex('cp', [set(40, 9), set(40, 9)])]), ctx);
+  });
+  it('kappt die leichte Woche', () => {
+    const ctx = { ...CTX, block: block({ core: [], light: true, lightCap: 10 }) };
+    const sets = (n: number) => Array.from({ length: n }, () => set(40, 9));
+    expect(refused(wo([ex('cp', sets(6)), ex('bp', sets(5).map(() => set(80, 9)))]), ctx)).toBe('zu viel für die leichte Woche');
+    passes(wo([ex('cp', sets(5)), ex('bp', sets(5).map(() => set(80, 9)))]), ctx);
+    expect(refused(wo([ex('cp', [set(40, 9), set(40, 9, 'failure')])]), ctx)).toBe('zu viel für die leichte Woche');
+  });
+  it('ohne Kappe gibt es in der leichten Woche keine Obergrenze für Sätze', () => {
+    passes(wo([ex('cp', Array.from({ length: 12 }, () => set(40, 9)))]), { ...CTX, block: block({ core: [], light: true, lightCap: null }) });
+  });
+  it('bleibt vorsichtig im Abschnitt', () => {
+    const ctx = { ...CTX, push: 'gentle' as const, block: block({ core: [] }) };
+    expect(refused(wo([ex('cp', [set(40, 9), set(40, 9, 'failure')])]), ctx)).toBe('Versagen passt nicht zur Härte');
+  });
+  it('der Regelplan bringt die Kernübungen mit und hält die Kappe der leichten Woche', () => {
+    const ctx: GymContext = { ...CTX, block: { core: ['cp', 'bp'], exempt: new Set(), light: true, lightCap: 4 } };
+    const plan = ruleWorkout(ctx);
+    expect(plan.guard).toBeUndefined();
+    const ids = plan.workout.exercises.map((e) => e.templateId);
+    expect(ids).toEqual(expect.arrayContaining(['cp', 'bp']));
+    expect(plan.workout.exercises.flatMap((e) => e.sets).filter((s) => s.type !== 'warmup').length).toBeLessThanOrEqual(4);
+  });
+  it('der Regelplan setzt eine Kernübung vor die häufigsten Übungen', () => {
+    const ctx: GymContext = { ...CTX, workouts: [...CTX.workouts, ...two('lr', 50)], block: { core: ['lr'], exempt: new Set(), light: false, lightCap: null } };
+    const plan = ruleWorkout(ctx);
+    expect(plan.guard).toBeUndefined();
+    expect(plan.workout.exercises.map((e) => e.templateId)).toContain('lr');
+  });
+});

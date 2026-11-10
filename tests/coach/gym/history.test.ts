@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StrengthWorkout, SetType } from '../../../src/coach/hevy';
-import { availableExercises, isAssisted, ladderFor, isRepBased, REASONS, recentLegWork, suggestNext } from '../../../src/coach/gym/history';
+import { availableExercises, isAssisted, ladderFor, isRepBased, REASONS, recentLegWork, stagnates, suggestNext } from '../../../src/coach/gym/history';
 import { snapDown } from '../../../src/shared/loads';
 
 const DAY = 86_400_000;
@@ -295,5 +295,20 @@ describe('suggestNext and the place in the workout', () => {
   it('without a muscle lookup every past session counts as fresh', () => {
     const ws = [tired(14, 6, [[30, 8], [30, 8]]), tired(7, 6, [[30, 8], [30, 9]])];
     expect(suggest('ip', ws, NOW)).toEqual({ weightKg: 30, reps: 9, why: 'progress' });
+  });
+});
+
+describe('stagnates', () => {
+  it('erkennt Stagnation nach zwei gleichen Einheiten', () => {
+    const ws = [wk(21, [[40, 8], [40, 8]]), wk(14, [[40, 8], [40, 8]]), wk(7, [[40, 8], [40, 8]])];
+    expect(stagnates('sq', ws, NOW)).toBe(true);
+  });
+  it('mehr Wiederholungen oder mehr Last heißt keine Stagnation', () => {
+    expect(stagnates('sq', [wk(21, [[40, 8]]), wk(14, [[40, 8]]), wk(7, [[40, 9]])], NOW)).toBe(false);
+    expect(stagnates('sq', [wk(21, [[40, 8]]), wk(14, [[40, 8]]), wk(7, [[42.5, 6]])], NOW)).toBe(false);
+  });
+  it('braucht genug vergleichbare Einheiten', () => {
+    expect(stagnates('sq', [wk(14, [[40, 8]]), wk(7, [[40, 8]])], NOW)).toBe(false);
+    expect(stagnates('sq', [], NOW)).toBe(false);
   });
 });
