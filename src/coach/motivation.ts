@@ -2,7 +2,7 @@ import type { RideSummary } from './metrics';
 
 // Foundations and limits: docs/motivation.md. All numbers here are our own choices.
 const DAY_MS = 86_400_000;
-const QUESTION_GAP_DAYS = 3;
+export const QUESTION_GAP_DAYS = 3;
 const ASK_AGAIN_DAYS = 90;
 const MONTH_DAYS = 28;
 

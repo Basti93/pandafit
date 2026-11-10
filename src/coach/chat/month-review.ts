@@ -1,11 +1,14 @@
 import { DEFAULT_PREFS, type CoachPrefs } from '../../shared/chat';
 import { lastSundayOf } from '../../shared/dates';
-import type { GoalBody } from '../../shared/personal';
+import type { GoalBody, Push } from '../../shared/personal';
 import { ruleNumber } from '../../shared/training-policy';
 import { dateKey } from '../day-load';
-import type { SentPrompts } from './prompts';
+import { QUESTION_GAP_DAYS } from '../motivation';
+import type { Sent, SentPrompts } from './prompts';
 
 export type ReviewReason = 'month' | 'sports' | 'pause';
+/** What opening a review did: nothing written, written, or written and it asked how hard Bo may push. */
+export type ReviewOpened = false | 'written' | 'asked';
 
 /** The sports focus of a goal as text, so a change of focus can be told from the last review. */
 export function sportsKeyOf(goal: Pick<GoalBody, 'sports'>): string {
@@ -41,21 +44,55 @@ export function reviewDue(o: {
  * The scan's step for the monthly review of one profile. The first time it only remembers the sports focus, so a review is never
  * sent just because nothing was remembered yet. When a review is due and the last try is at least `retryMs` ago, it opens the
  * review; only a review really written marks the day and the sports focus, so a failing Claude tries again later and a written
- * one is never sent twice. Returns the attempt, or null when nothing was tried.
+ * one is never sent twice. A review that really asked how hard Bo may push also marks `pushAsk`, the one marker for that
+ * question. Returns the attempt, or null when nothing was tried.
  */
 export function startReview(o: {
   id: string; prefs: CoachPrefs; sportsKey: string; gymDates: readonly string[]; nowMs: number;
   sent: Pick<SentPrompts, 'get' | 'mark'>; tried: Map<string, number>; retryMs: number;
-  open: (id: string, reason: ReviewReason) => Promise<boolean>;
-}): Promise<boolean> | null {
+  /** `askPush`: Bo has not asked yet how hard he may push, so the review asks (unless it was chosen or a complaint is open). */
+  open: (id: string, reason: ReviewReason, askPush: boolean) => Promise<ReviewOpened>;
+}): Promise<ReviewOpened> | null {
   const had = o.sent.get(o.id);
   if (had.reviewSports === undefined) { o.sent.mark(o.id, 'reviewSports', o.sportsKey); return null; }
   const reason = reviewDue({ prefs: o.prefs, sportsKey: o.sportsKey, gymDates: o.gymDates, sent: had, nowMs: o.nowMs });
   if (!reason || o.nowMs - (o.tried.get(o.id) ?? 0) < o.retryMs) return null;
   o.tried.set(o.id, o.nowMs);
   const today = dateKey(o.nowMs);
-  return o.open(o.id, reason).then((wrote) => {
-    if (wrote) { o.sent.mark(o.id, 'review', today); o.sent.mark(o.id, 'reviewSports', o.sportsKey); }
-    return wrote;
+  return o.open(o.id, reason, had.pushAsk === undefined).then((opened) => {
+    if (opened) { o.sent.mark(o.id, 'review', today); o.sent.mark(o.id, 'reviewSports', o.sportsKey); }
+    if (opened === 'asked') o.sent.mark(o.id, 'pushAsk', today);
+    return opened;
   });
+}
+
+/** The question alone comes from this hour of the day until the evening hour. */
+const PUSH_ASK_FROM_HOUR = 8;
+/** After a message Bo sent by himself, the question alone waits this long. */
+const PUSH_ASK_QUIET_MS = 3 * 3_600_000;
+
+/**
+ * Whether Bo asks now, outside a review, how hard he may push: never chosen, no open or healing complaint (then gentle applies
+ * by itself), at least `push.ask-after-workouts` strength days and no earlier ask (`pushAsk`, also set by a review that asked).
+ * Not while a review is being written or was tried within `retryMs` (it may ask itself), not within three hours of Bo's last
+ * message of his own, only from 8 o'clock until the evening hour, and the last question of Bo at least QUESTION_GAP_DAYS ago.
+ */
+export function pushAskDue(o: {
+  goal: { push?: Push }; complaints: readonly { status: string }[]; gymDates: readonly string[];
+  sent: Sent; prefs: CoachPrefs; nowMs: number;
+  /** A review attempt is running now. */
+  reviewOpen: boolean; reviewTriedMs?: number; retryMs: number;
+  /** When Bo's last message of his own (with a push) was written. */
+  lastPushMs?: number;
+  lastQuestionMs?: number;
+}): boolean {
+  if (o.goal.push !== undefined || o.sent.pushAsk !== undefined) return false;
+  if (o.complaints.some((c) => c.status === 'active' || c.status === 'healing')) return false;
+  if (o.reviewOpen || (o.reviewTriedMs !== undefined && o.nowMs - o.reviewTriedMs < o.retryMs)) return false;
+  if (o.lastPushMs !== undefined && o.nowMs - o.lastPushMs < PUSH_ASK_QUIET_MS) return false;
+  const hour = new Date(o.nowMs).getHours();
+  if (hour < PUSH_ASK_FROM_HOUR || hour >= (o.prefs.evening.on ? o.prefs.evening.hour : DEFAULT_PREFS.evening.hour)) return false;
+  if (o.lastQuestionMs !== undefined && o.nowMs - o.lastQuestionMs < QUESTION_GAP_DAYS * 86_400_000) return false;
+  const today = dateKey(o.nowMs);
+  return new Set(o.gymDates.filter((d) => d <= today)).size >= ruleNumber('push.ask-after-workouts');
 }

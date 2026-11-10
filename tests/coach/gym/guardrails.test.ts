@@ -398,3 +398,34 @@ describe('checkWorkout refuses the same execution twice', () => {
     expect(reasonPhrase('dieselbe Ausführung doppelt')).toBe('dieselbe Übung zweimal, nur mit anderem Gerät');
   });
 });
+
+describe('Härte', () => {
+  it('lehnt Versagenssätze bei vorsichtiger Härte ab', () => {
+    const gentle: GymContext = { ...CTX, push: 'gentle' };
+    expect(checkWorkout(wo([ex('cp', [set(40, 8), set(40, 8, 'failure')])]), gentle)).toEqual({ ok: false, reason: 'Versagen passt nicht zur Härte' });
+    expect(checkWorkout(wo([ex('cp', [set(40, 8), set(40, 8, 'dropset')])]), gentle)).toEqual({ ok: false, reason: 'Versagen passt nicht zur Härte' });
+    passes(wo([ex('cp', [set(40, 8), set(40, 8)])]), gentle);
+  });
+  it('erlaubt sie bei normal und hart wie bisher', () => {
+    for (const push of ['normal', 'hard'] as const) {
+      passes(wo([ex('cp', [set(40, 8), set(40, 8, 'failure')])]), { ...CTX, push });
+      passes(wo([ex('cp', [set(40, 8), set(40, 8, 'dropset')])]), { ...CTX, push });
+      refused(wo([ex('cp', Array.from({ length: 5 }, () => set(40, 8, 'failure')))]), { ...CTX, push });
+    }
+  });
+  it('lehnt bei vorsichtiger Härte auch einen Widowmaker ab', () => {
+    const w = { notes: 'Widowmaker: 20 Wiederholungen' };
+    passes(wo([ex('cp', [set(40, 20)], w)]), { ...CTX, push: 'normal' });
+    expect(checkWorkout(wo([ex('cp', [set(40, 20)], w)]), { ...CTX, push: 'gentle' })).toEqual({ ok: false, reason: 'Versagen passt nicht zur Härte' });
+  });
+  it('nennt bei vorsichtiger Härte zuerst die Härte, auch bei zu vielen Versagenssätzen', () => {
+    const five = wo([ex('cp', Array.from({ length: 5 }, () => set(40, 8, 'failure')))]);
+    expect(checkWorkout(five, { ...CTX, push: 'gentle' })).toEqual({ ok: false, reason: 'Versagen passt nicht zur Härte' });
+  });
+  it('der Regelplan für eine vorsichtige Person kommt ohne Ablehnung durch', () => {
+    const plan = ruleWorkout({ ...CTX, push: 'gentle' });
+    expect(plan.guard).toBeUndefined();
+    expect(plan.workout.exercises.length).toBeGreaterThan(0);
+    expect(plan.workout.exercises.flatMap((e) => e.sets).some((s) => s.type === 'failure' || s.type === 'dropset')).toBe(false);
+  });
+});

@@ -7,3 +7,7 @@ it('turns guardrail reasons into short plain German', () => {
   expect(reasonPhrase('Die Antwort passte nicht zum Schema.')).toBe('die Antwort war nicht lesbar');
   expect(reasonPhrase('etwas ganz Neues')).toBe('eine Angabe außerhalb der Grenzen');
 });
+
+it('nennt die abgelehnte Härte in einem eigenen Satz', () => {
+  expect(reasonPhrase('Versagen passt nicht zur Härte')).toBe('Sätze bis zum Versagen, obwohl du vorsichtig trainierst');
+});

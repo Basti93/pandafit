@@ -172,3 +172,20 @@ test('a goal proposal with weeks writes a temporary focus and leaves the base; R
   expect((map.get('goal:goal')!.body as { temporary?: unknown }).temporary).toBeUndefined();
   expect(goalOfProfile(all, 'p', '2026-11-04').focus).toEqual(['chest']);
 });
+
+test('a draft with only the push shows the card and sets the push on take, without a temporary focus', async () => {
+  const { recs, coach } = setup({ kind: 'goal', text: 'Fordere mich mehr', sport: 'all', goal: { push: 'hard' } });
+  recs.set('goal:goal', goalRecord({ strength: 'muscle', focus: ['chest'], sports: {} }, 5));
+  await coach.tick('p');
+  expect(recs.get('rule:rule-m1')!.body).toMatchObject({ kind: 'goal', state: 'proposed', goal: { push: 'hard' } });
+  const { port, map } = fakePort([...recs.values()]);
+  render(<CoachScreen port={port} {...env} />);
+  await openChat();
+  await proposalIn();
+  expect(await screen.findByText('Neues Ziel: Fordere mich mehr')).toBeTruthy();
+  fireEvent.click(await screen.findByRole('button', { name: 'Übernehmen' }));
+  await waitFor(() => expect(state(map, 'rule-m1')).toBe('active'));
+  const g = goalOfProfile({ all: (_i: string, k?: string) => [...map.values()].filter((r) => r.kind === k) } as never, 'p', '2026-11-04');
+  expect(g).toEqual({ strength: 'muscle', focus: ['chest'], sports: {}, push: 'hard' });
+  expect(await screen.findByRole('button', { name: 'Rückgängig' })).toBeTruthy();
+});

@@ -1,8 +1,8 @@
-import { POLICY_VERSION, RULES, SCENARIOS, SOURCES, policyRule, ruleNumber, ruleRange } from '../../src/shared/training-policy';
+import { POLICY_VERSION, RULES, SCENARIOS, SOURCES, policyRule, ruleNamedRange, ruleNumber, ruleRange } from '../../src/shared/training-policy';
 
 describe('training policy register', () => {
   it('has a version and unique ids', () => {
-    expect(POLICY_VERSION).toBe('2026-11-10.3');
+    expect(POLICY_VERSION).toBe('2026-11-10.5');
     for (const list of [SOURCES, RULES, SCENARIOS]) expect(new Set(list.map((x) => x.id)).size).toBe(list.length);
   });
 
@@ -73,5 +73,16 @@ describe('training policy register', () => {
     expect(() => policyRule('nope')).toThrow('unknown policy rule: nope');
     expect(() => ruleNumber('muscle.target.chest')).toThrow();
     expect(() => ruleRange('gym.max-sets')).toThrow();
+  });
+});
+
+describe('push rules', () => {
+  it('registers the RIR ranges per Härte and the checked rules', () => {
+    expect(ruleNamedRange('push.rir', 'gentle')).toEqual({ min: 2, max: 3 });
+    expect(ruleNamedRange('push.rir', 'normal')).toEqual({ min: 1, max: 3 });
+    expect(ruleNamedRange('push.rir', 'hard')).toEqual({ min: 0, max: 2 });
+    expect(ruleRange('push.rir')).toEqual({ min: 1, max: 3 });
+    expect(ruleNumber('push.gentle-no-failure')).toBe(0);
+    expect(ruleNumber('push.ask-after-workouts')).toBe(3);
   });
 });

@@ -159,6 +159,12 @@ describe('replan key and exact-title exclusion', () => {
     expect(personalKeyOf([], [], [{ ...frame, updatedMs: 6 }])).not.toBe(personalKeyOf([], [], [frame]));
   });
 
+  it('a changed hardness in the goal changes the key, so the coaches plan again', () => {
+    const before = goalRecord({ strength: 'muscle', focus: [], sports: {} }, NOW);
+    const after = goalRecord({ strength: 'muscle', focus: [], sports: {}, push: 'hard' }, NOW + 1000, before);
+    expect(personalKeyOf([], [after])).not.toBe(personalKeyOf([], [before]));
+  });
+
   it('an unlinked Hevy template with the exact title of an excluded exercise is rejected and filtered', () => {
     const own = EXERCISES[0]!;
     const hevy: ExerciseTemplate = { id: 'hevy-unlinked', title: ` ${own.title.toUpperCase()} `, type: 'weight_reps', primaryMuscle: 'chest', equipment: 'machine' };

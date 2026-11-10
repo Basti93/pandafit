@@ -1,4 +1,5 @@
-import { POLICY_VERSION, ruleNumber } from '../../shared/training-policy';
+import { POLICY_VERSION, ruleNamedRange, ruleNumber } from '../../shared/training-policy';
+import type { Push } from '../../shared/personal';
 
 /**
  * Our own choices for the gym coach, not taken from research. The values live in the policy register
@@ -22,3 +23,7 @@ export const MAX_EXERCISES = ruleNumber('gym.max-exercises');
 export const MAX_SETS = ruleNumber('gym.max-sets');
 export const MAX_FAILURE_SETS = ruleNumber('gym.max-failure-sets');
 export const MAX_WIDOWMAKERS = ruleNumber('gym.max-widowmakers');
+/** Failure and drop sets allowed in one workout when the person trains gently. */
+export const GENTLE_FAILURE_SETS = ruleNumber('push.gentle-no-failure');
+/** Reps in reserve for the work sets at each push. */
+export const reserveFor = (push: Push): { min: number; max: number } => ruleNamedRange('push.rir', push);

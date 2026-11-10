@@ -17,6 +17,7 @@ import type { Complaint } from '../../../src/coach/motivation';
 import { RecordStore } from '../../../src/coach/tracking/store';
 import { mergeCatalog } from '../../../src/shared/catalog';
 import { studioRecord } from '../../../src/shared/studio';
+import { goalRecord } from '../../../src/shared/personal';
 import { linkRecord } from '../../../src/shared/exercise-links';
 import { EXERCISES, linkHevyTemplates } from '../../../src/shared/exercises';
 
@@ -1156,5 +1157,38 @@ describe('what the coach changed ("Zuletzt geändert")', () => {
     await h.coach.templateList(ID);
     await h.coach.tick(ID);
     expect(h.make().changeNotes(ID)).toHaveLength(1);
+  });
+});
+
+describe('Härte', () => {
+  const failing = () => ({ name: 'Bis zum Ende', exercises: [ex('cp', [set(40, 9), { type: 'failure', weightKg: 40, reps: 9 }]), ex('lr', [set(50, 9), set(50, 9)])] });
+  const coachWith = (complaints: Complaint[], replies: unknown[]) => {
+    const store = new RecordStore({ dir: path.join(tmp, 'tracking') });
+    store.putMany('p1', [goalRecord({ strength: 'muscle', focus: [], sports: {}, push: 'hard' }, NOW)]);
+    const calls: Input[] = [];
+    const coach = new GymCoach({
+      dir, nowMs: () => NOW, store, ask: async (i) => { calls.push(i); return replies.shift() ?? answer(); },
+      workouts: () => history(), templates: async () => TEMPLATES, refreshTemplates: async () => TEMPLATES, ready: () => true,
+      bike: () => ({ summaries: [], complaints }), complaint: () => {}, writer: () => null,
+    });
+    return { coach, calls };
+  };
+  it('setzt bei offener Beschwerde vorsichtig', async () => {
+    const healing: Complaint = { id: 'c1', text: 'Die Schulter zwickt', status: 'healing', startedMs: NOW, updatedMs: NOW };
+    const { coach, calls } = coachWith([healing], [answer({ workout: failing() }), answer({ workout: failing() })]);
+    await coach.tick('p1');
+    expect(outside(calls[0]!.prompt)).toContain('Härte: Vorsichtig.');
+    expect(calls).toHaveLength(2);
+    expect(block(calls[1]!.prompt, 'ablehnung-nur-daten')).toBe('Versagen passt nicht zur Härte');
+    const s = coach.state('p1');
+    expect(s.next?.source).toBe('rules');
+    expect(s.next?.reason).toContain('Sätze bis zum Versagen, obwohl du vorsichtig trainierst');
+  });
+  it('ohne Beschwerde gilt die gewählte Härte und der Versagenssatz bleibt', async () => {
+    const { coach, calls } = coachWith([], [answer({ workout: failing() })]);
+    await coach.tick('p1');
+    expect(outside(calls[0]!.prompt)).toContain('Härte: Fordere mich.');
+    expect(calls).toHaveLength(1);
+    expect(coach.state('p1').next?.source).toBe('claude');
   });
 });

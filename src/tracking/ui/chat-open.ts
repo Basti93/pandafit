@@ -12,7 +12,7 @@ export const storedWeek = (plans: TrackedRecord[], weekStart: string): TrackedRe
 export const weekAnswer = (chat: 'taken' | 'declined' | 'undone' | null, undone: boolean, stored: TrackedRecord | undefined, id: string): 'taken' | 'declined' | 'undone' | null =>
   weekTaken(stored, id) ? 'taken' : undone ? 'undone' : chat;
 
-/** The messages with a proposal that still waits for an answer: a week plan (not for a week that is over), a next change, a rule. They are pinned above the input. */
+/** The messages with a proposal that still waits for an answer: a week plan (not for a week that is over), a next change, a rule, the push question. They are pinned above the input. */
 export function openProposals(thread: Thread, plans: TrackedRecord[], changeRecs: TrackedRecord[], ruleRecs: TrackedRecord[], monday: string): ChatEntry[] {
   const changes = changesOf(changeRecs);
   const rules = rulesOf(ruleRecs);
@@ -21,6 +21,7 @@ export function openProposals(thread: Thread, plans: TrackedRecord[], changeRecs
     if (m.proposal) return m.proposal.weekStart >= monday && weekAnswer(proposalAnswer(thread, m.id), thread.some((x) => x.undoes === m.id), storedWeek(plans, m.proposal.weekStart), m.id) === null;
     if (m.nextChange) return changes.find((c) => c.id === m.nextChange)?.state === 'proposed';
     if (m.rule) return rules.find((r) => r.id === m.rule)?.state === 'proposed';
+    if (m.askPush) return proposalAnswer(thread, m.id) === null;
     return false;
   });
 }

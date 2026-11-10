@@ -1,4 +1,4 @@
-import { ChatCoach } from '../../../src/coach/chat/chat-coach';
+import { CHAT_SYSTEM_PROMPT, ChatCoach } from '../../../src/coach/chat/chat-coach';
 import { ClaudeError } from '../../../src/coach/claude-client';
 import { chatThread } from '../../../src/shared/chat';
 import type { RecordKind, TrackedRecord } from '../../../src/shared/records';
@@ -400,5 +400,24 @@ describe('an explicit yes in the chat takes the open rule draft', () => {
     expect(rules(s)).toEqual([g]);
     expect(replies(s).at(-1)!.text).toContain('Übernehmen');
     expect(replies(s).at(-1)!.rule).toBeUndefined();
+  });
+});
+
+describe('Härte im Chat', () => {
+  const goalHard: TrackedRecord = { kind: 'goal', id: 'goal', updatedMs: 1, deleted: false, body: { strength: 'muscle', focus: [], sports: {}, push: 'hard', atMs: 1 } };
+  const ziel = (prompt: string) => JSON.parse(prompt.split('<ziel-nur-daten>\n')[1]!.split('\n</ziel-nur-daten>')[0]!);
+
+  test('der Regelentwurf kennt goal.push als dauerhafte Änderung ohne weeks', () => {
+    expect(CHAT_SYSTEM_PROMPT).toContain('push gentle, normal oder hard, wenn die Person sagt, wie sehr du sie fordern sollst; das gilt dauerhaft, also ohne weeks');
+  });
+  test('der Ziel-Block nennt neben der gewählten auch die Härte, die gerade gilt', async () => {
+    const complaint: TrackedRecord = { kind: 'complaint', id: 'k', updatedMs: 1, deleted: false, body: { text: 'Knie zwickt', status: 'active', atMs: 1 } };
+    const prompts: string[] = [];
+    const ask = async ({ prompt }: { prompt: string }) => { prompts.push(prompt); return { text: 'Okay.', proposal: null, riderAskedForMore: false }; };
+    await coach(store([rider('r1', 'Hallo'), goalHard, complaint]), ask).tick('p');
+    expect(ziel(prompts[0]!)).toMatchObject({ push: 'hard', haerteJetzt: 'gentle' });
+    await coach(store([rider('r1', 'Hallo'), goalHard]), ask).tick('p');
+    expect(ziel(prompts[1]!)).toMatchObject({ push: 'hard', haerteJetzt: 'hard' });
+    expect(CHAT_SYSTEM_PROMPT).toContain('haerteJetzt');
   });
 });

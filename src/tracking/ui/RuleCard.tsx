@@ -14,7 +14,7 @@ import { DECLINE, DECLINED, TAKE, UNDO } from '../../shared/wording';
  */
 type Goal = Omit<GoalBody, 'atMs'>;
 const same = (a: Goal, b: Goal): boolean => {
-  const norm = (g: Goal) => JSON.stringify([g.strength, [...g.focus].sort(), Object.entries(g.sports).sort(([x], [y]) => (x < y ? -1 : 1)), g.temporary ?? null]);
+  const norm = (g: Goal) => JSON.stringify([g.strength, [...g.focus].sort(), Object.entries(g.sports).sort(([x], [y]) => (x < y ? -1 : 1)), g.push ?? 'normal', g.temporary ?? null]);
   return norm(a) === norm(b);
 };
 const readGoalField = (body: unknown, key: 'prior' | 'applied'): Goal | null => {

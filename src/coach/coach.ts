@@ -322,6 +322,10 @@ export class Coach {
       this.markDirty(s);
     });
   }
+  /** Bo asked a question of his own (not one of QUESTIONS): the next one waits the same gap. */
+  questionAsked(profileId: string): void {
+    this.update(profileId, (s) => { s.lastQuestionMs = this.deps.nowMs(); });
+  }
   skipQuestion(profileId: string): void {
     this.update(profileId, (s) => { s.lastQuestionMs = this.deps.nowMs(); });
   }

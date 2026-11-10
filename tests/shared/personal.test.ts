@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyRecord, RECORD_KINDS, RECORD_KINDS_SIGNATURE, type TrackedRecord } from '../../src/shared/records';
 import { validBody } from '../../src/web/validate';
-import { activeRules, deleteRule, excludedIds, goalOf, goalRecord, migratedRuleId, moveRule, readGoal, readRule, ruleRecord, wishes } from '../../src/shared/personal';
+import { activeRules, applyGoalPatch, effectivePush, PUSH_LABEL, deleteRule, excludedIds, goalOf, goalRecord, migratedRuleId, moveRule, readGoal, readRule, ruleRecord, storedGoalOf, wishes } from '../../src/shared/personal';
 const TODAY = '2026-11-04';
 
 const rule = (id: string, kind: 'exclude' | 'wish', state: 'proposed' | 'active' | 'paused' | 'declined', over: { sport?: 'gym' | 'bike' | 'run' | 'all'; ids?: string[]; at?: number } = {}): TrackedRecord =>
@@ -106,5 +106,41 @@ describe('helpers', () => {
   it('migrated ids are deterministic', () => {
     expect(migratedRuleId('gym', 'abc')).toBe(migratedRuleId('gym', 'abc'));
     expect(migratedRuleId('gym', 'abc')).not.toBe(migratedRuleId('bike', 'abc'));
+  });
+});
+
+describe('push (Härte) in the goal', () => {
+  const base = { strength: 'muscle', focus: [], sports: {}, atMs: 5 };
+  it('reads a valid push, rejects an unknown one, and reads a goal without it', () => {
+    expect(readGoal({ ...base, push: 'hard' })?.push).toBe('hard');
+    expect(readGoal({ ...base, push: 'x' })).toBeNull();
+    const g = readGoal(base);
+    expect(g).not.toBeNull();
+    expect(g?.push).toBeUndefined();
+  });
+  it('a goal patch can set push, and a goal rule draft keeps it', () => {
+    expect(applyGoalPatch({ strength: 'muscle', focus: [], sports: {} }, { push: 'gentle' }, TODAY).push).toBe('gentle');
+    expect(readRule('rule-a', { kind: 'goal', text: 't', sport: 'all', goal: { push: 'hard' }, state: 'proposed', source: 'chat', atMs: 1 })?.goal).toEqual({ push: 'hard' });
+    expect(readRule('rule-a', { kind: 'goal', text: 't', sport: 'all', goal: { push: 'x' }, state: 'proposed', source: 'chat', atMs: 1 })).toBeNull();
+  });
+  it('push is a base change even with weeks; focus stays temporary', () => {
+    const g = applyGoalPatch({ strength: 'muscle', focus: [], sports: {} }, { push: 'hard', weeks: 4, focus: ['chest'] }, TODAY);
+    expect(g.push).toBe('hard');
+    expect(g.temporary?.focus).toEqual(['chest']);
+    expect(g.focus).toEqual([]);
+  });
+  it('the stored goal passes push on when set', () => {
+    const rec = goalRecord({ strength: 'muscle', focus: [], sports: {}, push: 'hard' }, 5);
+    expect(storedGoalOf([rec]).push).toBe('hard');
+    expect('push' in storedGoalOf([goalRecord({ strength: 'muscle', focus: [], sports: {} }, 5)])).toBe(false);
+  });
+  it('a complaint that is active or healing makes it gentle', () => {
+    expect(effectivePush({ push: 'hard' }, [{ status: 'healing' }])).toBe('gentle');
+    expect(effectivePush({ push: 'hard' }, [{ status: 'active' }])).toBe('gentle');
+    expect(effectivePush({}, [])).toBe('normal');
+    expect(effectivePush({ push: 'hard' }, [{ status: 'over' }])).toBe('hard');
+  });
+  it('has labels', () => {
+    expect(PUSH_LABEL).toEqual({ gentle: 'Vorsichtig', normal: 'Normal', hard: 'Fordere mich' });
   });
 });
