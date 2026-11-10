@@ -1,4 +1,4 @@
-import { readCoachPrefs, chatThread, proposalAnswer, readChat, waitingMessage } from '../../src/shared/chat';
+import { readCoachPrefs, latestReview, chatThread, proposalAnswer, readChat, waitingMessage } from '../../src/shared/chat';
 import type { TrackedRecord } from '../../src/shared/records';
 
 const rec = (id: string, body: object, deleted = false): TrackedRecord => ({ kind: 'chat', id, updatedMs: 1, deleted, body });
@@ -48,4 +48,16 @@ test('a review keeps at most three observations made of strings', () => {
   expect(readChat({ ...base, review: { observations: [1, 2, 3, 4].map(o) } })).toBeNull();
   expect(readChat({ ...base, review: { observations: [{ text: 1, reason: 'x' }] } })).toBeNull();
   expect(readChat({ ...base, review: { observations: [1, 2].map(o) } })).toEqual({ ...base, review: { observations: [1, 2].map(o) } });
+});
+
+test('latestReview nimmt die jüngste Coach-Nachricht mit Rückblick', () => {
+  const obs = (t: string) => ({ observations: [{ text: t, reason: 'weil' }] });
+  const t = chatThread([
+    rec('a', { role: 'coach', text: 'alt', atMs: 1, review: obs('alt') }),
+    rec('b', { role: 'coach', text: 'neu', atMs: 5, review: obs('neu') }),
+    rec('c', { role: 'coach', text: 'später ohne', atMs: 9 }),
+    rec('d', { role: 'rider', text: 'Hallo', atMs: 10 }),
+  ]);
+  expect(latestReview(t)).toEqual({ atMs: 5, observations: [{ text: 'neu', reason: 'weil' }] });
+  expect(latestReview([])).toBeNull();
 });
