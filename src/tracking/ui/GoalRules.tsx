@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { deleteRule, excludeRuleRecord, FOCUS_GROUPS, goalRecord, MAX_FOCUS, moveRule, ruleId, ruleRecord, RULE_TEXT_MAX, rulesOf, storedGoalOf, type GoalBody, type Prio, type SportKey, type Strength } from '../../shared/personal';
+import { deleteRule, excludeRuleRecord, FOCUS_GROUPS, goalRecord, MAX_FOCUS, moveRule, ruleId, ruleRecord, RULE_TEXT_MAX, rulesOf, storedGoalOf, type GoalBody, PUSH_LABEL, type Prio, type Push, type SportKey, type Strength } from '../../shared/personal';
 import { MUSCLE_TARGETS } from '../../shared/muscle-targets';
 import { addDays, SPORT_LABEL } from '../../shared/week-plan';
 import { dateKey } from '../../shared/day-rating';
@@ -142,6 +142,9 @@ export function GoalSheet({ port, now, onClose, frame, onMode, onMinutes }: {
     <Sheet title="Ziel und Planung" onClose={onClose}>
       <ChoiceRow label="Ziel" value={goal.strength} options={(Object.keys(STRENGTH_LABEL) as Strength[]).map((s) => ({ value: s, label: STRENGTH_LABEL[s] }))}
         onChange={(strength) => void saveGoal({ ...stored, strength })} />
+      <ChoiceRow label="Härte" value={goal.push ?? 'normal'} options={(Object.keys(PUSH_LABEL) as Push[]).map((p) => ({ value: p, label: PUSH_LABEL[p] }))}
+        onChange={(push) => void saveGoal({ ...stored, push })} />
+      <p className="muted tk-sheet-note">Bei einer offenen Beschwerde plant Bo immer vorsichtig.</p>
       {goal.ended && (
         <div className="tk-row">
           <span className="muted">{goal.ended.focus.length ? `Dein Fokus auf ${focusLabel(goal.ended.focus)}` : 'Dein befristeter Fokus'} ist am {dayLabel(goal.ended.until)} ausgelaufen. Jetzt gilt wieder dein Grundziel.</span>

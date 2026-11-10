@@ -79,3 +79,16 @@ test('week mode: the plan day is the headline when it fits; when it does not, th
   expect(screen.getByRole('button', { name: 'Training starten' })).toBeTruthy();
   expect(screen.queryByText(/Heute passt/)).toBeNull();
 });
+
+test('ändert die Härte im Ziel', async () => {
+  const stored = { kind: 'goal', id: 'goal', updatedMs: 1, deleted: false, body: { strength: 'strength', focus: ['back'], sports: {}, atMs: 1 } } as TrackedRecord;
+  const { port, map } = fakePort([stored]);
+  render(<CoachScreen port={port} {...env} />);
+  fireEvent.click(await screen.findByRole('button', { name: /^Ziel und Planung/ }));
+  const row = await screen.findByRole('button', { name: /^Härte/ });
+  expect(within(row).getByText('Normal')).toBeTruthy();
+  expect(screen.getByText('Bei einer offenen Beschwerde plant Bo immer vorsichtig.')).toBeTruthy();
+  fireEvent.click(row);
+  fireEvent.click(await screen.findByRole('button', { name: 'Fordere mich' }));
+  await waitFor(() => expect([...map.values()].find((r) => r.kind === 'goal')?.body).toMatchObject({ push: 'hard', strength: 'strength', focus: ['back'] }));
+});
