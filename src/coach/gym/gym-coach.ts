@@ -1,6 +1,7 @@
 import { ClaudeError } from '../claude-client';
 import type { StrengthWorkout } from '../hevy';
 import { isAssisted, suggestNext } from './history';
+import { strengthFacts, type StrengthFacts } from './review-facts';
 import { addNote, type ChangeNote } from '../../shared/change-notes';
 import type { NextStep } from '../../shared/stats';
 import type { RideSummary } from '../metrics';
@@ -15,6 +16,7 @@ import { isExcluded } from '../../shared/excluded';
 import { EXERCISES, linkHevyTemplates, type Exercise } from '../../shared/exercises';
 import { FEDB_EXERCISES } from '../../shared/fedb';
 import { onePerSession } from '../../shared/history';
+import { goalOf } from '../../shared/personal';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
 import { hevyRecord } from '../tracking/hevy-import';
 import { historyFromLogged, mergeHistory } from '../tracking/merge';
@@ -305,6 +307,14 @@ export class GymCoach {
       out.push({ exerciseId: e.templateId, title: t?.title ?? e.title, weightKg: s.weightKg, reps: s.reps, why: s.why, reason: s.reason, forWorkoutId: latest.id, atMs: latest.startMs });
     }
     return out.slice(0, 30);
+  }
+  /** The strength facts for the monthly review, from the stored workouts. Null before the first template list, like `nextSteps`. */
+  reviewFacts(id: string): StrengthFacts | null {
+    const listed = this.listed.get(id);
+    if (!listed) return null;
+    const now = this.deps.nowMs();
+    const goal = this.deps.store ? goalOfProfile(this.deps.store, id, dateKey(now)) : goalOf([], dateKey(now));
+    return strengthFacts(this.history(id), [...listed.values()], this.catalog(id), { strength: goal.strength, focus: goal.focus }, now);
   }
   /** What the coach changed on exercises, newest last: the notes of the plans, kept up to 20 and 60 days. */
   changeNotes(id: string): ChangeNote[] { return this.state(id).changeNotes.map(({ key: _k, ...n }) => n); }

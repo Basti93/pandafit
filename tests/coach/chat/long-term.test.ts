@@ -21,3 +21,10 @@ test('without a stats record there is no hint; with one it carries the guide', (
   expect(h).toContain('wochenVerlauf');
   expect(h).toContain('Richtschnur, kein Plan');
 });
+
+test('the number of weeks can be set; without it there are eight', () => {
+  const s = stats([day('2026-11-02', { bike: 45 })]);
+  expect(weekHistory([s], NOW, 13)).toHaveLength(13);
+  expect(weekHistory([s], NOW, 13)[0]!.woche).toBe('2026-08-10');
+  expect(weekHistory([s], NOW)).toHaveLength(8);
+});
