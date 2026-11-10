@@ -106,8 +106,7 @@ Leitplanken aus `guardrails.ts` (Gewichtsstufen, Versagens-Grenze, doppelte Ausf
 ## 10a. Körpergewicht (Nutzer entschieden, 10.11.2026)
 
 - **Nutzer:** Essen und Essens-Coach bleiben unverändert. Die Regel, dass er nicht über Kalorien, Gewicht oder Körper spricht, gilt weiter.
-- Die App speichert ab jetzt einmal pro Woche das Garmin-Gewicht als Verlauf (heute gibt es nur den aktuellen Wert). **Entscheidung.**
-- Der Rückblick nennt den Gewichtstrend nur, wenn die Person im Ziel selbst „Gewicht zulegen“ oder „Gewicht halten“ angibt (neues optionales Feld im `goal`-Datensatz). Ohne Angabe spricht Bo nie über Gewicht. **Entscheidung.**
+- **Nutzer:** Körpergewicht bleibt ganz draußen. Ohne Garmin-Waage wird es nicht verlässlich eingetragen. Kein Gewichtsverlauf, kein Gewichtsziel, Bo spricht im Rückblick nie über Gewicht.
 
 ## 10. Prüfung
 
