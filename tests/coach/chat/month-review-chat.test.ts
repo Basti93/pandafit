@@ -5,6 +5,9 @@ import { DEFAULT_PREFS, MAX_CHAT_TEXT, chatThread, readChat } from '../../../src
 import { lastDates } from '../../../src/coach/stats/stats-days';
 import { ruleNumber } from '../../../src/shared/training-policy';
 import type { RecordKind, TrackedRecord } from '../../../src/shared/records';
+import { blockRecord, readBlock, type BlockDay } from '../../../src/shared/block';
+import { PUSH_QUESTION, ruleRecord } from '../../../src/shared/personal';
+import { openProposals } from '../../../src/tracking/ui/chat-open';
 
 const NOW = new Date(2026, 10, 29, 18).getTime(); // Sunday 2026-11-29, the last Sunday of November
 const store = (seed: TrackedRecord[] = []) => {
@@ -209,4 +212,110 @@ it('nennt im Ziel auch die Härte, die gerade gilt', async () => {
   expect(prompts[0]).toContain('"push":"hard"');
   expect(prompts[0]).toContain('"haerteJetzt":"gentle"');
   expect(REVIEW_SYSTEM_PROMPT).toContain('haerteJetzt');
+});
+
+describe('Abschnitt im Rückblick', () => {
+  const day = (sport: BlockDay['sport'], hardness: BlockDay['hardness'], extra: Partial<BlockDay> = {}): BlockDay => ({ sport, hardness, ...extra });
+  const RHYTHM: BlockDay[] = [
+    day('gym', 'hard', { template: 0, legs: true }), day('bike', 'easy'), day('gym', 'moderate', { template: 1 }), day('rest', 'easy'),
+    day('bike', 'hard'), day('run', 'easy'), day('rest', 'easy'),
+  ];
+  const LEGS = ['pf-squat', 'pf-romanian-deadlift', 'pf-leg-press', 'pf-hip-thrust'];
+  const UPPER = ['pf-bench-press', 'pf-incline-press-db', 'pf-pec-deck'];
+  const proposal = (over: object = {}) => ({ templates: [{ name: 'Unterkörper A', core: LEGS }, { name: 'Oberkörper B', core: UPPER }], rhythm: RHYTHM, ...over });
+  const blocks = (s: ReturnType<typeof store>) => [...s.recs.values()].filter((r) => r.kind === 'block');
+  const exclude = (ids: string[]): TrackedRecord => ruleRecord('rule-x', { kind: 'exclude', text: 'Keine Beinpresse.', sport: 'gym', exerciseIds: ids }, 'active', 'person', 1);
+
+  it('legt einen vorgeschlagenen Abschnitt an', async () => {
+    const s = store();
+    const prompts: string[] = [];
+    expect(await coach(s, async ({ prompt }) => { prompts.push(prompt); return answer({ block: proposal() }); }).openReview('p', 'month')).toBe('written');
+    const [m] = messages(s);
+    expect(m!.block).toBeDefined();
+    const rec = blocks(s).find((r) => r.id === m!.block)!;
+    const b = readBlock(rec.body)!;
+    expect(b.state).toBe('proposed');
+    expect(b.templates).toEqual([{ name: 'Unterkörper A', core: LEGS }, { name: 'Oberkörper B', core: UPPER }]);
+    expect(b.rhythm).toEqual(RHYTHM);
+    expect(b.start).toBeUndefined();
+    expect(prompts[0]).toContain('<katalog-nur-daten>');
+    expect(REVIEW_SYSTEM_PROMPT).toContain('Schlag einen festen Abschnitt nur vor, wenn er zum Ziel und zu den letzten Wochen passt; sonst bleib locker. Kernübungen nach Ziel, Vorlieben und Regeln der Person, nie ausgeschlossene, 3 bis 4 je Vorlage, ids aus katalog.');
+    expect(readChat({ role: 'coach', text: 'x', atMs: 1, block: 'block-m1' })?.block).toBe('block-m1');
+  });
+
+  it('lässt ausgeschlossene Kernübungen weg', async () => {
+    const s = store([exclude(['pf-leg-press'])]);
+    expect(await coach(s, async () => answer({ block: proposal() })).openReview('p', 'month')).toBe('written');
+    const b = readBlock(blocks(s)[0]!.body)!;
+    expect(b.templates[0]!.core).toEqual(['pf-squat', 'pf-romanian-deadlift', 'pf-hip-thrust']);
+
+    const few = store([exclude(['pf-pec-deck'])]);
+    expect(await coach(few, async () => answer({ block: proposal() })).openReview('p', 'month')).toBe('written');
+    expect(blocks(few)).toHaveLength(0);
+    const [m] = messages(few);
+    expect(m!.block).toBeUndefined();
+    expect(m!.text).toContain('Lass uns so weitermachen.');
+  });
+
+  it('lässt unbekannte Übungen und dieselbe Ausführung doppelt nicht zu', async () => {
+    const unknown = store();
+    await coach(unknown, async () => answer({ block: proposal({ templates: [{ name: 'Unterkörper A', core: LEGS }, { name: 'Oberkörper B', core: ['pf-bench-press', 'gibt-es-nicht', 'pf-pec-deck'] }] }) })).openReview('p', 'month');
+    expect(blocks(unknown)).toHaveLength(0);
+    const twice = store();
+    await coach(twice, async () => answer({ block: proposal({ templates: [{ name: 'Unterkörper A', core: LEGS }, { name: 'Oberkörper B', core: ['pf-bench-press', 'pf-bench-press-db', 'pf-pec-deck'] }] }) })).openReview('p', 'month');
+    expect(blocks(twice)).toHaveLength(0);
+    expect(messages(twice)[0]!.block).toBeUndefined();
+  });
+
+  it('verwirft einen Rhythmus gegen die Erholungsregeln', async () => {
+    const s = store();
+    const hard = RHYTHM.map((d, i) => (i === 5 ? day('run', 'hard') : d));
+    expect(await coach(s, async () => answer({ block: proposal({ rhythm: hard }) })).openReview('p', 'month')).toBe('written');
+    expect(blocks(s)).toHaveLength(0);
+    expect(messages(s)[0]!.block).toBeUndefined();
+  });
+
+  it('schlägt keinen Abschnitt vor, während einer läuft', async () => {
+    const running = blockRecord('block-old', { state: 'active', templates: [{ name: 'Unterkörper A', core: LEGS }, { name: 'Oberkörper B', core: UPPER }], rhythm: RHYTHM, start: '2026-11-23', end: '2026-12-27', atMs: 1 }, 1);
+    const s = store([running]);
+    expect(await coach(s, async () => answer({ block: proposal() })).openReview('p', 'month')).toBe('written');
+    expect(blocks(s).map((r) => r.id)).toEqual(['block-old']);
+    expect(messages(s)[0]!.block).toBeUndefined();
+  });
+
+  it('sagt am letzten Tag des Abschnitts, dass er jetzt endet, und darf den nächsten vorschlagen', async () => {
+    // NOW is Sunday 2026-11-29, the end of the running section.
+    const ending = blockRecord('block-old', { state: 'active', templates: [{ name: 'Unterkörper A', core: LEGS }, { name: 'Oberkörper B', core: UPPER }], rhythm: RHYTHM, start: '2026-11-02', end: '2026-11-29', atMs: 1 }, 1);
+    const s = store([ending]);
+    const prompts: string[] = [];
+    expect(await coach(s, async ({ prompt }) => { prompts.push(prompt); return answer({ block: proposal() }); }).openReview('p', 'month')).toBe('written');
+    expect(prompts[0]).toContain('<abschnitt-nur-daten>\n{"bis":"2026-11-29","endetJetzt":true}\n');
+    expect(prompts[0]).toContain('Der laufende Abschnitt endet mit dieser Woche; du darfst den nächsten vorschlagen.');
+    expect(prompts[0]).toContain('<katalog-nur-daten>');
+    const [m] = messages(s);
+    expect(m!.block).toBeDefined();
+    expect(readBlock(blocks(s).find((r) => r.id === m!.block)!.body)?.state).toBe('proposed');
+  });
+
+  it('schreibt den Rückblick auch, wenn die Frage nach der Härte danach nicht gespeichert werden kann', async () => {
+    const s = store();
+    const put = s.put;
+    s.put = (id, r) => { if (r.kind === 'chat' && (r.body as { askPush?: boolean }).askPush) throw new Error('voll'); return put(id, r); };
+    expect(await coach(s, async () => answer({ block: proposal() })).openReview('p', 'month', true)).toBe('written');
+    expect(messages(s)).toHaveLength(1);
+  });
+
+  it('stellt die Frage nach der Härte neben dem Abschnitt als eigene Karte', async () => {
+    const s = store();
+    expect(await coach(s, async () => answer({ block: proposal() })).openReview('p', 'month', true)).toBe('asked');
+    const [review, question] = messages(s);
+    expect(review!.block).toBeDefined();
+    expect(review!.askPush).toBeUndefined();
+    expect(review!.push).toBe(true);
+    expect(question!.askPush).toBe(true);
+    expect(question!.text).toBe(PUSH_QUESTION);
+    expect(question!.push).toBeUndefined();
+    const thread = chatThread([...s.recs.values()]);
+    expect(openProposals(thread, [], [], [], '2026-11-23').map((m) => m.id)).toEqual([question!.id]);
+  });
 });

@@ -48,6 +48,18 @@ describe('applyRecord guards', () => {
   });
 });
 
+describe('applyRecord block', () => {
+  const b = (state: string, updatedMs: number): TrackedRecord => ({ kind: 'block', id: 'block-1', updatedMs, deleted: false, body: { state } });
+  it('an active block beats a younger proposed one, in either order', () => {
+    const active = b('active', 1), proposed = b('proposed', 9);
+    expect(applyRecord(active, proposed).keep).toBe(active);
+    expect(applyRecord(proposed, active).keep).toBe(active);
+  });
+  it('an ended block beats an active one', () => {
+    expect(applyRecord(b('active', 9), b('ended', 1)).keep.body).toEqual({ state: 'ended' });
+  });
+});
+
 describe('EXERCISES', () => {
   it('exercise ids are unique and each has a known type, muscle and equipment', () => {
     const types = ['weight_reps', 'reps_only', 'bodyweight_weighted', 'bodyweight_assisted', 'duration', 'distance_duration', 'short_distance_weight', 'floors_duration', 'steps_duration'];

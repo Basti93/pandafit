@@ -4,6 +4,7 @@ import { titleHash, above } from './exercise-links';
 import { addDays } from './week-plan';
 import { ruleNumber } from './training-policy';
 import { takenChanges } from './changes';
+import { activeBlock, blockWeek } from './block';
 import type { Exercise } from './exercises';
 import { familyLabel, familyOf, isExcludableFamily, MAX_FAMILIES } from './families';
 
@@ -231,7 +232,7 @@ export const wishLine = (texts: readonly string[]): string | null =>
  * What makes the coaches plan again: active or paused exclude and wish rules (id, state, exercises, text) and the goal record.
  * Proposals, declines and deleted rules are not in it, so they never trigger a replan. '' when there is nothing.
  */
-export function personalKeyOf(ruleRecords: readonly TrackedRecord[], goalRecords: readonly TrackedRecord[], frameRecords: readonly TrackedRecord[] = [], today?: string, changeRecords: readonly TrackedRecord[] = []): string {
+export function personalKeyOf(ruleRecords: readonly TrackedRecord[], goalRecords: readonly TrackedRecord[], frameRecords: readonly TrackedRecord[] = [], today?: string, changeRecords: readonly TrackedRecord[] = [], blockRecords: readonly TrackedRecord[] = []): string {
   const parts = rulesOf(ruleRecords)
     .filter((r) => (r.state === 'active' || r.state === 'paused') && r.kind !== 'goal')
     .map((r) => `${r.id}:${r.state}:${(r.exerciseIds ?? []).join(',')}:${(r.families ?? []).join(',')}:${r.text}`);
@@ -243,5 +244,10 @@ export function personalKeyOf(ruleRecords: readonly TrackedRecord[], goalRecords
   for (const f of frameRecords) parts.push(`frame:${f.id}:${f.updatedMs}:${f.deleted ? 1 : 0}`);
   // A change the person took makes the coaches plan at once; when it is used (one more step) or undone, they plan once more.
   for (const c of takenChanges(changeRecords)) parts.push(`chg:${c.id}:${c.state}`);
+  // A section the person took makes the coaches plan at once, and again with every new week of it (the last one is light).
+  if (today) {
+    const b = activeBlock(blockRecords, today);
+    if (b) parts.push(`blk:${b.id}:${blockWeek(b, today).n}`);
+  }
   return parts.sort().join('|');
 }

@@ -27,3 +27,8 @@ export const MAX_WIDOWMAKERS = ruleNumber('gym.max-widowmakers');
 export const GENTLE_FAILURE_SETS = ruleNumber('push.gentle-no-failure');
 /** Reps in reserve for the work sets at each push. */
 export const reserveFor = (push: Push): { min: number; max: number } => ruleNamedRange('push.rir', push);
+
+/** Comparable sessions in a row without more load or reps before a core exercise of the section changes. */
+export const STAGNATION_SESSIONS = ruleNumber('block.stagnation-sessions');
+/** The share of the usual hard sets the light week of a section keeps. */
+export const LIGHT_SHARE = ruleNumber('block.light-share');

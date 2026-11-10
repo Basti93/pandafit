@@ -1,4 +1,4 @@
-import { CHAT_SYSTEM_PROMPT, ChatCoach } from '../../../src/coach/chat/chat-coach';
+import { CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT, ChatCoach } from '../../../src/coach/chat/chat-coach';
 import { ClaudeError } from '../../../src/coach/claude-client';
 import { chatThread } from '../../../src/shared/chat';
 import type { RecordKind, TrackedRecord } from '../../../src/shared/records';
@@ -371,6 +371,55 @@ describe('an explicit yes in the chat takes the open rule draft', () => {
     expect(replies(taken).at(-1)!.text).toBe('Gilt ab jetzt.');
   });
 
+  describe('a proposed section', () => {
+    const RHYTHM = [
+      { sport: 'gym', hardness: 'hard', template: 0 }, { sport: 'bike', hardness: 'easy' }, { sport: 'gym', hardness: 'moderate', template: 1 }, { sport: 'rest', hardness: 'easy' },
+      { sport: 'bike', hardness: 'hard' }, { sport: 'run', hardness: 'easy' }, { sport: 'rest', hardness: 'easy' },
+    ];
+    const blockBody = (state: string) => ({ state, atMs: 1, rhythm: RHYTHM, templates: [{ name: 'Oberkörper A', core: ['pf-a', 'pf-b', 'pf-c'] }, { name: 'Unterkörper B', core: ['pf-d', 'pf-e', 'pf-f'] }], ...(state === 'active' ? { start: '2026-11-09', end: '2026-12-06' } : {}) });
+    const blockRec = (state = 'proposed'): TrackedRecord => ({ kind: 'block', id: 'block-c0', updatedMs: 1, deleted: false, body: blockBody(state) });
+    const coachBlockMsg: TrackedRecord = { kind: 'chat', id: 'c0', updatedMs: NOW - 5000, deleted: false, body: { role: 'coach', text: 'Das schlage ich als festen Abschnitt vor.', atMs: NOW - 5000, block: 'block-c0' } };
+    const blocks = (st: ReturnType<typeof store>) => [...st.recs.values()].filter((r) => r.kind === 'block');
+
+    test('takes the open section on an explicit wish', async () => {
+      const s = store([coachBlockMsg, blockRec(), rider('r1', 'Ja, machen wir')]);
+      await coach(s, yes()).tick('p');
+      expect(blocks(s)[0]!.body).toMatchObject({ state: 'active', start: '2026-11-09', end: '2026-12-20', priorMode: 'week' });
+      expect(replies(s).at(-1)!.block).toBe('block-c0');
+      expect([...s.recs.values()].filter((r) => r.kind === 'weekplan').map((r) => r.id)).toEqual(['2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14']);
+      expect(replies(s).at(-1)!.text).toBe('Gilt ab jetzt.');
+    });
+
+    test('the prompt tells the model that a yes also means an open section', () => {
+      expect(CHAT_SYSTEM_PROMPT).toContain('offenen festen Abschnitt');
+      expect(WORKOUT_SYSTEM_PROMPT).toContain('offenen festen Abschnitt');
+    });
+
+    test('the Härte question right after the review does not hide the section', async () => {
+      const ask: TrackedRecord = { kind: 'chat', id: 'c0b', updatedMs: NOW - 4999, deleted: false, body: { role: 'coach', text: 'Wie sehr soll ich dich fordern?', atMs: NOW - 4999, askPush: true } };
+      const s = store([coachBlockMsg, ask, blockRec(), rider('r1', 'Ja, machen wir')]);
+      await coach(s, yes()).tick('p');
+      expect(blocks(s)[0]!.body).toMatchObject({ state: 'active' });
+    });
+
+    test('a standalone Härte question still means there is nothing to take', async () => {
+      const ask: TrackedRecord = { kind: 'chat', id: 'c0b', updatedMs: NOW - 2000, deleted: false, body: { role: 'coach', text: 'Wie sehr soll ich dich fordern?', atMs: NOW - 2000, askPush: true } };
+      const s = store([coachBlockMsg, ask, blockRec(), rider('r1', 'Ja, machen wir')]);
+      await coach(s, yes()).tick('p');
+      expect(blocks(s)[0]!.body).toMatchObject({ state: 'proposed' });
+      expect(replies(s).at(-1)!.text).toContain('keinen offenen Vorschlag');
+    });
+
+    test('takes nothing without an open section', async () => {
+      const done = blockRec('active');
+      const s = store([coachBlockMsg, done, rider('r1', 'Ja, machen wir')]);
+      await coach(s, yes()).tick('p');
+      expect(blocks(s)).toEqual([done]);
+      expect(replies(s).at(-1)!.block).toBeUndefined();
+      expect(replies(s).at(-1)!.text).toContain('keinen offenen Vorschlag');
+    });
+  });
+
   describe('in a workout', () => {
     const open: TrackedRecord = { kind: 'workout', id: 'w1', updatedMs: 1, deleted: false, body: { id: 'w1', title: 'Oberkörper', startMs: NOW - 20 * 60_000, endMs: null, source: 'pandafit', rest: null, exercises: [] } };
     const yesInWorkout = async () => ({ text: 'Gilt ab jetzt.', newComplaint: null, complaintsOver: [], acceptsRule: true });
@@ -419,5 +468,57 @@ describe('Härte im Chat', () => {
     await coach(store([rider('r1', 'Hallo'), goalHard]), ask).tick('p');
     expect(ziel(prompts[1]!)).toMatchObject({ push: 'hard', haerteJetzt: 'hard' });
     expect(CHAT_SYSTEM_PROMPT).toContain('haerteJetzt');
+  });
+});
+
+test('askDrift writes the question about the fixed section without AI', () => {
+  const s = store();
+  coach(s, async () => { throw new Error('no AI'); }).askDrift('p', 'block-m1');
+  expect(replies(s)).toMatchObject([{ text: 'Die letzten zwei Wochen sahen anders aus als geplant. Sollen wir wieder locker planen?', push: true, drift: 'block-m1' }]);
+});
+
+describe('the fixed section in the chat', () => {
+  const RHYTHM = [
+    { sport: 'gym', hardness: 'hard', template: 0 }, { sport: 'bike', hardness: 'easy' }, { sport: 'gym', hardness: 'moderate', template: 1 },
+    { sport: 'rest', hardness: 'easy' }, { sport: 'bike', hardness: 'hard' }, { sport: 'run', hardness: 'easy' }, { sport: 'rest', hardness: 'easy' },
+  ];
+  const section = (start: string, end: string): TrackedRecord => ({
+    kind: 'block', id: 'block-m0', updatedMs: 1, deleted: false,
+    body: { state: 'active', atMs: 1, start, end, rhythm: RHYTHM, templates: [{ name: 'Oberkörper A', core: ['a', 'b', 'c'] }, { name: 'Unterkörper B', core: ['d', 'e', 'f'] }] },
+  });
+  const LINE = 'Im festen Abschnitt bleibt der Rhythmus; schlag eine andere Woche nur auf Wunsch vor.';
+
+  test('the chat prompt names the running section and keeps its rhythm', async () => {
+    const s = store([rider('r1', 'Wie sieht die Woche aus?'), section('2026-11-02', '2026-11-29')]);
+    const prompts: string[] = [];
+    await coach(s, async ({ prompt }) => { prompts.push(prompt); return { text: 'So.', proposal: null, riderAskedForMore: false }; }).tick('p');
+    expect(prompts[0]).toContain('<abschnitt-nur-daten>\n{"woche":1,"von":4,"leichteWoche":false,"vorlagen":["Oberkörper A","Unterkörper B"],"bis":"2026-11-29"}\n');
+    expect(prompts[0]).toContain(LINE);
+  });
+
+  test('without a section the prompt has neither', async () => {
+    const s = store([rider('r1', 'Hallo')]);
+    const prompts: string[] = [];
+    await coach(s, async ({ prompt }) => { prompts.push(prompt); return { text: 'Hi.', proposal: null, riderAskedForMore: false }; }).tick('p');
+    expect(prompts[0]).not.toContain('abschnitt-nur-daten');
+    expect(prompts[0]).not.toContain(LINE);
+  });
+
+  test('the week conversation proposes no new week while the next week is in the section', async () => {
+    const s = store([section('2026-11-02', '2026-11-29')]);
+    const prompts: string[] = [];
+    const c = coach(s, async ({ prompt }) => { prompts.push(prompt); return { text: 'Weiter so.', proposal: { weekStart: '2026-11-09', days: days('2026-11-09', [1, 3]) }, riderAskedForMore: false }; });
+    expect(await c.openWeek('p')).toBe(true);
+    const [m] = replies(s);
+    expect(m!.proposal).toBeUndefined();
+    expect(prompts[0]).toContain(LINE);
+    expect(prompts[0]).not.toContain('schlag die nächste Woche vor');
+  });
+
+  test('the week conversation proposes the next week when the section ends this week', async () => {
+    const s = store([section('2026-10-12', '2026-11-08')]);
+    const c = coach(s, async () => ({ text: 'Hier.', proposal: { weekStart: '2026-11-09', days: days('2026-11-09', [1, 3]) }, riderAskedForMore: false }));
+    expect(await c.openWeek('p')).toBe(true);
+    expect(replies(s)[0]!.proposal?.weekStart).toBe('2026-11-09');
   });
 });

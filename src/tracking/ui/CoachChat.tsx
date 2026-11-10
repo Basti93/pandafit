@@ -8,10 +8,12 @@ import { UNDO } from '../../shared/wording';
 import { NextChangeCard } from './NextChangeCard';
 import { RuleCard } from './RuleCard';
 import { ProposalCard, ProposalsSheet } from './ProposalCard';
+import { BlockCard } from './BlockCard';
+import { DriftCard } from './DriftCard';
 import { PushCard } from './PushCard';
 import { useOpenProposals, useProposalActions, type WeekEntry } from './proposals';
 import { ChatBubble, ChatNote } from './ChatBubble';
-import { storedWeek, weekAnswer } from './chat-open';
+import { driftAnswer, storedWeek, weekAnswer } from './chat-open';
 import { useCatalog, usePortRecords } from './hooks';
 import { Icon, RowCard, Sheet } from './kit';
 import { BO, BO_LINES } from './bo';
@@ -54,6 +56,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
   const plans = usePortRecords(port, 'weekplan').all;
   const changeRecs = usePortRecords(port, 'change').all;
   const ruleRecs = usePortRecords(port, 'rule').all;
+  const blockRecs = usePortRecords(port, 'block').all;
   const catalog = useCatalog(port);
   const statsRecords = usePortRecords(port, 'stats').all;
   const statsRec = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);
@@ -136,6 +139,8 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
                 <>
                   {m.nextChange && <NextChangeCard history port={port} changeId={m.nextChange} records={changeRecs} now={now} />}
                   {m.rule && <RuleCard history port={port} ruleId={m.rule} records={ruleRecs} catalog={catalog} now={now} />}
+                  {m.block && <BlockCard history port={port} blockId={m.block} msgId={m.id} now={now} />}
+                  {m.drift && driftAnswer(thread, m, blockRecs ?? []) !== null && <DriftCard port={port} now={now} newId={newId} m={m} />}
                   {m.askPush && proposalAnswer(thread, m.id) !== null && <PushCard port={port} now={now} newId={newId} m={m} />}
                   {m.proposal && <ProposalLine m={m as WeekEntry} answer={weekAnswer(proposalAnswer(thread, m.id), thread.some((x) => x.undoes === m.id), storedWeek(plans ?? [], m.proposal.weekStart), m.id)} undoWhy={weekUndoRefusal(storedWeek(plans ?? [], m.proposal.weekStart), m.proposal, m.id)} onUndo={() => void undo(m as WeekEntry)} past={m.proposal.weekStart < monday} loading={plans === null} />}
                 </>

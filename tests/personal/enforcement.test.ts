@@ -187,3 +187,17 @@ describe('taken changes in the personal key', () => {
     expect(personalKeyOf([], [], [], '2026-11-07', [change('undone')])).toBe(base);
   });
 });
+
+describe('taken section in the personal key', () => {
+  const rhythm = ['gym', 'bike', 'rest', 'gym', 'rest', 'bike', 'rest'].map((sport, i) => ({ sport, hardness: 'easy', ...(sport === 'gym' ? { template: i === 0 ? 0 : 1 } : {}) }));
+  const section = (state: string) => ({ kind: 'block' as const, id: 'block-m1', updatedMs: 5, deleted: false,
+    body: { state, atMs: 1, start: '2026-11-02', end: '2026-11-29', rhythm, templates: [{ name: 'A', core: ['1', '2', '3'] }, { name: 'B', core: ['4', '5', '6'] }] } });
+  it('a taken section makes the coaches plan again; a proposal does not; a new week does', () => {
+    const base = personalKeyOf([], [], [], '2026-11-03', []);
+    expect(personalKeyOf([], [], [], '2026-11-03', [], [section('proposed')])).toBe(base);
+    const taken = personalKeyOf([], [], [], '2026-11-03', [], [section('active')]);
+    expect(taken).not.toBe(base);
+    expect(personalKeyOf([], [], [], '2026-11-10', [], [section('active')])).not.toBe(taken);
+    expect(personalKeyOf([], [], [], '2026-12-02', [], [section('active')])).toBe(base);
+  });
+});

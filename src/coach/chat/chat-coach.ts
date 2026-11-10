@@ -19,8 +19,13 @@ import { LONG_TERM_GUIDE, weekHistory } from './long-term';
 import { titleHash } from '../../shared/exercise-links';
 import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
 import type { StrengthFacts } from '../gym/review-facts';
-import { ruleNumber } from '../../shared/training-policy';
+import { ruleNumber, ruleRange } from '../../shared/training-policy';
+import { blockTakeWrites } from '../../shared/block-take';
+import { activeBlock, blockDates, blockId, blockRecord, blockWeek, readBlock, type BlockBody } from '../../shared/block';
+import { resolveCatalogEntry } from '../../shared/excluded';
+import { executionKey } from '../../shared/execution';
 import type { ReviewOpened, ReviewReason } from './month-review';
+import { DRIFT_QUESTION } from './block-watch';
 
 const EXCLUDABLE = FAMILY_IDS.filter((f) => f !== 'other');
 
@@ -66,7 +71,7 @@ Du planst mit der Person ihre Woche: welche Sportart an welchem Tag und wie hart
 Die einzelnen Einheiten (Übungen, Sätze, Watt, Laufminuten) plant jeweils eine eigene Planung für Rad (bike), Kraft (gym) und Laufen (run); was sie als Nächstes geplant haben, steht in einheiten (beim Rad auch FTP und Phase, und radFahrten sind die letzten Fahrten). Fragen dazu beantwortest du selbst, fachlich und sportwissenschaftlich begründet. Verweise die Person nie an eine andere Stelle oder ins Training..
 Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib der zuständigen Planung in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false, forDate (JJJJ-MM-TT), wenn die Person einen Tag nennt ("am Montag"), sonst null ("das nächste Training"). Die Planung plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
 Will die Person etwas fürs nächste Training ändern (etwa "nächstes Mal ohne Kniebeugen"), setze nextChange: ops mit exerciseId aus einheiten, und reason als ein Satz, warum. Für Tausch fürs nächste Training: nenne toId aus katalog oder toTitle; kennst du die id nicht, nenne toTitle. Ohne so einen Wunsch ist nextChange null. Es gilt erst, wenn die Person es übernimmt.
-Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen; push gentle, normal oder hard, wenn die Person sagt, wie sehr du sie fordern sollst; das gilt dauerhaft, also ohne weeks), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false.
+Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen; push gentle, normal oder hard, wenn die Person sagt, wie sehr du sie fordern sollst; das gilt dauerhaft, also ohne weeks), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt. Bestätigt die Person einen offenen Regelentwurf oder einen offenen festen Abschnitt ausdrücklich („trag ein“, „ja, übernehmen“, „machen wir“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false.
 Die Person kann Mengen nennen ("2× Kraft, 3× Rad"), feste Tage ("Freitag Studio") oder dich vorschlagen lassen; oft eine Mischung. Feste Wünsche der Person markierst du mit fixed true.
 Stelle höchstens eine Frage auf einmal und nur, wenn die Antwort den Plan ändert. Wenn du genug weißt, mach einen Vorschlag.
 Ein Vorschlag (proposal) ist immer eine ganze Woche von Montag bis Sonntag (sieben Tage, date im Format JJJJ-MM-TT, aus wocheJetzt oder wocheNaechste) mit sport bike, gym, run, mobility oder rest und hardness easy, moderate oder hard. Bei Krafttagen sagt legs, ob Beine trainiert werden; long markiert die lange Rad- oder Laufeinheit. note ist optional und kurz. Zwei Einheiten an einem Tag (also mit sport und hardness, optional minutes) setzt du nur, wenn die Person eine Kombination ausdrücklich will, und höchstens eine davon ist hart; sonst ist ein Tag eine Einheit. Ein Wunsch wie „15–20 Min. Ausdauer im Gym“ ist also mit minutes (der kleinere Wert, ganze Minuten von 5 bis 90), keine Notiz. Ohne Vorschlag ist proposal null. Du änderst nie etwas still: Ein Vorschlag gilt erst, wenn die Person ihn übernimmt.
@@ -82,7 +87,7 @@ export const WORKOUT_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit und begleitest d
 Sie sagt dir etwa "Gerät belegt", "Schulter zwickt" oder "nur noch 30 Minuten". Schlag dann vor, wie der Rest dieses Trainings aussieht, als change mit ops; ohne Änderung ist change null.
 ops: drop (die offenen Sätze einer Übung fallen weg), swap (die offenen Sätze wandern zu einer anderen Übung aus katalog, to ist deren id, nimm eine mit demselben Muskel und einem Gerät, das frei ist), sets (open: so viele offene Sätze bleiben), lighter (pct 5 bis 30: die offenen Sätze werden um so viel Prozent leichter). ex ist immer die ex-Kennung einer Übung aus training, die noch offene Sätze hat. Erledigte Sätze änderst du nie.
 Bei Schmerzen: die betroffene Bewegung weglassen oder deutlich leichter, nie durchziehen; keine medizinischen Ratschläge. Erzählt die Person von einem neuen Schmerz, setze newComplaint auf einen kurzen Text in ihren Worten; sonst null. Sagt sie, eine Beschwerde aus beschwerden ist vorbei, nenne deren id in complaintsOver. Sagt sie, dass eine Beschwerde besser wird, aber noch nicht weg ist, nenne deren id in complaintsHealing; sonst ist complaintsHealing leer. Ohne klare Aussage änderst du nichts.
-Meint die Person das nächste Training statt dieses ("nächstes Mal"), setze statt change nextChange: ops mit exerciseId (die Übungs-id aus katalog oder training) und reason als ein Satz; für einen Tausch nenne toId aus katalog oder toTitle, kennst du die id nicht, nenne toTitle; sonst null. Nichts ändert sich, bevor die Person den Vorschlag übernimmt. Sagt sie "künftig/immer/nie", setze ruleDraft (kind exclude mit exerciseIds aus katalog, wish oder goal; text, sport); sonst null. Bestätigt die Person einen offenen Regelentwurf ausdrücklich („trag ein“, „ja, übernehmen“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false. text: ein bis zwei Sätze.`;
+Meint die Person das nächste Training statt dieses ("nächstes Mal"), setze statt change nextChange: ops mit exerciseId (die Übungs-id aus katalog oder training) und reason als ein Satz; für einen Tausch nenne toId aus katalog oder toTitle, kennst du die id nicht, nenne toTitle; sonst null. Nichts ändert sich, bevor die Person den Vorschlag übernimmt. Sagt sie "künftig/immer/nie", setze ruleDraft (kind exclude mit exerciseIds aus katalog, wish oder goal; text, sport); sonst null. Bestätigt die Person einen offenen Regelentwurf oder einen offenen festen Abschnitt ausdrücklich („trag ein“, „ja, übernehmen“, „machen wir“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false. text: ein bis zwei Sätze.`;
 
 export const REVIEW_SYSTEM_PROMPT = `${BO_PERSONA} in Pandafit und schreibst der Person ihren Monatsrückblick, ohne dass sie dir geschrieben hat. Du sprichst Deutsch, kurz und warm, duzt. Du bist ehrlich und ermutigend, Regelmäßigkeit vor Gewichten.
 Du siehst auf die letzten drei Monate: wochen (Minuten je Sportart und harte Tage je Woche), kraft (Krafttrainings je Woche, wie sich die häufigsten Übungen entwickeln, Muskelgruppen, die dauerhaft unter dem Ziel liegen), geplant (Krafttage je Woche im Wochenplan, null ohne Plan), ziel, Wünsche, Ausschlüsse und beschwerden. anlass sagt, warum der Rückblick jetzt kommt. ${PUSH_NOW_GUIDE}
@@ -90,15 +95,26 @@ opening: ein ehrlicher, ermutigender Satz zu diesem Monat.
 observations: höchstens drei Beobachtungen aus den drei Monaten, die für das Ziel wirklich zählen. text ist die Beobachtung als ganzer Satz, reason ein ganzer Satz, warum sie zählt. Lieber weniger als belanglose.
 complaintQuestions: für jede Beschwerde aus beschwerden genau eine kurze, freundliche Frage, wie es damit inzwischen geht, mit ihrer id.
 nextWeeks: ein bis zwei Sätze als Vorschlag für die nächsten Wochen, passend zum Ziel.
+block: ein fester Abschnitt für die nächsten 4 bis 6 Wochen, oder null. templates sind die Vorlagen der Krafttage, je mit name (etwa „Oberkörper A“) und core, den Kernübungen. rhythm ist eine Woche von Montag bis Sonntag, sieben Tage mit sport bike, gym, run, mobility oder rest und hardness easy, moderate oder hard; legs sagt bei Krafttagen, ob Beine trainiert werden, long markiert die lange Rad- oder Laufeinheit, template ist bei Krafttagen die Stelle der Vorlage in templates, ab 0. Für den Rhythmus gelten die Regeln für Erholung, auch von Sonntag auf Montag: höchstens zwei harte Tage pro Woche, kein harter Rad- oder Lauftag am Tag nach einem harten Beintag, die lange Einheit nicht am Tag nach einem Beintag. Läuft schon ein Abschnitt (abschnitt), ist block null, außer er endet mit dieser Woche (endetJetzt). Schlag einen festen Abschnitt nur vor, wenn er zum Ziel und zu den letzten Wochen passt; sonst bleib locker. Kernübungen nach Ziel, Vorlieben und Regeln der Person, nie ausgeschlossene, 3 bis 4 je Vorlage, ids aus katalog.
 Keine Vorwürfe, keine Serien, nie „du hast nur“. Hat die Person weniger trainiert, passt du den Rahmen an und sagst ehrlich, was das für ihr Ziel bedeutet. Sprich nie über Körpergewicht, Kalorien oder Aussehen. Schlag nichts vor, was gegen ihre Ausschlüsse, Wünsche oder Beschwerden geht. Medizinische Ratschläge gibst du nicht.`;
 
 const reviewSchema = {
-  type: 'object', additionalProperties: false, required: ['opening', 'observations', 'complaintQuestions', 'nextWeeks'],
+  type: 'object', additionalProperties: false, required: ['opening', 'observations', 'complaintQuestions', 'nextWeeks', 'block'],
   properties: {
     opening: { type: 'string' },
     observations: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['text', 'reason'], properties: { text: { type: 'string' }, reason: { type: 'string' } } } },
     complaintQuestions: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['id', 'question'], properties: { id: { type: 'string' }, question: { type: 'string' } } } },
     nextWeeks: { type: 'string' },
+    block: { anyOf: [{ type: 'null' }, {
+      type: 'object', additionalProperties: false, required: ['templates', 'rhythm'],
+      properties: {
+        templates: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['name', 'core'], properties: { name: { type: 'string' }, core: { type: 'array', items: { type: 'string' } } } } },
+        rhythm: { type: 'array', items: {
+          type: 'object', additionalProperties: false, required: ['sport', 'hardness'],
+          properties: { sport: { enum: ['bike', 'gym', 'run', 'mobility', 'rest'] }, hardness: { enum: ['easy', 'moderate', 'hard'] }, legs: { type: 'boolean' }, long: { type: 'boolean' }, template: { type: 'integer' } },
+        } },
+      },
+    }] },
   },
 };
 
@@ -219,6 +235,19 @@ export class ChatCoach {
     } catch { return false; } finally { this.busy.delete(id); }
   }
 
+  /** The yes to an open section: the same writes as the Übernehmen button. Sets `block` on the reply (the card then shows Rückgängig). */
+  private acceptOpenBlock(id: string, prev: ChatEntry, now: number, msg: ChatMessage): boolean {
+    const rec = this.deps.store.all(id, 'block').find((r) => r.id === prev.block);
+    const writes = rec ? blockTakeWrites({ block: rec, frame: this.deps.store.all(id, 'frame'), plans: this.deps.store.all(id, 'weekplan'), blocks: this.deps.store.all(id, 'block'), msgId: prev.id, today: dateKey(now), nowMs: now }) : null;
+    if (!writes) {
+      msg.text += '\nIch sehe gerade keinen offenen Vorschlag, den ich übernehmen könnte. Deshalb gilt noch kein neuer Abschnitt.';
+      return false;
+    }
+    for (const w of writes) this.deps.store.put(id, w);
+    msg.block = prev.block;
+    return true;
+  }
+
   /**
    * The rider's explicit yes to the open rule draft: the draft of the coach message right before hers becomes active, the same
    * move as the Übernehmen button. In a workout only the coach messages of that workout count. A goal is never taken from the
@@ -227,7 +256,13 @@ export class ChatCoach {
    */
   private acceptOpenRule(id: string, thread: ChatEntry[], waiting: ChatEntry, now: number, msg: ChatMessage): boolean {
     const before = thread.slice(0, thread.findIndex((m) => m.id === waiting.id));
-    const rid = before.reverse().find((m) => m.role === 'coach' && (!waiting.inWorkout || m.inWorkout === waiting.inWorkout))?.rule;
+    // The Härte question that follows a review is no proposal: the yes still means the message before it.
+    // Only the question that openReview writes right after the review (one millisecond later) is passed over; a question of its own is not.
+    const coachMsgs = before.filter((m) => m.role === 'coach' && (!waiting.inWorkout || m.inWorkout === waiting.inWorkout));
+    const last = coachMsgs.at(-1), beforeLast = coachMsgs.at(-2);
+    const prev = last?.askPush && beforeLast && (beforeLast.block || beforeLast.rule) && last.atMs - beforeLast.atMs <= 1 ? beforeLast : last;
+    if (prev?.block) return this.acceptOpenBlock(id, prev, now, msg);
+    const rid = prev?.rule;
     const cur = rid ? this.deps.store.all(id, 'rule').find((r) => r.id === rid) : undefined;
     const open = cur ? readRule(cur.id, cur.body) : null;
     if (!cur || !open || open.state !== 'proposed') {
@@ -478,8 +513,13 @@ export class ChatCoach {
     try {
       const now = this.deps.nowMs();
       const thread = chatThread(this.deps.store.all(id, 'chat'));
-      const prompt = this.prompt(id, thread.slice(-CHAT_CONTEXT), now, 'Das ist das Wochengespräch, die Person hat dir gerade nicht geschrieben. Blick in einem Halbsatz auf die letzte Woche zurück, ohne Schuld, und schlag die nächste Woche vor (wocheNaechste). Frag kurz, ob es so passt.');
+      // Next week belongs to a fixed section: its plan stands, so Bo proposes no other week unless the person asks.
+      const inBlock = activeBlock(this.deps.store.all(id, 'block'), addDays(mondayOf(dateKey(now)), 7)) !== null;
+      const prompt = this.prompt(id, thread.slice(-CHAT_CONTEXT), now, inBlock
+        ? 'Das ist das Wochengespräch, die Person hat dir gerade nicht geschrieben. Blick in einem Halbsatz auf die letzte Woche zurück, ohne Schuld. Die nächste Woche steht im festen Abschnitt schon fest (wocheNaechste); sag kurz, was kommt, und gib proposal null.'
+        : 'Das ist das Wochengespräch, die Person hat dir gerade nicht geschrieben. Blick in einem Halbsatz auf die letzte Woche zurück, ohne Schuld, und schlag die nächste Woche vor (wocheNaechste). Frag kurz, ob es so passt.');
       const msg = await this.answer(id, prompt, now, false);
+      if (inBlock) delete msg.proposal;
       this.put(id, { ...msg, push: true });
       return true;
     } catch { return false; } finally { this.busy.delete(id); }
@@ -512,9 +552,48 @@ export class ChatCoach {
       let text = compose();
       while (text.length > MAX_CHAT_TEXT && observations.length > 0) { observations.pop(); text = compose(); }
       const ask = askPush && complaints.length === 0 && goalOfProfile(this.deps.store, id, dateKey(now)).push === undefined;
-      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...(ask ? { askPush: true as const } : {}) });
+      const block = this.blockOf(id, raw.block, now);
+      // One card per message: with a section proposed, the push question follows as its own message, so both stay open to answer.
+      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...(ask && !block ? { askPush: true as const } : {}) }, null, null, block);
+      if (ask && block) {
+        // The review is written: a question that cannot be stored now does not make it count as failed; it is asked later.
+        try { this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: now + 1, askPush: true }); } catch { return 'written'; }
+      }
       return ask ? 'asked' : 'written';
     } catch { return false; } finally { this.busy.delete(id); }
+  }
+
+  /**
+   * The fixed section the review proposes, as a `proposed` body, or null. Core exercises must be catalog exercises, never
+   * excluded, and not the same execution twice in one template (a later one goes); at most `block.core-per-template` stay.
+   * The reader the app uses then decides the rest (enough core exercises, the recovery rules of the rhythm). None while a
+   * section runs.
+   */
+  private blockOf(id: string, x: unknown, now: number): BlockBody | null {
+    if (!isObj(x) || !Array.isArray(x.templates) || !this.blockFree(id, dateKey(now))) return null;
+    const catalog = this.catalogOf(id);
+    const out = excludedOf(this.deps.store, id, catalog);
+    const templates = x.templates.map((t) => {
+      if (!isObj(t)) return t;
+      const seen = new Set<string>();
+      const core = strings(t.core).flatMap((cid) => {
+        const e = resolveCatalogEntry({ id: cid }, catalog);
+        if (!e || out.has(e.id) || seen.has(e.id)) return [];
+        const key = executionKey(e);
+        if (key !== null && seen.has(key)) return [];
+        seen.add(e.id);
+        if (key !== null) seen.add(key);
+        return [e.id];
+      }).slice(0, ruleRange('block.core-per-template').max);
+      return { name: typeof t.name === 'string' ? t.name.replace(/\s+/g, ' ').trim() : t.name, core };
+    });
+    return readBlock({ state: 'proposed', templates, rhythm: x.rhythm, atMs: now });
+  }
+
+  /** No section runs on `today`, or the running one ends before a section taken today would start: then a new one may be proposed. */
+  private blockFree(id: string, today: string): boolean {
+    const running = activeBlock(this.deps.store.all(id, 'block'), today);
+    return !running?.end || running.end < blockDates(today).start;
   }
 
   /** The week history without the weeks before the first day the stats record covers: those would look empty, not unknown. */
@@ -535,6 +614,10 @@ export class ChatCoach {
       return { montag, kraft: plan ? plan.days.filter((d) => d.sport === 'gym' || d.also?.sport === 'gym').length : null };
     });
     const out = excludedOf(this.deps.store, id, this.catalogOf(id));
+    const running = activeBlock(this.deps.store.all(id, 'block'), today);
+    // The section ends with this week, before a new one taken today would start (its end is the review day): Bo says so and may propose the next one.
+    const free = this.blockFree(id, today);
+    const endsNow = !!running && free;
     let kraft: StrengthFacts | null = null;
     try { kraft = this.deps.strengthFacts?.(id) ?? null; } catch { /* the review goes without */ }
     return [
@@ -547,6 +630,9 @@ export class ChatCoach {
       dataBlock('kraft', kraft),
       dataBlock('geplant', geplant),
       dataBlock('anlass', REVIEW_REASON[reason]),
+      dataBlock('abschnitt', running ? { bis: running.end, ...(endsNow ? { endetJetzt: true } : {}) } : null),
+      ...(endsNow ? ['Der laufende Abschnitt endet mit dieser Woche; du darfst den nächsten vorschlagen.'] : []),
+      ...(free ? [this.catalogBlock(id)] : []),
       'Schreib den Monatsrückblick.',
     ].join('\n');
   }
@@ -587,6 +673,8 @@ export class ChatCoach {
     const days = (stats?.days ?? []).filter((d) => d.date >= from && d.date <= today)
       .map((d) => ({ date: d.date, tag: weekday(d.date), minuten: Object.fromEntries(Object.entries(d.minutes).filter(([, m]) => m > 0)), hart: d.hardness, beine: d.legs }))
       .filter((d) => Object.keys(d.minuten).length > 0);
+    const running = activeBlock(this.deps.store.all(id, 'block'), today);
+    const runningWeek = running ? blockWeek(running, today) : null;
     const week = (m: string) => planOfWeek(plans, m)?.days.map(({ date, sport, hardness, fixed, legs, long, note, also }) => ({ date, tag: weekday(date), sport, hardness, fixed, legs, long, note, also })) ?? null;
     return [
       dataBlock('heute', { datum: today, tag: weekday(today) }),
@@ -599,6 +687,10 @@ export class ChatCoach {
       this.goalBlock(id, today, this.complaintList(id)),
       ...this.wishLines(id, ['gym', 'bike', 'run']),
       dataBlock('beschwerden', this.complaintList(id)),
+      ...(running && runningWeek ? [
+        dataBlock('abschnitt', { woche: runningWeek.n, von: runningWeek.of, leichteWoche: runningWeek.light, vorlagen: running.templates.map((t) => t.name), bis: running.end }),
+        'Im festen Abschnitt bleibt der Rhythmus; schlag eine andere Woche nur auf Wunsch vor.',
+      ] : []),
       dataBlock('verlauf', thread.map((m) => ({ von: m.role === 'rider' ? 'person' : 'coach', text: m.text, ...(m.proposal ? { vorschlagFuerWoche: m.proposal.weekStart } : {}), ...(m.takes ? { hatUebernommen: true } : {}), ...(m.declines ? { hatAbgelehnt: true } : {}), ...(m.undoes ? { hatZurueckgenommen: true } : {}) }))),
       instruction,
     ].join('\n');
@@ -611,12 +703,18 @@ export class ChatCoach {
     this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: this.deps.nowMs(), push: true, askPush: true });
   }
 
-  /** The change record is written first, so the message never points at nothing. The coach only ever writes it as `proposed`. */
-  private put(id: string, m: ChatMessage, draft?: Draft | null, rule?: RuleDraft | null): void {
+  /** Bo asks whether the fixed section still fits, without AI: the card under the message holds the answers. */
+  askDrift(id: string, blockId: string): void {
+    this.put(id, { role: 'coach', text: DRIFT_QUESTION, atMs: this.deps.nowMs(), push: true, drift: blockId });
+  }
+
+  /** The change, rule or block record is written first, so the message never points at nothing. The coach only ever writes it as `proposed`. */
+  private put(id: string, m: ChatMessage, draft?: Draft | null, rule?: RuleDraft | null, block?: BlockBody | null): void {
     const mid = this.deps.newId();
     const body = { ...m };
     if (draft) { this.deps.store.put(id, changeRecord(mid, draft.ops, draft.reason, this.deps.nowMs())); body.nextChange = changeId(mid); }
     if (rule) { this.deps.store.put(id, ruleRecord(ruleId(mid), rule, 'proposed', 'chat', this.deps.nowMs())); body.rule = ruleId(mid); }
+    if (block) { this.deps.store.put(id, blockRecord(blockId(mid), block, this.deps.nowMs())); body.block = blockId(mid); }
     const r: TrackedRecord = { kind: 'chat', id: mid, updatedMs: Math.max(m.atMs, this.deps.nowMs()), deleted: false, body };
     this.deps.store.put(id, r);
   }

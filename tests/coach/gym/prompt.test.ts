@@ -45,3 +45,19 @@ describe('Gym-Prompt und Härte', () => {
     expect(buildGymPrompt({ ...base, goal: { strength: 'muscle', focus: [], sports: {}, push: 'hard' }, complaints: [complaint] })).toContain('Härte: Vorsichtig.');
   });
 });
+
+describe('Gym-Prompt und Abschnitt', () => {
+  const abschnitt = { n: 3, of: 5, template: 'Oberkörper A', light: false, core: [{ templateId: 't1', title: 'Bankdrücken', stagnates: false }, { templateId: 't2', title: 'Rudern', stagnates: true }] };
+  it('zeigt Woche, Vorlage und Kernübungen im Block abschnitt', () => {
+    const p = buildGymPrompt({ ...base, abschnitt });
+    const m = /<abschnitt-nur-daten>\n([\s\S]*?)\n<\/abschnitt-nur-daten>/.exec(p);
+    expect(JSON.parse(m![1]!)).toEqual({ woche: 3, von: 5, vorlage: 'Oberkörper A', leichteWoche: false, kernuebungen: [{ templateId: 't1', titel: 'Bankdrücken' }, { templateId: 't2', titel: 'Rudern', stagniert: true }] });
+    expect(p).toContain('Im Abschnitt bleiben die Kernübungen; Ergänzungen wählst du frei.');
+    expect(p).toContain('Verpasste Einheiten holt niemand nach.');
+  });
+  it('lässt Block und Satz ohne Abschnitt weg', () => {
+    const p = buildGymPrompt(base);
+    expect(p).not.toContain('abschnitt');
+    expect(p).not.toContain('Im Abschnitt bleiben');
+  });
+});

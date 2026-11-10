@@ -23,7 +23,12 @@ export type GymContext = { workouts: StrengthWorkout[]; templates: ExerciseTempl
   /** The most minutes the person has for this session, warm-up and rests included. Without it, no time check. */
   budgetMinutes?: number;
   /** How hard the person trains, an open or healing complaint already counted in. Without it, normal. */
-  push?: Push };
+  push?: Push;
+  /**
+   * The fixed section of today. `core`: catalog ids of the core exercises of today's template. `exempt`: core ids the plan may leave
+   * out (stagnating, excluded, legs on a leg break, swapped, or all with an open complaint). `lightCap`: most hard sets in the light
+   * week, null when there is nothing to take it from. */
+  block?: { core: string[]; exempt: ReadonlySet<string>; light: boolean; lightCap: number | null } };
 export type CheckResult = { ok: true; workout: GymWorkout } | { ok: false; reason: string };
 
 export const WIDOWMAKER_REPS = 20;
@@ -147,6 +152,18 @@ export function executionKeyOf(e: { templateId: string; title: string }, ctx: Gy
 const executionKeysOf = (exercises: GymExercise[], ctx: GymContext): string[] =>
   exercises.map((e) => executionKeyOf(e, ctx)).filter((k): k is string => k !== null);
 
+/** Whether a planned exercise is the core exercise `coreId`: by its id, by a Hevy link to it or by the catalog entry it resolves to. */
+export const isCoreExercise = (e: { templateId: string; title: string }, coreId: string, ctx: Pick<GymContext, 'catalog' | 'links'>): boolean =>
+  e.templateId === coreId || ctx.links?.[e.templateId] === coreId || resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links)?.id === coreId;
+
+/** Inside a section the core exercises stay (unless exempt) and the light week stays light. */
+function checkBlock(exercises: GymExercise[], all: GymSet[], ctx: GymContext, block: NonNullable<GymContext['block']>): void {
+  for (const c of block.core) if (!block.exempt.has(c) && !exercises.some((e) => isCoreExercise(e, c, ctx))) no('Kernübung fehlt');
+  if (!block.light) return;
+  if (all.some((s) => s.type === 'failure' || s.type === 'dropset')) no('zu viel für die leichte Woche');
+  if (block.lightCap !== null && hardSetsOf(all) > block.lightCap) no('zu viel für die leichte Woche');
+}
+
 /**
  * Hard limits for an AI workout. Anything outside them is refused whole. Only weights are fitted: snapped to reachable steps and
  * lowered to what the place of the exercise in the workout allows.
@@ -171,6 +188,7 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     if (ctx.push === 'gentle' && (all.filter((s) => s.type === 'failure' || s.type === 'dropset').length > GENTLE_FAILURE_SETS || exercises.some((e) => isWidowmaker(e.notes)))) return no('Versagen passt nicht zur Härte');
     if (all.filter((s) => s.type === 'failure').length > MAX_FAILURE_SETS) return no(`mehr als ${MAX_FAILURE_SETS} Sätze bis zum Versagen`);
     if (exercises.filter((e) => isWidowmaker(e.notes)).length > MAX_WIDOWMAKERS) return no(`mehr als ${MAX_WIDOWMAKERS} Widowmaker`);
+    if (ctx.block) checkBlock(exercises, all, ctx, ctx.block);
     const ids = exercises.map((e) => e.supersetId).filter((v): v is number => v !== null);
     for (const id of new Set(ids)) if (ids.filter((v) => v === id).length < 2) return no('Superset mit nur einer Übung');
     const avail = availableExercises(ctx.workouts, ctx.nowMs);
@@ -203,6 +221,8 @@ const REASON_PHRASES: [RegExp, string][] = [
   [/ausgeschlossen/, 'eine Übung, die du ausgeschlossen hast'],
   [/dieselbe Ausführung doppelt/, 'dieselbe Übung zweimal, nur mit anderem Gerät'],
   [/mehr als \d+ Übungen/, 'zu viele Übungen'],
+  [/Kernübung fehlt/, 'eine Kernübung des Abschnitts fehlt'],
+  [/leichte Woche/, 'mehr, als die leichte Woche tragen soll'],
   [/Versagen passt nicht zur Härte/, 'Sätze bis zum Versagen, obwohl du vorsichtig trainierst'],
   [/mehr als \d+ Sätze bis zum Versagen/, 'zu viele Sätze bis zum Versagen'],
   [/mehr als \d+ Sätze/, 'zu viele Sätze'],

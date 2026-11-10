@@ -214,7 +214,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     try { changes = content ? newestNotes([...coach.changeNotes(id), ...gym.changeNotes(id), ...run.changeNotes(id)]) : []; } catch { /* the rest of the stats still go out */ }
     return content ? { ...content, ...(advice ? { advice } : {}), ...(next.length > 0 ? { next } : {}), ...(changes.length > 0 ? { changes } : {}) } : content;
   };
-  const personalKey = (id: string): string => personalKeyOf(records.all(id, 'rule'), records.all(id, 'goal'), records.all(id, 'frame'), dateKey(nowMs()), records.all(id, 'change'));
+  const personalKey = (id: string): string => personalKeyOf(records.all(id, 'rule'), records.all(id, 'goal'), records.all(id, 'frame'), dateKey(nowMs()), records.all(id, 'change'), records.all(id, 'block'));
   // The coach chat: answers the rider's messages of the profiles coached here, never with a ride open.
   const chat = new ChatCoach({
     store: records, ask, nowMs, newId: () => randomUUID(), catalog: catalogOf,

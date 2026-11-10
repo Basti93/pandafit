@@ -2,7 +2,7 @@ import { POLICY_VERSION, RULES, SCENARIOS, SOURCES, policyRule, ruleNamedRange, 
 
 describe('training policy register', () => {
   it('has a version and unique ids', () => {
-    expect(POLICY_VERSION).toBe('2026-11-10.5');
+    expect(POLICY_VERSION).toBe('2026-11-10.6');
     for (const list of [SOURCES, RULES, SCENARIOS]) expect(new Set(list.map((x) => x.id)).size).toBe(list.length);
   });
 
@@ -84,5 +84,21 @@ describe('push rules', () => {
     expect(ruleRange('push.rir')).toEqual({ min: 1, max: 3 });
     expect(ruleNumber('push.gentle-no-failure')).toBe(0);
     expect(ruleNumber('push.ask-after-workouts')).toBe(3);
+  });
+});
+
+describe('block rules', () => {
+  it('registers the section lengths, core count and shares as checked gym rules', () => {
+    expect(ruleNumber('block.min-weeks')).toBe(4);
+    expect(ruleNumber('block.max-weeks')).toBe(6);
+    expect(ruleRange('block.core-per-template')).toEqual({ min: 3, max: 4 });
+    expect(ruleNumber('block.light-share')).toBe(0.67);
+    expect(ruleNumber('block.stagnation-sessions')).toBe(2);
+    expect(ruleNumber('block.drift-share')).toBe(0.5);
+    expect(ruleNumber('block.drift-weeks')).toBe(2);
+    for (const r of RULES.filter((x) => x.id.startsWith('block.'))) {
+      expect(r.domain).toBe('gym');
+      expect(r.enforcement).toBe('checked');
+    }
   });
 });

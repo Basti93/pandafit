@@ -233,4 +233,12 @@ export const RULES: PolicyRule[] = [
   r('push.rir', 'gym', 'product', 'weighed', 'Wiederholungen in Reserve je Härte: Vorsichtig 2–3, Normal 1–3, Fordere mich 0–2.', 'Härte', active, { value: { min: 1, max: 3 }, ranges: { gentle: { min: 2, max: 3 }, normal: { min: 1, max: 3 }, hard: { min: 0, max: 2 } }, unit: 'RIR', scenarioIds: ['M01', 'M02'] }),
   r('push.gentle-no-failure', 'gym', 'product', 'checked', 'Bei Vorsichtig gibt es keine Versagens-, keine Drop-Sätze und keine Widowmaker.', 'Härte', active, { value: 0, unit: 'Sätze', scenarioIds: ['M01', 'M02'] }),
   r('push.ask-after-workouts', 'gym', 'product', 'checked', 'Wurde die Härte nie gewählt, fragt Bo nach 3 Krafttrainings danach.', 'Härte', active, { value: 3, unit: 'Krafttrainings', scenarioIds: ['M01', 'M02'] }),
+  // Fester Abschnitt (docs/superpowers/specs/2026-11-10-monatsrueckblick-design.md §5): stable core exercises for 4–6 weeks, a lighter last week.
+  r('block.min-weeks', 'gym', 'product', 'checked', 'Ein fester Abschnitt dauert mindestens 4 Wochen.', 'Fester Abschnitt', active, { value: 4, unit: 'Wochen', scenarioIds: ['M01', 'M03'] }),
+  r('block.max-weeks', 'gym', 'product', 'checked', 'Ein fester Abschnitt dauert höchstens 6 Wochen.', 'Fester Abschnitt', active, { value: 6, unit: 'Wochen', scenarioIds: ['M01', 'M03'] }),
+  r('block.core-per-template', 'gym', 'product', 'checked', 'Jede Krafttag-Vorlage hat 3 bis 4 Kernübungen.', 'Fester Abschnitt', active, { value: { min: 3, max: 4 }, unit: 'Übungen', scenarioIds: ['M01', 'M03'] }),
+  r('block.light-share', 'gym', 'product', 'checked', 'Die letzte Woche hat höchstens zwei Drittel der harten Sätze der übrigen Wochen, bei gleicher Last.', 'Fester Abschnitt', active, { value: 0.67, scenarioIds: ['M01', 'M03'] }),
+  r('block.stagnation-sessions', 'gym', 'product', 'checked', 'Eine Kernübung wechselt, wenn sie in 2 Einheiten in Folge nicht mehr Last oder Wiederholungen brachte.', 'Fester Abschnitt', active, { value: 2, unit: 'Einheiten', scenarioIds: ['M01', 'M03'] }),
+  r('block.drift-share', 'gym', 'product', 'checked', 'Der Abschnitt passt nicht mehr, wenn weniger als die Hälfte der geplanten Krafttrainings stattfinden.', 'Fester Abschnitt', active, { value: 0.5, scenarioIds: ['M01', 'M03'] }),
+  r('block.drift-weeks', 'gym', 'product', 'checked', 'Bo fragt nach, wenn das 2 Kalenderwochen nacheinander so war.', 'Fester Abschnitt', active, { value: 2, unit: 'Wochen', scenarioIds: ['M01', 'M03'] }),
 ];

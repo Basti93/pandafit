@@ -5,7 +5,7 @@ import { extendDown, ladderFrom, nextUp, snapDown, type Ladder, type LoadStepOve
 import { LEG_MUSCLES } from '../../shared/legs';
 import { repRangeOf } from '../../shared/muscle-targets';
 import { mainStudio, studioKey, resolveStudio, type Renames } from '../../shared/studio';
-import { COMPARABLE_DAYS, DROP_STEP_BACK, LONG_BREAK_DAYS, MIN_COMPARABLE, PRE_FATIGUE_SHARE_MIN, PRE_FATIGUE_SHARE_PER_SET, PRE_FATIGUE_TOLERANCE, RECENT_DAYS, STEP_BACK } from './limits';
+import { COMPARABLE_DAYS, DROP_STEP_BACK, LONG_BREAK_DAYS, MIN_COMPARABLE, PRE_FATIGUE_SHARE_MIN, PRE_FATIGUE_SHARE_PER_SET, PRE_FATIGUE_TOLERANCE, RECENT_DAYS, STAGNATION_SESSIONS, STEP_BACK } from './limits';
 import { hardSetsOf, preFatigue, type MuscleOf } from './pre-fatigue';
 
 const DAY_MS = 86_400_000;
@@ -168,6 +168,26 @@ export function suggestNext(templateId: string, workouts: StrengthWorkout[], now
   if (last.weightKg === null || last.minReps < range.max) return done(last.weightKg, fit(last.minReps + 1), 'progress', path);
   if (assisted) return done(last.weightKg, reps, 'keep', 'assisted');
   return done(nextUp(last.weightKg, ladder), range.min, 'progress', path);
+}
+
+/**
+ * True when the last `block.stagnation-sessions` comparable sessions of an exercise each brought neither more load nor, at the same
+ * load, more reps than the session before (the comparison the progression makes). Needs one more session to compare the first with.
+ */
+export function stagnates(templateId: string, workouts: StrengthWorkout[], nowMs: number, ex?: ExerciseInfo, plan?: Plan): boolean {
+  const all = sessionsOf(templateId, workouts, nowMs, plan).filter((s) => nowMs - s.ms <= COMPARABLE_DAYS * DAY_MS);
+  // Like the progression: only sessions with a pre-fatigue similar to the newest one are compared (the studio is the plan's).
+  const newest = all[all.length - 1];
+  const recent = newest ? all.filter((s) => Math.abs(s.preSets - newest.preSets) <= PRE_FATIGUE_TOLERANCE) : [];
+  if (recent.length < STAGNATION_SESSIONS + 1) return false;
+  const assisted = isAssisted(ex?.type);
+  const tail = recent.slice(-(STAGNATION_SESSIONS + 1));
+  return tail.slice(1).every((cur, i) => {
+    const prev = tail[i]!;
+    const [c, p] = [cur.weightKg ?? 0, prev.weightKg ?? 0];
+    // With assistance, less weight is more load.
+    return !(assisted ? c < p : c > p) && !(c === p && cur.minReps > prev.minReps);
+  });
 }
 
 /** True when quadriceps, hamstrings, glutes or calves were trained in the last 48 hours. */

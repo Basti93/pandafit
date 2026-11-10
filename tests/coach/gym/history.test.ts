@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StrengthWorkout, SetType } from '../../../src/coach/hevy';
-import { availableExercises, isAssisted, ladderFor, isRepBased, REASONS, recentLegWork, suggestNext } from '../../../src/coach/gym/history';
+import { availableExercises, isAssisted, ladderFor, isRepBased, REASONS, recentLegWork, stagnates, suggestNext } from '../../../src/coach/gym/history';
 import { snapDown } from '../../../src/shared/loads';
 
 const DAY = 86_400_000;
@@ -295,5 +295,45 @@ describe('suggestNext and the place in the workout', () => {
   it('without a muscle lookup every past session counts as fresh', () => {
     const ws = [tired(14, 6, [[30, 8], [30, 8]]), tired(7, 6, [[30, 8], [30, 9]])];
     expect(suggest('ip', ws, NOW)).toEqual({ weightKg: 30, reps: 9, why: 'progress' });
+  });
+});
+
+describe('stagnates', () => {
+  it('erkennt Stagnation nach zwei gleichen Einheiten', () => {
+    const ws = [wk(21, [[40, 8], [40, 8]]), wk(14, [[40, 8], [40, 8]]), wk(7, [[40, 8], [40, 8]])];
+    expect(stagnates('sq', ws, NOW)).toBe(true);
+  });
+  it('mehr Wiederholungen oder mehr Last heißt keine Stagnation', () => {
+    expect(stagnates('sq', [wk(21, [[40, 8]]), wk(14, [[40, 8]]), wk(7, [[40, 9]])], NOW)).toBe(false);
+    expect(stagnates('sq', [wk(21, [[40, 8]]), wk(14, [[40, 8]]), wk(7, [[42.5, 6]])], NOW)).toBe(false);
+  });
+  it('braucht genug vergleichbare Einheiten', () => {
+    expect(stagnates('sq', [wk(14, [[40, 8]]), wk(7, [[40, 8]])], NOW)).toBe(false);
+    expect(stagnates('sq', [], NOW)).toBe(false);
+  });
+});
+
+describe('stagnates, Sonderfälle', () => {
+  const ASSISTED = { type: 'bodyweight_assisted_reps' };
+  it('bei Unterstützung heißt weniger Gewicht Fortschritt, mehr Gewicht nicht', () => {
+    expect(stagnates('sq', [wk(21, [[40, 8]]), wk(14, [[35, 8]]), wk(7, [[30, 8]])], NOW, ASSISTED)).toBe(false);
+    expect(stagnates('sq', [wk(21, [[30, 8]]), wk(14, [[35, 8]]), wk(7, [[40, 8]])], NOW, ASSISTED)).toBe(true);
+  });
+  it('vergleicht nur Einheiten im selben Studio', () => {
+    const at = (w: StrengthWorkout, studio: string): StrengthWorkout => ({ ...w, studio });
+    const ws = [at(wk(28, [[40, 8]]), 'A'), at(wk(21, [[40, 8]]), 'A'), at(wk(14, [[60, 8]]), 'B'), at(wk(7, [[40, 8]]), 'A')];
+    expect(stagnates('sq', ws, NOW, undefined, { studio: 'A' })).toBe(true);
+    expect(stagnates('sq', ws, NOW, undefined, { studio: 'B' })).toBe(false);
+  });
+  it('vergleicht nur Einheiten mit ähnlicher Vorermüdung', () => {
+    const two = (daysAgo: number, kg: number, pre: boolean): StrengthWorkout => ({ id: `p${daysAgo}`, title: 'Day', startMs: NOW - daysAgo * DAY, durationS: 3600, exercises: [
+      ...(pre ? [{ title: 'Press', templateId: 'cp', sets: 4, reps: 0, volumeKg: 0, workSets: Array.from({ length: 4 }, () => ({ type: 'normal' as const, weightKg: 50, reps: 8 })) }] : []),
+      { title: 'Fly', templateId: 'fl', sets: 1, reps: 0, volumeKg: 0, workSets: [{ type: 'normal' as const, weightKg: kg, reps: 8 }] }] });
+    const muscleOf = () => 'chest';
+    // fresh 40, fresh 40, tired 30 (lower, but only because of fatigue), fresh 40: stagnation among the fresh ones, not a drop.
+    const ws = [two(28, 40, false), two(21, 40, false), two(14, 30, true), two(7, 40, false)];
+    expect(stagnates('fl', ws, NOW, undefined, { muscleOf })).toBe(true);
+    const progress = [two(28, 40, false), two(21, 40, false), two(14, 30, true), two(7, 42.5, false)];
+    expect(stagnates('fl', progress, NOW, undefined, { muscleOf })).toBe(false);
   });
 });
