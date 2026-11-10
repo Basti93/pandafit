@@ -31,6 +31,7 @@ export const RULES: PolicyRule[] = [
   r('gym.min-comparable', 'gym', 'product', 'checked', 'Zwei Vorkommen einer Übung innerhalb von 56 Tagen sind nötig, bevor sich etwas ändert.', 'Vergleichbare Vorleistung', replace(4, 'Echte unterschiedliche Trainingsgelegenheiten statt Übungsinstanzen.'), { value: 2, where: GYM }),
   r('gym.comparable-days', 'gym', 'product', 'checked', 'Vergleichbar sind Vorkommen der letzten 56 Tage.', 'Vergleichbare Vorleistung', replace(4, 'Echte unterschiedliche Trainingsgelegenheiten statt Übungsinstanzen.'), { value: 56, unit: 'Tage', where: GYM }),
   r('gym.max-exercises', 'gym', 'product', 'checked', 'Höchstens 10 Übungen pro Training.', 'Trainingsumfang', active, { value: 10, where: GYM }),
+  r('gym.one-per-execution', 'gym', 'product', 'checked', 'Pro Training kommt jede Ausführung nur einmal vor; ein anderer Winkel desselben Muskels ist erlaubt.', 'Übungsauswahl', active, { value: 1, where: GYM }),
   r('gym.max-sets', 'gym', 'product', 'checked', 'Höchstens 30 Sätze pro Training.', 'Trainingsumfang', active, { value: 30, where: GYM }),
   r('gym.max-failure-sets', 'gym', 'product', 'checked', 'Höchstens 4 Versagenssätze pro Training.', 'Anstrengung', active, { value: 4, where: GYM }),
   r('gym.max-widowmakers', 'gym', 'product', 'checked', 'Höchstens ein Widowmaker pro Training.', 'Anstrengung', active, { value: 1, where: GYM }),

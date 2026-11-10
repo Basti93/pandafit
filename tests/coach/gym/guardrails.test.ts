@@ -6,6 +6,7 @@ import { gymMinutes } from '../../../src/shared/duration';
 import { ruleWorkout } from '../../../src/coach/gym/rules';
 import { ladderFor } from '../../../src/coach/gym/history';
 import { snapDown } from '../../../src/shared/loads';
+import { EXERCISES } from '../../../src/shared/exercises';
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 2, 12);
@@ -330,5 +331,31 @@ describe('checkWorkout and the place in the workout', () => {
   });
   it('still refuses a weight above the fresh suggestion plus one step', () => {
     refused(wo([ex('cp', [set(40, 8)]), ex('ip', [set(50, 8)])]), ctx);
+  });
+});
+
+describe('checkWorkout refuses the same execution twice', () => {
+  const catalogTemplates: ExerciseTemplate[] = ['pf-triceps-rope', 'pf-triceps-pushdown', 'pf-overhead-triceps-cable'].map((id) => {
+    const e = EXERCISES.find((c) => c.id === id)!;
+    return { id, title: e.title, type: e.type, primaryMuscle: e.primaryMuscle, equipment: e.equipment };
+  });
+  const ctx: GymContext = {
+    workouts: ['pf-triceps-rope', 'pf-triceps-pushdown', 'pf-overhead-triceps-cable'].flatMap((id) => two(id, 20, 10)),
+    templates: catalogTemplates, nowMs: NOW, catalog: EXERCISES,
+  };
+  const row = (id: string) => ex(id, [set(20, 10)]);
+
+  it('lehnt dieselbe Ausführung zweimal ab', () => {
+    const r = checkWorkout(wo([row('pf-triceps-rope'), row('pf-triceps-pushdown')]), ctx);
+    expect(r).toEqual({ ok: false, reason: 'dieselbe Ausführung doppelt' });
+  });
+  it('lets another angle of the same muscle through', () => {
+    passes(wo([row('pf-triceps-rope'), row('pf-overhead-triceps-cable')]), ctx);
+  });
+  it('never refuses an exercise without a catalog entry', () => {
+    passes(wo([row('pf-triceps-rope'), row('pf-triceps-pushdown')]), { ...ctx, catalog: [] });
+  });
+  it('turns the reason into a phrase that completes the sentence', () => {
+    expect(reasonPhrase('dieselbe Ausführung doppelt')).toBe('dieselbe Übung zweimal, nur mit anderem Gerät');
   });
 });

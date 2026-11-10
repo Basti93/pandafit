@@ -8,7 +8,8 @@ import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../sha
 import { studioName, type Renames } from '../../shared/studio';
 import { repRangeOf } from '../../shared/muscle-targets';
 import { isExcluded } from '../../shared/excluded';
-import { EXERCISES, type Exercise } from '../../shared/exercises';
+import { executionKey } from '../../shared/execution';
+import { catalogEntryOf, EXERCISES, type Exercise } from '../../shared/exercises';
 import { gymLimit, gymMinutes } from '../../shared/duration';
 
 export type GymContext = { workouts: StrengthWorkout[]; templates: ExerciseTemplate[]; nowMs: number; /** Leave leg exercises out of rule workouts, e.g. for an open leg complaint. */ avoidLegs?: boolean;
@@ -137,6 +138,9 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     const parsed = raw.exercises.map((e, i) => parseExercise(e, i, byId));
     const exercises = parsed.map((p) => p.ex);
     if (exercises.some((e) => isExcluded(e, ctx.excluded, ctx.catalog ?? [], ctx.links))) return no('Übung ausgeschlossen (Regel der Person)');
+    // The same execution twice (only the equipment differs) is refused; an exercise without a catalog entry has no key.
+    const keys = exercises.map((e) => { const c = catalogEntryOf(e, ctx.catalog ?? []); return c ? executionKey(c) : null; }).filter((k): k is string => k !== null);
+    if (new Set(keys).size < keys.length) return no('dieselbe Ausführung doppelt');
     if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Keine Beine in dieser Einheit');
     const all = exercises.flatMap((e) => e.sets);
     if (all.filter((s) => s.type !== 'warmup').length > MAX_SETS) return no(`mehr als ${MAX_SETS} Sätze`);
@@ -172,6 +176,7 @@ const REASON_PHRASES: [RegExp, string][] = [
   [/Schema/, 'die Antwort war nicht lesbar'],
   [/Keine Beine in dieser Einheit/, 'Beinübungen, obwohl die Beine in dieser Einheit pausieren'],
   [/ausgeschlossen/, 'eine Übung, die du ausgeschlossen hast'],
+  [/dieselbe Ausführung doppelt/, 'dieselbe Übung zweimal, nur mit anderem Gerät'],
   [/mehr als \d+ Übungen/, 'zu viele Übungen'],
   [/mehr als \d+ Sätze bis zum Versagen/, 'zu viele Sätze bis zum Versagen'],
   [/mehr als \d+ Sätze/, 'zu viele Sätze'],
