@@ -5,7 +5,7 @@ import { parseProposal, type WeekProposal } from './week-plan';
 
 /**
  * One chat thread per profile, one `chat` record per message. The rider's messages are written by any of their devices,
- * the coach's only by the side that coaches the profile. `replyTo` ties a coach answer to the rider message it answers;
+ * the coach's only by the side that coaches the profile (one exception: the fixed confirmation line `<blockId>-ende` after "Abschnitt beenden"). `replyTo` ties a coach answer to the rider message it answers;
  * `takes`/`declines`/`undoes` mark the rider's answer to a proposal (no coach reply follows those).
  */
 /**
