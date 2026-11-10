@@ -12,6 +12,15 @@ test('the coach writes by itself only when switched on here; the settings are sa
   const evening = await screen.findByRole('switch', { name: /Am Vorabend sagen/ }) as HTMLInputElement;
   expect(evening.checked).toBe(false);
   fireEvent.click(evening);
-  await waitFor(() => expect([...map.values()].filter((r) => r.kind === 'coachprefs')[0]?.body).toEqual({ week: { on: false, day: 6, hour: 18 }, evening: { on: true, hour: 19 } }));
+  await waitFor(() => expect([...map.values()].filter((r) => r.kind === 'coachprefs')[0]?.body).toEqual({ week: { on: false, day: 6, hour: 18 }, evening: { on: true, hour: 19 }, review: { on: true } }));
   expect(await screen.findByRole('button', { name: /Uhrzeit am Vorabend/ })).toBeTruthy();
+});
+
+it('schaltet den Monatsrückblick aus', async () => {
+  const { port, map } = fakePort();
+  render(<CoachPrefs port={port} now={() => NOW} />);
+  const review = await screen.findByRole('switch', { name: /Monatsrückblick/ }) as HTMLInputElement;
+  expect(review.checked).toBe(true);
+  fireEvent.click(review);
+  await waitFor(() => expect(([...map.values()].filter((r) => r.kind === 'coachprefs')[0]?.body as { review: { on: boolean } }).review.on).toBe(false));
 });

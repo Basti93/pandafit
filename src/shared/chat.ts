@@ -110,19 +110,20 @@ export function readWorkoutChange(x: unknown): WorkoutChange | null {
 }
 
 /**
- * When the coach writes by itself, per profile (record kind coachprefs, id "prefs"). Both off by default. `day` is 0 for Monday;
+ * When the coach writes by itself, per profile (record kind coachprefs, id "prefs"). Week and evening are off by default, the monthly review is on. `day` is 0 for Monday;
  * hours are local hours of the coaching side.
  */
-export type CoachPrefs = { week: { on: boolean; day: number; hour: number }; evening: { on: boolean; hour: number } };
+export type CoachPrefs = { week: { on: boolean; day: number; hour: number }; evening: { on: boolean; hour: number }; review: { on: boolean } };
 export const COACH_PREFS_ID = 'prefs';
-export const DEFAULT_PREFS: CoachPrefs = { week: { on: false, day: 6, hour: 18 }, evening: { on: false, hour: 19 } };
+export const DEFAULT_PREFS: CoachPrefs = { week: { on: false, day: 6, hour: 18 }, evening: { on: false, hour: 19 }, review: { on: true } };
 const hour = (x: unknown, d: number) => (Number.isInteger(x) && (x as number) >= 0 && (x as number) <= 23 ? (x as number) : d);
 export function readCoachPrefs(x: unknown): CoachPrefs {
   if (!isObj(x)) return DEFAULT_PREFS;
-  const w = isObj(x.week) ? x.week : {}, e = isObj(x.evening) ? x.evening : {};
+  const w = isObj(x.week) ? x.week : {}, e = isObj(x.evening) ? x.evening : {}, v = isObj(x.review) ? x.review : {};
   return {
     week: { on: w.on === true, day: Number.isInteger(w.day) && (w.day as number) >= 0 && (w.day as number) <= 6 ? (w.day as number) : 6, hour: hour(w.hour, 18) },
     evening: { on: e.on === true, hour: hour(e.hour, 19) },
+    review: { on: v.on !== false },
   };
 }
 export const prefsOf = (records: TrackedRecord[]): CoachPrefs => readCoachPrefs(records.find((r) => r.kind === 'coachprefs' && r.id === COACH_PREFS_ID && !r.deleted)?.body);

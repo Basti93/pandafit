@@ -9,7 +9,7 @@ import { ChoiceRow, Switch } from './kit';
 const HOURS = Array.from({ length: 17 }, (_, i) => ({ value: i + 6, label: `${i + 6}:00` }));
 const DAYS = WEEKDAY_LABEL.map((label, value) => ({ value, label }));
 
-/** When the coach writes by itself. Both off until switched on; pushes need notifications allowed on this device. Lives on Profil. */
+/** When the coach writes by itself. Week and evening are off until switched on, the monthly review is on; pushes need notifications allowed on this device. Lives on Profil. */
 export function CoachPrefs({ port, now, nested = false }: { port: TrackingPort; now: () => number; nested?: boolean }) {
   const q = usePortRecords(port, 'coachprefs');
   const prefs = prefsOf(q.all ?? []);
@@ -31,6 +31,7 @@ export function CoachPrefs({ port, now, nested = false }: { port: TrackingPort; 
       )}
       <Switch label="Am Vorabend sagen, was morgen ansteht" hint="Er meldet sich nur vor Trainingstagen." checked={prefs.evening.on} onChange={(on) => save({ ...prefs, evening: { ...prefs.evening, on } })} />
       {prefs.evening.on && <ChoiceRow label="Uhrzeit am Vorabend" value={prefs.evening.hour} options={HOURS} onChange={(hour) => save({ ...prefs, evening: { ...prefs.evening, hour } })} />}
+      <Switch label="Monatsrückblick" hint="Bo blickt am letzten Sonntag im Monat mit dir auf die letzten drei Monate zurück." checked={prefs.review.on} onChange={(on) => save({ ...prefs, review: { on } })} />
       {error && <p role="status" className="tk-note">{error}</p>}
     </section>
   );

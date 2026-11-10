@@ -1,4 +1,4 @@
-import { chatThread, proposalAnswer, readChat, waitingMessage } from '../../src/shared/chat';
+import { readCoachPrefs, chatThread, proposalAnswer, readChat, waitingMessage } from '../../src/shared/chat';
 import type { TrackedRecord } from '../../src/shared/records';
 
 const rec = (id: string, body: object, deleted = false): TrackedRecord => ({ kind: 'chat', id, updatedMs: 1, deleted, body });
@@ -34,4 +34,10 @@ test('a second rider message sent while the first is being answered still waits;
   const note = rec('n', { role: 'coach', text: 'Morgen: Rad', atMs: 4, push: true });
   expect(waitingMessage(chatThread([a, b, ansA, note]))?.id).toBe('b');
   expect(waitingMessage(chatThread([a, ansA, note]))).toBeNull();
+});
+
+test('the monthly review is on unless switched off', () => {
+  expect(readCoachPrefs({ week: {}, evening: {} }).review.on).toBe(true);
+  expect(readCoachPrefs({ review: { on: false } }).review.on).toBe(false);
+  expect(readCoachPrefs({ review: { on: true } }).review.on).toBe(true);
 });

@@ -222,4 +222,11 @@ export const RULES: PolicyRule[] = [
     } }),
   r('meals.ingredient-noise', 'planner', 'product', 'checked', 'Diese Wörter entfallen, wenn ein Zutatenname vereinheitlicht wird (Zubereitung, Größe, Packung).', 'Zutatensuche', active,
     { where: ['src/coach/meals/recipe-import.ts'], lists: { words: ['dose', 'dosen', 'glas', 'frisch', 'frische', 'frischer', 'frisches', 'gehackt', 'gehackte', 'gewuerfelt', 'gewuerfelte', 'gerieben', 'geriebene', 'geschaelt', 'geschaelte', 'gross', 'grosse', 'grosser', 'klein', 'kleine', 'kleiner', 'mittelgross', 'mittelgrosse', 'reif', 'reife', 'bio', 'ca', 'etwa', 'evtl', 'ggf', 'nach', 'bedarf', 'geschmack', 'etwas', 'abgetropft', 'abgetropfte', 'getrocknet', 'getrocknete', 'tk', 'tiefgekuehlt', 'tiefgekuehlte', 'pck', 'packung', 'stueck', 'stk', 'nativ', 'extra', 'vergine', 'natur', 'ungesuesst', 'ungesuesste', 'weich', 'weiche', 'fest', 'feste', 'fein', 'feine', 'zum', 'zur', 'und', 'oder', 'mit', 'ohne', 'aus', 'der', 'die', 'das', 'in', 'von'] } }),
+  // Monthly review by the coach (docs/superpowers/specs/2026-11-10-monatsrueckblick-design.md): own product choices.
+  r('review.window-days', 'planner', 'product', 'checked', 'Der Monatsrückblick sieht auf die letzten 90 Tage.', 'Monatsrückblick', active, { value: 90, unit: 'Tage', scenarioIds: ['M01', 'M04'] }),
+  r('review.min-workouts', 'planner', 'product', 'checked', 'Ein Rückblick braucht mindestens 4 Einheiten im Zeitraum.', 'Monatsrückblick', active, { value: 4, unit: 'Einheiten', scenarioIds: ['M03'] }),
+  r('review.min-gap-days', 'planner', 'product', 'checked', 'Zwischen zwei Rückblicken liegen mindestens 14 Tage.', 'Monatsrückblick', active, { value: 14, unit: 'Tage', scenarioIds: ['M03'] }),
+  r('review.pause-days', 'planner', 'product', 'checked', 'Ein Abstand von 21 Tagen ohne Einheit gilt als Pause, die nicht als Versagen gewertet wird.', 'Monatsrückblick', active, { value: 21, unit: 'Tage', scenarioIds: ['M04'] }),
+  r('review.weeks', 'planner', 'product', 'checked', 'Der Rückblick teilt den Zeitraum in 13 Wochen.', 'Monatsrückblick', active, { value: 13, unit: 'Wochen', scenarioIds: ['M01'] }),
+  r('review.max-observations', 'planner', 'product', 'checked', 'Bo nennt im Rückblick höchstens 3 Beobachtungen.', 'Monatsrückblick', active, { value: 3, unit: 'Beobachtungen', scenarioIds: ['M01', 'M02'] }),
 ];
