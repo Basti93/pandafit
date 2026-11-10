@@ -3,7 +3,7 @@ import { RECENT_DAYS } from './limits';
 import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
 import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork } from './history';
 import { isExcluded } from '../../shared/excluded';
-import { checkWorkout, placedSuggestion, type GymContext } from './guardrails';
+import { checkWorkout, executionKeyOf, placedSuggestion, type GymContext } from './guardrails';
 import { muscleOfFrom, preFatigue } from './pre-fatigue';
 import { warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
@@ -65,10 +65,19 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
     for (const id of new Set(w.exercises.map((e) => e.templateId))) if (id) count.set(id, (count.get(id) ?? 0) + 1);
   }
   const lastMs = new Map(availableExercises(ctx.workouts, ctx.nowMs).map((a) => [a.templateId, a.lastMs]));
+  // The same execution only once (the more frequent one); the next most frequent exercise fills the place.
+  const keys = new Set<string>();
   const core = [...count.keys()]
     .map((id) => byId.get(id))
     .filter((t): t is ExerciseTemplate => !!t && allowed(t))
     .sort((a, b) => (count.get(b.id)! - count.get(a.id)!) || ((lastMs.get(b.id) ?? 0) - (lastMs.get(a.id) ?? 0)) || a.id.localeCompare(b.id))
+    .filter((t) => {
+      const key = executionKeyOf({ templateId: t.id, title: t.title }, ctx);
+      if (key === null) return true;
+      if (keys.has(key)) return false;
+      keys.add(key);
+      return true;
+    })
     .slice(0, CORE_SIZE);
   if (!machinesOnly && core.length > 0) {
     return {

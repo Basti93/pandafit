@@ -136,9 +136,13 @@ function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, re
   }
 }
 
-/** The execution key of each planned exercise that has one; the catalog entry is resolved the way the exclusion check does it. */
+/** The execution key of an exercise, or null without a catalog entry; the entry is resolved the way the exclusion check does it. */
+export function executionKeyOf(e: { templateId: string; title: string }, ctx: GymContext): string | null {
+  const c = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links);
+  return c ? executionKey(c) : null;
+}
 const executionKeysOf = (exercises: GymExercise[], ctx: GymContext): string[] =>
-  exercises.map((e) => { const c = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links); return c ? executionKey(c) : null; }).filter((k): k is string => k !== null);
+  exercises.map((e) => executionKeyOf(e, ctx)).filter((k): k is string => k !== null);
 
 /**
  * Hard limits for an AI workout. Anything outside them is refused whole. Only weights are fitted: snapped to reachable steps and

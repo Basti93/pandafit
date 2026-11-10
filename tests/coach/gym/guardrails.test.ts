@@ -381,6 +381,19 @@ describe('checkWorkout refuses the same execution twice', () => {
   it('never refuses an exercise without a catalog entry', () => {
     passes(wo([row('pf-triceps-rope'), row('pf-triceps-pushdown')]), { ...ctx, catalog: [] });
   });
+  it('the rule workout takes only one of two executions done together', () => {
+    const both = (daysAgo: number): StrengthWorkout => ({
+      ...wk(daysAgo, 'x', []),
+      exercises: ['pf-triceps-rope', 'pf-triceps-pushdown', 'pf-overhead-triceps-cable'].flatMap((id) => wk(daysAgo, id, [[20, 10], [20, 10]]).exercises),
+    });
+    const r = ruleWorkout({ ...ctx, workouts: [both(14), both(7)] });
+    expect(r.guard).toBeUndefined();
+    expect(r.workout.name).toBe('Ganzkörper');
+    const ids = r.workout.exercises.map((e) => e.templateId);
+    expect(ids).toHaveLength(2);
+    expect(ids).toContain('pf-overhead-triceps-cable');
+    expect(ids.filter((id) => id === 'pf-triceps-rope' || id === 'pf-triceps-pushdown')).toHaveLength(1);
+  });
   it('turns the reason into a phrase that completes the sentence', () => {
     expect(reasonPhrase('dieselbe Ausführung doppelt')).toBe('dieselbe Übung zweimal, nur mit anderem Gerät');
   });
