@@ -1,7 +1,8 @@
 import { contiguousGroups } from '../../shared/superset';
 import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from '../../shared/gym/types';
-import { MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
+import { GENTLE_FAILURE_SETS, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
+import type { Push } from '../../shared/personal';
 import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan, type Suggestion } from './history';
 import { hardSetsOf, muscleOfFrom, preFatigue } from './pre-fatigue';
 import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
@@ -20,7 +21,9 @@ export type GymContext = { workouts: StrengthWorkout[]; templates: ExerciseTempl
   /** The catalog and Hevy links the exclusion is resolved with (exact id or exact known title, never fuzzy). */
   catalog?: readonly Exercise[]; links?: Readonly<Record<string, string>>;
   /** The most minutes the person has for this session, warm-up and rests included. Without it, no time check. */
-  budgetMinutes?: number };
+  budgetMinutes?: number;
+  /** How hard the person trains, an open or healing complaint already counted in. Without it, normal. */
+  push?: Push };
 export type CheckResult = { ok: true; workout: GymWorkout } | { ok: false; reason: string };
 
 export const WIDOWMAKER_REPS = 20;
@@ -165,6 +168,7 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     const all = exercises.flatMap((e) => e.sets);
     if (all.filter((s) => s.type !== 'warmup').length > MAX_SETS) return no(`mehr als ${MAX_SETS} Sätze`);
     if (all.filter((s) => s.type === 'failure').length > MAX_FAILURE_SETS) return no(`mehr als ${MAX_FAILURE_SETS} Sätze bis zum Versagen`);
+    if (ctx.push === 'gentle' && all.filter((s) => s.type === 'failure' || s.type === 'dropset').length > GENTLE_FAILURE_SETS) return no('Versagen passt nicht zur Härte');
     if (exercises.filter((e) => isWidowmaker(e.notes)).length > MAX_WIDOWMAKERS) return no(`mehr als ${MAX_WIDOWMAKERS} Widowmaker`);
     const ids = exercises.map((e) => e.supersetId).filter((v): v is number => v !== null);
     for (const id of new Set(ids)) if (ids.filter((v) => v === id).length < 2) return no('Superset mit nur einer Übung');
@@ -198,6 +202,7 @@ const REASON_PHRASES: [RegExp, string][] = [
   [/ausgeschlossen/, 'eine Übung, die du ausgeschlossen hast'],
   [/dieselbe Ausführung doppelt/, 'dieselbe Übung zweimal, nur mit anderem Gerät'],
   [/mehr als \d+ Übungen/, 'zu viele Übungen'],
+  [/Versagen passt nicht zur Härte/, 'Sätze bis zum Versagen, obwohl du vorsichtig trainierst'],
   [/mehr als \d+ Sätze bis zum Versagen/, 'zu viele Sätze bis zum Versagen'],
   [/mehr als \d+ Sätze/, 'zu viele Sätze'],
   [/Widowmaker/, 'ein Widowmaker, der nicht passt'],

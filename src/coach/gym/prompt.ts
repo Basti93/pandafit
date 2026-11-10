@@ -8,7 +8,7 @@ import type { StrengthWorkout } from '../hevy';
 import type { RideSummary } from '../metrics';
 import type { Complaint } from '../motivation';
 import { availableExercises, isRepBased, ladderFor, stepWords, suggestNext } from './history';
-import { MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS } from './limits';
+import { MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, reserveFor } from './limits';
 import type { LoadStepOverrides } from '../../shared/loads';
 import { repRangeOf } from '../../shared/muscle-targets';
 import type { GymState } from './state';
@@ -16,7 +16,7 @@ import type { ExerciseTemplate } from '../../shared/gym/types';
 import type { Renames } from '../../shared/studio';
 import { TASKS_GUIDE, zTasks } from '../coach-tasks';
 import { restMid } from '../../shared/rest';
-import { goalOf, priorityLine, wishLine, type GoalBody } from '../../shared/personal';
+import { effectivePush, goalOf, priorityLine, PUSH_LABEL, wishLine, type GoalBody, type Push } from '../../shared/personal';
 import { dateKey } from '../../shared/day-rating';
 
 const EFFORT_WORDS = { none: '0', some: '1–2', plenty: '3 oder mehr' } as const;
@@ -89,9 +89,20 @@ export type PromptInput = {
   swaps?: readonly { statt: string; nimm: string }[];
   /** The observations of the latest monthly review, as data only. */
   review?: { observations: { text: string; reason: string }[] };
+  /** How hard the person trains, an open or healing complaint already counted in. Without it, from the goal and the complaints. */
+  push?: Push;
 };
 
 const STRENGTH_WORDS = { muscle: 'Muskelaufbau', strength: 'Kraft', fitness: 'Fitness' } as const;
+const PUSH_RULES: Record<Push, string> = {
+  gentle: 'Keine Versagens- und keine Drop-Sätze.',
+  normal: 'Versagen höchstens im letzten Satz an sicheren Geräten.',
+  hard: 'Versagens- und Drop-Sätze sind an sicheren Geräten erlaubt, innerhalb der Grenze für Versagenssätze.',
+};
+const pushLine = (push: Push): string => {
+  const r = reserveFor(push);
+  return `Härte: ${PUSH_LABEL[push]}. Plane die Arbeitssätze mit ${r.min} bis ${r.max} Wiederholungen Reserve. ${PUSH_RULES[push]}`;
+};
 
 export function buildGymPrompt(i: PromptInput): string {
   const days = (ms: number) => Math.round((i.nowMs - ms) / DAY_MS * 10) / 10;
@@ -149,6 +160,7 @@ export function buildGymPrompt(i: PromptInput): string {
     goal.focus.length ? `Schwerpunkt: ${goal.focus.map((g) => MUSCLE_TARGETS[g as keyof typeof MUSCLE_TARGETS].label).join(', ')}.` : null,
     names.length ? `Ausgeschlossen (Regel der Person): ${[...new Set(names)].join(', ')}. Plane sie nie.` : null,
     priorityLine(goal),
+    pushLine(i.push ?? effectivePush(goal, i.complaints)),
     wishLine(i.wishes ?? []),
     i.budgetMinutes !== undefined ? `Zeit: höchstens ${i.budgetMinutes} Min einschließlich Aufwärmen und Pausen.` : null,
     i.avoidLegs ? 'Keine Beinübungen in dieser Einheit.' : null,
