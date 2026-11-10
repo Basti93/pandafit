@@ -76,3 +76,29 @@ it('Nein danke lehnt den Abschnitt ab', async () => {
   expect(f.map.get('block:block-m1')!.body).toMatchObject({ state: 'declined' });
   expect(open(f.map)).toEqual([]);
 });
+
+it('zwei schnelle Taps übernehmen einmal, Rückgängig stellt den alten Wochenplan her', async () => {
+  const old: TrackedRecord = { kind: 'weekplan', id: '2026-12-07', updatedMs: 10, deleted: false, body: { weekStart: '2026-12-07', days: [] } };
+  const f = setup([...seed(), old]);
+  f.state.delayMs = 5;
+  const b = (await screen.findByRole('button', { name: 'Übernehmen' })) as HTMLButtonElement;
+  await waitFor(() => expect(b.disabled).toBe(false));
+  fireEvent.click(b);
+  fireEvent.click(b);
+  await screen.findByText('Gilt ab 30. Nov.');
+  expect(f.state.puts.filter((r) => r.kind === 'block')).toHaveLength(1);
+  expect(f.map.get('weekplan:2026-12-07')!.body).toMatchObject({ prior: { weekStart: '2026-12-07', days: [] } });
+  f.state.delayMs = 0;
+  fireEvent.click(screen.getByRole('button', { name: 'Rückgängig' }));
+  await screen.findByText('Du hast den Abschnitt rückgängig gemacht.');
+  expect(f.map.get('weekplan:2026-12-07')!.deleted).toBe(false);
+  expect(f.map.get('weekplan:2026-12-07')!.body).toEqual({ weekStart: '2026-12-07', days: [] });
+});
+
+it('meldet, wenn etwas nicht gespeichert wurde, und lässt den Abschnitt vorgeschlagen', async () => {
+  const f = setup();
+  f.state.failPuts = true;
+  await take();
+  await screen.findByText(/nicht gespeichert/);
+  expect(f.map.get('block:block-m1')!.body).toMatchObject({ state: 'proposed' });
+});

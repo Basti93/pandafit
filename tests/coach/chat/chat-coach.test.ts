@@ -1,4 +1,4 @@
-import { CHAT_SYSTEM_PROMPT, ChatCoach } from '../../../src/coach/chat/chat-coach';
+import { CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT, ChatCoach } from '../../../src/coach/chat/chat-coach';
 import { ClaudeError } from '../../../src/coach/claude-client';
 import { chatThread } from '../../../src/shared/chat';
 import type { RecordKind, TrackedRecord } from '../../../src/shared/records';
@@ -388,6 +388,26 @@ describe('an explicit yes in the chat takes the open rule draft', () => {
       expect(replies(s).at(-1)!.block).toBe('block-c0');
       expect([...s.recs.values()].filter((r) => r.kind === 'weekplan').map((r) => r.id)).toEqual(['2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14']);
       expect(replies(s).at(-1)!.text).toBe('Gilt ab jetzt.');
+    });
+
+    test('the prompt tells the model that a yes also means an open section', () => {
+      expect(CHAT_SYSTEM_PROMPT).toContain('offenen festen Abschnitt');
+      expect(WORKOUT_SYSTEM_PROMPT).toContain('offenen festen Abschnitt');
+    });
+
+    test('the Härte question right after the review does not hide the section', async () => {
+      const ask: TrackedRecord = { kind: 'chat', id: 'c0b', updatedMs: NOW - 4999, deleted: false, body: { role: 'coach', text: 'Wie sehr soll ich dich fordern?', atMs: NOW - 4999, askPush: true } };
+      const s = store([coachBlockMsg, ask, blockRec(), rider('r1', 'Ja, machen wir')]);
+      await coach(s, yes()).tick('p');
+      expect(blocks(s)[0]!.body).toMatchObject({ state: 'active' });
+    });
+
+    test('a standalone Härte question still means there is nothing to take', async () => {
+      const ask: TrackedRecord = { kind: 'chat', id: 'c0b', updatedMs: NOW - 2000, deleted: false, body: { role: 'coach', text: 'Wie sehr soll ich dich fordern?', atMs: NOW - 2000, askPush: true } };
+      const s = store([coachBlockMsg, ask, blockRec(), rider('r1', 'Ja, machen wir')]);
+      await coach(s, yes()).tick('p');
+      expect(blocks(s)[0]!.body).toMatchObject({ state: 'proposed' });
+      expect(replies(s).at(-1)!.text).toContain('keinen offenen Vorschlag');
     });
 
     test('takes nothing without an open section', async () => {

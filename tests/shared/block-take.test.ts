@@ -24,11 +24,11 @@ const store = (seed: TrackedRecord[], writes: TrackedRecord[]): TrackedRecord[] 
 describe('blockTakeWrites', () => {
   it('writes the section, the frame and one week plan per week from the Monday after', () => {
     const w = run()!;
-    expect(w.map((r) => r.kind)).toEqual(['block', 'frame', 'weekplan', 'weekplan', 'weekplan', 'weekplan']);
-    expect(readBlock(w[0]!.body)).toMatchObject({ state: 'active', start: '2026-11-30', end: '2026-12-27', priorMode: 'spontaneous' });
-    expect(readFrame(w[1]!.body)).toMatchObject({ mode: 'week', minutes: 45 });
-    expect(w.slice(2).map((r) => r.id)).toEqual(['2026-11-30', '2026-12-07', '2026-12-14', '2026-12-21']);
-    expect(w[2]!.body).toMatchObject({ takenFrom: 'm1', weekStart: '2026-11-30' });
+    expect(w.map((r) => r.kind)).toEqual(['weekplan', 'weekplan', 'weekplan', 'weekplan', 'frame', 'block']);
+    expect(readBlock(w[5]!.body)).toMatchObject({ state: 'active', start: '2026-11-30', end: '2026-12-27', priorMode: 'spontaneous' });
+    expect(readFrame(w[4]!.body)).toMatchObject({ mode: 'week', minutes: 45 });
+    expect(w.slice(0, 4).map((r) => r.id)).toEqual(['2026-11-30', '2026-12-07', '2026-12-14', '2026-12-21']);
+    expect(w[0]!.body).toMatchObject({ takenFrom: 'm1', weekStart: '2026-11-30' });
   });
   it('remembers a stored week plan as prior', () => {
     const old: TrackedRecord = { kind: 'weekplan', id: '2026-12-07', updatedMs: 10, deleted: false, body: { weekStart: '2026-12-07', days: [] } };
@@ -39,8 +39,23 @@ describe('blockTakeWrites', () => {
     const active = blockRecord('block-m1', { ...proposed, state: 'active', start: '2026-11-30', end: '2026-12-27' }, 2);
     expect(run({ block: active })).toBeNull();
   });
+  it('takes nothing when another section is already active', () => {
+    const other = blockRecord('block-m0', { ...proposed, state: 'active', start: '2026-11-02', end: '2026-12-27' }, 2);
+    expect(run({ blocks: [other] })).toBeNull();
+    expect(run({ blocks: [blockRec] })).not.toBeNull();
+  });
+  it('keeps the first prior when a retry writes the same take again', () => {
+    const old: TrackedRecord = { kind: 'weekplan', id: '2026-12-07', updatedMs: 10, deleted: false, body: { weekStart: '2026-12-07', days: [] } };
+    const first = run({ plans: [old] })!;
+    const again = run({ plans: store([old], first).filter((r) => r.kind === 'weekplan'), nowMs: 300 })!;
+    expect(again.find((r) => r.id === '2026-12-07')!.body).toMatchObject({ prior: { weekStart: '2026-12-07', days: [] } });
+  });
+  it('writes who took the section and which frame it wrote', () => {
+    const w = run()!;
+    expect(readBlock(w.at(-1)!.body)).toMatchObject({ takenFrom: 'm1', frameMs: w[4]!.updatedMs });
+  });
   it('without a frame record the prior mode is the week mode', () => {
-    expect(readBlock(run({ frame: [] })![0]!.body)?.priorMode).toBe('week');
+    expect(readBlock(run({ frame: [] })!.at(-1)!.body)?.priorMode).toBe('week');
   });
 });
 
@@ -57,12 +72,31 @@ describe('blockUndoWrites', () => {
     expect(readFrame(after.find((r) => r.kind === 'frame')!.body)?.mode).toBe('spontaneous');
     expect(after.filter((r) => r.kind === 'weekplan').every((r) => r.deleted)).toBe(true);
   });
+  it('undoes by the message that took it, whichever message asks', () => {
+    const recs = taken();
+    const w = blockUndoWrites({ block: recs.find((r) => r.kind === 'block')!, frame: recs.filter((r) => r.kind === 'frame'), plans: recs.filter((r) => r.kind === 'weekplan'), msgId: 'reply', nowMs: 200 });
+    expect('refused' in w).toBe(false);
+  });
+  it('brings back a stored week plan that the take replaced', () => {
+    const old: TrackedRecord = { kind: 'weekplan', id: '2026-12-07', updatedMs: 10, deleted: false, body: { weekStart: '2026-12-07', days: [] } };
+    const recs = store([blockRec, frame('spontaneous'), old], run({ plans: [old] })!);
+    const after = store(recs, undo(recs) as TrackedRecord[]);
+    const back = after.find((r) => r.kind === 'weekplan' && r.id === '2026-12-07')!;
+    expect(back.deleted).toBe(false);
+    expect(back.body).toEqual({ weekStart: '2026-12-07', days: [] });
+  });
+  it('leaves a frame alone that was changed since the take', () => {
+    const recs = taken().map((r) => (r.kind === 'frame' ? frameRecord({ mode: 'week', minutes: 30 }, 500, r) : r));
+    const w = undo(recs) as TrackedRecord[];
+    expect(w.some((r) => r.kind === 'frame')).toBe(false);
+    expect(w.some((r) => r.kind === 'block' && r.deleted)).toBe(true);
+  });
   it('is refused after a week plan was changed', () => {
     const recs = taken().map((r) => (r.kind === 'weekplan' && r.id === '2026-12-07' ? { ...r, updatedMs: 150, body: { ...(r.body as object), days: [] } } : r));
     const w = undo(recs);
     expect(w).toEqual({ refused: expect.stringContaining('Wochenplan') });
   });
   it('knows the weeks it wrote', () => {
-    expect(blockWeeks(readBlock(run()![0]!.body)!)).toHaveLength(4);
+    expect(blockWeeks(readBlock(run()!.at(-1)!.body)!)).toHaveLength(4);
   });
 });

@@ -13,8 +13,8 @@ export type BlockState = 'proposed' | 'active' | 'ended' | 'declined';
 /** One day of the rhythm. `template`: the index into `templates` for a strength day. */
 export type BlockDay = { sport: Sport; hardness: Hardness; legs?: boolean; long?: boolean; template?: number };
 export type BlockTemplate = { name: string; core: string[] };
-/** `start`, `end`: Monday and Sunday, set when the person takes it. `priorMode`: the plan mode to go back to. */
-export type BlockBody = { state: BlockState; templates: BlockTemplate[]; rhythm: BlockDay[]; start?: string; end?: string; priorMode?: PlanMode; atMs: number };
+/** `start`, `end`: Monday and Sunday, set when the person takes it. `priorMode`: the plan mode to go back to. `takenFrom`: the chat message the take is marked with; `frameMs`: the stamp of the frame the take wrote. */
+export type BlockBody = { state: BlockState; templates: BlockTemplate[]; rhythm: BlockDay[]; start?: string; end?: string; priorMode?: PlanMode; takenFrom?: string; frameMs?: number; atMs: number };
 
 export const blockId = (msgId: string): string => `block-${msgId}`;
 
@@ -85,6 +85,8 @@ export function readBlock(body: unknown): BlockBody | null {
     out.end = body.end;
   } else if (out.state === 'active' || out.state === 'ended') return null;
   if (body.priorMode !== undefined) { if (body.priorMode !== 'week' && body.priorMode !== 'spontaneous') return null; out.priorMode = body.priorMode; }
+  if (body.takenFrom !== undefined) { if (typeof body.takenFrom !== 'string' || body.takenFrom === '') return null; out.takenFrom = body.takenFrom; }
+  if (body.frameMs !== undefined) { if (typeof body.frameMs !== 'number' || !Number.isFinite(body.frameMs)) return null; out.frameMs = body.frameMs; }
   return out;
 }
 

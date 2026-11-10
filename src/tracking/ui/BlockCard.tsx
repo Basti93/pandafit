@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { blockDates, blockWeeks, readBlock } from '../../shared/block';
 import { blockTakeWrites, blockUndoWrites } from '../../shared/block-take';
 import { dateKey } from '../../shared/day-rating';
@@ -26,19 +26,25 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
   const catalog = useCatalog(port);
   const [message, setMessage] = useState<string | null>(null);
   const [undone, setUndone] = useState(false);
+  // One take or undo at a time: a fast double tap must not write twice.
+  const inFlight = useRef(false);
+  const [busy, setBusy] = useState(false);
   const rec = (blocks.all ?? []).find((r) => r.id === blockId);
   const body = rec && !rec.deleted ? readBlock(rec.body) : null;
   if (!rec || !body) return rec?.deleted && undone ? <div className="tk-nextchange"><p className="muted">Du hast den Abschnitt rückgängig gemacht.</p></div> : null;
   const titleOf = (id: string) => catalog.find((e) => e.id === id)?.title ?? id;
 
   const go = async (to: 'take' | 'decline' | 'undo') => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
     try {
-      const cur = (await port.list('block')).find((r) => r.id === blockId);
-      if (!cur) return;
       const nowMs = now();
-      const [frame, weekplans] = await Promise.all([port.list('frame'), port.list('weekplan')]);
+      const [blockRecs, frame, weekplans] = await Promise.all([port.list('block'), port.list('frame'), port.list('weekplan')]);
+      const cur = blockRecs.find((r) => r.id === blockId);
+      if (!cur) return;
       let writes;
-      if (to === 'take') writes = blockTakeWrites({ block: cur, frame, plans: weekplans, msgId, today: dateKey(nowMs), nowMs });
+      if (to === 'take') writes = blockTakeWrites({ block: cur, frame, plans: weekplans, blocks: blockRecs, msgId, today: dateKey(nowMs), nowMs });
       else if (to === 'undo') {
         const r = blockUndoWrites({ block: cur, frame, plans: weekplans, msgId, nowMs });
         if ('refused' in r) { setMessage(r.refused); return; }
@@ -47,10 +53,13 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
         const b = readBlock(cur.body);
         writes = b && b.state === 'proposed' ? [{ ...cur, updatedMs: above(nowMs, cur), body: { ...b, state: 'declined' as const } }] : null;
       }
-      for (const w of writes ?? []) await port.put(w);
+      for (const w of writes ?? []) {
+        const res = await port.put(w);
+        if (!res.kept) { setMessage(FAILED); return; }
+      }
       if (to === 'undo') setUndone(true);
       setMessage(null);
-    } catch { setMessage(FAILED); }
+    } catch { setMessage(FAILED); } finally { inFlight.current = false; setBusy(false); }
   };
   // The undo is offered while every week plan of the section is still the one the take wrote.
   const undoWhy = body.state === 'active' ? blockUndoWrites({ block: rec, frame: [], plans: plans ?? [], msgId, nowMs: now() }) : null;
@@ -63,7 +72,7 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
     return (
       <div className="tk-histline">
         <span className="muted">{line}</span>
-        {canUndo && <button type="button" className="link" onClick={() => void go('undo')}>{UNDO}</button>}
+        {canUndo && <button type="button" className="link" disabled={busy} onClick={() => void go('undo')}>{UNDO}</button>}
         {why && <span className="muted">{why}</span>}
         {message && <span role="status" className="tk-note">{message}</span>}
       </div>
@@ -79,8 +88,8 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
         {first && <Week brief rows={planRows(first.days)} label="Wochenrhythmus des Abschnitts" />}
         {message && <p role="status" className="tk-note">{message}</p>}
         <div className="tk-row">
-          <button type="button" className="primary" disabled={plans === null} onClick={() => void go('take')}>{TAKE}</button>
-          <button type="button" className="secondary" onClick={() => void go('decline')}>{DECLINE}</button>
+          <button type="button" className="primary" disabled={plans === null || busy} onClick={() => void go('take')}>{TAKE}</button>
+          <button type="button" className="secondary" disabled={busy} onClick={() => void go('decline')}>{DECLINE}</button>
         </div>
       </div>
     );
@@ -90,7 +99,7 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
       {body.state === 'active' && (
         <div className="tk-row">
           <span className="muted">{sentence(`Gilt ab ${dayMonthOfKey(body.start!)}`)}</span>
-          {canUndo && <button type="button" className="link" onClick={() => void go('undo')}>{UNDO}</button>}
+          {canUndo && <button type="button" className="link" disabled={busy} onClick={() => void go('undo')}>{UNDO}</button>}
           {why && <span className="muted">{why}</span>}
         </div>
       )}
