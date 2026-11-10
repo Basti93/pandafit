@@ -35,10 +35,8 @@ test('the hints sit on the next open set only', async () => {
 
 test('the menu actions reach the same functions: add a set, a note on request, move, edit mode', async () => {
   const f = await running();
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Satz hinzufügen Kniebeuge' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Satz hinzufügen Kniebeuge' })); // the plus in the dot row
   await waitFor(() => expect(bodyOf(f.map).exercises[1]!.sets).toHaveLength(4));
-  expect(screen.queryByRole('list', { name: 'Menü Kniebeuge' })).toBeNull(); // the menu closes after the action
   expect(screen.queryByLabelText('Notiz zu Kniebeuge')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Notiz hinzufügen Kniebeuge' }));

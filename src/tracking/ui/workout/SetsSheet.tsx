@@ -1,7 +1,7 @@
 import { repRangeOf } from '../../../shared/muscle-targets';
 import { resolveExercise } from '../../exercise-identity';
 import { plateLine } from '../../steps';
-import { editSet, lastValues, presetOf, removeSet, unconfirmSet } from '../../session';
+import { addSet, editSet, lastValues, presetOf, removeSet, unconfirmSet } from '../../session';
 import { EFFORT_LABEL } from '../EffortQuestion';
 import { SetHead, SetRow } from '../SetRow';
 import { lastTimeLine, setLabels, setTargetHint } from '../setGrid';
@@ -35,6 +35,7 @@ export function SetsSheet({ a, rid }: { a: ActiveWorkoutApi; rid: string }) {
             onToggle={() => (s.doneMs === null ? confirmShown(e.rid, s.rid) : act((x) => unconfirmSet(x, e.rid, s.rid)))}
             onRemove={() => act((x) => removeSet(x, e.rid, s.rid))} />
         ))}
+        <button type="button" className="secondary" onClick={() => { if (a.tapOnce('add')) act((x) => addSet(x, e.rid)); }}>Satz hinzufügen</button>
         {e.effort && e.effort !== 'skip' && <p className="muted tk-sub">Noch möglich: {EFFORT_LABEL[e.effort]}</p>}
       </div>
     </Sheet>

@@ -71,6 +71,19 @@ describe('the focus card', () => {
     expect(sets(map, 0)).toHaveLength(2);
   });
 
+  it('hängt mit plus einen Satz an', async () => {
+    const { port, map } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz hinzufügen Bankdrücken' }));
+    await waitFor(() => expect(sets(map, 0)).toHaveLength(3));
+    expect(focusOf('Bankdrücken').getByRole('button', { name: 'Satz 3: offen' })).toBeTruthy();
+    await later();
+    const sheet = await setsSheet(1);
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Satz hinzufügen' }));
+    await waitFor(() => expect(sets(map, 0)).toHaveLength(4));
+  });
+
   it('in a superset the focus follows the rounds and Satz geschafft ticks only the shown set', async () => {
     const w = withExercises([
       { exerciseId: 'pf-bench-press', title: 'Bankdrücken', supersetId: 1, notes: '', sets: [set(60, 8, null), set(60, 8, null)] },
