@@ -6,10 +6,10 @@ import { addSet, addWarmup, linkWith, removeExercise, setRest, supersetPartners,
 import { ChoiceRow, ConfirmLink, Sheet } from '../kit';
 import type { ActiveWorkoutApi } from './useActiveWorkout';
 
-/** The menu of one exercise ("Mehr zu …"): add a set, a note, swap, rest; behind "Mehr" warm-up, edit the sets, superset, order and remove. */
+/** The menu of one exercise ("Mehr zu …"): add a set, a note, swap, rest; behind "Mehr" warm-up, superset, order and remove. */
 export function ExerciseMenu({ a, e }: { a: ActiveWorkoutApi; e: TrackedExercise }) {
   const { w, store, act, set, toggleNote, catalog, studios, overrides, studioHere, statsMuscles, history } = a;
-  const { menuMore, editing, notesOpen } = a.ui;
+  const { menuMore, notesOpen } = a.ui;
   const partners = supersetPartners(w, e.rid);
   const own = resolveExercise(e, catalog, statsMuscles).exercise;
   const equipment = own?.equipment ?? 'other';
@@ -35,7 +35,6 @@ export function ExerciseMenu({ a, e }: { a: ActiveWorkoutApi; e: TrackedExercise
       <>
       <ul className="tk-rows tk-menu" aria-label={`Mehr zu ${e.title}`}>
         {warmupOffered && item('Aufwärmen hinzufügen', () => { set(close); act((x) => addWarmup(x, e.rid, ladder(), catalog)); }, { aria: `Aufwärmen hinzufügen ${e.title}` })}
-        {item(editing === e.rid ? 'Sätze fertig bearbeiten' : 'Sätze bearbeiten', () => { set(editing === e.rid ? { ...close, editing: null } : { ...close, editing: e.rid, setsRid: e.rid }); }, { aria: `Sätze bearbeiten ${e.title}` })}
         {partners.length > 0 && <li className="tk-rowitem"><ChoiceRow label="Supersatz mit" value="" onChange={(p) => { if (p) { set(close); act((x) => linkWith(x, e.rid, p)); } }}
           placeholder="wählen" options={[{ value: '', label: 'wählen' }, ...partners.map((p) => ({ value: p.rid, label: p.title }))]} /></li>}
         {e.supersetId !== null && item('Aus Superset lösen', () => { set(close); act((x) => unlinkSuperset(x, e.rid)); }, { aria: `${e.title} aus dem Superset lösen` })}

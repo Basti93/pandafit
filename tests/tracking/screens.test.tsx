@@ -285,7 +285,7 @@ const twoEx = (): LoggedWorkout => open({ exercises: [
 const resume = async () => fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
 // The exercise menu ("⋯"): sets are removed in edit mode, a note appears on request.
 const openMenu = async (title: string) => fireEvent.click(await screen.findByRole('button', { name: `Mehr zu ${title}` }));
-const editSets = async (title: string) => { await openMenu(title); fireEvent.click(screen.getByRole('button', { name: 'Mehr' })); fireEvent.click(screen.getByRole('button', { name: `Sätze bearbeiten ${title}` })); };
+const editSets = async (title: string) => { fireEvent.click(await screen.findByRole('button', { name: /^(Satz 1|Aufwärmsatz):/ })); };
 const noteField = async (title: string) => { await openMenu(title); fireEvent.click(screen.getByRole('button', { name: `Notiz hinzufügen ${title}` })); return (await screen.findByLabelText(`Notiz zu ${title}`)) as HTMLTextAreaElement; };
 
 test('a double tap on remove never removes the next row', async () => {
@@ -651,13 +651,13 @@ test('the set table: headers, chips, one grid, a clear done box and last time as
   await screen.findByLabelText('Gewicht Satz 1');
   const dialog = await setsSheet(1);
   const sheet = within(dialog);
-  expect(sheet.queryByRole('button', { name: 'Satz 1 entfernen' })).toBeNull(); // no × per set outside edit mode
+  expect(sheet.getByRole('button', { name: 'Satz 1 entfernen' })).toBeTruthy(); // the table is always editable
   const head = dialog.querySelector('.tk-head')!;
   expect(head.textContent).toBe('SatzkgWdh');
   const rows = [...dialog.querySelectorAll('.tk-set:not(.tk-head)')];
   expect(rows.map((r) => r.querySelector('.tk-chip')!.textContent)).toEqual(['Aufw.', '1', 'F']);
-  // every row and the header have the same four cells, whatever the set type
-  for (const r of [head, ...rows]) expect([...r.children].filter((c) => !c.matches('.tk-hint, .tk-plates, .tk-wide')).length).toBe(4);
+  // every row and the header have the same five cells (× first), whatever the set type
+  for (const r of [head, ...rows]) expect([...r.children].filter((c) => !c.matches('.tk-hint, .tk-plates, .tk-wide')).length).toBe(5);
   // full names in the choice
   expect([...(sheet.getByLabelText('Satztyp Satz 1') as HTMLSelectElement).options].map((o) => o.text)).toEqual(['Aufwärmen', 'Normaler Satz', 'Bis zum Versagen', 'Dropset']);
   // the hints belong to the next open set only (the warm-up has no earlier one)
