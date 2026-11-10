@@ -75,6 +75,8 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
   const weekTried = new Map<string, number>();
   /** The monthly review waits as long between failed tries; only a written review is marked as sent. */
   const reviewTried = new Map<string, number>();
+  /** Profiles whose review is being written right now: the push question alone waits for it. */
+  const reviewOpen = new Set<string>();
   const detailOf = (id: string, sport: string): string | null => {
     if (sport === 'gym') return gym.state(id).next?.workout.name ?? null;
     if (sport === 'bike') return coach.state(id).next?.session.name ?? null;
@@ -273,7 +275,14 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
             id: p.id, prefs: prefsOf(records.all(p.id, 'coachprefs')), sportsKey: sportsKeyOf(goalOfProfile(records, p.id, dateKey(now))),
             gymDates: gymDoneDates(p.id), sent: sentPrompts, nowMs: now, tried: reviewTried, retryMs: WEEK_RETRY_MS, open: (id, reason, askPush) => chat.openReview(id, reason, askPush),
           });
-          if (tried) void tried.then((wrote) => { if (wrote) mealsChanged([p.id]); }).catch((e) => log.error('chat month review', e)).finally(publish);
+          if (tried) {
+            reviewOpen.add(p.id);
+            void tried.then((opened) => {
+              // The review asked: it counts as Bo's last question, like the question alone.
+              if (opened === 'asked') coach.questionAsked(p.id);
+              if (opened) mealsChanged([p.id]);
+            }).catch((e) => log.error('chat month review', e)).finally(() => { reviewOpen.delete(p.id); publish(); });
+          }
           if (due.week && !tried && now - (weekTried.get(p.id) ?? 0) >= WEEK_RETRY_MS) {
             weekTried.set(p.id, now);
             const monday = mondayOf(dateKey(now));
@@ -281,7 +290,13 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
           } else if (!tried && !due.week && !due.evening) {
             // The push question comes alone: never in the same scan as the review, the week conversation or the evening message.
             const s = coach.state(p.id);
-            if (pushAskDue({ goal: goalOfProfile(records, p.id, dateKey(now)), complaints: s.complaints ?? [], gymDates: gymDoneDates(p.id), sent: sentPrompts.get(p.id), ...(s.lastQuestionMs !== undefined ? { lastQuestionMs: s.lastQuestionMs } : {}), nowMs: now })) {
+            const lastPushMs = chatThread(records.all(p.id, 'chat')).filter((m) => m.role === 'coach' && m.push).at(-1)?.atMs;
+            const triedMs = reviewTried.get(p.id);
+            if (pushAskDue({
+              goal: goalOfProfile(records, p.id, dateKey(now)), complaints: s.complaints ?? [], gymDates: gymDoneDates(p.id), sent: sentPrompts.get(p.id),
+              prefs: prefsOf(records.all(p.id, 'coachprefs')), nowMs: now, reviewOpen: reviewOpen.has(p.id), retryMs: WEEK_RETRY_MS,
+              ...(triedMs !== undefined ? { reviewTriedMs: triedMs } : {}), ...(lastPushMs !== undefined ? { lastPushMs } : {}), ...(s.lastQuestionMs !== undefined ? { lastQuestionMs: s.lastQuestionMs } : {}),
+            })) {
               chat.askPush(p.id);
               sentPrompts.mark(p.id, 'pushAsk', dateKey(now));
               coach.questionAsked(p.id);

@@ -65,7 +65,7 @@ describe('pushAskDue', () => {
   const DAY = 86_400_000;
   const now = at(12, 9);
   const three = ['2026-11-02', '2026-11-05', '2026-11-09'];
-  const ask = { goal: {}, complaints: [], gymDates: three, sent: {}, nowMs: now };
+  const ask = { goal: {}, complaints: [], gymDates: three, sent: {}, prefs: DEFAULT_PREFS, retryMs: 30 * 60_000, reviewOpen: false, nowMs: now };
 
   it('fragt nach dem dritten Krafttraining', () => {
     expect(pushAskDue(ask)).toBe(true);
@@ -75,11 +75,12 @@ describe('pushAskDue', () => {
     expect(pushAskDue({ ...ask, gymDates: [...three.slice(0, 2), '2026-11-20'] })).toBe(false);
   });
 
-  it('fragt nicht bei Beschwerde, nach dem ersten Rückblick oder zweimal', () => {
+  it('fragt nicht bei Beschwerde oder zweimal, aber auch nach einem Rückblick ohne Frage', () => {
     expect(pushAskDue({ ...ask, complaints: [{ status: 'active' }] })).toBe(false);
     expect(pushAskDue({ ...ask, complaints: [{ status: 'healing' }] })).toBe(false);
     expect(pushAskDue({ ...ask, complaints: [{ status: 'over' }] })).toBe(true);
-    expect(pushAskDue({ ...ask, sent: { review: '2026-10-25' } })).toBe(false);
+    // Only pushAsk says that Bo asked; a review that skipped the question leaves it open.
+    expect(pushAskDue({ ...ask, sent: { review: '2026-10-25' } })).toBe(true);
     expect(pushAskDue({ ...ask, sent: { pushAsk: '2026-11-09' } })).toBe(false);
     expect(pushAskDue({ ...ask, goal: { push: 'normal' } })).toBe(false);
   });
@@ -88,5 +89,28 @@ describe('pushAskDue', () => {
     expect(QUESTION_GAP_DAYS).toBe(3);
     expect(pushAskDue({ ...ask, lastQuestionMs: now - 2 * DAY })).toBe(false);
     expect(pushAskDue({ ...ask, lastQuestionMs: now - QUESTION_GAP_DAYS * DAY })).toBe(true);
+  });
+
+  it('fragt nicht, solange ein Rückblick läuft oder gerade versucht wurde', () => {
+    expect(pushAskDue({ ...ask, reviewOpen: true })).toBe(false);
+    expect(pushAskDue({ ...ask, reviewTriedMs: now - 29 * 60_000 })).toBe(false);
+    expect(pushAskDue({ ...ask, reviewTriedMs: now - 30 * 60_000 })).toBe(true);
+  });
+
+  it('wartet drei Stunden nach der letzten Nachricht, die Bo von sich aus geschickt hat', () => {
+    expect(pushAskDue({ ...ask, lastPushMs: now - 2 * 3600_000 })).toBe(false);
+    expect(pushAskDue({ ...ask, lastPushMs: now - 3 * 3600_000 })).toBe(true);
+  });
+
+  it('fragt nur zwischen 8 Uhr und der Abendstunde', () => {
+    expect(pushAskDue({ ...ask, nowMs: at(12, 7) })).toBe(false);
+    expect(pushAskDue({ ...ask, nowMs: at(12, 8) })).toBe(true);
+    expect(pushAskDue({ ...ask, nowMs: at(12, DEFAULT_PREFS.evening.hour - 1) })).toBe(true);
+    expect(pushAskDue({ ...ask, nowMs: at(12, DEFAULT_PREFS.evening.hour) })).toBe(false);
+    const evening = (on: boolean, hour: number) => ({ ...DEFAULT_PREFS, evening: { on, hour } });
+    expect(pushAskDue({ ...ask, prefs: evening(true, 21), nowMs: at(12, 20) })).toBe(true);
+    expect(pushAskDue({ ...ask, prefs: evening(true, 21), nowMs: at(12, 21) })).toBe(false);
+    // Without the evening message the default hour applies, not the stored one.
+    expect(pushAskDue({ ...ask, prefs: evening(false, 21), nowMs: at(12, 20) })).toBe(false);
   });
 });

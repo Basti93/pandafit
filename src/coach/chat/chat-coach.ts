@@ -20,7 +20,7 @@ import { titleHash } from '../../shared/exercise-links';
 import { readTasks, type GivenTask, tasksJsonSchema } from '../coach-tasks';
 import type { StrengthFacts } from '../gym/review-facts';
 import { ruleNumber } from '../../shared/training-policy';
-import type { ReviewReason } from './month-review';
+import type { ReviewOpened, ReviewReason } from './month-review';
 
 const EXCLUDABLE = FAMILY_IDS.filter((f) => f !== 'other');
 
@@ -489,10 +489,10 @@ export class ChatCoach {
    * The monthly review: Bo writes it without being asked, with a push. The structure is fixed here (opening, at most
    * `review.max-observations` observations with their reasons, one question per open complaint, a suggestion for the next
    * weeks); only the words come from the model. It reads the stored data, never the chat thread. Returns whether it wrote the
-   * message; false while busy or when Claude fails. Never throws. With `askPush` (the first review) it also asks how hard Bo may
-   * push, unless that was chosen or a complaint is open (then gentle applies by itself).
+   * message ('asked' when it also asked how hard Bo may push); false while busy or when Claude fails. Never throws. With
+   * `askPush` (Bo has not asked yet) it also asks, unless that was chosen or a complaint is open (then gentle applies by itself).
    */
-  async openReview(id: string, reason: ReviewReason, askPush = false): Promise<boolean> {
+  async openReview(id: string, reason: ReviewReason, askPush = false): Promise<ReviewOpened> {
     if (this.busy.has(id)) return false;
     this.busy.add(id);
     try {
@@ -513,7 +513,7 @@ export class ChatCoach {
       while (text.length > MAX_CHAT_TEXT && observations.length > 0) { observations.pop(); text = compose(); }
       const ask = askPush && complaints.length === 0 && goalOfProfile(this.deps.store, id, dateKey(now)).push === undefined;
       this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...(ask ? { askPush: true as const } : {}) });
-      return true;
+      return ask ? 'asked' : 'written';
     } catch { return false; } finally { this.busy.delete(id); }
   }
 

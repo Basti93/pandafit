@@ -516,6 +516,62 @@ describe('the last Sunday of the month', () => {
   });
 });
 
+describe('the push question in the scan', () => {
+  const SUNDAY = new Date(2026, 10, 29, 18, 5).getTime();
+  const workout = (day: number, month = 9) => { const startMs = new Date(2026, month, day, 10).getTime(); return { kind: 'workout' as const, id: `w${month}-${day}`, updatedMs: 1, deleted: false, body: { id: `w${month}-${day}`, title: 'Kraft', startMs, endMs: startMs + 3600_000, exercises: [] } }; };
+  const REVIEW = { opening: 'Ein guter Monat.', observations: [], complaintQuestions: [], nextWeeks: 'Weiter so.' };
+
+  test('one marker for the review and the question alone: never while a review runs, and later when a complaint skipped it', async () => {
+    let t = SUNDAY;
+    let release: (() => void) | null = null;
+    const ask = vi.fn(async (input: { systemPrompt: string }) => {
+      if (input.systemPrompt !== REVIEW_SYSTEM_PROMPT) return answer;
+      await new Promise<void>((r) => { release = r; });
+      return REVIEW;
+    });
+    const setup = () => {
+      const m = make({ ask: ask as never, nowMs: () => t });
+      const dir = path.join(m.root, 'coach', 'chat');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'prompts-sent.json'), JSON.stringify({ pa: { reviewSports: '' } }));
+      m.runtime.records.put('pa', { kind: 'coachprefs', id: 'prefs', updatedMs: 1, deleted: false, body: { week: { on: false, day: 6, hour: 18 }, evening: { on: false, hour: 19 }, review: { on: true } } });
+      m.runtime.records.putMany('pa', [workout(5), workout(15), workout(2, 10), workout(8, 10)]);
+      const sent = () => (JSON.parse(fs.readFileSync(path.join(dir, 'prompts-sent.json'), 'utf8')) as Record<string, Record<string, string>>).pa!;
+      const asks = () => m.runtime.records.all('pa', 'chat').filter((r) => (r.body as { askPush?: boolean }).askPush === true);
+      return { ...m, sent, asks };
+    };
+
+    // The review is still being written: no question alone in between.
+    const a = setup();
+    a.runtime.scan(); await settle();
+    a.runtime.scan(); await settle();
+    expect(a.asks()).toHaveLength(0);
+    // The review asked: one marker for both ways, and it counts as Bo's last question.
+    release!(); await settle();
+    expect(a.asks()).toHaveLength(1);
+    expect(a.sent().pushAsk).toBe('2026-11-29');
+    expect(a.runtime.coachState('pa')!.lastQuestionMs).toBe(SUNDAY);
+    t = SUNDAY + 16 * 3600_000; // Monday 10:05
+    a.runtime.scan(); await settle();
+    expect(a.asks()).toHaveLength(1);
+
+    // An open complaint at the first review: the review does not ask, the question comes alone once the complaint is over.
+    t = SUNDAY;
+    const b = setup();
+    b.runtime.handle({ type: 'note', profileId: 'pa', text: 'Knie zwickt' }, () => {});
+    const complaint = b.runtime.coachState('pa')!.complaints![0]!;
+    b.runtime.scan(); await settle();
+    release!(); await settle();
+    expect(b.sent().review).toBe('2026-11-29');
+    expect(b.asks()).toHaveLength(0);
+    b.runtime.handle({ type: 'complaint-update', profileId: 'pa', id: complaint.id, status: 'over' }, () => {});
+    t = SUNDAY + 16 * 3600_000;
+    b.runtime.scan(); await settle();
+    expect(b.asks()).toHaveLength(1);
+    expect(b.sent().pushAsk).toBe('2026-11-30');
+  });
+});
+
 describe('the weekly mail in the runtime', () => {
   const SUNDAY = new Date(2026, 10, 15, 18, 30).getTime();
   const mailFetch = () => vi.fn(async (url: string) => (String(url).endsWith('/v1/send') ? new Response(JSON.stringify({ status: 'ok' }), { status: 200 }) : new Response('', { status: 401 })));
