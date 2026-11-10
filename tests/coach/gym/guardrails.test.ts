@@ -315,6 +315,19 @@ describe('checkWorkout and the place in the workout', () => {
     const ladder = ladderFor('ip', ctx.templates.at(-1), own.workouts, NOW);
     expect(ip(plan)).toEqual([0, 0, 0].map(() => snapDown(40 * 0.91, ladder)));
   });
+  it('takes the refusal limit from the suggestion the prompt shows, and lowers only where the place demands', () => {
+    // Older session tired (after 4 chest-press sets), newer one fresh, both at the top of the range: the prompt says 42.5 kg.
+    const tiredDay: StrengthWorkout = { ...wk(14, 'ip', [[40, 12], [40, 12]]), exercises: [...wk(14, 'cp', [[40, 8], [40, 8], [40, 8], [40, 8]]).exercises, ...wk(14, 'ip', [[40, 12], [40, 12]]).exercises] };
+    const mixed: GymContext = { ...ctx, workouts: [...two('bp', 80), tiredDay, wk(7, 'ip', [[40, 12], [40, 12]])] };
+    expect(ip(passes(wo([ex('ip', [set(45, 6)]), ex('bp', [set(80, 8)])]), mixed))).toEqual([45]);
+    expect(ip(passes(wo([ex('cp', [set(40, 8), set(40, 8), set(40, 8), set(40, 8)]), ex('ip', [set(45, 6)])]), mixed))).toEqual([40]);
+  });
+  it('counts the pre-fatigue in the order the person sees, superset partners pulled together', () => {
+    const w = passes(wo([ex('cp', [set(40, 8), set(40, 8)], { supersetId: 1 }), ex('bp', [set(80, 8)]), ex('ip', [set(40, 8), set(40, 8)], { supersetId: 1 })]), ctx);
+    expect(w.exercises.map((e) => e.templateId)).toEqual(['cp', 'ip', 'bp']);
+    const ladder = ladderFor('bp', ctx.templates.find((t) => t.id === 'bp'), ctx.workouts, NOW);
+    expect(w.exercises[2]!.sets[0]!.weightKg).toBe(snapDown(80 * 0.88, ladder));
+  });
   it('still refuses a weight above the fresh suggestion plus one step', () => {
     refused(wo([ex('cp', [set(40, 8)]), ex('ip', [set(50, 8)])]), ctx);
   });

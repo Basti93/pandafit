@@ -82,15 +82,15 @@ function parseExercise(raw: unknown, i: number, byId: Map<string, ExerciseTempla
 }
 
 /**
- * `preSets`: hard sets for the same muscle before this exercise in the workout. The limit for refusing is the suggestion as if
- * the exercise came first; a weight above what its place allows is then lowered to the suggestion for that place.
+ * `preSets`: hard sets for the same muscle before this exercise in the workout. The limit for refusing is the suggestion the
+ * prompt shows, which does not look at the place; a weight above what the place allows is then lowered to the suggestion for it.
  */
 function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, recentEquipment: Set<string>, known: Set<string>, preSets: number): void {
   const where = ex.title;
   if (!isRepBased(t)) no(`${where}: nur Übungen mit Wiederholungen`);
-  const plan = gymPlan(ctx);
+  const { muscleOf: _placeBlind, ...plan } = gymPlan(ctx);
   const sug = suggestNext(ex.templateId, ctx.workouts, ctx.nowMs, t, plan);
-  const here = preSets > 0 ? suggestNext(ex.templateId, ctx.workouts, ctx.nowMs, t, plan, preSets) : sug;
+  const here = preSets > 0 ? suggestNext(ex.templateId, ctx.workouts, ctx.nowMs, t, gymPlan(ctx), preSets) : sug;
   const ladder = ladderFor(ex.templateId, t, ctx.workouts, ctx.nowMs, plan);
   const range = repRangeOf(t);
   if (!known.has(ex.templateId) && !recentEquipment.has(t.equipment)) no(`${where}: Gerät in den letzten Monaten nicht benutzt`);
@@ -148,11 +148,14 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     const known = new Set(avail.map((a) => a.templateId));
     const recentEquipment = new Set(avail.filter((a) => a.recent).map((a) => byId.get(a.templateId)?.equipment).filter((e): e is string => !!e));
     const muscleOf = muscleOfFrom(ctx.templates, ctx.catalog ?? []);
-    const pre = preFatigue(exercises.map((e) => ({ primaryMuscle: muscleOf(e.templateId), hardSets: hardSetsOf(e.sets), supersetId: e.supersetId })));
-    parsed.forEach((p, i) => checkExercise(p.ex, p.template, ctx, recentEquipment, known, pre[i]!));
+    // Pre-fatigue follows the order the person will see: superset partners pulled together.
+    const grouped = contiguousGroups(exercises);
+    const pre = preFatigue(grouped.map((e) => ({ primaryMuscle: muscleOf(e.templateId), hardSets: hardSetsOf(e.sets), supersetId: e.supersetId })));
+    const preOf = new Map(grouped.map((e, i) => [e, pre[i]!]));
+    parsed.forEach((p) => checkExercise(p.ex, p.template, ctx, recentEquipment, known, preOf.get(p.ex)!));
     // The weights are for this studio's equipment; the app uses it to refit them when another studio is chosen. Never taken from the answer.
     const studio = studioName(plannedKey(ctx.workouts, ctx));
-    const workout: GymWorkout = { name: raw.name.trim(), exercises: contiguousGroups(exercises), ...(studio ? { studio } : {}) };
+    const workout: GymWorkout = { name: raw.name.trim(), exercises: grouped, ...(studio ? { studio } : {}) };
     if (ctx.budgetMinutes !== undefined && gymMinutes(workout, ctx.catalog ?? EXERCISES) > gymLimit(ctx.budgetMinutes)) return no(`zu lang für deine Zeit: ca. ${gymMinutes(workout, ctx.catalog ?? EXERCISES)} Min bei höchstens ${ctx.budgetMinutes}`);
     return { ok: true, workout };
   } catch (e) {
