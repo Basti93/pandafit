@@ -22,7 +22,8 @@ describe('blockDates', () => {
   it('starts today on a Monday and caps the length at six weeks', () => {
     expect(blockDates('2026-12-07')).toEqual({ start: '2026-12-07', end: '2027-01-17' });
   });
-  it('takes this month end when it is at least four weeks away', () => {
+  it('counts the minimum length from the start: four full weeks keep this month end', () => {
+    expect(blockDates('2026-11-02')).toEqual({ start: '2026-11-02', end: '2026-11-29' });
     expect(blockDates('2026-11-01')).toEqual({ start: '2026-11-02', end: '2026-11-29' });
   });
 });
@@ -59,6 +60,29 @@ describe('readBlock', () => {
     expect(readBlock(block({ rhythm: RHYTHM.slice(0, 6) }))).toBeNull();
     expect(readBlock({ ...block(), state: 'x' })).toBeNull();
     expect(readBlock(null)).toBeNull();
+  });
+});
+
+describe('readBlock dates and weekly turn', () => {
+  it('checks the Sunday to Monday turn', () => {
+    const r = RHYTHM.map((d) => ({ ...d }));
+    r[6] = day('gym', 'hard', { template: 0, legs: true });
+    r[0] = day('bike', 'hard');
+    r[2] = day('rest', 'easy');
+    r[4] = day('bike', 'easy');
+    expect(readBlock(block({ rhythm: r.map((d, i) => (i === 0 ? day('bike', 'easy') : d)) }))).not.toBeNull();
+    expect(readBlock(block({ rhythm: r }))).toBeNull();
+  });
+  it('wants both dates or none, a Sunday end, dates for active and ended, and real dates', () => {
+    const { start: _s, end: _e, ...bare } = block();
+    expect(readBlock({ ...bare, start: '2026-11-30' })).toBeNull();
+    expect(readBlock({ ...bare, end: '2026-12-27' })).toBeNull();
+    expect(readBlock(block({ end: '2026-12-26' }))).toBeNull();
+    expect(readBlock(bare)).toBeNull();
+    expect(readBlock({ ...bare, state: 'ended' })).toBeNull();
+    expect(readBlock({ ...bare, state: 'proposed' })).not.toBeNull();
+    expect(readBlock(block({ start: '2026-02-30', end: '2026-12-27' }))).toBeNull();
+    expect(readBlock(block({ end: '2026-02-31' }))).toBeNull();
   });
 });
 

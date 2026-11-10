@@ -34,6 +34,14 @@ const daysBetween = (a: string, b: string): number => {
 };
 const weekdayIndex = (date: string): number => { const [y, m, d] = date.split('-').map(Number); return (new Date(Date.UTC(y!, m! - 1, d!)).getUTCDay() + 6) % 7; };
 
+/** A YYYY-MM-DD key of a day that exists. */
+const isRealDate = (x: unknown): x is string => {
+  if (typeof x !== 'string' || !DATE.test(x)) return false;
+  const [y, m, d] = x.split('-').map(Number);
+  const t = new Date(Date.UTC(y!, m! - 1, d!));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m! - 1 && t.getUTCDate() === d;
+};
+
 function readDay(x: unknown, templates: number): BlockDay | null {
   if (!isObj(x) || !SPORT_LIST.includes(x.sport as Sport) || !HARDNESS_LIST.includes(x.hardness as Hardness)) return null;
   const day: BlockDay = { sport: x.sport as Sport, hardness: x.hardness as Hardness };
@@ -63,14 +71,16 @@ export function readBlock(body: unknown): BlockBody | null {
   if (!Array.isArray(body.rhythm) || body.rhythm.length !== 7) return null;
   const rhythm: BlockDay[] = [];
   for (const d of body.rhythm) { const day = readDay(d, templates.length); if (!day) return null; rhythm.push(day); }
+  // The rhythm repeats weekly: check it as a week, and again from Sunday so the turn to Monday counts.
   if (checkWeekPlan(toPlanDays(rhythm, SAMPLE_MONDAY)).length > 0) return null;
+  if (checkWeekPlan(toPlanDays([rhythm[6]!, ...rhythm.slice(0, 6)], addDays(SAMPLE_MONDAY, -1))).length > 0) return null;
   const out: BlockBody = { state: body.state as BlockState, templates, rhythm, atMs: body.atMs };
-  for (const k of ['start', 'end'] as const) {
-    if (body[k] === undefined) continue;
-    if (typeof body[k] !== 'string' || !DATE.test(body[k] as string)) return null;
-    out[k] = body[k] as string;
-  }
-  if (out.start && out.end && (mondayOf(out.start) !== out.start || out.end < out.start)) return null;
+  if ((body.start === undefined) !== (body.end === undefined)) return null;
+  if (body.start !== undefined) {
+    if (!isRealDate(body.start) || !isRealDate(body.end) || mondayOf(body.start) !== body.start || weekdayIndex(body.end) !== 6 || body.end < body.start) return null;
+    out.start = body.start;
+    out.end = body.end;
+  } else if (out.state === 'active' || out.state === 'ended') return null;
   if (body.priorMode !== undefined) { if (body.priorMode !== 'week' && body.priorMode !== 'spontaneous') return null; out.priorMode = body.priorMode; }
   return out;
 }
@@ -87,7 +97,7 @@ export function blockDates(today: string): { start: string; end: string } {
   const start = addDays(today, (7 - weekdayIndex(today)) % 7);
   let end = lastSundayOf(today);
   if (end < today) end = lastSundayOf(addDays(today, 7));
-  if (daysBetween(today, end) < ruleNumber('block.min-weeks') * 7) end = lastSundayOf(addDays(end, 7));
+  if (daysBetween(start, end) + 1 < ruleNumber('block.min-weeks') * 7) end = lastSundayOf(addDays(end, 7));
   const cap = addDays(start, ruleNumber('block.max-weeks') * 7 - 1);
   return { start, end: end < cap ? end : cap };
 }
