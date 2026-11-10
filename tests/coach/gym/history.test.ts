@@ -312,3 +312,28 @@ describe('stagnates', () => {
     expect(stagnates('sq', [], NOW)).toBe(false);
   });
 });
+
+describe('stagnates, Sonderfälle', () => {
+  const ASSISTED = { type: 'bodyweight_assisted_reps' };
+  it('bei Unterstützung heißt weniger Gewicht Fortschritt, mehr Gewicht nicht', () => {
+    expect(stagnates('sq', [wk(21, [[40, 8]]), wk(14, [[35, 8]]), wk(7, [[30, 8]])], NOW, ASSISTED)).toBe(false);
+    expect(stagnates('sq', [wk(21, [[30, 8]]), wk(14, [[35, 8]]), wk(7, [[40, 8]])], NOW, ASSISTED)).toBe(true);
+  });
+  it('vergleicht nur Einheiten im selben Studio', () => {
+    const at = (w: StrengthWorkout, studio: string): StrengthWorkout => ({ ...w, studio });
+    const ws = [at(wk(28, [[40, 8]]), 'A'), at(wk(21, [[40, 8]]), 'A'), at(wk(14, [[60, 8]]), 'B'), at(wk(7, [[40, 8]]), 'A')];
+    expect(stagnates('sq', ws, NOW, undefined, { studio: 'A' })).toBe(true);
+    expect(stagnates('sq', ws, NOW, undefined, { studio: 'B' })).toBe(false);
+  });
+  it('vergleicht nur Einheiten mit ähnlicher Vorermüdung', () => {
+    const two = (daysAgo: number, kg: number, pre: boolean): StrengthWorkout => ({ id: `p${daysAgo}`, title: 'Day', startMs: NOW - daysAgo * DAY, durationS: 3600, exercises: [
+      ...(pre ? [{ title: 'Press', templateId: 'cp', sets: 4, reps: 0, volumeKg: 0, workSets: Array.from({ length: 4 }, () => ({ type: 'normal' as const, weightKg: 50, reps: 8 })) }] : []),
+      { title: 'Fly', templateId: 'fl', sets: 1, reps: 0, volumeKg: 0, workSets: [{ type: 'normal' as const, weightKg: kg, reps: 8 }] }] });
+    const muscleOf = () => 'chest';
+    // fresh 40, fresh 40, tired 30 (lower, but only because of fatigue), fresh 40: stagnation among the fresh ones, not a drop.
+    const ws = [two(28, 40, false), two(21, 40, false), two(14, 30, true), two(7, 40, false)];
+    expect(stagnates('fl', ws, NOW, undefined, { muscleOf })).toBe(true);
+    const progress = [two(28, 40, false), two(21, 40, false), two(14, 30, true), two(7, 42.5, false)];
+    expect(stagnates('fl', progress, NOW, undefined, { muscleOf })).toBe(false);
+  });
+});

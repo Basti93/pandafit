@@ -92,7 +92,7 @@ export type PromptInput = {
   /** How hard the person trains, an open or healing complaint already counted in. Without it, from the goal and the complaints. */
   push?: Push;
   /** The fixed section of today: week n of `of`, today's template with its core exercises (stagnating ones marked). */
-  abschnitt?: { n: number; of: number; template: string; light: boolean; core: { templateId: string; title: string; stagnates: boolean }[] };
+  abschnitt?: { n: number; of: number; template: string; light: boolean; core: { templateId: string; title: string; stagnates: boolean; exempt?: boolean }[] };
 };
 
 const STRENGTH_WORDS = { muscle: 'Muskelaufbau', strength: 'Kraft', fitness: 'Fitness' } as const;
@@ -106,7 +106,7 @@ const pushLine = (push: Push): string => {
   return `Härte: ${PUSH_LABEL[push]}. Plane die Arbeitssätze mit ${r.min} bis ${r.max} Wiederholungen Reserve. ${PUSH_RULES[push]}`;
 };
 
-const ABSCHNITT_LINE = 'Die Person trainiert in einem festen Abschnitt; der Block abschnitt-nur-daten zeigt Woche, Vorlage und Kernübungen, stagnierende sind markiert. Im Abschnitt bleiben die Kernübungen; Ergänzungen wählst du frei. Woche 1 an der oberen Reserve der Härte, jede Woche eine Wiederholung weniger Reserve bis zur unteren Grenze; die leichte Woche mit etwa zwei Dritteln der Sätze bei gleicher Last. Verpasste Einheiten holt niemand nach.';
+const ABSCHNITT_LINE = 'Die Person trainiert in einem festen Abschnitt; der Block abschnitt-nur-daten zeigt Woche, Vorlage und Kernübungen, stagnierende sind markiert, ausgenommene (ausgenommen) darfst du weglassen. Im Abschnitt bleiben die Kernübungen; Ergänzungen wählst du frei. Woche 1 an der oberen Reserve der Härte, jede Woche eine Wiederholung weniger Reserve bis zur unteren Grenze; die leichte Woche mit etwa zwei Dritteln der Sätze bei gleicher Last. Verpasste Einheiten holt niemand nach.';
 
 export function buildGymPrompt(i: PromptInput): string {
   const days = (ms: number) => Math.round((i.nowMs - ms) / DAY_MS * 10) / 10;
@@ -158,7 +158,7 @@ export function buildGymPrompt(i: PromptInput): string {
     ...(i.review?.observations.length ? [dataBlock('rueckblick', i.review.observations.map((o) => ({ text: o.text, grund: o.reason })))] : []),
     ...(i.abschnitt ? [dataBlock('abschnitt', {
       woche: i.abschnitt.n, von: i.abschnitt.of, vorlage: i.abschnitt.template, leichteWoche: i.abschnitt.light,
-      kernuebungen: i.abschnitt.core.map((c) => ({ templateId: c.templateId, titel: c.title, ...(c.stagnates ? { stagniert: true } : {}) })),
+      kernuebungen: i.abschnitt.core.map((c) => ({ templateId: c.templateId, titel: c.title, ...(c.stagnates ? { stagniert: true } : {}), ...(c.exempt ? { ausgenommen: true } : {}) })),
     })] : []),
     ...(i.swaps?.length ? [dataBlock('tausch', i.swaps.map((t) => ({ statt: t.statt, nimm: t.nimm })))] : []),
   ];

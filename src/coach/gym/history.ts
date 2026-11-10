@@ -174,14 +174,19 @@ export function suggestNext(templateId: string, workouts: StrengthWorkout[], now
  * True when the last `block.stagnation-sessions` comparable sessions of an exercise each brought neither more load nor, at the same
  * load, more reps than the session before (the comparison the progression makes). Needs one more session to compare the first with.
  */
-export function stagnates(templateId: string, workouts: StrengthWorkout[], nowMs: number): boolean {
-  const recent = sessionsOf(templateId, workouts, nowMs, undefined).filter((s) => nowMs - s.ms <= COMPARABLE_DAYS * DAY_MS);
+export function stagnates(templateId: string, workouts: StrengthWorkout[], nowMs: number, ex?: ExerciseInfo, plan?: Plan): boolean {
+  const all = sessionsOf(templateId, workouts, nowMs, plan).filter((s) => nowMs - s.ms <= COMPARABLE_DAYS * DAY_MS);
+  // Like the progression: only sessions with a pre-fatigue similar to the newest one are compared (the studio is the plan's).
+  const newest = all[all.length - 1];
+  const recent = newest ? all.filter((s) => Math.abs(s.preSets - newest.preSets) <= PRE_FATIGUE_TOLERANCE) : [];
   if (recent.length < STAGNATION_SESSIONS + 1) return false;
+  const assisted = isAssisted(ex?.type);
   const tail = recent.slice(-(STAGNATION_SESSIONS + 1));
   return tail.slice(1).every((cur, i) => {
     const prev = tail[i]!;
     const [c, p] = [cur.weightKg ?? 0, prev.weightKg ?? 0];
-    return !(c > p || (c === p && cur.minReps > prev.minReps));
+    // With assistance, less weight is more load.
+    return !(assisted ? c < p : c > p) && !(c === p && cur.minReps > prev.minReps);
   });
 }
 

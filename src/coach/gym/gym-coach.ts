@@ -1,7 +1,7 @@
 import { ClaudeError } from '../claude-client';
 import type { StrengthWorkout } from '../hevy';
 import { isAssisted, LEG_MUSCLES, recentLegWork, stagnates, suggestNext } from './history';
-import { hardSetsOf } from './pre-fatigue';
+import { hardSetsOf, muscleOfFrom } from './pre-fatigue';
 import { activeBlock, blockWeek } from '../../shared/block';
 import { addDays } from '../../shared/week-plan';
 import { strengthFacts, type StrengthFacts } from './review-facts';
@@ -190,13 +190,16 @@ export class GymCoach {
     const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
     let index = b.rhythm[weekday]?.template;
     if (index === undefined) {
-      const last = inBlock.map((w) => b.templates.findIndex((t) => t.core.some((c) => hasCore(w, c)))).find((i) => i >= 0);
+      const overlap = (w: StrengthWorkout, i: number): number => b.templates[i]!.core.filter((c) => hasCore(w, c)).length;
+      const best = (w: StrengthWorkout): number => b.templates.reduce((m, _, i) => (overlap(w, i) > overlap(w, m) ? i : m), 0);
+      const last = inBlock.map((w) => (overlap(w, best(w)) > 0 ? best(w) : -1)).find((i) => i >= 0);
       index = last !== undefined ? (last + 1) % b.templates.length : undefined;
     }
     if (index === undefined) {
       for (let k = 1; k <= 7 && index === undefined; k++) index = b.rhythm[(weekday + k) % 7]?.template;
     }
     const template = b.templates[index ?? 0]!;
+    const plan = { studio: this.studio(id), renames: this.studios(id).renames, muscleOf: muscleOfFrom(templates, catalog) };
     const swapped = new Set(takenChangesOf(this.deps.store, id).flatMap((c) => c.ops.flatMap((o) => (o.op === 'swap' ? [o.exerciseId] : []))));
     const legsTired = avoidLegs || recentLegWork(real, templates, now);
     const exempt = new Set<string>();
@@ -205,11 +208,12 @@ export class GymCoach {
       const t = templates.find((x) => isCoreExercise({ templateId: x.id, title: x.title }, c, { catalog, links }));
       const entry = catalog.find((e) => e.id === c);
       const title = t?.title ?? entry?.title ?? c;
-      const stag = [c, ...Object.entries(links).filter(([, own]) => own === c).map(([hevy]) => hevy)].some((tid) => stagnates(tid, real, now));
+      const stag = [c, ...Object.entries(links).filter(([, own]) => own === c).map(([hevy]) => hevy)].some((tid) => stagnates(tid, real, now, t, plan));
       const muscle = entry?.primaryMuscle ?? t?.primaryMuscle;
       const gone = isExcluded({ id: c, templateId: t?.id, title }, excluded, catalog, links) || swapped.has(c);
-      if (!t || stag || gone || open.length > 0 || (legsTired && muscle !== undefined && LEG_MUSCLES.includes(muscle))) exempt.add(c);
-      if (t && !gone) core.push({ templateId: t.id, title, stagnates: stag });
+      const free = !t || stag || gone || open.length > 0 || (legsTired && muscle !== undefined && LEG_MUSCLES.includes(muscle));
+      if (free) exempt.add(c);
+      if (t && !gone) core.push({ templateId: t.id, title, stagnates: stag, ...(free ? { exempt: true } : {}) });
     }
     let lightCap: number | null = null;
     if (week.light) {

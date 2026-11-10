@@ -1248,4 +1248,37 @@ describe('Abschnitt', () => {
     expect(calls[0]!.prompt).not.toContain('abschnitt-nur-daten');
     expect(outside(calls[0]!.prompt)).not.toContain('Im Abschnitt bleiben');
   });
+  it('wählt die zuletzt trainierte Vorlage nach der größten Überschneidung der Kernübungen', async () => {
+    const sq = T('sq', 'machine', 'quadriceps');
+    const tpls = [...TPL, sq];
+    const two = (): BlockBody => ({ ...body(), templates: [{ name: 'Oberkörper A', core: ['sq', 'a1', 'a2'] }, { name: 'Unterkörper B', core: ['sq', 'b1', 'b2', 'b3'] }] });
+    const store = new RecordStore({ dir: path.join(tmp, 'tracking') });
+    store.putMany('p1', [blockRecord('block-m1', two(), NOW)]);
+    const fri = Date.UTC(2026, 10, 6, 12);
+    const trained = [wk(24, 'h1', tpls.map((t) => ({ t: t.id, kg: 40, reps: 8 }))), wk(0, 'h3', [{ t: 'sq', kg: 40, reps: 8 }, { t: 'b1', kg: 40, reps: 8 }, { t: 'b2', kg: 40, reps: 8 }, { t: 'b3', kg: 40, reps: 8 }])];
+    const calls: Input[] = [];
+    const coach = new GymCoach({
+      dir, nowMs: () => fri, store, ask: async (i) => { calls.push(i); return planOf(['sq', 'a1', 'a2']); },
+      workouts: () => trained, templates: async () => tpls, refreshTemplates: async () => tpls, ready: () => true,
+      bike: () => ({ summaries: [], complaints: [] }), complaint: () => {}, writer: () => null,
+    });
+    await coach.tick('p1');
+    expect(block(calls[0]!.prompt, 'abschnitt-nur-daten').vorlage).toBe('Oberkörper A');
+  });
+  it('markiert im Prompt die Kernübungen, die der Plan weglassen darf', async () => {
+    const complaint: Complaint = { id: 'c1', text: 'Die Schulter zwickt', status: 'healing', startedMs: NOW, updatedMs: NOW };
+    const store = new RecordStore({ dir: path.join(tmp, 'tracking') });
+    store.putMany('p1', [blockRecord('block-m1', body(), NOW)]);
+    const calls: Input[] = [];
+    const coach = new GymCoach({
+      dir, nowMs: () => THU, store, ask: async (i) => { calls.push(i); return planOf(['b1']); },
+      workouts: () => past(), templates: async () => TPL, refreshTemplates: async () => TPL, ready: () => true,
+      bike: () => ({ summaries: [], complaints: [complaint] }), complaint: () => {}, writer: () => null,
+    });
+    await coach.tick('p1');
+    const a = block(calls[0]!.prompt, 'abschnitt-nur-daten');
+    expect(a.kernuebungen.every((k: any) => k.ausgenommen === true)).toBe(true);
+    const free = await run(THU, past(), planOf(['b1', 'b2', 'b3']));
+    expect(block(free.calls[0]!.prompt, 'abschnitt-nur-daten').kernuebungen.some((k: any) => k.ausgenommen)).toBe(false);
+  });
 });

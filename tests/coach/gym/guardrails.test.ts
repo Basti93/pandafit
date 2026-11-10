@@ -3,7 +3,7 @@ import type { StrengthWorkout, SetType } from '../../../src/coach/hevy';
 import type { ExerciseTemplate } from '../../../src/shared/gym/types';
 import { checkWorkout, reasonPhrase, type GymContext } from '../../../src/coach/gym/guardrails';
 import { gymMinutes } from '../../../src/shared/duration';
-import { ruleWorkout } from '../../../src/coach/gym/rules';
+import { capLightWeek, ruleWorkout } from '../../../src/coach/gym/rules';
 import { ladderFor, suggestNext } from '../../../src/coach/gym/history';
 import { snapDown } from '../../../src/shared/loads';
 import { EXERCISES } from '../../../src/shared/exercises';
@@ -473,5 +473,20 @@ describe('Abschnitt', () => {
     const plan = ruleWorkout(ctx);
     expect(plan.guard).toBeUndefined();
     expect(plan.workout.exercises.map((e) => e.templateId)).toContain('lr');
+  });
+});
+
+describe('capLightWeek', () => {
+  const e = (id: string, types: string[]) => ({ templateId: id, title: id, restS: null, supersetId: null, notes: '', sets: types.map((type) => ({ type: type as 'normal', weightKg: 40, reps: 8 })) });
+  const ctx = (core: string[], cap: number): GymContext => ({ ...CTX, block: { core, exempt: new Set(), light: true, lightCap: cap } });
+  it('nimmt zuerst eine Übung, die keine Kernübung ist', () => {
+    const w = { name: 'x', exercises: [e('lr', ['normal']), e('cp', ['normal'])] };
+    expect(capLightWeek(w, ctx(['cp'], 1)).exercises.map((x) => x.templateId)).toEqual(['cp']);
+  });
+  it('streicht keinen falschen Satz, wenn eine Übung keinen normalen Satz hat', () => {
+    const w = { name: 'x', exercises: [e('cp', ['normal', 'normal']), e('lr', ['failure', 'failure'])] };
+    const out = capLightWeek(w, ctx([], 3));
+    expect(out.exercises[1]!.sets.map((s) => s.type)).toEqual(['failure', 'failure']);
+    expect(out.exercises[0]!.sets).toHaveLength(1);
   });
 });

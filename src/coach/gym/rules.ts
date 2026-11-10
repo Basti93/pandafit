@@ -126,15 +126,18 @@ function trimToLimit(w: GymWorkout, limit: number, catalog: readonly Exercise[])
   return out;
 }
 
-/** The light week: from the last exercises, sets are taken away until the hard sets fit the cap. Without a cap, the workout stays. */
-function capLightWeek(w: GymWorkout, ctx: GymContext): GymWorkout {
+/** The light week: from the last exercises, sets are taken away until the hard sets fit the cap. Without a cap, the workout stays. A core exercise is only dropped as a last resort. */
+export function capLightWeek(w: GymWorkout, ctx: GymContext): GymWorkout {
   const cap = ctx.block?.light ? ctx.block.lightCap : null;
   if (cap === null || cap === undefined) return w;
   const exercises = w.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
   const hard = (e: GymExercise): number => hardSetsOf(e.sets);
+  const isCore = (e: GymExercise): boolean => (ctx.block?.core ?? []).some((c) => !ctx.block!.exempt.has(c) && isCoreExercise(e, c, ctx));
   while (exercises.reduce((n, e) => n + hard(e), 0) > cap) {
-    const long = [...exercises].reverse().find((e) => hard(e) > 1);
-    if (long) { const i = long.sets.map((s) => s.type).lastIndexOf('normal'); long.sets.splice(i, 1); }
+    const long = [...exercises].reverse().find((e) => hard(e) > 1 && e.sets.some((s) => s.type === 'normal'));
+    if (long) { long.sets.splice(long.sets.map((s) => s.type).lastIndexOf('normal'), 1); continue; }
+    const extra = exercises.map(isCore).lastIndexOf(false);
+    if (extra >= 0) exercises.splice(extra, 1);
     else if (exercises.length > 1) exercises.pop();
     else break;
   }
