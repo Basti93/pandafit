@@ -282,7 +282,7 @@ describe('the focus card', () => {
     const info = await screen.findByRole('dialog');
     expect(within(info).getByRole('note', { name: 'Anleitung Bankdrücken' })).toBeTruthy();
     fireEvent.click(within(info).getByRole('button', { name: 'Schließen' }));
-    fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Mehr zu Bankdrücken' }));
+    fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Menü Bankdrücken' }));
     expect(screen.getByRole('list', { name: 'Menü Bankdrücken' })).toBeTruthy();
   });
 });

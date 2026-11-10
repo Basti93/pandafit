@@ -21,7 +21,7 @@ export type Ask = { question: 'nothing-confirmed' } | { question: 'open-sets'; o
 export type UiState = {
   picker: Picker; ask: Ask;
   /** The exercise whose menu is open, and whether it shows the "Mehr" half. */
-  menu: string | null; menuMore: boolean;
+  menu: string | null;
   topMenu: boolean; studioOpen: boolean; coachAsk: number;
   reorder: DragStart | null;
   notesOpen: ReadonlySet<string>;
@@ -65,7 +65,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const current = currentSet(w);
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
-    picker: null, ask: null, menu: null, menuMore: false, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
+    picker: null, ask: null, menu: null, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
     notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);

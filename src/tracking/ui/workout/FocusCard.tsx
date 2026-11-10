@@ -62,7 +62,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
         </div>
         <div className="tk-lift-tools">
           <RoundButton icon="info" name="Anleitung" onClick={() => set({ infoRid: e.rid })} />
-          <RoundButton icon="mehr" name={`Mehr zu ${e.title}`} onClick={() => set({ menu: e.rid, menuMore: false })} />
+          <RoundButton icon="mehr" name={`Menü ${e.title}`} onClick={() => set({ menu: e.rid })} />
         </div>
       </div>
       {note && <NotesField key={e.rid} store={store} label={`Notiz zu ${e.title}`} value={e.notes} onCommit={(text) => act((x) => editNotes(x, e.rid, text))} />}

@@ -51,10 +51,9 @@ describe('workout: Anleitung behind its round button on the focus card', () => {
 
   test('the menu has no Anleitung entry; the round button is the one way', async () => {
     await running();
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Menü Kniebeuge' }));
     expect(screen.getAllByRole('button', { name: 'Anleitung' })).toHaveLength(1); // only the round button, none in the menu
-    expect(within(screen.getByRole('list', { name: 'Mehr zu Kniebeuge' })).queryByText('Anleitung')).toBeNull();
+    expect(within(screen.getByRole('list', { name: 'Menü Kniebeuge' })).queryByText('Anleitung')).toBeNull();
   });
 
   test('an own text shows without a credit line', async () => {

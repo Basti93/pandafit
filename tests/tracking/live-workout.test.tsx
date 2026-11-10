@@ -38,11 +38,10 @@ test('the menu actions reach the same functions: add a set, a note on request, m
   fireEvent.click(screen.getByRole('button', { name: 'Satz hinzufügen Kniebeuge' })); // the plus in the dot row
   await waitFor(() => expect(bodyOf(f.map).exercises[1]!.sets).toHaveLength(4));
   expect(screen.queryByLabelText('Notiz zu Kniebeuge')).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Menü Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Notiz hinzufügen Kniebeuge' }));
   expect(screen.getByLabelText('Notiz zu Kniebeuge')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Menü Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Reihenfolge ändern Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Kniebeuge nach unten' })); // the one list: arrows (or a drag) there
   await waitFor(() => expect(bodyOf(f.map).exercises.map((e) => e.title)).toEqual(['Bankdrücken', 'Kreuzheben', 'Kniebeuge']));
@@ -107,9 +106,18 @@ test('the start screen: studio is a pill, the others live behind "Anderes Traini
 
 test('Reihenfolge from the menu: the arrow buttons move one place', async () => {
   const f = await running();
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr zu Kniebeuge' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Mehr' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Menü Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Reihenfolge ändern Kniebeuge' }));
   fireEvent.click(screen.getByRole('button', { name: 'Kreuzheben nach oben' }));
   await waitFor(() => expect(bodyOf(f.map).exercises.map((e) => e.title).join(',')).toBe('Bankdrücken,Kreuzheben,Kniebeuge'));
+});
+
+test('zeigt alle Aktionen einer Übung in einer Liste', async () => {
+  await running();
+  fireEvent.click(screen.getByRole('button', { name: 'Menü Kniebeuge' }));
+  const list = within(screen.getByRole('list', { name: 'Menü Kniebeuge' }));
+  for (const name of [/tauschen/, /Pause ändern/, /Reihenfolge ändern/]) expect(list.getByRole('button', { name })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Entfernen' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /^Mehr$/ })).toBeNull();
+  expect(list.queryByRole('button', { name: 'Satz hinzufügen Kniebeuge' })).toBeNull(); // the plus does that now
 });
