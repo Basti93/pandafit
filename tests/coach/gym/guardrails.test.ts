@@ -4,7 +4,7 @@ import type { ExerciseTemplate } from '../../../src/shared/gym/types';
 import { checkWorkout, reasonPhrase, type GymContext } from '../../../src/coach/gym/guardrails';
 import { gymMinutes } from '../../../src/shared/duration';
 import { ruleWorkout } from '../../../src/coach/gym/rules';
-import { ladderFor } from '../../../src/coach/gym/history';
+import { ladderFor, suggestNext } from '../../../src/coach/gym/history';
 import { snapDown } from '../../../src/shared/loads';
 import { EXERCISES } from '../../../src/shared/exercises';
 
@@ -331,6 +331,26 @@ describe('checkWorkout and the place in the workout', () => {
   });
   it('still refuses a weight above the fresh suggestion plus one step', () => {
     refused(wo([ex('cp', [set(40, 8)]), ex('ip', [set(50, 8)])]), ctx);
+  });
+  // Invented: the incline press so far always came after six chest-press sets; the rule plan puts it after three.
+  const day = (daysAgo: number, ipReps: number): StrengthWorkout => ({
+    ...wk(daysAgo, 'ip', []),
+    exercises: [...wk(daysAgo, 'cp', Array.from({ length: 6 }, (): S => [40, 8])).exercises, ...wk(daysAgo, 'ip', [[40, ipReps], [40, ipReps]]).exercises],
+  });
+  const blindKg = (c: GymContext) => suggestNext('ip', c.workouts, NOW, c.templates.find((t) => t.id === 'ip')).weightKg!;
+  it('the rule workout passes its own check when the reps dropped twice at another place', () => {
+    const own: GymContext = { ...ctx, workouts: [day(21, 10), day(14, 9), day(7, 8)] };
+    const r = ruleWorkout(own);
+    expect(r.guard).toBeUndefined();
+    expect(r.workout.exercises.map((e) => e.templateId)).toEqual(['cp', 'ip']);
+    for (const kg of ip(r.workout)) expect(kg).toBeLessThanOrEqual(blindKg(own));
+  });
+  it('the rule workout passes its own check after a long break at another place', () => {
+    const own: GymContext = { ...ctx, workouts: [day(42, 8), day(35, 8)] };
+    const r = ruleWorkout(own);
+    expect(r.guard).toBeUndefined();
+    expect(r.workout.exercises.map((e) => e.templateId)).toEqual(['cp', 'ip']);
+    for (const kg of ip(r.workout)) expect(kg).toBeLessThanOrEqual(blindKg(own));
   });
 });
 

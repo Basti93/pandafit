@@ -2,7 +2,7 @@ import { contiguousGroups } from '../../shared/superset';
 import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from '../../shared/gym/types';
 import { MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
-import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan } from './history';
+import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan, type Suggestion } from './history';
 import { hardSetsOf, muscleOfFrom, preFatigue } from './pre-fatigue';
 import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
 import { studioName, type Renames } from '../../shared/studio';
@@ -48,6 +48,19 @@ export function weightCap(suggested: number, withStep: boolean, ladder: Ladder):
 /** The plan the suggestions are made for: studio, weight steps and where each exercise stood in past workouts. */
 export const gymPlan = (ctx: GymContext): Plan => ({ studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, muscleOf: muscleOfFrom(ctx.templates, ctx.catalog ?? []) });
 
+/**
+ * The suggestion without the place (`blind`, the one the prompt shows) and the one for this place (`here`). The place may only
+ * ever lower the weight: `here` is the blind suggestion unless the place gives a lower weight. Without hard sets before it,
+ * without a weight or with assistance, `here` is `blind`.
+ */
+export function placedSuggestion(templateId: string, t: ExerciseTemplate, ctx: GymContext, preSets: number): { blind: Suggestion; here: Suggestion } {
+  const plan = gymPlan(ctx);
+  const blind = suggestNext(templateId, ctx.workouts, ctx.nowMs, t, { ...plan, muscleOf: undefined });
+  if (preSets <= 0 || blind.weightKg === null || isAssisted(t.type)) return { blind, here: blind };
+  const aware = suggestNext(templateId, ctx.workouts, ctx.nowMs, t, plan, preSets);
+  return { blind, here: aware.weightKg !== null && aware.weightKg <= blind.weightKg ? aware : blind };
+}
+
 function parseSet(raw: unknown, where: string): GymSet {
   if (!isRecord(raw)) return no(`${where}: Satz ungültig`);
   const type = SET_TYPES.find((t) => t === raw.type);
@@ -84,15 +97,14 @@ function parseExercise(raw: unknown, i: number, byId: Map<string, ExerciseTempla
 
 /**
  * `preSets`: hard sets for the same muscle before this exercise in the workout. The limit for refusing is the suggestion the
- * prompt shows, which does not look at the place; a weight above what the place allows is then lowered to the suggestion for it.
+ * prompt shows, which does not look at the place; a weight above what the place allows is then lowered to the suggestion for it
+ * (see placedSuggestion, which the rule workout uses too).
  */
 function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, recentEquipment: Set<string>, known: Set<string>, preSets: number): void {
   const where = ex.title;
   if (!isRepBased(t)) no(`${where}: nur Übungen mit Wiederholungen`);
-  const { muscleOf: _placeBlind, ...plan } = gymPlan(ctx);
-  const sug = suggestNext(ex.templateId, ctx.workouts, ctx.nowMs, t, plan);
-  const here = preSets > 0 ? suggestNext(ex.templateId, ctx.workouts, ctx.nowMs, t, gymPlan(ctx), preSets) : sug;
-  const ladder = ladderFor(ex.templateId, t, ctx.workouts, ctx.nowMs, plan);
+  const { blind: sug, here } = placedSuggestion(ex.templateId, t, ctx, preSets);
+  const ladder = ladderFor(ex.templateId, t, ctx.workouts, ctx.nowMs, gymPlan(ctx));
   const range = repRangeOf(t);
   if (!known.has(ex.templateId) && !recentEquipment.has(t.equipment)) no(`${where}: Gerät in den letzten Monaten nicht benutzt`);
   const widow = isWidowmaker(ex.notes);

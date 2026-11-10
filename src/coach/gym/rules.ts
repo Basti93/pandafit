@@ -1,9 +1,9 @@
 import type { ExerciseTemplate, GymExercise, GymWorkout } from '../../shared/gym/types';
 import { RECENT_DAYS } from './limits';
 import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
-import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork, suggestNext } from './history';
+import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork } from './history';
 import { isExcluded } from '../../shared/excluded';
-import { checkWorkout, gymPlan, type GymContext } from './guardrails';
+import { checkWorkout, placedSuggestion, type GymContext } from './guardrails';
 import { muscleOfFrom, preFatigue } from './pre-fatigue';
 import { warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
@@ -16,7 +16,7 @@ const START_REPS = 10;
 const FALLBACK_MUSCLES = ['quadriceps', 'chest', 'lats', 'front_delts', 'side_delts', 'hamstrings', 'triceps', 'biceps'];
 
 function exerciseOf(t: ExerciseTemplate, ctx: GymContext, preSets: number): GymExercise {
-  const s = suggestNext(t.id, ctx.workouts, ctx.nowMs, t, gymPlan(ctx), preSets);
+  const s = placedSuggestion(t.id, t, ctx, preSets).here;
   const range = repRangeOf(t);
   const reps = s.why === 'none' ? Math.min(range.max, Math.max(range.min, START_REPS)) : s.reps;
   const sets = Array.from({ length: SETS }, () => ({ type: 'normal' as const, weightKg: s.weightKg, reps }));
