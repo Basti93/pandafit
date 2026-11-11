@@ -562,3 +562,33 @@ describe('the running section in the chat', () => {
     expect(CHAT_SYSTEM_PROMPT).toContain('endsBlock');
   });
 });
+
+describe('a rule draft that is too long', () => {
+  const LONG = 'Freitag ist ein guter Trainingstag, auch tagsüber, längere Einheiten kommen aufs Wochenende, und montags plane ich frei oder kurz.';
+  const SHORT = 'Freitag ist ein guter Trainingstag, längere Einheiten am Wochenende, montags kurz oder frei.';
+  const reply = (text: string) => ({ text: 'Ich hab das als Regel vorbereitet.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], complaintsHealing: [], tasks: [], nextChange: null, ruleDraft: { kind: 'wish', text, sport: 'all' }, acceptsRule: false, endsBlock: false });
+  const rulesOf = (s: ReturnType<typeof store>) => [...s.recs.values()].filter((r) => r.kind === 'rule');
+
+  test('is asked again once with the limit and then proposed', async () => {
+    const s = store([rider('r1', 'Merke dir, Freitag ist immer ein guter Trainingstag')]);
+    const asks: string[] = [];
+    await coach(s, async ({ prompt }) => { asks.push(prompt); return reply(asks.length === 1 ? LONG : SHORT); }).tick('p');
+    expect(asks).toHaveLength(2);
+    expect(asks[1]).toContain('höchstens 120 Zeichen');
+    expect(rulesOf(s)).toHaveLength(1);
+    expect(rulesOf(s)[0]!.body).toMatchObject({ text: SHORT, state: 'proposed' });
+    expect(replies(s).at(-1)!.rule).toBe(rulesOf(s)[0]!.id);
+  });
+
+  test('says so honestly when no rule could be made', async () => {
+    const s = store([rider('r1', 'Merke dir, Freitag ist immer ein guter Trainingstag')]);
+    await coach(s, async () => reply(LONG)).tick('p');
+    expect(rulesOf(s)).toHaveLength(0);
+    expect(replies(s).at(-1)!.text).toBe('Ich hab das als Regel vorbereitet.\nDie Regel konnte ich gerade nicht anlegen. Sag sie mir bitte noch einmal, gern etwas kürzer.');
+  });
+
+  test('the prompt names the length limit and never claims a rule already applies', () => {
+    expect(CHAT_SYSTEM_PROMPT).toContain('text als kurzer Satz mit höchstens 120 Zeichen');
+    expect(CHAT_SYSTEM_PROMPT).toContain('Schreib nie, dass eine Regel schon gilt oder eingetragen ist');
+  });
+});
