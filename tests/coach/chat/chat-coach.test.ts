@@ -492,7 +492,7 @@ describe('the fixed section in the chat', () => {
     const s = store([rider('r1', 'Wie sieht die Woche aus?'), section('2026-11-02', '2026-11-29')]);
     const prompts: string[] = [];
     await coach(s, async ({ prompt }) => { prompts.push(prompt); return { text: 'So.', proposal: null, riderAskedForMore: false }; }).tick('p');
-    expect(prompts[0]).toContain('<abschnitt-nur-daten>\n{"woche":1,"von":4,"leichteWoche":false,"vorlagen":["Oberkörper A","Unterkörper B"],"bis":"2026-11-29"}\n');
+    expect(prompts[0]).toContain('<abschnitt-nur-daten>\n{"woche":1,"von":4,"leichteWoche":false,"vorlagen":[{"name":"Oberkörper A","kern":["a","b","c"]},{"name":"Unterkörper B","kern":["d","e","f"]}],"bis":"2026-11-29"}\n');
     expect(prompts[0]).toContain(LINE);
   });
 
@@ -520,5 +520,45 @@ describe('the fixed section in the chat', () => {
     const c = coach(s, async () => ({ text: 'Hier.', proposal: { weekStart: '2026-11-09', days: days('2026-11-09', [1, 3]) }, riderAskedForMore: false }));
     expect(await c.openWeek('p')).toBe(true);
     expect(replies(s)[0]!.proposal?.weekStart).toBe('2026-11-09');
+  });
+});
+
+describe('the running section in the chat', () => {
+  const RHYTHM = [
+    { sport: 'gym', hardness: 'hard', template: 0 }, { sport: 'bike', hardness: 'easy' }, { sport: 'gym', hardness: 'moderate', template: 1 }, { sport: 'rest', hardness: 'easy' },
+    { sport: 'bike', hardness: 'hard' }, { sport: 'run', hardness: 'easy' }, { sport: 'rest', hardness: 'easy' },
+  ];
+  const running: TrackedRecord = { kind: 'block', id: 'block-x', updatedMs: 1, deleted: false, body: {
+    state: 'active', atMs: 1, rhythm: RHYTHM, start: '2026-11-02', end: '2026-11-29', priorMode: 'spontaneous',
+    templates: [{ name: 'Oberkörper A', core: ['pf-a', 'pf-b', 'pf-c'] }, { name: 'Unterkörper B', core: ['pf-d', 'pf-e', 'pf-f'] }],
+  } };
+  const answer = (extra = {}) => ({ text: 'Okay.', proposal: null, riderAskedForMore: false, newComplaint: null, complaintsOver: [], complaintsHealing: [], tasks: [], nextChange: null, ruleDraft: null, acceptsRule: false, endsBlock: false, ...extra });
+  const catalog = [{ id: 'pf-a', title: 'Bankdrücken' }, { id: 'pf-d', title: 'Kniebeuge' }];
+  const coachWith = (s: ReturnType<typeof store>, ask: (p: { prompt: string }) => Promise<unknown>) =>
+    new ChatCoach({ store: s as never, ask: ask as never, nowMs: () => NOW, newId: () => `c${++n}`, catalog: () => catalog as never });
+
+  test('Bo knows the core exercises of every template by name', async () => {
+    const s = store([running, rider('r1', 'Was steht im Abschnitt an?')]);
+    const asks: string[] = [];
+    await coachWith(s, async ({ prompt }) => { asks.push(prompt); return answer(); }).tick('p');
+    expect(asks[0]).toContain('"kern":["Bankdrücken","pf-b","pf-c"]');
+    expect(asks[0]).toContain('"kern":["Kniebeuge","pf-e","pf-f"]');
+  });
+
+  test('a wish to end the section gets a card to end it, nothing ends by itself', async () => {
+    const s = store([running, rider('r1', 'Lass uns den Abschnitt beenden')]);
+    await coachWith(s, async () => answer({ endsBlock: true })).tick('p');
+    expect(replies(s).at(-1)!.endBlock).toBe('block-x');
+    expect(s.recs.get('block:block-x')!.body).toMatchObject({ state: 'active' });
+  });
+
+  test('without a running section there is no card to end it', async () => {
+    const s = store([rider('r1', 'Lass uns den Abschnitt beenden')]);
+    await coachWith(s, async () => answer({ endsBlock: true })).tick('p');
+    expect(replies(s).at(-1)!.endBlock).toBeUndefined();
+  });
+
+  test('the prompt tells the model how to end a section', () => {
+    expect(CHAT_SYSTEM_PROMPT).toContain('endsBlock');
   });
 });

@@ -22,7 +22,7 @@ const ENDED_LINE = 'Gut, der feste Abschnitt ist beendet. Dein Ziel bleibt.';
  * After taking: "Gilt ab {Start}." with Rückgängig, while no week plan of the section was changed. The state lives in the `block` record.
  * `msgId`: the chat message that carries the section; the week plans it writes are marked with it.
  */
-export function BlockCard({ port, blockId, msgId, now, history }: { port: TrackingPort; blockId: string; msgId: string; now: () => number; /** In the chat history: one line, Rückgängig only. */ history?: boolean }) {
+export function BlockCard({ port, blockId, msgId, now, history, endOffer }: { port: TrackingPort; blockId: string; msgId: string; now: () => number; /** In the chat history: one line, Rückgängig only. */ history?: boolean; /** The rider asked in the chat to end the running section: one line with „Abschnitt beenden“. */ endOffer?: boolean }) {
   const blocks = usePortRecords(port, 'block');
   const plans = usePortRecords(port, 'weekplan').all;
   const catalog = useCatalog(port);
@@ -73,6 +73,15 @@ export function BlockCard({ port, blockId, msgId, now, history }: { port: Tracki
   const why = plans !== null && undoWhy !== null && 'refused' in undoWhy ? undoWhy.refused : null;
   const canUndo = body.state === 'active' && plans !== null && undoWhy !== null && !('refused' in undoWhy);
 
+  if (endOffer) {
+    return (
+      <div className="tk-histline">
+        <span className="muted">{body.state === 'active' ? sentence(`Der feste Abschnitt läuft bis ${dayMonthOfKey(body.end!)}`) : 'Der feste Abschnitt ist zu Ende.'}</span>
+        {body.state === 'active' && <button type="button" className="link" disabled={busy} onClick={() => void go('end')}>{END}</button>}
+        {message && <span role="status" className="tk-note">{message}</span>}
+      </div>
+    );
+  }
   if (history) {
     if (body.state === 'proposed') return null;
     const line = body.state === 'declined' ? DECLINED : body.state === 'active' ? `Du hast den festen Abschnitt bis ${dayMonthOfKey(body.end!)} übernommen.` : 'Der feste Abschnitt ist zu Ende.';

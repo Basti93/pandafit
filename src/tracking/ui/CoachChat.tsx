@@ -140,6 +140,7 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
                   {m.nextChange && <NextChangeCard history port={port} changeId={m.nextChange} records={changeRecs} now={now} />}
                   {m.rule && <RuleCard history port={port} ruleId={m.rule} records={ruleRecs} catalog={catalog} now={now} />}
                   {m.block && <BlockCard history port={port} blockId={m.block} msgId={m.id} now={now} />}
+                  {m.endBlock && <BlockCard history endOffer port={port} blockId={m.endBlock} msgId={m.id} now={now} />}
                   {m.drift && driftAnswer(thread, m, blockRecs ?? []) !== null && <DriftCard port={port} now={now} newId={newId} m={m} />}
                   {m.askPush && proposalAnswer(thread, m.id) !== null && <PushCard port={port} now={now} newId={newId} m={m} />}
                   {m.proposal && <ProposalLine m={m as WeekEntry} answer={weekAnswer(proposalAnswer(thread, m.id), thread.some((x) => x.undoes === m.id), storedWeek(plans ?? [], m.proposal.weekStart), m.id)} undoWhy={weekUndoRefusal(storedWeek(plans ?? [], m.proposal.weekStart), m.proposal, m.id)} onUndo={() => void undo(m as WeekEntry)} past={m.proposal.weekStart < monday} loading={plans === null} />}
