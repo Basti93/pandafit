@@ -16,9 +16,19 @@ Top rule: A ride is never lost. A ride depends neither on the internet, the home
 
 With made-up demo data.
 
-| Start page with coach | During a ride | Shared overview |
-|---|---|---|
-| ![Start page with the next session and the coach](docs/images/coach.png) | ![Ride screen with power target, power and heart rate](docs/images/ride.png) | ![Shared overview of two riders](docs/images/together.png) |
+**Mac app (riding)**
+
+| During a ride | After a ride |
+|---|---|
+| ![Mac ride screen with power, target, time left, heart rate and cadence](docs/images/mac-ride.png) | ![Mac summary after a ride with the how-was-it question](docs/images/mac-after-ride.png) |
+| Power, target, time left and heart rate at a glance. | Short summary and one tap of feedback after the ride. |
+
+**Phone web app**
+
+| Today | Strength workout | Week | Coach chat |
+|---|---|---|---|
+| ![Phone: Today with Bo, the next session and meals](docs/images/web-today.png) | ![Phone: running strength workout with the next set](docs/images/web-strength-workout.png) | ![Phone: the week plan with today and the coming days](docs/images/web-week.png) | ![Phone: chat with Bo and a week plan proposal to accept or decline](docs/images/web-coach-chat.png) |
+| Bo, the next session and the meals of the day. | Next set with weight, reps and the plates per side. | The week plan with your goal. | Bo proposes a week plan; you accept or decline. |
 
 ## What it does
 
