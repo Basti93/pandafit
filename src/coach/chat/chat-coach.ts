@@ -71,7 +71,7 @@ Du planst mit der Person ihre Woche: welche Sportart an welchem Tag und wie hart
 Die einzelnen Einheiten (Übungen, Sätze, Watt, Laufminuten) plant jeweils eine eigene Planung für Rad (bike), Kraft (gym) und Laufen (run); was sie als Nächstes geplant haben, steht in einheiten (beim Rad auch FTP und Phase, und radFahrten sind die letzten Fahrten). Fragen dazu beantwortest du selbst, fachlich und sportwissenschaftlich begründet. Verweise die Person nie an eine andere Stelle oder ins Training..
 Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib der zuständigen Planung in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false, forDate (JJJJ-MM-TT), wenn die Person einen Tag nennt ("am Montag"), sonst null ("das nächste Training"). Die Planung plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
 Will die Person etwas fürs nächste Training ändern (etwa "nächstes Mal ohne Kniebeugen"), setze nextChange: ops mit exerciseId aus einheiten, und reason als ein Satz, warum. Für Tausch fürs nächste Training: nenne toId aus katalog oder toTitle; kennst du die id nicht, nenne toTitle. Ohne so einen Wunsch ist nextChange null. Es gilt erst, wenn die Person es übernimmt.
-Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen; push gentle, normal oder hard, wenn die Person sagt, wie sehr du sie fordern sollst; das gilt dauerhaft, also ohne weeks), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt. Bestätigt die Person einen offenen Regelentwurf oder einen offenen festen Abschnitt ausdrücklich („trag ein“, „ja, übernehmen“, „machen wir“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false.
+Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen; push gentle, normal oder hard, wenn die Person sagt, wie sehr du sie fordern sollst; das gilt dauerhaft, also ohne weeks), text als kurzer Satz in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt. Bestätigt die Person einen offenen Regelentwurf oder einen offenen festen Abschnitt ausdrücklich („trag ein“, „ja, übernehmen“, „machen wir“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false. Will die Person den laufenden festen Abschnitt (abschnitt) ausdrücklich beenden, setze endsBlock true; er endet erst, wenn sie auf der Karte „Abschnitt beenden“ tippt. Sonst ist endsBlock false.
 Die Person kann Mengen nennen ("2× Kraft, 3× Rad"), feste Tage ("Freitag Studio") oder dich vorschlagen lassen; oft eine Mischung. Feste Wünsche der Person markierst du mit fixed true.
 Stelle höchstens eine Frage auf einmal und nur, wenn die Antwort den Plan ändert. Wenn du genug weißt, mach einen Vorschlag.
 Ein Vorschlag (proposal) ist immer eine ganze Woche von Montag bis Sonntag (sieben Tage, date im Format JJJJ-MM-TT, aus wocheJetzt oder wocheNaechste) mit sport bike, gym, run, mobility oder rest und hardness easy, moderate oder hard. Bei Krafttagen sagt legs, ob Beine trainiert werden; long markiert die lange Rad- oder Laufeinheit. note ist optional und kurz. Zwei Einheiten an einem Tag (also mit sport und hardness, optional minutes) setzt du nur, wenn die Person eine Kombination ausdrücklich will, und höchstens eine davon ist hart; sonst ist ein Tag eine Einheit. Ein Wunsch wie „15–20 Min. Ausdauer im Gym“ ist also mit minutes (der kleinere Wert, ganze Minuten von 5 bis 90), keine Notiz. Ohne Vorschlag ist proposal null. Du änderst nie etwas still: Ein Vorschlag gilt erst, wenn die Person ihn übernimmt.
@@ -170,10 +170,11 @@ const workoutSchema = {
 };
 
 const answerSchema = {
-  type: 'object', additionalProperties: false, required: ['text', 'proposal', 'riderAskedForMore', 'newComplaint', 'complaintsOver', 'complaintsHealing', 'tasks', 'nextChange', 'ruleDraft', 'acceptsRule'],
+  type: 'object', additionalProperties: false, required: ['text', 'proposal', 'riderAskedForMore', 'newComplaint', 'complaintsOver', 'complaintsHealing', 'tasks', 'nextChange', 'ruleDraft', 'acceptsRule', 'endsBlock'],
   properties: {
     text: { type: 'string' },
     acceptsRule: { type: 'boolean' },
+    endsBlock: { type: 'boolean' },
     nextChange: nextChangeSchema,
     ruleDraft: ruleDraftSchema,
     tasks: tasksJsonSchema,
@@ -294,6 +295,7 @@ export class ChatCoach {
         nextRaw: raw.nextChange,
         ruleRaw: raw.ruleDraft,
         accepts: raw.acceptsRule === true,
+        ends: raw.endsBlock === true,
       };
     };
     let a = await ask(prompt);
@@ -313,6 +315,9 @@ export class ChatCoach {
       broken = a.proposal ? checkWeekPlan(a.proposal.days) : [];
     }
     const msg: Answer = { role: 'coach', text: a.text || 'Okay.', atMs: this.deps.nowMs(), ...(fromRider && a.accepts ? { acceptsRule: true } : {}) };
+    // The wish to end the running section only brings the card; the section ends when the rider taps „Abschnitt beenden“.
+    const ending = fromRider && a.ends ? activeBlock(this.deps.store.all(id, 'block'), dateKey(now)) : null;
+    if (ending) msg.endBlock = ending.id;
     // Only the rider's own words propose a change for the next workout.
     if (fromRider && a.draft) {
       const line = gehtNicht(a.draft.refused ?? []);
@@ -675,6 +680,8 @@ export class ChatCoach {
       .filter((d) => Object.keys(d.minuten).length > 0);
     const running = activeBlock(this.deps.store.all(id, 'block'), today);
     const runningWeek = running ? blockWeek(running, today) : null;
+    const catalog = running ? this.catalogOf(id) : [];
+    const titleOf = (c: string) => catalog.find((e) => e.id === c)?.title ?? c;
     const week = (m: string) => planOfWeek(plans, m)?.days.map(({ date, sport, hardness, fixed, legs, long, note, also }) => ({ date, tag: weekday(date), sport, hardness, fixed, legs, long, note, also })) ?? null;
     return [
       dataBlock('heute', { datum: today, tag: weekday(today) }),
@@ -688,7 +695,7 @@ export class ChatCoach {
       ...this.wishLines(id, ['gym', 'bike', 'run']),
       dataBlock('beschwerden', this.complaintList(id)),
       ...(running && runningWeek ? [
-        dataBlock('abschnitt', { woche: runningWeek.n, von: runningWeek.of, leichteWoche: runningWeek.light, vorlagen: running.templates.map((t) => t.name), bis: running.end }),
+        dataBlock('abschnitt', { woche: runningWeek.n, von: runningWeek.of, leichteWoche: runningWeek.light, vorlagen: running.templates.map((t) => ({ name: t.name, kern: t.core.map((c) => titleOf(c)) })), bis: running.end }),
         'Im festen Abschnitt bleibt der Rhythmus; schlag eine andere Woche nur auf Wunsch vor.',
       ] : []),
       dataBlock('verlauf', thread.map((m) => ({ von: m.role === 'rider' ? 'person' : 'coach', text: m.text, ...(m.proposal ? { vorschlagFuerWoche: m.proposal.weekStart } : {}), ...(m.takes ? { hatUebernommen: true } : {}), ...(m.declines ? { hatAbgelehnt: true } : {}), ...(m.undoes ? { hatZurueckgenommen: true } : {}) }))),

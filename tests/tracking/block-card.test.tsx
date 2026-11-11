@@ -143,3 +143,15 @@ it('meldet beim Beenden, wenn etwas nicht gespeichert wurde, und lässt den Absc
   await screen.findByText(/nicht gespeichert/);
   expect(f.map.get('block:block-m1')!.body).toMatchObject({ state: 'active' });
 });
+
+it('beendet den laufenden Abschnitt auf Wunsch im Chat', async () => {
+  const running: BlockBody = { ...proposed, state: 'active', start: '2026-11-23', end: '2026-12-20', priorMode: 'spontaneous', frameMs: 5 };
+  const f = fakePort([blockRecord('block-m1', running, 3), frameRecord({ mode: 'week', minutes: null }, 5)]);
+  render(<BlockCard history endOffer port={f.port} blockId="block-m1" msgId="m9" now={() => NOW} />);
+  await screen.findByText('Der feste Abschnitt läuft bis 20. Dez.');
+  fireEvent.click(await screen.findByRole('button', { name: 'Abschnitt beenden' }));
+  await waitFor(() => expect(f.map.get('block:block-m1')!.body).toMatchObject({ state: 'ended' }));
+  expect(readFrame(f.map.get('frame:frame')!.body)?.mode).toBe('spontaneous');
+  await screen.findByText('Der feste Abschnitt ist zu Ende.');
+  expect(screen.queryByRole('button', { name: 'Abschnitt beenden' })).toBeNull();
+});
