@@ -114,7 +114,7 @@ describe('the meal page', () => {
     expect(await first(['Max', 'Lena'])).toEqual(['Max isst mit', 'Lena isst mit']);
   });
 
-  it('a rest has no ingredients, only the note to pack it; a wished meal says who wished it', async () => {
+  it('a rest keeps its recipe: the note to pack it, the ingredients of the cooking day and the steps; a wished meal says who wished it', async () => {
     const yesterday = (today + 6) % 7;
     const plan = planWith([
       { day: today, slot: 'mittag', dish: dish('Chili'), reuseOf: `${yesterday}-abend`, eaters: ['pa'], takeAlong: false },
@@ -123,8 +123,9 @@ describe('the meal page', () => {
     await boot({ account: 'anna', seed: [plan] });
     await goEssen();
     await openMeal('Chili');
-    expect(await screen.findByText('Das ist schon gekocht. Pack es einfach ein.')).toBeTruthy();
-    expect(screen.queryByRole('region', { name: 'Zutaten' })).toBeNull();
+    expect(await screen.findByText(/^Das ist schon gekocht\. Pack es einfach ein\./)).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Zutaten' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: "So geht's" })).toBeTruthy();
     fireEvent.click(pill('Essen'));
     await openMeal('Nudeln');
     expect((await screen.findByRole('region', { name: 'Nudeln' })).textContent).toContain('Auf Wunsch von Lena.');

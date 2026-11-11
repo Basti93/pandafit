@@ -120,7 +120,7 @@ export function mealPageKicker(week: Week, meal: Meal, nowMs: number): string {
 // ---- A meal in words ----
 
 export const MEAL_GONE = 'Diese Mahlzeit steht nicht mehr im Plan.';
-export const ALREADY_COOKED = 'Das ist schon gekocht. Pack es einfach ein.';
+export const ALREADY_COOKED = 'Das ist schon gekocht. Pack es einfach ein. Das Rezept steht unten, falls du nachschauen willst.';
 export const WISH_SENT = 'Dein Wunsch ist bei Bo angekommen.';
 export const NOBODY_EATS = 'Diesmal isst niemand mit. Darum gibt es keine Mengen.';
 
