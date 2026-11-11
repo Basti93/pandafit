@@ -25,12 +25,15 @@ With made-up demo data.
 **Coach for the whole week**
 
 - **Week plan and chat:** One coach knows all sports. Tell it "Freitag bin ich sicher im Studio" or "mein Knie zwickt", and it proposes a week plan that you accept or decline. It keeps at most two hard days, no hard day right after legs, and remembers complaints until you say they are gone.
-- **Long-term progress:** fitter, faster, stronger, more muscle. The coach keeps the direction in mind but stays flexible when a week or two does not go to plan. There is no rigid multi-week programme.
+- **Long-term progress:** fitter, faster, stronger, more muscle. The coach keeps the direction in mind but stays flexible when a week or two does not go to plan.
+- **Monthly review:** on the last Sunday of the month, the coach looks back over three months in the chat: encouraging, at most three observations, a question about open complaints and a suggestion for the next weeks. After a long break or a change of sports it comes early. On by default, can be switched off per person.
+- **How hard:** each person chooses "Vorsichtig", "Normal" or "Fordere mich". Careful means no sets to failure; an open complaint makes training careful by itself.
+- **Fixed section (optional):** the review can propose 4 to 6 weeks with fixed templates, core exercises and a lighter last week. You take it with one tap or "machen wir" and can undo it. If the weeks drift from the plan, the coach asks whether to plan loosely again. You can end it in the chat at any time. Without a section, planning stays flexible from session to session.
 - **Only when you want it:** a weekly conversation on Sunday evening and a note the evening before a session. Both are off by default and can be switched on per person.
 
 **On the phone**
 
-- **Strength:** plan of the day with a preview, routines, sets with last values, rest timer, an optional "how much was left?" question that drives the progression, exercise pictures and descriptions. During a workout you can ask the coach ("Gerät belegt", "nur noch 30 Minuten"); its change only applies after you confirm it.
+- **Strength:** plan of the day with a preview, routines, sets with last values, rest timer, an optional "how much was left?" question that drives the progression, exercise pictures and descriptions. The plan counts sets per muscle, takes the order of exercises into account (a muscle that is already tired gets a lower load) and never repeats the same execution twice. Sets stay editable in the overview, and "+" adds a set right there. During a workout you can ask the coach ("Gerät belegt", "nur noch 30 Minuten"); its change only applies after you confirm it.
 - **Running (optional):** a calm run plan with heart-rate caps, runs from Garmin or entered by hand, easy pace over 4 and 12 weeks, a weekly look back.
 - **Meals (optional):** a weekly meal plan per person.
 - **Stats:** a progress card (FTP and W/kg, easy pace, estimated maxima, muscle groups within their target), this week's minutes and hard days, sets per muscle over the last four weeks.
