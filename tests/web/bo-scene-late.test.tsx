@@ -18,18 +18,24 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
-test('keeps Bo in the nest when the day arrives after he took his greeting', async () => {
+test('keeps the place of the first pose when another pose arrives later', async () => {
   const { rerender } = render(<BoBubble place="own" pose="greet">Guten Morgen.</BoBubble>);
-  await settle(); await wait(800); // Bo glides into greet
+  await settle();
   rerender(<BoBubble place="own" pose="bike">Guten Morgen.</BoBubble>);
   await wait(5000);
   expect(placeNow()).toBe('nest');
 });
 
-test('stays in the nest when there was no pose to take', async () => {
-  const { rerender } = render(<BoBubble place="own">Guten Morgen.</BoBubble>);
-  await settle(); await wait(800);
+test('waits for the day before Bo appears, then stands straight in the place of his pose', async () => {
+  const { rerender } = render(<BoBubble place="own" pose={undefined}>Guten Morgen.</BoBubble>);
+  await settle();
+  expect(document.querySelector('.tk-scene')).toBeNull();
+  expect(document.querySelector('.tk-panda')).toBeNull();
+  rerender(<BoBubble place="own" pose="bike">Guten Morgen.</BoBubble>);
+  await settle();
+  expect(placeNow()).toBe('huegel');
+  expect(document.querySelector('.tk-pandastill')!.getAttribute('src')).toBe('/brand/bo-pose-bike.svg');
   rerender(<BoBubble place="own" pose="run">Guten Morgen.</BoBubble>);
   await wait(5000);
-  expect(placeNow()).toBe('nest');
+  expect(placeNow()).toBe('huegel');
 });

@@ -212,6 +212,8 @@ export async function mountPanda(canvas: HTMLCanvasElement): Promise<PandaHandle
         }
         step(begin);
       }
+      // No glide: the pose is painted now, so the canvas never shows Bo at rest first.
+      if (ms <= 0) { advance(performance.now()); return; }
       pending = requestAnimationFrame(advance);
     },
     dispose() {

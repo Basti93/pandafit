@@ -105,6 +105,8 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
     else setSheetDate(tomorrow);
   };
   // Nothing planned and nothing switched on: the one card offers to plan.
+  // Bo picks his one pose only once the day is known, so he does not change it a moment after the page opens.
+  const dayReady = weekplans !== null && workouts !== null && activities !== null && mobility !== null && plans !== null && complaints !== null;
   const setup = !open && weekplans !== null && plans !== null && !today && !planning && !p;
 
   return (
@@ -115,7 +117,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
       </header>
       {week.loaded && <WeekPath days={week.path} kicker="Dein Weg diese Woche" count={week.count} onPick={setSheetDate} />}
       <CoachLine text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} onProposal={proposals.length > 0 ? goCoach : undefined}
-        pose={dayClip({ today, dateKey: dayKey, mobility: !!session, finisher: !!finisher, open: !!open, offset: 0 }) ?? 'greet'} />
+        pose={dayReady ? dayClip({ today, dateKey: dayKey, mobility: !!session, finisher: !!finisher, open: !!open, offset: 0 }) ?? 'greet' : undefined} />
       {/* One "Jetzt dran": an open workout, then the finish card, then the day of the plan. */}
       {open ? (
         <MainCard kicker="Läuft noch" title={bodyOf('workout', open).title} text={`Seit ${sinceText(bodyOf('workout', open).startMs, now)}`} label="Training läuft noch"

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import 'fake-indexeddb/auto';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SAYINGS } from '../../src/shared/day-text';
@@ -159,7 +159,8 @@ describe('Heute in the Dojo', () => {
     await boot([daytext]);
     const card = screen.getByLabelText('Satz von Bo');
     expect(card.textContent).not.toContain('Sensai ·');
-    expect(card.querySelector('img')?.getAttribute('alt')).toBe('');
+    // Bo appears once the day is known.
+    await waitFor(() => expect(card.querySelector('img')?.getAttribute('alt')).toBe(''));
     fireEvent.click(screen.getByRole('button', { name: 'Frag Bo, deinen Sensai' }));
     expect(await screen.findByLabelText('Nachricht an Bo')).toBeTruthy();
     expect(screen.queryByRole('heading', { level: 1, name: 'Heute' })).toBeNull();
