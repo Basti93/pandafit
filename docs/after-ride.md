@@ -84,3 +84,11 @@ The film window floats over a fullscreen video on every Space, but the main wind
 
 - Token usage: show what the coach's AI calls use, per coach and over time, and which call used how much.
 - AI login: show in the app which account `claude` is logged in with, and whether the login works.
+
+## Mountain stops moving while the main window is hidden (seen live, 2026-11-12)
+
+`PassView` moves the rider with a 1 s `setInterval` and caps each step at 5 s (`Math.min(5, …)`). When the film window covers the main window, Chromium throttles the hidden window's timers (after a few minutes to about once per minute). Each late tick then adds only 5 s of riding, so most of the distance is lost and the mountain looks frozen.
+
+- Drive the position from the ride itself, not from a UI timer: the service already has every second's power, so it (or the UI from `engine.rideElapsedS`) can integrate the distance without gaps.
+- At least: integrate the full gap since the last tick instead of capping at 5 s, and set `backgroundThrottling: false` on the main window (`src/main/index.ts`).
+- Needs `src/main/**` or `src/service/**`, so it goes with the next restart, not during a ride.
