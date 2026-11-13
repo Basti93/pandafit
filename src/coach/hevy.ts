@@ -15,24 +15,13 @@ const SAFE_ID = /^[A-Za-z0-9-]+$/;
 const KEY_FORMAT = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const KEY_FILE = 'api-key';
 
-import type { Effort } from '../shared/records';
+import type { SetType, StrengthWorkout } from '../shared/gym/types';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 import { createLogger } from '../shared/node/log';
 
 const log = createLogger('hevy');
 
-export type StrengthWorkout = {
-  id: string; title: string; startMs: number; durationS: number;
-  /** Own workouts only; a Hevy workout has none and counts for the main studio (shared/studio). */
-  studio?: string;
-  exercises: {
-    title: string; templateId: string; sets: number; reps: number; volumeKg: number;
-    workSets: { type: SetType; weightKg: number | null; reps: number | null }[];
-    /** The rider's answer to "how many more?" (own workouts only). */
-    effort?: Effort;
-  }[];
-};
-export type SetType = 'warmup' | 'normal' | 'failure' | 'dropset';
+export type { StrengthWorkout, SetType };
 const SET_TYPES: readonly string[] = ['warmup', 'normal', 'failure', 'dropset'];
 /** Bump when the stored workouts gain details, so older stores are fetched again. */
 const STORE_VERSION = 2;
