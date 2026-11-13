@@ -1,4 +1,4 @@
-import { POLICY_VERSION, ruleNamedRange, ruleNumber } from '../../shared/training-policy';
+import { POLICY_VERSION, policyRule, ruleNamedRange, ruleNumber } from '../../shared/training-policy';
 import type { Push } from '../../shared/personal';
 
 /**
@@ -17,6 +17,9 @@ export const DROP_STEP_BACK = ruleNumber('gym.drop-step-back-count');
 /** Past sessions count as comparable when their hard sets before the exercise for the same muscle differ by at most this. */
 export const PRE_FATIGUE_TOLERANCE = ruleNumber('gym.pre-fatigue-tolerance');
 export const MAX_EXERCISES = ruleNumber('gym.max-exercises');
+/** Hip-dominant exercises (the families named in the rule) allowed in one workout. */
+export const MAX_HIP_DOMINANT = ruleNumber('gym.max-hip-dominant');
+export const HIP_DOMINANT_FAMILIES: readonly string[] = policyRule('gym.max-hip-dominant').lists?.families ?? [];
 export const MAX_SETS = ruleNumber('gym.max-sets');
 export const MAX_FAILURE_SETS = ruleNumber('gym.max-failure-sets');
 export const MAX_WIDOWMAKERS = ruleNumber('gym.max-widowmakers');
