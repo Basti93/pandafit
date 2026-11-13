@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ActivityItem } from '../../shared/activities';
 import type { LoggedWorkout } from '../../shared/records';
 import type { NextStep } from '../../shared/stats';
@@ -14,7 +15,7 @@ export const setPendingSummary = (id: string | null): void => {
 };
 
 /** After a saved finish: the main card "Gespeichert" with the coach's next step per exercise, and Bo with what to do now. One button, "Schließen". */
-export function WorkoutSummary({ workout: w, next, onDone, nowMs, today, activities, complaintsOpen }: { workout: LoggedWorkout; next: readonly NextStep[]; onDone: () => void; nowMs: number; today: PlanDay | null; activities: ActivityItem[]; complaintsOpen: boolean }) {
+export function WorkoutSummary({ workout: w, next, onDone, nowMs, today, activities, complaintsOpen, extra }: { /** The mobility offer, shown in the card like on the finish card. */ extra?: ReactNode; workout: LoggedWorkout; next: readonly NextStep[]; onDone: () => void; nowMs: number; today: PlanDay | null; activities: ActivityItem[]; complaintsOpen: boolean }) {
   const mine = next.filter((n) => n.forWorkoutId === w.id || n.atMs === w.startMs);
   const minutes = Math.max(1, Math.round(((w.endMs ?? w.startMs) - w.startMs) / 60000));
   const rows = w.exercises.map((e) => ({ e, n: nextOf(mine, e) })).filter((r) => r.n);
@@ -24,7 +25,7 @@ export function WorkoutSummary({ workout: w, next, onDone, nowMs, today, activit
     <>
       <MainCard label="Zusammenfassung" kicker="Gespeichert" title={w.title} text={`${count} in ${minutes === 1 ? '1 Minute' : `${minutes} Minuten`}.`}
         primary={{ label: 'Schließen', onClick: onDone }}
-        more={rows.length > 0 && rows.map(({ e, n }, i) => <p key={i} className="muted tk-sub">{e.title} · {nextLine(n!)}</p>)} />
+        more={(rows.length > 0 || extra) && <>{rows.map(({ e, n }, i) => <p key={i} className="muted tk-sub">{e.title} · {nextLine(n!)}</p>)}{extra}</>} />
       {finisher && <BoBubble portrait="mini">{[finisherLine(finisher), STRETCH_LINE].filter((x, i, all) => all.indexOf(x) === i).join(' ')}</BoBubble>}
     </>
   );

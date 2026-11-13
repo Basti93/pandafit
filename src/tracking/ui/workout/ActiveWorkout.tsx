@@ -62,7 +62,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
       return snapDown(kg, ladderHere(id, equipment, history, a.studioHere, overrides, studios.renames).ladder);
     };
     const r = refitPlaces(to, catalog, snap);
-    if (r.changed.length > 0) setNotice(`Die Gewichte von ${r.changed.join(' und ')} passen jetzt zur neuen Reihenfolge.`);
+    if (r.changed.length > 0) setNotice(`Die Gewichte von ${r.changed.length > 1 ? `${r.changed.slice(0, -1).join(', ')} und ${r.changed[r.changed.length - 1]}` : r.changed[0]} passen jetzt zur neuen Reihenfolge.`);
     return r.workout;
   };
   return (

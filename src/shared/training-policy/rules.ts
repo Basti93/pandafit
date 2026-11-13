@@ -14,6 +14,9 @@ const r = (id: string, domain: PolicyRule['domain'], cls: RuleClass, enforcement
 
 const GYM = ['src/coach/gym/limits.ts', 'src/coach/gym/history.ts', 'src/coach/gym/guardrails.ts', 'src/coach/gym/prompt.ts'];
 
+/** Where the load logic lives now: the progression and the pre-fatigue in shared, the place in the workout in tracking. */
+const GYM_LOAD = [...GYM, 'src/shared/gym/progression.ts', 'src/shared/gym/pre-fatigue.ts', 'src/tracking/placement.ts'];
+
 /**
  * The rules PandaFit plans with, today's and the agreed start values, each with its kind and its follow-up task
  * (docs/superpowers/specs/2026-11-06-adaptive-training-coach-design.md §19). A 'to-replace' rule still applies as it
@@ -21,18 +24,18 @@ const GYM = ['src/coach/gym/limits.ts', 'src/coach/gym/history.ts', 'src/coach/g
  */
 export const RULES: PolicyRule[] = [
   // Today's gym limits: own product choices, see docs/gym-foundations.md.
-  r('gym.step-back-share', 'gym', 'product', 'checked', 'Nach langer Pause oder Rückschritt geht es auf 90 % der letzten Last.', 'Lastauswahl', active, { value: 0.9, where: GYM }),
-  r('gym.drop-step-back-count', 'gym', 'product', 'checked', 'Zwei Trainings in Folge mit weniger Wiederholungen bei gleicher Last führen auf 90 % zurück.', 'Lastauswahl', active, { value: 2, unit: 'Trainings', where: ['src/coach/gym/history.ts'], scenarioIds: ['F02'] }),
-  r('gym.pre-fatigue-tolerance', 'gym', 'product', 'checked', 'Frühere Einheiten einer Übung sind vergleichbar, wenn vorher höchstens 2 harte Sätze mehr oder weniger für denselben Muskel lagen.', 'Lastauswahl', replace(12, 'Eigene Wahl, später pro Person lernen.'), { value: 2, unit: 'Sätze', where: GYM }),
-  r('gym.pre-fatigue-share-per-set', 'gym', 'product', 'checked', 'Steht eine Übung später im Training als bisher, sinkt die Last um 3 % je harten Satz, der vorher für denselben Muskel liegt.', 'Lastauswahl', replace(12, 'Eigene Wahl, später pro Person lernen.'), { value: 0.03, where: GYM }),
-  r('gym.pre-fatigue-share-min', 'gym', 'product', 'checked', 'Wegen der Stelle im Training sinkt die Last höchstens auf 75 % der letzten Last.', 'Lastauswahl', replace(12, 'Eigene Wahl, später pro Person lernen.'), { value: 0.75, where: GYM }),
+  r('gym.step-back-share', 'gym', 'product', 'checked', 'Nach langer Pause oder Rückschritt geht es auf 90 % der letzten Last.', 'Lastauswahl', active, { value: 0.9, where: GYM_LOAD }),
+  r('gym.drop-step-back-count', 'gym', 'product', 'checked', 'Zwei Trainings in Folge mit weniger Wiederholungen bei gleicher Last führen auf 90 % zurück.', 'Lastauswahl', active, { value: 2, unit: 'Trainings', where: ['src/coach/gym/history.ts', 'src/shared/gym/progression.ts'], scenarioIds: ['F02'] }),
+  r('gym.pre-fatigue-tolerance', 'gym', 'product', 'checked', 'Frühere Einheiten einer Übung sind vergleichbar, wenn vorher höchstens 2 harte Sätze mehr oder weniger für denselben Muskel lagen.', 'Lastauswahl', replace(12, 'Eigene Wahl, später pro Person lernen.'), { value: 2, unit: 'Sätze', where: GYM_LOAD }),
+  r('gym.pre-fatigue-share-per-set', 'gym', 'product', 'checked', 'Steht eine Übung später im Training als bisher, sinkt die Last um 3 % je harten Satz, der vorher für denselben Muskel liegt.', 'Lastauswahl', replace(12, 'Eigene Wahl, später pro Person lernen.'), { value: 0.03, where: GYM_LOAD }),
+  r('gym.pre-fatigue-share-min', 'gym', 'product', 'checked', 'Wegen der Stelle im Training sinkt die Last höchstens auf 75 % der letzten Last.', 'Lastauswahl', replace(12, 'Eigene Wahl, später pro Person lernen.'), { value: 0.75, where: GYM_LOAD }),
   r('gym.pre-fatigue-secondary-weight', 'gym', 'product', 'checked', 'Eine frühere Übung ermüdet einen mitbeteiligten Muskel mit einem halben Satz je hartem Satz.', 'Lastauswahl', replace(12, 'Eigene Wahl, später pro Person lernen.'), { value: 0.5, where: ['src/shared/gym/pre-fatigue.ts'] }),
   r('gym.pre-fatigue-synergists', 'gym', 'product', 'checked', 'Für die Ermüdung zählen dieselben Mitspieler wie in der Muskelbilanz; die Kniebeuge ermüdet zusätzlich den Beinbeuger.', 'Lastauswahl', replace(12, 'Eigene Wahl, später pro Person lernen.'), { lists: { chest: ['triceps', 'front_delts'], back: ['biceps', 'rear_delts', 'glutes', 'hamstrings'], front_delts: ['triceps', 'side_delts'], side_delts: ['front_delts', 'rear_delts', 'traps'], rear_delts: ['back', 'traps'], biceps: ['forearms'], triceps: ['chest', 'front_delts'], quads: ['glutes', 'hamstrings'], hamstrings: ['glutes'], glutes: ['hamstrings', 'quads'], calves: [], abs: [], traps: ['side_delts'], forearms: [], other: [] }, where: ['src/shared/gym/pre-fatigue.ts'] }),
   r('gym.failure-plenty-margin', 'gym', 'product', 'checked', 'Schafft ein Versagenssatz mindestens 3 Wiederholungen mehr als geplant, zählt das wie „noch viel übrig“, auch ohne Antwort.', 'Progression', active, { value: 3, unit: 'Wiederholungen', where: ['src/shared/gym/progression.ts', 'src/tracking/effort.ts'] }),
-  r('gym.long-break-days', 'gym', 'product', 'checked', 'Nach mehr als 28 Tagen ohne Übung geht es etwas zurück.', 'Lastauswahl', active, { value: 28, unit: 'Tage', where: GYM, scenarioIds: ['F12'] }),
+  r('gym.long-break-days', 'gym', 'product', 'checked', 'Nach mehr als 28 Tagen ohne Übung geht es etwas zurück.', 'Lastauswahl', active, { value: 28, unit: 'Tage', where: GYM_LOAD, scenarioIds: ['F12'] }),
   r('gym.recent-days', 'gym', 'product', 'checked', 'Eine Übung gilt als verfügbar, wenn sie in den letzten 120 Tagen gemacht wurde.', 'Übungsauswahl', active, { value: 120, unit: 'Tage', where: GYM }),
-  r('gym.min-comparable', 'gym', 'product', 'checked', 'Zwei Vorkommen einer Übung innerhalb von 56 Tagen sind nötig, bevor sich etwas ändert.', 'Vergleichbare Vorleistung', replace(4, 'Echte unterschiedliche Trainingsgelegenheiten statt Übungsinstanzen.'), { value: 2, where: GYM }),
-  r('gym.comparable-days', 'gym', 'product', 'checked', 'Vergleichbar sind Vorkommen der letzten 56 Tage.', 'Vergleichbare Vorleistung', replace(4, 'Echte unterschiedliche Trainingsgelegenheiten statt Übungsinstanzen.'), { value: 56, unit: 'Tage', where: GYM }),
+  r('gym.min-comparable', 'gym', 'product', 'checked', 'Zwei Vorkommen einer Übung innerhalb von 56 Tagen sind nötig, bevor sich etwas ändert.', 'Vergleichbare Vorleistung', replace(4, 'Echte unterschiedliche Trainingsgelegenheiten statt Übungsinstanzen.'), { value: 2, where: GYM_LOAD }),
+  r('gym.comparable-days', 'gym', 'product', 'checked', 'Vergleichbar sind Vorkommen der letzten 56 Tage.', 'Vergleichbare Vorleistung', replace(4, 'Echte unterschiedliche Trainingsgelegenheiten statt Übungsinstanzen.'), { value: 56, unit: 'Tage', where: GYM_LOAD }),
   r('gym.max-exercises', 'gym', 'product', 'checked', 'Höchstens 10 Übungen pro Training.', 'Trainingsumfang', active, { value: 10, where: GYM }),
   r('gym.one-per-execution', 'gym', 'product', 'checked', 'Pro Training kommt jede Ausführung nur einmal vor; ein anderer Winkel desselben Muskels ist erlaubt.', 'Übungsauswahl', active, { value: 1, where: GYM }),
   r('gym.max-hip-dominant', 'gym', 'product', 'checked', 'Höchstens zwei hüftdominante Übungen (Kreuzheben-Varianten, Hip Thrust, Brücke) pro Training.', 'Übungsauswahl', active, { value: 2, lists: { families: ['hinge', 'hip-thrust'] }, where: GYM }),
