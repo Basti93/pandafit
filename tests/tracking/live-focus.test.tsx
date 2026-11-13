@@ -315,6 +315,33 @@ describe('the focus card', () => {
     expect(screen.queryByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeNull();
   });
 
+  describe('die restlichen Sätze leichter', () => {
+    const three = (kg: number) => withExercises([{ exerciseId: 'pf-bench-press', title: 'Bankdrücken', supersetId: null, notes: '', sets: [1, 2, 3].map(() => ({ ...set(kg, 8, null), plannedKg: 60, prefillKg: 60, plannedReps: 8 })) }]);
+    const weight = (n: number) => (focusOf('Bankdrücken').getByLabelText(`Gewicht Satz ${n}`) as HTMLInputElement);
+    it('schlägt nach weniger Gewicht die restlichen Sätze vor', async () => {
+      const { port } = fakePort([rec(three(60))]);
+      render(<WorkoutScreen port={port} {...ids} />);
+      await resume();
+      fireEvent.change(weight(1), { target: { value: '50' } });
+      fireEvent.blur(weight(1));
+      doneNow();
+      expect(await screen.findByText('Die restlichen Sätze auch mit 50 kg?')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
+      expect(await screen.findByText(/Die restlichen Sätze sind jetzt leichter\./)).toBeTruthy();
+      await waitFor(() => expect(weight(2).value).toBe('50'));
+      fireEvent.click(screen.getByRole('button', { name: 'Rückgängig' }));
+      await waitFor(() => expect(weight(2).value).toBe('60'));
+    });
+    it('fragt nicht, wenn die Sätze schon so leicht sind', async () => {
+      const { port } = fakePort([rec(three(60))]);
+      render(<WorkoutScreen port={port} {...ids} />);
+      await resume();
+      doneNow();
+      await waitFor(() => expect(focusOf('Bankdrücken').getByText('Nächster Satz · 2 von 3')).toBeTruthy());
+      expect(screen.queryByText(/Die restlichen Sätze/)).toBeNull();
+    });
+  });
+
   it('Anleitung and Mehr open their sheets; a note stays in the focus card', async () => {
     const w = open2();
     w.exercises[0]!.notes = 'Schulter tief';
