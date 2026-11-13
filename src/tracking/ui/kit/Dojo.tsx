@@ -95,8 +95,10 @@ export function TimerCard({ label, more, end, children }: { label: string; more:
   return (
     <div role="timer" aria-label={label} className="tk-timercard">
       <span className="tk-rest-main">{children}</span>
-      <button type="button" className="secondary" onClick={more.onClick}>{more.label}</button>
-      <button type="button" className="secondary" onClick={end.onClick}>{end.label}</button>
+      <div className="tk-timer-actions">
+        <button type="button" className="secondary" onClick={more.onClick}>{more.label}</button>
+        <button type="button" className="secondary" onClick={end.onClick}>{end.label}</button>
+      </div>
     </div>
   );
 }
