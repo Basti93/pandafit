@@ -2,7 +2,8 @@ import { EXERCISES } from '../../src/shared/exercises';
 import { readWorkoutChange } from '../../src/shared/chat';
 import { confirmSet, linkWith, moveExercise, moveExerciseTo, startFromPlan, type TrackedWorkout } from '../../src/tracking/session';
 import { takeChange, undoChange } from '../../src/tracking/workout-change';
-import type { GymWorkout } from '../../src/shared/gym/types';
+import type { GymExercise, GymWorkout } from '../../src/shared/gym/types';
+import { refitPlaces } from '../../src/tracking/placement';
 
 const ex = (id: string, title: string) => ({ templateId: id, title, restS: null, supersetId: null, notes: '', sets: [1, 2].map(() => ({ type: 'normal' as const, weightKg: 50, reps: 8 })) });
 const plan: GymWorkout = { name: 'P', exercises: [ex('pf-bench-press', 'A'), ex('pf-squat', 'B'), ex('pf-leg-press', 'C'), ex('pf-bench-press', 'D')] };
@@ -110,4 +111,43 @@ test('undo after a drag-reorder puts the rows back next to their anchor', () => 
   expect(undone.workout.exercises[2]!.sets[0]!.weightKg).toBe(50);
   const anchorMoved = moveExerciseTo(taken2, rid(taken2, 1), 3); // A C D B: the anchor itself moved to the end
   expect(titles(undoChange(anchorMoved, 'c1').workout)).toBe('ADBC');
+});
+
+
+const chestEx = (templateId: string, title: string, n: number, kg: number): GymExercise => ({ templateId, title, restS: 90, supersetId: null, notes: '', sets: Array.from({ length: n }, () => ({ type: 'normal' as const, weightKg: kg, reps: 8 })) });
+const chestPlan: GymWorkout = { name: 'Brust', exercises: [chestEx('pf-incline-bench-press', 'Schrägbankdrücken', 3, 40), chestEx('pf-chest-press-machine', 'Brustpresse', 4, 50), chestEx('pf-cable-crossover', 'Kabelzug Crossover', 3, 20)] };
+const ladder = (_id: string, kg: number): number => Math.floor(kg / 2.5 + 1e-9) * 2.5;
+const chestStart = (): TrackedWorkout => startFromPlan(chestPlan, [], 1, 'w1', EXERCISES);
+const refitMove = (w: TrackedWorkout, from: number, to: number) => refitPlaces(moveExerciseTo(w, w.exercises[from]!.rid, to), EXERCISES, ladder);
+const kgsOf = (w: TrackedWorkout, i: number) => w.exercises[i]!.sets.map((s) => s.weightKg);
+
+describe('Verschieben rechnet die Gewichte neu', () => {
+  it('senkt das Gewicht einer Brustübung, die hinter zwei Brustübungen rutscht', () => {
+    const r = refitMove(chestStart(), 0, 2);
+    const e = r.workout.exercises[2]!;
+    expect(e.title).toBe('Schrägbankdrücken');
+    for (const s of e.sets) { expect(s.weightKg!).toBeLessThan(40); expect(s.weightKg! % 2.5).toBe(0); }
+    expect(r.changed).toEqual(['Schrägbankdrücken']);
+  });
+  it('bringt das Gewicht zurück, wenn die Übung wieder nach vorn kommt', () => {
+    const back = refitMove(refitMove(chestStart(), 0, 2).workout, 2, 0);
+    expect(kgsOf(back.workout, 0)).toEqual([40, 40, 40]);
+    expect(back.changed).toEqual(['Schrägbankdrücken']);
+  });
+  it('lässt erledigte und selbst eingetippte Sätze stehen', () => {
+    const w = chestStart();
+    const done = { ...w, exercises: w.exercises.map((e, i) => (i === 0 ? { ...e, sets: e.sets.map((s, k) => (k === 0 ? { ...s, doneMs: 5 } : s)) } : e)) };
+    expect(refitMove(done, 0, 2).workout.exercises[2]!.sets.map((s) => s.weightKg)).toEqual([40, 40, 40]);
+    const typed = { ...w, exercises: w.exercises.map((e, i) => (i === 0 ? { ...e, sets: e.sets.map((s, k) => (k === 1 ? { ...s, weightKg: 42.5 } : s)) } : e)) };
+    const r = refitMove(typed, 0, 2);
+    expect(kgsOf(r.workout, 2)).toEqual([40, 42.5, 40]);
+    expect(r.changed).toEqual([]);
+  });
+  it('ändert ohne placedPre nichts', () => {
+    const w = chestStart();
+    const old = { ...w, exercises: w.exercises.map(({ placedPre: _p, ...e }) => e) };
+    const r = refitMove(old, 0, 2);
+    expect(kgsOf(r.workout, 2)).toEqual([40, 40, 40]);
+    expect(r.changed).toEqual([]);
+  });
 });

@@ -1,6 +1,9 @@
 import type { Exercise } from '../../../shared/exercises';
 import { asksEffort } from '../../effort';
-import { extendRest, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo, setEffort } from '../../session';
+import { extendRest, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo, otherStudio, setEffort, type TrackedWorkout } from '../../session';
+import { refitPlaces } from '../../placement';
+import { ladderHere } from '../../steps';
+import { snapDown } from '../../../shared/loads';
 import { takeChange, undoChange } from '../../workout-change';
 import { rememberStudio, renameStudio } from '../../studios';
 import { ExercisePicker } from '../ExercisePicker';
@@ -26,6 +29,17 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
   const thanked = w.exercises.find((e) => e.rid === ui.thanked && e.effort && e.effort !== 'skip');
   const progress = progressOf(w, focus?.rid ?? null);
   const done = doneSentence(progress.doneTitles);
+  // After a move the weights follow the new place; in another studio than the plan's nothing is recomputed.
+  const moved = (to: TrackedWorkout): TrackedWorkout => {
+    if (otherStudio(to.planStudio, a.studioHere, studios)) return to;
+    const snap = (id: string, kg: number): number => {
+      const equipment = catalog.find((c) => c.id === id)?.equipment ?? '';
+      return snapDown(kg, ladderHere(id, equipment, history, a.studioHere, overrides, studios.renames).ladder);
+    };
+    const r = refitPlaces(to, catalog, snap);
+    if (r.changed.length > 0) setNotice(`Die Gewichte von ${r.changed.join(' und ')} passen jetzt zur neuen Reihenfolge.`);
+    return r.workout;
+  };
   return (
     <div className="tk-screen tk-live">
       <div className="tk-livehead">
@@ -84,7 +98,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
       {ui.setsRid && <SetsSheet a={a} rid={ui.setsRid} />}
       {ui.reorder && (
         <ReorderSheet workout={w} start={ui.reorder}
-          onDrop={(rid, to) => act((x) => moveExerciseTo(x, rid, to))} onStep={(rid, dir) => act((x) => moveExercise(x, rid, dir))}
+          onDrop={(rid, to) => act((x) => moved(moveExerciseTo(x, rid, to)))} onStep={(rid, dir) => act((x) => moved(moveExercise(x, rid, dir)))}
           onClose={() => { a.releaseHold(); set({ reorder: null }); }} />
       )}
       <div className="tk-liveend">

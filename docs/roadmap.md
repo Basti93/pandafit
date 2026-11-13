@@ -129,7 +129,6 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - Wochentage als feste Einstellung (Freitag gut, Wochenende lang, Montag kurz) statt freier Wunsch-Regel; prüfen, ob der Planer `wish`-Regeln für Tage liest.
   - Der Ausblick nutzt Hevy-Titel statt der eigenen Übungsnamen.
   - `repRange` je Satz einer Übung ist uneinheitlich (z. B. 8–12 und 6–12).
-  - Nach „Reihenfolge ändern“ im laufenden Training die Vorschläge neu berechnen.
   - Den Anteil der Vorermüdung pro Person aus eigenen Daten lernen.
   - Aus Stufe B: Eine Beschwerde mitten im offenen Training ändert schon geplante Versagenssätze nicht; erst das nächste Training wird vorsichtig geplant.
   - Aus Stufe B: Die Frage-Karte zur Härte bleibt angeheftet, auch wenn die Härte schon im Profil gewählt wurde.
