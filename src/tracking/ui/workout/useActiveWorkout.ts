@@ -12,6 +12,7 @@ import { useCatalog, useExcluded, usePortRecords, useStoreView, useTick, useWake
 import { effortQuestionsOn } from '../EffortQuestion';
 import type { DragStart } from '../ReorderSheet';
 import { markUsed } from './markUsed';
+import { buzz } from './feedback';
 import { useHold } from './useHold';
 import { useLatest } from './useLatest';
 
@@ -36,6 +37,8 @@ export type UiState = {
   notice: string | null; effortOn: boolean;
   /** The focus exercise: it follows the next open set; a row under "Danach" makes another one the focus. */
   openRid: string | null;
+  /** The set confirmed last: its circle pops once. */
+  justDone: string | null;
 };
 
 type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'askCoach' };
@@ -66,7 +69,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
-    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid,
+    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
@@ -167,7 +170,8 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
    * exercise, the focus moves on to the next open set of the workout (the same exercise when none is left).
    */
   const confirmShown = useCallback((exRid: string, setRid: string) => {
-    set({ thanked: null });
+    buzz();
+    set({ thanked: null, justDone: setRid });
     let finished = false;
     act((x) => {
       if (x.exercises.find((y) => y.rid === exRid)?.sets.find((y) => y.rid === setRid)?.doneMs !== null) return x;

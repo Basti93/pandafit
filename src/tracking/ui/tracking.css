@@ -531,6 +531,11 @@
 .tk-mark.now, .tk-screen button.tk-mark.now { border-color: var(--accent); color: var(--text); }
 /* A button dot has a 40 px tap area around the 24 px dot; a row of button dots needs a gap of at least 16 px so the areas do not overlap. */
 .tk-mark:is(button)::after { content: ''; position: absolute; inset: -8px; }
+/* The set just done pops once; without motion the dot only turns done. */
+@media (prefers-reduced-motion: no-preference) {
+  .tk-mark-pop { animation: tk-mark-pop 400ms ease-out; }
+  @keyframes tk-mark-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+}
 .tk-stand { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .tk-stand-marks { display: flex; gap: var(--space-2); flex: none; }
 /* The one slim timer card (kit TimerCard): the text is plain, two secondary buttons beside it; on a narrow phone they wrap into a second row. */

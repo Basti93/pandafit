@@ -57,7 +57,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
       )}
       <div className="tk-lift-row">
         <div className="tk-lift-marks">
-          {setMarks(e).map((m) => <MarkDot key={m.rid} state={m.state} short={m.short} name={markName(m)} onClick={() => set({ setsRid: e.rid })} />)}
+          {setMarks(e).map((m) => <MarkDot key={m.rid} state={m.state} short={m.short} name={markName(m)} pop={ui.justDone === m.rid} onClick={() => set({ setsRid: e.rid })} />)}
           <MarkDot state="open" short="+" name={`Satz hinzufügen ${e.title}`} onClick={() => { if (a.tapOnce('add')) act((x) => addSet(x, e.rid)); }} />
         </div>
         <div className="tk-lift-tools">

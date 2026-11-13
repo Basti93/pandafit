@@ -182,6 +182,37 @@ describe('the focus card', () => {
     expect(screen.queryByText(hint)).toBeNull();
   });
 
+  it('bestätigt einen Satz mit einem kurzen Vibrieren, wo es geht', async () => {
+    const vibrate = vi.fn();
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+    try {
+      const { port, map } = fakePort([rec(open2())]);
+      render(<WorkoutScreen port={port} {...ids} />);
+      await resume();
+      fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz geschafft' }));
+      await waitFor(() => expect(vibrate).toHaveBeenCalledTimes(1));
+      expect(vibrate.mock.calls[0]![0]).toBeLessThanOrEqual(30);
+      // without vibrate (iOS): no error
+      delete (navigator as unknown as { vibrate?: unknown }).vibrate;
+      await later();
+      fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz geschafft' }));
+      await waitFor(() => expect(sets(map, 0)[1]!.doneMs).not.toBeNull());
+    } finally {
+      delete (navigator as unknown as { vibrate?: unknown }).vibrate;
+    }
+  });
+
+  it('markiert den gerade geschafften Satz', async () => {
+    const { port } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    expect(focusOf('Bankdrücken').getByRole('button', { name: 'Satz 1: dran' }).className).not.toContain('tk-mark-pop');
+    fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz geschafft' }));
+    const dot = await focusOf('Bankdrücken').findByRole('button', { name: 'Satz 1: geschafft' });
+    expect(dot.className).toContain('tk-mark-pop');
+    expect(focusOf('Bankdrücken').getByRole('button', { name: 'Satz 2: dran' }).className).not.toContain('tk-mark-pop');
+  });
+
   it('unreadable input blocks Satz geschafft and writes nothing', async () => {
     const { port, map } = fakePort([rec(open2())]);
     render(<WorkoutScreen port={port} {...ids} />);
