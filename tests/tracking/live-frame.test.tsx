@@ -182,7 +182,7 @@ describe('the frame of the running workout', () => {
     expect(note.textContent).toContain('Dazu heute: 20 Min.');
   });
 
-  it('after Training beenden: Gespeichert as the main card with Fertig, and Bo says the stretch', async () => {
+  it('after Training beenden: Gespeichert as the main card with Schließen, and Bo says the stretch', async () => {
     const w = benchDone();
     w.exercises = [w.exercises[0]!];
     const { port } = fakePort([rec(w)]);
@@ -193,7 +193,7 @@ describe('the frame of the running workout', () => {
     expect(within(summary).getByText('Gespeichert')).toBeTruthy();
     expect(within(summary).getByRole('heading', { name: 'Zuhause' })).toBeTruthy();
     expect(within(summary).getByText('1 Übung in 2 Minuten.')).toBeTruthy();
-    expect(within(summary).getByRole('button', { name: 'Fertig' }).className).toContain('primary');
+    expect(within(summary).getByRole('button', { name: 'Schließen' }).className).toContain('primary');
     const line = finisherLine({ cardio: true, stretch: true, reason: null });
     expect(document.querySelector('.tk-bo')!.textContent).toContain(line);
     expect(screen.queryByRole('region', { name: 'Zum Abschluss' })).toBeNull();
