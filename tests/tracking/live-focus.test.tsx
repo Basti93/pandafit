@@ -169,6 +169,19 @@ describe('the focus card', () => {
     expect(focusOf('Kniebeuge').getByRole('button', { name: 'Aufwärmsatz: geschafft' })).toBeTruthy();
   });
 
+  it('erklärt beim Aufwärmen die kurzen Pausen', async () => {
+    const w = withExercises([{ exerciseId: 'pf-squat', title: 'Kniebeuge', supersetId: null, notes: '', sets: [{ ...set(20, 10, null), type: 'warmup' }, set(60, 8, null)] }]);
+    const { port, map } = fakePort([rec(w)]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    const hint = 'Die Aufwärmsätze machst du kurz hintereinander. Vor dem ersten Arbeitssatz kommt eine richtige Pause.';
+    expect(focusOf('Kniebeuge').getByText(hint)).toBeTruthy();
+    doneNow();
+    await waitFor(() => expect(sets(map, 0)[0]!.doneMs).toBe(100_000));
+    await screen.findByText('Nächster Satz · 1 von 1');
+    expect(screen.queryByText(hint)).toBeNull();
+  });
+
   it('unreadable input blocks Satz geschafft and writes nothing', async () => {
     const { port, map } = fakePort([rec(open2())]);
     render(<WorkoutScreen port={port} {...ids} />);

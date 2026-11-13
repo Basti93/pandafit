@@ -108,6 +108,7 @@ function FocusSet({ a, e, index, barbell, range }: { a: ActiveWorkoutApi; e: Tra
           : <NumField big={{ unit: 'Wiederholungen' }} label={`Wiederholungen Satz ${n}`} value={s.reps} placeholder={shown.reps != null ? String(shown.reps) : '–'} integer
             onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(reps) => edit({ reps })} />}
       </div>
+      {s.type === 'warmup' && <p className="muted tk-lift-hint">Die Aufwärmsätze machst du kurz hintereinander. Vor dem ersten Arbeitssatz kommt eine richtige Pause.</p>}
       {target && <p className="muted tk-lift-hint">{target}</p>}
       {plates && <p className="muted tk-lift-hint">{plates}</p>}
       <button type="button" className="primary tk-iconbtn" disabled={bad.w || bad.r} onClick={confirm}><Icon name="haken" size={20} /><span>Satz geschafft</span></button>
