@@ -3,7 +3,11 @@ import { RECENT_DAYS } from './limits';
 import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
 import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork } from './history';
 import { isExcluded } from '../../shared/excluded';
-import { checkWorkout, executionKeyOf, isCoreExercise, placedSuggestion, type GymContext } from './guardrails';
+import { balanceEntryOf, checkWorkout, executionKeyOf, isCoreExercise, isCoreOfSection, placedSuggestion, saturatedIsolationGroups, type GymContext } from './guardrails';
+import { MAX_SESSION_FRACTIONAL_SETS } from './limits';
+import { isolationGroupOf, sessionSetsByGroup } from '../../shared/gym/session-limits';
+import { contributions } from '../../shared/muscle-balance';
+import { resolveCatalogEntry } from '../../shared/excluded';
 import { hardSetsOf, musclesOfFrom, preFatigue } from './pre-fatigue';
 import { warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
@@ -57,7 +61,10 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
   const byId = new Map(ctx.templates.map((t) => [t.id, t]));
   const recentLegs = recentLegWork(ctx.workouts, ctx.templates, ctx.nowMs);
   const legsTired = recentLegs || ctx.avoidLegs === true;
-  const allowed = (t: ExerciseTemplate): boolean => isRepBased(t) && !isExcluded(t, ctx.excluded, ctx.catalog ?? [], ctx.links) && !(legsTired && LEG_MUSCLES.includes(t.primaryMuscle));
+  const usable = (t: ExerciseTemplate): boolean => isRepBased(t) && !isExcluded(t, ctx.excluded, ctx.catalog ?? [], ctx.links) && !(legsTired && LEG_MUSCLES.includes(t.primaryMuscle));
+  // A group with isolation work in two sessions this week gets none more (a core exercise of the section stays).
+  const full = saturatedIsolationGroups(ctx);
+  const allowed = (t: ExerciseTemplate): boolean => usable(t) && !(full.size > 0 && full.has(isolationGroupOf(resolveCatalogEntry(t, ctx.catalog ?? [], ctx.links)) ?? ''));
   const since = ctx.nowMs - RECENT_DAYS * DAY_MS;
   const count = new Map<string, number>();
   for (const w of ctx.workouts) {
@@ -69,7 +76,7 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
   const keys = new Set<string>();
   // Inside a section the core exercises come first; the most frequent ones fill the rest.
   const mustHave = (ctx.block?.core ?? []).filter((c) => !ctx.block!.exempt.has(c))
-    .flatMap((c) => { const t = ctx.templates.find((x) => allowed(x) && isCoreExercise({ templateId: x.id, title: x.title }, c, ctx)); return t ? [t] : []; });
+    .flatMap((c) => { const t = ctx.templates.find((x) => usable(x) && isCoreExercise({ templateId: x.id, title: x.title }, c, ctx)); return t ? [t] : []; });
   for (const t of mustHave) { const key = executionKeyOf({ templateId: t.id, title: t.title }, ctx); if (key !== null) keys.add(key); }
   const frequent = [...count.keys()]
     .map((id) => byId.get(id))
@@ -143,6 +150,27 @@ export function capLightWeek(w: GymWorkout, ctx: GymContext): GymWorkout {
 }
 
 /**
+ * No muscle group above the fractional-set limit: from the last exercises, sets are taken away from an exercise of the group, then
+ * the exercise itself; a core exercise only loses sets, and only when nothing else is left.
+ */
+export function capSessionVolume(w: GymWorkout, ctx: GymContext): GymWorkout {
+  const exercises = w.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
+  const entries = new Map(exercises.map((e) => [e, balanceEntryOf(e, ctx)]));
+  const hardOf = (e: GymExercise): number => hardSetsOf(e.sets);
+  for (;;) {
+    const over = Object.entries(sessionSetsByGroup(exercises.map((e) => ({ exercise: entries.get(e)!, sets: hardOf(e) })))).find(([, n]) => n > MAX_SESSION_FRACTIONAL_SETS)?.[0];
+    if (!over) break;
+    const hits = exercises.filter((e) => contributions(entries.get(e)!).some((c) => c.group === over)).reverse();
+    const plain = hits.filter((e) => !isCoreOfSection(e, ctx));
+    const target = plain.find((e) => hardOf(e) > 1) ?? plain[0] ?? hits.find((e) => hardOf(e) > 1);
+    if (!target) break;
+    if (hardOf(target) > 1) target.sets.splice(target.sets.length - 1 - [...target.sets].reverse().findIndex((s) => s.type !== 'warmup'), 1);
+    else exercises.splice(exercises.indexOf(target), 1);
+  }
+  return { ...w, exercises };
+}
+
+/**
  * The workout used when the AI answer fails the check twice, or when there is no AI. It goes through the same check as an
  * AI plan: with a time budget it is trimmed to fit first. A history plan that still fails a guardrail is replaced by the
  * minimal plan (simple machine exercises), which is safe by construction and so offered as it is when it too fails the check
@@ -158,13 +186,13 @@ export function ruleWorkout(ctx: GymContext): Plan & { guard?: string } {
   const fromHistory = first.workout.name === HISTORY_NAME;
   let guard: string | undefined;
   if (fromHistory) {
-    const checked = checkWorkout(capLightWeek(trimToLimit(first.workout, limit, catalog), ctx), ctx);
+    const checked = checkWorkout(capSessionVolume(capLightWeek(trimToLimit(first.workout, limit, catalog), ctx), ctx), ctx);
     if (checked.ok) return finish(first, checked.workout);
     guard = checked.reason;
   }
   const minimal = fromHistory ? plainWorkout(ctx, true) : first;
   if (minimal.workout.exercises.length === 0) return { ...minimal, ...(guard ? { guard } : {}) };
-  const fit = capLightWeek(trimToLimit(minimal.workout, limit, catalog), ctx);
+  const fit = capSessionVolume(capLightWeek(trimToLimit(minimal.workout, limit, catalog), ctx), ctx);
   const again = checkWorkout(fit, ctx);
   const done = finish(minimal, again.ok ? again.workout : fit);
   // Even the smallest plan is longer than the time: say so instead of a number that looks like it fits.

@@ -1,6 +1,6 @@
-import { ruleNumber, ruleNumbers, ruleRange, policyRule } from './training-policy';
+import { ruleNumber, ruleNumbers, ruleRange } from './training-policy';
 import { EXERCISES, catalogEntryOf, type Exercise } from './exercises';
-import { muscleGroupOf } from './muscle-targets';
+import { isCompound } from './compound';
 
 /** The rest of an exercise comes from here only: the timer, the duration estimate and the coach plan all ask `restOf`. */
 type RestSet = { type?: string; reps?: number | null; plannedReps?: number | null; repRange?: { start: number; end: number } };
@@ -20,10 +20,7 @@ export function restOf(e: RestExercise, catalog: readonly Exercise[] = EXERCISES
   const reps = plannedRepsOf(e.sets);
   if (reps !== null && reps <= ruleNumber('rest.heavy-max-reps')) return restMid('rest.heavy-strength-s');
   const own = catalogEntryOf(e, catalog);
-  const lists = policyRule('rest.compound-s').lists ?? {};
-  const big = (g: string): boolean => (lists.groups ?? []).includes(g);
-  // Compound: a big primary group and a secondary muscle in another group (a movement over more than one joint group).
-  const compound = !!own && big(muscleGroupOf(own)) && (own.secondaryMuscles ?? []).some((m) => muscleGroupOf({ primaryMuscle: m }) !== muscleGroupOf(own));
+  const compound = !!own && isCompound(own);
   return restMid(compound ? 'rest.compound-s' : 'rest.isolation-s');
 }
 

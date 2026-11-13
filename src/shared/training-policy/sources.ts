@@ -84,4 +84,6 @@ export const SOURCES: PolicySource[] = [
     'Erwachsene und Kinder', 'Freie Zucker unter 10 % der Energiezufuhr (starke Empfehlung)', 'Gilt für die ganze Ernährung, nicht je Rezept; die Grenze je Portion der Rezeptsammlung ist nur eine Orientierung.'),
   s('S38', 'Jäger et al. 2017, J Int Soc Sports Nutr 14:20, DOI 10.1186/s12970-017-0177-8', 'https://doi.org/10.1186/s12970-017-0177-8', 'Positionsstand (ISSN)', 'abstract',
     'Gesunde, sportlich aktive Erwachsene', 'Eiweiß je Mahlzeit etwa 0,25–0,4 g/kg, grob 20–40 g', 'Orientierung für aktive Erwachsene; die Mindestwerte der Rezeptsammlung (10 und 15 g) liegen bewusst darunter, weil sie nur Ungeeignetes aussortieren.'),
+  s('S39', 'Remmert et al. 2025, SportRxiv-Preprint (nicht begutachtet)', 'https://sportrxiv.org/index.php/server/preprint/view/537', 'Preprint (Metaanalyse/Dosis-Wirkung, nicht peer-reviewed)', 'abstract',
+    'Krafttrainingsstudien mit Hypertrophie-Endpunkt', 'Hypertrophie je Muskel nach Sätzen pro Einheit', 'Nicht begutachtet; Abflachen etwa ab 11 Bruchteilssätzen je Muskel und Einheit, bei sehr hohen Volumen kaum Daten; kein persönliches Optimum.'),
 ];

@@ -18,6 +18,10 @@ export const DROP_STEP_BACK = ruleNumber('gym.drop-step-back-count');
 export const PRE_FATIGUE_TOLERANCE = ruleNumber('gym.pre-fatigue-tolerance');
 export const MAX_EXERCISES = ruleNumber('gym.max-exercises');
 export const MAX_SETS = ruleNumber('gym.max-sets');
+/** Fractional sets one muscle group takes in one workout (soft limit from a preprint). */
+export const MAX_SESSION_FRACTIONAL_SETS = ruleNumber('gym.max-session-fractional-sets');
+/** Strength sessions per calendar week in which one muscle group gets isolation work (a product choice). */
+export const ISOLATION_SESSIONS_PER_WEEK = ruleNumber('gym.isolation-sessions-per-week');
 export const MAX_FAILURE_SETS = ruleNumber('gym.max-failure-sets');
 export const MAX_WIDOWMAKERS = ruleNumber('gym.max-widowmakers');
 /** Failure and drop sets allowed in one workout when the person trains gently. */
