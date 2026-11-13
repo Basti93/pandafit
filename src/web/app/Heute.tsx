@@ -35,7 +35,7 @@ export const sinceText = (ms: number, now: number): string => {
   return `${new Date(ms).toLocaleDateString('de-DE', { weekday: 'short' })}, ${timeLabel(ms)}`;
 };
 
-export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, meals, planning }: { goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; goProfile: () => void; goMeal?: (at: MealAt) => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
+export function Heute({ goTraining, goRun, goBike, goCoach, goQuestion, skipQuestion, goneQuestions = [], goProfile, goMeal, meals, planning }: { goTraining: (entry?: 'resume' | 'plan') => void; goRun?: () => void; goBike?: () => void; goCoach: () => void; /** A question of Bo's plan was tapped: the chat opens with it. */ goQuestion?: (question: string) => void; /** "Überspringen" under a question; false when it could not be sent. */ skipQuestion?: (question: string) => Promise<boolean>; /** Questions already answered or skipped on this device. */ goneQuestions?: readonly string[]; goProfile: () => void; goMeal?: (at: MealAt) => void; meals: boolean; /** Something is switched on (strength plan, meals, running, a bike plan): then the "what can I plan" card goes. */ planning: boolean }) {
   const { port, env, account } = useApp();
   const plans = usePortRecords(port, 'plan').records;
   const mobility = usePortRecords(port, 'mobility').records;
@@ -87,19 +87,33 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
 
   // The strength plan: name and one line here, the exercises, the reason and the sets in the sheet "Nächstes Training" in Kraft.
   // A draft of this plan on this device (see plan-draft): the strength part says so.
+  const [skipFailed, setSkipFailed] = useState(false);
+  const openQuestions = (p?.questions ?? []).filter((q) => !goneQuestions.includes(q));
+  const skip = (q: string) => { setSkipFailed(false); void (skipQuestion?.(q) ?? Promise.resolve(false)).then((ok) => { if (!ok) setSkipFailed(true); }); };
   const adjusted = !!p?.workout && readDraft(env.storage, account, planKeyOf({ atMs: p.atMs, workout: p.workout })) !== null;
   const exercises = p?.workout?.exercises.length ?? 0;
   const gymLineText = p?.workout ? planGymLine(p.workout, catalog, excluded) : null;
   const gym: GymPart = {
     name: p?.workout?.name ?? null,
     line: gymLineText,
+    day: p ? localDayKey(p.atMs) : undefined,
     start: () => goTraining(),
     view: gymLineText !== null ? () => goTraining('plan') : undefined,
     notes: p && (
       <>
         {adjusted && <p className="muted">Angepasst</p>}
         {planIsStale(p.atMs, now) && <p className="muted">Der Plan ist schon etwas älter. Bo macht einen neuen, sobald er dazu kommt.</p>}
-        {p.questions.length > 0 && <ul>{p.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>}
+        {openQuestions.length > 0 && (
+          <ul className="tk-boquestions" aria-label="Fragen von Bo">
+            {openQuestions.map((q) => (
+              <li key={q}>
+                <button type="button" className="link" onClick={() => (goQuestion ?? goCoach)(q)}>{q}</button>{' '}
+                <button type="button" className="link muted" aria-label={`Überspringen: ${q}`} onClick={() => skip(q)}>Überspringen</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {skipFailed && <p role="alert" className="tk-note">Das ging gerade nicht. Versuch es gleich nochmal.</p>}
         {exercises === 0 && p.reason && <p className="muted">{p.reason}</p>}
       </>
     ),

@@ -17,7 +17,7 @@ export type CoachSettingsView = {
 };
 export type CoachLinkSnapshot = { view: CoachSettingsView | null; /** The account has no coach on the server (yet): nothing to show. */ unavailable: boolean };
 type Without<T> = T extends { profileId: string } ? Omit<T, 'profileId'> : never;
-export type SettingsMessage = Without<Extract<CoachClientMessage, { type: 'hevy-connect' | 'hevy-disconnect' | 'garmin-login' | 'garmin-mfa' | 'garmin-disconnect' | 'garmin-upload-settings' | 'gym-start' | 'meals-settings' }>>;
+export type SettingsMessage = Without<Extract<CoachClientMessage, { type: 'hevy-connect' | 'hevy-disconnect' | 'garmin-login' | 'garmin-mfa' | 'garmin-disconnect' | 'garmin-upload-settings' | 'gym-start' | 'gym-answer' | 'gym-skip-question' | 'meals-settings' }>>;
 
 const MIN_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30_000;
@@ -35,6 +35,8 @@ export class CoachLink {
   /** Who holds the link open: Profil while shown, and the app start until the first answer. It closes when the last lets go. */
   private users = 0;
   private profileId: string | null = null;
+  /** The coach has answered on the open socket: a message sent now arrives. */
+  private live = false;
   private snap: CoachLinkSnapshot = { view: null, unavailable: false };
   private subs = new Set<() => void>();
 
@@ -59,6 +61,7 @@ export class CoachLink {
     this.retry = null;
     const ws = this.ws;
     this.ws = null;
+    this.live = false;
     try { ws?.close(); } catch { /* gone */ }
   }
 
@@ -83,12 +86,13 @@ export class CoachLink {
     ws.onopen = () => { if (this.ws === ws) { this.backoff = MIN_BACKOFF_MS; try { ws.send(JSON.stringify({ type: 'subscribe', profileId })); } catch { /* the close follows */ } } };
     ws.onmessage = (e) => { if (this.ws === ws) { try { this.received(String(e.data)); } catch { /* a bad message changes nothing */ } } };
     ws.onerror = () => { /* the close follows */ };
-    ws.onclose = () => { if (this.ws !== ws) return; this.ws = null; this.later(); };
+    ws.onclose = () => { if (this.ws !== ws) return; this.ws = null; this.live = false; this.later(); };
   }
 
   private received(raw: string): void {
     const m = JSON.parse(raw) as CoachStateMessage | null;
     if (!m || typeof m !== 'object' || m.type !== 'coach-state' || !this.profileId) return;
+    this.live = true;
     this.set({ unavailable: false, view: {
       profileId: this.profileId,
       hevy: m.hevy ?? { state: 'idle' },
@@ -106,5 +110,23 @@ export class CoachLink {
     const ws = this.ws;
     if (!ws || !this.profileId) return false;
     try { ws.send(JSON.stringify({ ...m, profileId: this.profileId })); return true; } catch { return false; }
+  }
+
+  /**
+   * One message from a page that does not keep the link open (Heute): opens the link if needed, waits for the coach's first answer
+   * (at most `waitMs`), sends, and lets go. True when it went out.
+   */
+  async sendOnce(m: SettingsMessage, waitMs = 5000): Promise<boolean> {
+    this.start();
+    try {
+      if (!this.live) {
+        await new Promise<void>((resolve) => {
+          const done = () => { clearTimeout(timer); off(); resolve(); };
+          const timer = setTimeout(done, waitMs);
+          const off = this.subscribe(() => { if (this.live || this.snap.unavailable) done(); });
+        });
+      }
+      return this.live && this.send(m);
+    } finally { this.stop(); }
   }
 }

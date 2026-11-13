@@ -14,7 +14,8 @@ const RUN_KIND: Record<string, string> = { easy: 'locker', long: 'lang', test: '
 export const todayPlan = (weekplans: TrackedRecord[] | null, nowMs: number): PlanDay | null => planFor(weekplans ?? [], dateKeyOf(nowMs));
 
 /** The strength plan of the day: its name, one line about it, notes, and the ways to it. */
-export type GymPart = { name: string | null; line: string | null; notes?: ReactNode; start: () => void; view?: () => void };
+/** `day`: the day (YYYY-MM-DD) the plan was made for; a day note of another day is not shown beside it. */
+export type GymPart = { name: string | null; line: string | null; day?: string; notes?: ReactNode; start: () => void; view?: () => void };
 type Props = {
   weekplans: TrackedRecord[] | null; runs: TrackedRecord[] | null; nowMs: number; gym?: GymPart; onRun?: () => void;
   /** On a bike day: the planned session as a line and a way to look at it. The ride itself starts on the Mac. */
@@ -77,7 +78,8 @@ function View({ weekplans, runs, nowMs, gym, onRun, bike, extra, a }: Props & { 
     useAdvice && a && gymName && `${a.advice.label}.`,
     useAdvice && a && reasonSentence(a.advice.reason),
     deviates && !spontaneous && planned && `Geplant war: ${planDayLabel(planned)}.`,
-    !useAdvice && today.note,
+    // A note of the week plan describes that day's session; beside the workout of another day's plan it would describe the wrong one.
+    !useAdvice && !(gymName && gym?.day && gym.day !== today.date) && today.note,
     isGym && gym?.line,
     hasSport(today, 'run') && !runAlone && (run ? `Lauf: ${run.minutes} Min ${RUN_KIND[run.kind] ?? ''}`.trim() + '.' : 'Lauf heute nach Gefühl.'),
     hasSport(today, 'bike') && [bike?.line && `${bike.line}.`, 'Gestartet wird am Mac.'].filter(Boolean).join(' '),

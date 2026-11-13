@@ -33,6 +33,10 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
   const [entry, setEntry] = useState<'resume' | 'plan' | null>(null);
   /** Set by a way into the coach from Heute: Woche opens with the chat open, once. */
   const [chatOnOpen, setChatOnOpen] = useState(false);
+  /** A question of Bo's plan, tapped on Heute: the chat opens with it, and the reply goes to Bo as its answer. */
+  const [question, setQuestion] = useState<string | null>(null);
+  /** Questions answered or skipped here: they leave Heute at once, before the plan comes back without them. */
+  const [gone, setGone] = useState<string[]>([]);
   /** Set by a meal tapped on Heute: Essen opens on its page, once. */
   const [mealEntry, setMealEntry] = useState<MealAt | null>(null);
   const [tab, setTab] = useState<Tab>(() => {
@@ -40,6 +44,11 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
     return tabFor(env.startTab) ?? 'heute';
   });
   const push = usePush(env, account);
+  const sendQuestion = async (m: { type: 'gym-answer'; question: string; text: string } | { type: 'gym-skip-question'; question: string }): Promise<boolean> => {
+    const ok = link ? await link.sendOnce(m) : false;
+    if (ok) setGone((g) => [...g, m.question]);
+    return ok;
+  };
   // The ride companion: optional, a socket of its own, and nothing else in the app depends on it.
   const live = useMemo(() => (env.openLive ? new LiveClient({ open: env.openLive, now: env.now, newId: env.newId }) : null), [env]);
   useEffect(() => { live?.start(); return () => live?.stop(); }, [live]);
@@ -140,11 +149,12 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
         {live && <LiveRide client={live} now={env.now} />}
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           <Suspense fallback={<p className="muted" role="status">Wird geladen.</p>}>
-          {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goProfile={() => setTab('profil')} goMeal={(m) => { setMealEntry(m); setTab('essen'); }} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
+          {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goQuestion={(q) => { setQuestion(q); setChatOnOpen(true); setTab('coach'); }} skipQuestion={(q) => sendQuestion({ type: 'gym-skip-question', question: q })} goneQuestions={gone} goProfile={() => setTab('profil')} goMeal={(m) => { setMealEntry(m); setTab('essen'); }} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
           {tab === 'training' && <Training entry={entry} onEntryDone={() => setEntry((e) => (e === 'plan' ? null : e))} onDone={() => setTab('heute')} onLive={setLiveWorkout} />}
           {tab === 'essen' && hasMeals && <MealsScreen port={port} now={env.now} fetchFn={env.fetchFn} account={account} entry={mealEntry} onEntryDone={() => setMealEntry(null)} onHeute={() => setTab('heute')} />}
           {tab === 'ausdauer' && hasEndurance && <Ausdauer hasRun={hasRun} hasBike={hasBike} />}
-          {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} openChat={chatOnOpen} onChatClosed={() => { setChatOnOpen(false); setTab('heute'); }} />}
+          {tab === 'coach' && <CoachScreen key={chatOnOpen ? 'chat' : 'week'} port={port} now={env.now} newId={env.newId} openChat={chatOnOpen} onChatClosed={() => { setChatOnOpen(false); setQuestion(null); setTab('heute'); }}
+            ask={question ? { question, answer: (text) => sendQuestion({ type: 'gym-answer', question, text }) } : undefined} />}
           {tab === 'profil' && <Profil link={link} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}
           </Suspense>
         </ErrorBoundary>
