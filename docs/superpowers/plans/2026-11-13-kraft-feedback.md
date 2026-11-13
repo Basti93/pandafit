@@ -104,6 +104,8 @@
 
 ### Task 3: Höchstens zwei hüftdominante Übungen pro Training
 
+> Am 13.11. wieder entfernt: Für eine Grenze pro Anzahl der Übungen gibt es keinen Beleg.
+
 **Files:**
 - Modify: `src/coach/gym/guardrails.ts` (`checkWorkout`, `REASON_PHRASES`), `src/coach/gym/rules.ts` (`plainWorkout`, Auswahl `frequent`), `src/coach/gym/prompt.ts`, `src/coach/gym/limits.ts`, `src/shared/training-policy/rules.ts`
 - Test: `tests/coach/gym/guardrails.test.ts`, `tests/coach/gym/guardrails-phrase.test.ts`

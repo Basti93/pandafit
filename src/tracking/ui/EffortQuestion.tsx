@@ -14,7 +14,6 @@ export function EffortQuestion({ title, onAnswer, onOff }: { title: string; onAn
   return (
     <div className="tk-effort" role="group" aria-label={question}>
       <p>{question}</p>
-      <p className="muted tk-sub">Zähl nur saubere Wiederholungen. Bo macht daraus höchstens einen kleinen Schritt.</p>
       <div className="tk-row">
         {(Object.keys(EFFORT_ANSWER) as Effort[]).map((k) => (
           <button key={k} type="button" className="secondary" onClick={() => onAnswer(k)}>{EFFORT_ANSWER[k]}</button>

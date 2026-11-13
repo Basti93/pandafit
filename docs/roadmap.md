@@ -135,14 +135,14 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - „Nächstes Mal“-Zeile und Änderungsnotizen (`gym-coach.ts`) kennen die Stelle im Training noch nicht und können ein höheres Gewicht nennen als der Plan.
   - Das Senken nach der Stelle macht eine geplante Pyramide flach.
 - Aus Kraft-Feedback 13.11.:
-  - Der Satz „Nächstes Mal …“ kennt die Stelle der Übung im nächsten Training nicht. Plant die KI anders, kann das nächste Training abweichen.
+  - Die Grenze für hüftdominante Übungen (`gym.max-hip-dominant`) wurde am 13.11. wieder entfernt, weil es keinen Beleg für eine Grenze pro Anzahl der Übungen gibt.
   - Beim Verschieben werden Aufwärmsätze nicht neu gerechnet, und nach einem Studiowechsel rechnet das Verschieben gar nicht neu.
   - Übungen nur aus Hevy (ohne Katalogeintrag) werden beim Verschieben nicht neu gerechnet und ermüden andere nicht.
   - Nach „Übernehmen“ (weniger Gewicht) gelten die Sätze als selbst eingetippt. Ein zweites Senken wird nicht mehr angeboten.
   - Bo bewegt sich auf Heute ohne Ende, solange kein Training offen ist.
   - Den Anteil der mitbeteiligten Muskeln (0,5) pro Person aus eigenen Daten lernen.
   - Die Kraft-Pausenleiste wurde nicht auf 360 px Breite angesehen, sie ist nur per CSS-Umbruch gelöst.
-  - Kleinkram aus den Prüfungen: veraltete Kommentare in `duration.ts` und `rest.ts`, eine Hilfsfunktion für die wiederholte `muscleOf`-Zeile, `muscleOfFrom` ist ungenutzt, und `hipLimit` erkennt Kernübungen nur über die ID.
+  - Kleinkram aus den Prüfungen: veraltete Kommentare in `duration.ts` und `rest.ts`, eine Hilfsfunktion für die wiederholte `muscleOf`-Zeile, `muscleOfFrom` ist ungenutzt.
 - Aus Monatsrückblick Stufe C:
   - Härte pro betroffener Übung statt fürs ganze Training, sobald Beschwerden Muskeln oder Übungen kennen.
   - Dauerhafter Tausch einer Kernübung durch die Person mitten im Abschnitt.

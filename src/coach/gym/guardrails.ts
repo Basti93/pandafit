@@ -1,7 +1,7 @@
 import { contiguousGroups } from '../../shared/superset';
 import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from '../../shared/gym/types';
-import { GENTLE_FAILURE_SETS, HIP_DOMINANT_FAMILIES, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_HIP_DOMINANT, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
+import { GENTLE_FAILURE_SETS, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
 import type { Push } from '../../shared/personal';
 import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan, type Suggestion } from './history';
 import { hardSetsOf, musclesOfFrom, preFatigue } from './pre-fatigue';
@@ -10,7 +10,6 @@ import { studioName, type Renames } from '../../shared/studio';
 import { repRangeOf } from '../../shared/muscle-targets';
 import { isExcluded, resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
-import { familyOf } from '../../shared/families';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
 import { gymLimit, gymMinutes } from '../../shared/duration';
 
@@ -150,16 +149,6 @@ export function executionKeyOf(e: { templateId: string; title: string }, ctx: Gy
   const c = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links);
   return c ? executionKey(c) : null;
 }
-/** Whether an exercise is hip-dominant: its catalog entry (resolved like the execution key) is in one of the rule's families. Without an entry it does not count. */
-export function isHipDominant(e: { templateId: string; title: string }, ctx: Pick<GymContext, 'catalog' | 'links'>): boolean {
-  const c = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links);
-  return !!c && HIP_DOMINANT_FAMILIES.includes(familyOf(c));
-}
-/** The most hip-dominant exercises a workout may have: the rule's number, or more when the core exercises of the section ask for more (they win). */
-export function hipLimit(ctx: Pick<GymContext, 'catalog' | 'links' | 'block'>): number {
-  const core = (ctx.block?.core ?? []).filter((c) => !ctx.block!.exempt.has(c) && HIP_DOMINANT_FAMILIES.includes(familyOf((ctx.catalog ?? []).find((x) => x.id === c) ?? {}))).length;
-  return Math.max(MAX_HIP_DOMINANT, core);
-}
 const executionKeysOf = (exercises: GymExercise[], ctx: GymContext): string[] =>
   exercises.map((e) => executionKeyOf(e, ctx)).filter((k): k is string => k !== null);
 
@@ -192,7 +181,6 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     // The same execution twice (only the equipment differs) is refused; an exercise without a catalog entry has no key.
     const keys = executionKeysOf(exercises, ctx);
     if (new Set(keys).size < keys.length) return no('dieselbe Ausführung doppelt');
-    if (exercises.filter((e) => isHipDominant(e, ctx)).length > hipLimit(ctx)) return no(`mehr als ${hipLimit(ctx)} hüftdominante Übungen`);
     if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Keine Beine in dieser Einheit');
     const all = exercises.flatMap((e) => e.sets);
     if (all.filter((s) => s.type !== 'warmup').length > MAX_SETS) return no(`mehr als ${MAX_SETS} Sätze`);
@@ -232,7 +220,6 @@ const REASON_PHRASES: [RegExp, string][] = [
   [/Keine Beine in dieser Einheit/, 'Beinübungen, obwohl die Beine in dieser Einheit pausieren'],
   [/ausgeschlossen/, 'eine Übung, die du ausgeschlossen hast'],
   [/dieselbe Ausführung doppelt/, 'dieselbe Übung zweimal, nur mit anderem Gerät'],
-  [/hüftdominante Übungen/, 'zu viele Übungen für die Hüftstreckung in einem Training'],
   [/mehr als \d+ Übungen/, 'zu viele Übungen'],
   [/Kernübung fehlt/, 'eine Kernübung des Abschnitts fehlt'],
   [/leichte Woche/, 'mehr, als die leichte Woche tragen soll'],
