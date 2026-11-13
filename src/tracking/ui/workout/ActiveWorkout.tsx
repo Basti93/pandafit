@@ -30,7 +30,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
   const reasking = w.exercises.find((e) => e.rid === ui.reask) ?? null;
   const asking = reasking ?? (ui.effortOn ? effortAsk(w, (rid) => asksEffort(w, rid, history, catalog, studios)) : null);
   const thanked = reasking ? undefined : w.exercises.find((e) => e.rid === ui.thanked && e.effort && e.effort !== 'skip');
-  const afterAnswer = thanked ? nextTimeLine(w, thanked.rid, { history, catalog, studios, overrides, nowMs: now() }) ?? 'Danke, das merkt sich Sensai für das nächste Mal.' : null;
+  const afterAnswer = thanked ? nextTimeLine(w, thanked.rid, { history, catalog, studios, overrides, nowMs: now() }) ?? 'Danke, das merkt sich Bo für das nächste Mal.' : null;
   const progress = progressOf(w, focus?.rid ?? null);
   const done = doneSentence(progress.doneTitles);
   // After a move the weights follow the new place; in another studio than the plan's nothing is recomputed.

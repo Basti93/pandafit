@@ -747,7 +747,7 @@ describe('effort question after an exercise', () => {
     await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('plenty'));
   });
   it('zeigt nach der Antwort, was das nächste Mal passiert, und lässt sie ändern', async () => {
-    const { port } = fakePort([rec(planned())]);
+    const { port, map } = fakePort([rec(planned())]);
     render(<WorkoutScreen port={port} {...ids} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
     doneNow();
@@ -757,6 +757,7 @@ describe('effort question after an exercise', () => {
     expect(screen.queryByText(/^Nächstes Mal/)).toBeNull();
     const again = await screen.findByRole('group', { name: 'Wie liefen die letzten Wiederholungen bei Bankdrücken?' });
     fireEvent.click(within(again).getByRole('button', { name: 'So schnell wie die ersten' }));
+    await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('plenty'));
     expect(await screen.findByText(/^Nächstes Mal/)).toBeTruthy();
   });
   it('can be skipped, and switched off on this device', async () => {
