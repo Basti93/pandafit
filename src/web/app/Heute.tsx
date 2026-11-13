@@ -96,7 +96,6 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goQuestion, skipQues
   const gym: GymPart = {
     name: p?.workout?.name ?? null,
     line: gymLineText,
-    day: p ? localDayKey(p.atMs) : undefined,
     start: () => goTraining(),
     view: gymLineText !== null ? () => goTraining('plan') : undefined,
     notes: p && (
