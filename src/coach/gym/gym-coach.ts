@@ -1,7 +1,7 @@
 import { ClaudeError } from '../claude-client';
 import type { StrengthWorkout } from '../hevy';
 import { isAssisted, LEG_MUSCLES, recentLegWork, stagnates, suggestNext } from './history';
-import { hardSetsOf, muscleOfFrom } from './pre-fatigue';
+import { hardSetsOf, musclesOfFrom } from './pre-fatigue';
 import { activeBlock, blockWeek } from '../../shared/block';
 import { addDays } from '../../shared/week-plan';
 import { strengthFacts, type StrengthFacts } from './review-facts';
@@ -200,7 +200,7 @@ export class GymCoach {
       for (let k = 1; k <= 7 && index === undefined; k++) index = b.rhythm[(weekday + k) % 7]?.template;
     }
     const template = b.templates[index ?? 0]!;
-    const plan = { studio: this.studio(id), renames: this.studios(id).renames, muscleOf: muscleOfFrom(templates, catalog) };
+    const plan = { studio: this.studio(id), renames: this.studios(id).renames, muscleOf: musclesOfFrom(templates, catalog) };
     const swapped = new Set(takenChangesOf(this.deps.store, id).flatMap((c) => c.ops.flatMap((o) => (o.op === 'swap' ? [o.exerciseId] : []))));
     const legsTired = avoidLegs || recentLegWork(real, templates, now);
     const exempt = new Set<string>();

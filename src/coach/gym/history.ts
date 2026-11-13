@@ -5,8 +5,8 @@ import { extendDown, ladderFrom, nextUp, snapDown, type Ladder, type LoadStepOve
 import { LEG_MUSCLES } from '../../shared/legs';
 import { repRangeOf } from '../../shared/muscle-targets';
 import { mainStudio, studioKey, resolveStudio, type Renames } from '../../shared/studio';
-import { COMPARABLE_DAYS, DROP_STEP_BACK, LONG_BREAK_DAYS, MIN_COMPARABLE, PRE_FATIGUE_SHARE_MIN, PRE_FATIGUE_SHARE_PER_SET, PRE_FATIGUE_TOLERANCE, RECENT_DAYS, STAGNATION_SESSIONS, STEP_BACK } from './limits';
-import { hardSetsOf, preFatigue, type MuscleOf } from './pre-fatigue';
+import { COMPARABLE_DAYS, DROP_STEP_BACK, LONG_BREAK_DAYS, MIN_COMPARABLE, PRE_FATIGUE_TOLERANCE, RECENT_DAYS, STAGNATION_SESSIONS, STEP_BACK } from './limits';
+import { hardSetsOf, positionShare, preFatigue, type Muscles } from './pre-fatigue';
 
 const DAY_MS = 86_400_000;
 export { LEG_MUSCLES };
@@ -59,7 +59,7 @@ export type ExerciseInfo = { type?: string; equipment?: string; primaryMuscle?: 
  * Where the plan is for: the studio (undefined: the main one) and the person's weight-step overrides. `muscleOf` lets the history
  * see where an exercise stood in each past workout; without it every past session counts as done fresh.
  */
-export type Plan = { studio?: string; overrides?: LoadStepOverrides; renames?: Renames; muscleOf?: MuscleOf };
+export type Plan = { studio?: string; overrides?: LoadStepOverrides; renames?: Renames; muscleOf?: (templateId: string) => Muscles | undefined };
 
 type Sets = StrengthWorkout['exercises'][number]['workSets'];
 /** `preSets`: hard sets for the same muscle before the exercise in that workout. */
@@ -83,7 +83,7 @@ function occurrences(templateId: string, workouts: StrengthWorkout[], nowMs: num
     const mine = w.exercises.filter((e) => e.templateId === templateId);
     if (mine.length === 0) continue;
     const effort = [...mine].reverse().find((e) => e.effort)?.effort;
-    const pre = muscleOf ? preFatigue(w.exercises.map((e) => ({ primaryMuscle: muscleOf(e.templateId), hardSets: hardSetsOf(e.workSets), supersetId: null }))) : [];
+    const pre = muscleOf ? preFatigue(w.exercises.map((e) => ({ ...muscleOf(e.templateId), primaryMuscle: muscleOf(e.templateId)?.primaryMuscle, hardSets: hardSetsOf(e.workSets), supersetId: null }))) : [];
     const preSets = pre[w.exercises.findIndex((e) => e.templateId === templateId)] ?? 0;
     out.push({ ms: w.startMs, sets: mine.flatMap((e) => e.workSets), preSets, ...(effort ? { effort } : {}) });
   }
@@ -142,7 +142,7 @@ export function suggestNext(templateId: string, workouts: StrengthWorkout[], now
   const stepBack = (kg: number): number => snapDown(kg * STEP_BACK, ladder);
   if (sessions.length === 0) {
     if (last.weightKg === null || assisted || preSets <= last.preSets) return done(last.weightKg, reps, 'keep', 'other-position');
-    const share = Math.max(PRE_FATIGUE_SHARE_MIN, 1 - PRE_FATIGUE_SHARE_PER_SET * (preSets - last.preSets));
+    const share = positionShare(preSets - last.preSets);
     return done(snapDown(last.weightKg * share, ladder), reps, 'keep', 'other-position');
   }
   if (nowMs - last.ms > LONG_BREAK_DAYS * DAY_MS) {

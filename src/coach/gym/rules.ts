@@ -4,7 +4,7 @@ import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
 import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork } from './history';
 import { isExcluded } from '../../shared/excluded';
 import { checkWorkout, executionKeyOf, isCoreExercise, placedSuggestion, type GymContext } from './guardrails';
-import { hardSetsOf, muscleOfFrom, preFatigue } from './pre-fatigue';
+import { hardSetsOf, musclesOfFrom, preFatigue } from './pre-fatigue';
 import { warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
 import { durationNote, gymLimit, gymMinutes } from '../../shared/duration';
@@ -25,8 +25,8 @@ function exerciseOf(t: ExerciseTemplate, ctx: GymContext, preSets: number): GymE
 
 /** The exercises in this order, each with the load its place allows. */
 function exercisesOf(templates: ExerciseTemplate[], ctx: GymContext): GymExercise[] {
-  const muscleOf = muscleOfFrom(ctx.templates, ctx.catalog ?? []);
-  const pre = preFatigue(templates.map((t) => ({ primaryMuscle: muscleOf(t.id), hardSets: SETS, supersetId: null })));
+  const muscleOf = musclesOfFrom(ctx.templates, ctx.catalog ?? []);
+  const pre = preFatigue(templates.map((t) => ({ ...muscleOf(t.id), primaryMuscle: muscleOf(t.id)?.primaryMuscle, hardSets: SETS, supersetId: null })));
   return templates.map((t, i) => exerciseOf(t, ctx, pre[i]!));
 }
 

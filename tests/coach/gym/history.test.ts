@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { StrengthWorkout, SetType } from '../../../src/coach/hevy';
 import { availableExercises, isAssisted, ladderFor, isRepBased, REASONS, recentLegWork, stagnates, suggestNext } from '../../../src/coach/gym/history';
 import { snapDown } from '../../../src/shared/loads';
+import { EXERCISES } from '../../../src/shared/exercises';
+import { hardSetsOf, musclesOfFrom, preFatigue } from '../../../src/coach/gym/pre-fatigue';
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 2, 12);
@@ -258,7 +260,7 @@ describe('suggestNext says why, one sentence per decision path', () => {
 describe('suggestNext and the place in the workout', () => {
   // Invented: a chest press done before the incline press in some workouts; both chest.
   const CHEST: Record<string, string> = { cp: 'chest', ip: 'chest' };
-  const plan = { muscleOf: (id: string) => CHEST[id] };
+  const plan = { muscleOf: (id: string) => ({ primaryMuscle: CHEST[id] }) };
   const tired = (daysAgo: number, presses: number, sets: S[]): StrengthWorkout => {
     const fresh = wk(daysAgo, sets, 'ip', 'Incline');
     const press = wk(daysAgo, Array.from({ length: presses }, (): S => [50, 10]), 'cp', 'Press').exercises[0]!;
@@ -329,11 +331,25 @@ describe('stagnates, Sonderfälle', () => {
     const two = (daysAgo: number, kg: number, pre: boolean): StrengthWorkout => ({ id: `p${daysAgo}`, title: 'Day', startMs: NOW - daysAgo * DAY, durationS: 3600, exercises: [
       ...(pre ? [{ title: 'Press', templateId: 'cp', sets: 4, reps: 0, volumeKg: 0, workSets: Array.from({ length: 4 }, () => ({ type: 'normal' as const, weightKg: 50, reps: 8 })) }] : []),
       { title: 'Fly', templateId: 'fl', sets: 1, reps: 0, volumeKg: 0, workSets: [{ type: 'normal' as const, weightKg: kg, reps: 8 }] }] });
-    const muscleOf = () => 'chest';
+    const muscleOf = () => ({ primaryMuscle: 'chest' });
     // fresh 40, fresh 40, tired 30 (lower, but only because of fatigue), fresh 40: stagnation among the fresh ones, not a drop.
     const ws = [two(28, 40, false), two(21, 40, false), two(14, 30, true), two(7, 40, false)];
     expect(stagnates('fl', ws, NOW, undefined, { muscleOf })).toBe(true);
     const progress = [two(28, 40, false), two(21, 40, false), two(14, 30, true), two(7, 42.5, false)];
     expect(stagnates('fl', progress, NOW, undefined, { muscleOf })).toBe(false);
+  });
+});
+
+describe('Vorermüdung durch mitbeteiligte Muskeln', () => {
+  it('Hip Thrust nach Kniebeuge und Kreuzheben bekommt weniger als frisch', () => {
+    const catalog = (id: string) => EXERCISES.find((x) => x.id === id)!;
+    const muscleOf = musclesOfFrom([], EXERCISES);
+    const ws = [wk(14, [[100, 8], [100, 8]], 'pf-hip-thrust'), wk(7, [[100, 8], [100, 8]], 'pf-hip-thrust')];
+    const today = [['pf-squat', 4], ['pf-romanian-deadlift', 3], ['pf-hip-thrust', 3]] as const;
+    const pre = preFatigue(today.map(([id, n]) => ({ ...muscleOf(id), primaryMuscle: muscleOf(id)?.primaryMuscle, hardSets: n, supersetId: null })));
+    expect(hardSetsOf([{ type: 'normal' }])).toBe(1);
+    const r = suggestNext('pf-hip-thrust', ws, NOW, catalog('pf-hip-thrust'), { muscleOf }, pre[2]);
+    expect(r.weightKg).toBeLessThan(100);
+    expect(r.reason).toBe(REASONS['other-position']);
   });
 });
