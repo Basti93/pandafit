@@ -5,10 +5,10 @@ import { readStats, STATS_ID } from '../../../shared/stats';
 import { loadStepOverrides } from '../../../shared/loads';
 import { knownStudios, studioStateOf } from '../../../shared/studio';
 import type { TrackingPort } from '../../ports';
-import { confirmSet, currentSet, restRemainingS, type FinishChoice, type TrackedWorkout } from '../../session';
+import { confirmSet, currentSet, type FinishChoice, type TrackedWorkout } from '../../session';
 import { closeStore, releaseStore } from '../../registry';
 import { hereKey, stepChange } from '../../steps';
-import { useCatalog, useExcluded, usePortRecords, useStoreView, useTick, useWakeLock, type WorkoutStore } from '../hooks';
+import { useCatalog, useExcluded, usePortRecords, useStoreView, useWakeLock, type WorkoutStore } from '../hooks';
 import { effortQuestionsOn } from '../EffortQuestion';
 import type { DragStart } from '../ReorderSheet';
 import { markUsed } from './markUsed';
@@ -112,10 +112,8 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
     return (r && readStats(r.body)?.muscles) || null;
   }, [statsRecords]);
   useWakeLock(true);
-  useTick(true); // the rest countdown and the total time
   // Leaving the screen: a clean store is let go, a dirty one keeps retrying in the registry until it is clean.
   useEffect(() => () => releaseStore(port, store), [store, port]);
-  const remaining = restRemainingS(w, now());
 
   // The focus follows the next open set (in a superset from round to round).
   useEffect(() => { if (currentRid) set({ openRid: currentRid }); }, [currentRid, set]);
@@ -227,7 +225,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
 
   return {
     port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown, holdProps, wasHeld, releaseHold,
-    catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, remaining, currentRid, known, act, end, discard,
+    catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, currentRid, known, act, end, discard,
   };
 }
 

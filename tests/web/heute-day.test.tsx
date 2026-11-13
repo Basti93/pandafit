@@ -131,6 +131,16 @@ describe('Heute in the Dojo', () => {
     fireEvent.click(go);
     expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();
   });
+  it('Bo steht still, solange ein Training offen ist', async () => {
+    await boot([weekplanWithGymToday, planRecord]);
+    await screen.findByLabelText('Satz von Bo');
+    await waitFor(() => expect(document.querySelector('canvas')).not.toBeNull());
+    cleanup();
+    const open = rec('workout', 'w-open', { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] });
+    await boot([weekplanWithGymToday, planRecord, open]);
+    await screen.findByRole('button', { name: 'Weitermachen' });
+    expect(document.querySelector('canvas')).toBeNull();
+  });
   it('a waiting proposal turns Bo’s bubble into Vorschlag ansehen, which opens the chat', async () => {
     await boot([riderMsg, coachMsgWithProposal]);
     fireEvent.click(await screen.findByRole('button', { name: 'Vorschlag ansehen' }));

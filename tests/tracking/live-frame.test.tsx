@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import { weekDates } from '../../src/shared/week-plan';
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
@@ -144,6 +144,24 @@ describe('the frame of the running workout', () => {
     expect(screen.getByRole('timer', { name: 'Satzpause' })).toBeTruthy();
     fireEvent.click(within(screen.getByRole('timer', { name: 'Satzpause' })).getByRole('button', { name: 'Pause beenden' }));
     await waitFor(() => expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull());
+  });
+
+  it('die Pause zählt herunter und verschwindet bei null', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      let t = 100_000;
+      const w = { ...open2(), rest: { startMs: 70_000, durationS: 90 } } as LoggedWorkout;
+      const { port } = fakePort([rec(w)]);
+      render(<WorkoutScreen port={port} newId={ids.newId} now={() => t} />);
+      await resume();
+      expect(screen.getByRole('timer', { name: 'Satzpause' }).textContent).toContain('noch 1:00');
+      t += 10_000;
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByRole('timer', { name: 'Satzpause' }).textContent).toContain('noch 0:50');
+      t += 60_000;
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull();
+    } finally { vi.useRealTimers(); }
   });
 
   it('the start notices show on the live screen: without legs and a second session today', async () => {

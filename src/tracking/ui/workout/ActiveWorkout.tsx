@@ -1,7 +1,7 @@
 import type { Exercise } from '../../../shared/exercises';
 import { asksEffort } from '../../effort';
 import { nextTimeLine } from '../../next-time';
-import { extendRest, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo, otherStudio, setEffort, type TrackedWorkout } from '../../session';
+import { extendRest, restRemainingS, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo, otherStudio, setEffort, type TrackedWorkout } from '../../session';
 import { refitPlaces } from '../../placement';
 import { ladderHere } from '../../steps';
 import { snapDown } from '../../../shared/loads';
@@ -18,11 +18,32 @@ import { FocusCard } from './FocusCard';
 import { doneSentence, effortAsk, focusExercise, isDoneExercise, progressOf, upNext } from './live-view';
 import { SetsSheet } from './SetsSheet';
 import { sinceLabel } from './markUsed';
+import { useNow } from '../hooks';
 import { NOT_SAVED, useActiveWorkout, type ActiveWorkoutProps } from './useActiveWorkout';
+
+/** "Läuft seit …": shows minutes only, so it beats once a minute. */
+function LiveSince({ startMs, now }: { startMs: number; now: () => number }) {
+  const t = useNow(60_000, true, now);
+  return <p role="timer" aria-label="Trainingsdauer" className="muted">Läuft seit {sinceLabel(t - startMs)}</p>;
+}
+
+/** The rest bar: the only part that re-renders each second, and only during a rest. Gone at zero. */
+function RestBar({ w, now, act }: { w: TrackedWorkout; now: () => number; act: (f: (x: TrackedWorkout) => TrackedWorkout) => void }) {
+  const t = useNow(1000, !!w.rest, now);
+  const remaining = restRemainingS(w, t);
+  if (!w.rest || remaining <= 0) return null;
+  return (
+    <div className="tk-livepause">
+      <TimerCard label="Satzpause" more={{ label: '30 s mehr', onClick: () => act((x) => extendRest(x)) }} end={{ label: 'Pause beenden', onClick: () => act((x) => ({ ...x, rest: null })) }}>
+        Pause, noch <b>{clock(remaining)}</b>
+      </TimerCard>
+    </div>
+  );
+}
 
 export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /** Verkleinern: the screen goes, the workout keeps running (and saving) in the registry. */ onMinimize: () => void }) {
   const a = useActiveWorkout(props);
-  const { port, w, save, ui, set, askCoach, setNotice, catalog, excluded, studios, overrides, history, now, newId, remaining, known, act, end, discard } = a;
+  const { port, w, save, ui, set, askCoach, setNotice, catalog, excluded, studios, overrides, history, now, newId, known, act, end, discard } = a;
   const { picker } = ui;
   const focus = focusExercise(w, ui.openRid, a.currentRid);
   const next = upNext(w, focus?.rid ?? null);
@@ -50,7 +71,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
         <RoundButton icon="verkleinern" name="Verkleinern, Training läuft weiter" onClick={onMinimize} />
         <div className="tk-livehead-mid">
           <BrushTitle level={1}>{w.title}</BrushTitle>
-          <p role="timer" aria-label="Trainingsdauer" className="muted">Läuft seit {sinceLabel(now() - w.startMs)}</p>
+          <LiveSince startMs={w.startMs} now={now} />
         </div>
         <RoundButton icon="mehr" name="Mehr zum Training" onClick={() => set({ topMenu: true })} />
       </div>
@@ -61,13 +82,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
         </p>
       )}
       {ui.notice && <p role="note" className="tk-note">{ui.notice}</p>}
-      {w.rest && remaining > 0 && !ui.ask && (
-        <div className="tk-livepause">
-          <TimerCard label="Satzpause" more={{ label: '30 s mehr', onClick: () => act((x) => extendRest(x)) }} end={{ label: 'Pause beenden', onClick: () => act((x) => ({ ...x, rest: null })) }}>
-            Pause, noch <b>{clock(remaining)}</b>
-          </TimerCard>
-        </div>
-      )}
+      {w.rest && !ui.ask && <RestBar w={w} now={now} act={act} />}
       {progress.total > 0 && (
         <Card label="Dein Training">
           <div className="tk-liveprog">

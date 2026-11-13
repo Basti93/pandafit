@@ -116,7 +116,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
         <p className="tk-dateline">{weekdayOfKey(dayKey)}, {dayMonthLongOfKey(dayKey)}</p>
       </header>
       {week.loaded && <WeekPath days={week.path} kicker="Dein Weg diese Woche" count={week.count} onPick={setSheetDate} />}
-      <CoachLine text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} onProposal={proposals.length > 0 ? goCoach : undefined}
+      <CoachLine still={!!open} text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} onProposal={proposals.length > 0 ? goCoach : undefined}
         pose={dayReady ? dayClip({ today, dateKey: dayKey, mobility: !!session, finisher: !!finisher, open: !!open, offset: 0 }) ?? 'greet' : undefined} />
       {/* One "Jetzt dran": an open workout, then the finish card, then the day of the plan. */}
       {open ? (

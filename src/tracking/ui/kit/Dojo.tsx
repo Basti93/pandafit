@@ -138,14 +138,14 @@ export function Tag({ children }: { children: ReactNode }) {
  * `place="own"` puts Bo where his pose belongs. `pose` undefined there means the day is not known yet: Bo appears only once it
  * is, and keeps that first pose and place for this opening. A fixed place shows `poseIn(place, pose)`.
  */
-export function BoBubble({ children, actions, pose, portrait = 'full', place, foot }: { children: ReactNode; actions?: ReactNode; foot?: ReactNode; pose?: PandaGesture | null; portrait?: 'full' | 'mini' | 'none'; place?: BoPlace | 'own' }) {
+export function BoBubble({ children, actions, pose, portrait = 'full', place, foot, still }: { still?: boolean; children: ReactNode; actions?: ReactNode; foot?: ReactNode; pose?: PandaGesture | null; portrait?: 'full' | 'mini' | 'none'; place?: BoPlace | 'own' }) {
   const [first, setFirst] = useState<PandaGesture | null | undefined>(pose);
   useEffect(() => { if (first === undefined && pose !== undefined) setFirst(pose); }, [first, pose]);
   if (portrait === 'none') return <div className="tk-bo"><Bubble actions={actions} foot={foot} tail="none">{children}</Bubble></div>;
   const own = place === 'own';
   const waiting = own && portrait !== 'mini' && first === undefined;
   const where: BoPlace | undefined = portrait === 'mini' || !place ? undefined : own ? placeOf(first) : place;
-  const bo = waiting ? null : portrait === 'mini' ? <img className="tk-bo-still" src="/brand/panda-still.svg" alt="" /> : <PandaPortrait pose={place && !own ? poseIn(place, pose) : own ? first : pose} />;
+  const bo = waiting ? null : portrait === 'mini' ? <img className="tk-bo-still" src="/brand/panda-still.svg" alt="" /> : <PandaPortrait still={still} pose={place && !own ? poseIn(place, pose) : own ? first : pose} />;
   return (
     <div className={`tk-bo ${portrait}`}>
       <span className="tk-bo-portrait">{waiting ? null : where ? <BoScene place={where}>{bo}</BoScene> : bo}</span>

@@ -14,10 +14,11 @@ const reducedMotion = (): boolean => {
  * mounted with. The still already shows it, and the canvas starts in the same pose, so nothing jumps when it draws.
  * Later changes of `pose` wait for the next opening. Under reduced motion, or when the player fails to load, the still stays.
  */
-export function PandaPortrait({ pose, className = '' }: { pose?: PandaGesture | null; className?: string }) {
+export function PandaPortrait({ pose, className = '', still: held = false }: { pose?: PandaGesture | null; className?: string; /** Only the still picture: no canvas, no endless animation (a workout is open). */ still?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [drawn, setDrawn] = useState(false);
-  const [still] = useState(reducedMotion);
+  const [reduced] = useState(reducedMotion);
+  const still = reduced || held;
   const [kept] = useState<PandaGesture | null>(pose ?? null);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export function PandaPortrait({ pose, className = '' }: { pose?: PandaGesture | 
   }, [still, kept]);
 
   return (
-    <span className={`tk-panda ${className}`.trim()} data-drawn={drawn ? 'true' : undefined} aria-hidden="true">
+    <span className={`tk-panda ${className}`.trim()} data-drawn={drawn && !still ? 'true' : undefined} aria-hidden="true">
       <img className="tk-pandastill" src={kept ? stillUrl(kept) : '/brand/panda-still.svg'} alt="" width="128" height="134" />
       {!still && <canvas ref={canvas} className="tk-pandacanvas" width="396" height="328" />}
     </span>

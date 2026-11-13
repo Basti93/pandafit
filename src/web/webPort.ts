@@ -134,7 +134,7 @@ export function createWebPort(o: {
   const onVisible = () => { if (typeof document !== 'undefined' && document.visibilityState === 'visible') void sync(); };
   events?.addEventListener('online', onOnline);
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
-  const timer = setInterval(() => { void sync(); }, o.intervalMs ?? EVERY_MS);
+  const timer = setInterval(() => { if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return; void sync(); }, o.intervalMs ?? EVERY_MS);
 
   const push = o.push;
   /** Fire and forget: only with permission and a subscription, and every failure is swallowed. */
