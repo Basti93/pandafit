@@ -20,6 +20,8 @@ export function lighterRest(w: TrackedWorkout, exRid: string, snap: (kg: number)
   const sets: { rid: string; kg: number }[] = [];
   for (const s of e.sets) {
     if (!isWork(s) || s.doneMs !== null || s.weightKg === null) continue;
+    // A weight the person typed over the prefill is theirs: never touched.
+    if (s.prefillKg !== undefined && s.weightKg !== s.prefillKg) continue;
     const kg = snap((s.plannedKg ?? s.weightKg) * factor);
     if (kg < s.weightKg) sets.push({ rid: s.rid, kg });
   }

@@ -22,6 +22,10 @@ describe('weniger Gewicht für die restlichen Sätze', () => {
     const w = workout([set('a', 60, { weightKg: 50, doneMs: 1 }), set('b', 60, { weightKg: 40 }), set('c', 60)]);
     expect(lighterRest(w, 'e1', snap)?.sets).toEqual([{ rid: 'c', kg: 50 }]);
   });
+  it('senkt keinen Satz, den die Person höher eingetippt hat', () => {
+    const w = workout([set('a', 60, { weightKg: 50, doneMs: 1 }), set('b', 60, { weightKg: 65 }), set('c', 60)]);
+    expect(lighterRest(w, 'e1', snap)?.sets).toEqual([{ rid: 'c', kg: 50 }]);
+  });
   it('setWeights lässt erledigte Sätze unangetastet', () => {
     const w = workout([set('a', 60, { weightKg: 50, doneMs: 1 }), set('b', 60)]);
     const r = setWeights(w, 'e1', [{ rid: 'a', kg: 30 }, { rid: 'b', kg: 45 }]);
