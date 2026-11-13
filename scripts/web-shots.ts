@@ -367,7 +367,7 @@ const openWorkout = () => {
   const set = (type: string, kg: number | null, reps: number | null, done: number | null) => ({ rid: rid(), type, weightKg: kg, reps, durationS: null, doneMs: done === null ? null : start + done * 60_000 });
   const ex = (id: string, ss: number | null, sets: ReturnType<typeof set>[]) => ({ rid: rid(), exerciseId: id, title: title(id), supersetId: ss, notes: '', sets });
   return {
-    id: 'w-open', title: 'Push', startMs: start, endMs: null, source: 'pandafit', studio: 'Studio Nord', rest: { startMs: NOW - 25_000, durationS: 120 },
+    id: 'w-open', title: 'Push', startMs: start, endMs: null, source: 'pandafit', studio: 'Studio Nord', rest: { startMs: Date.now() - 5_000, durationS: 600 },
     exercises: [
       ex('pf-bench-press', null, [set('warmup', 25, 8, 3), set('normal', 52.5, 8, 7), set('normal', 52.5, 8, 11), set('normal', 52.5, null, null), set('normal', 52.5, 8, null)]),
       ex('pf-lateral-raise', 1, [set('normal', 8, 12, 17), set('normal', 8, 12, 24), set('normal', 8, 12, null)]),
@@ -681,7 +681,8 @@ async function main() {
     await page.getByRole('button', { name: 'Weitermachen' }).click();
     await page.waitForTimeout(800);
     await shot('kraft-training-active');
-    await step('kraft-training-active-menu', async () => { await page.getByRole('button', { name: 'Mehr zu Bankdrücken' }).click(); await shot('kraft-training-active-uebung-menue'); await page.getByRole('button', { name: 'Mehr', exact: true }).click(); await shot('kraft-training-active-uebung-menue-mehr'); await closeDialog(); });
+    await step('kraft-training-pause', async () => { await page.getByRole('button', { name: 'Pause beenden' }).waitFor(); await shot('kraft-training-pause'); }); // the rest bar with its two buttons; run with SHOTS_SIZE=360x740 to look at the wrap
+    await step('kraft-training-active-menu', async () => { await page.getByRole('button', { name: 'Menü Bankdrücken' }).click(); await shot('kraft-training-active-uebung-menue'); await closeDialog(); });
     await step('kraft-training-active-header-menu', async () => { await page.evaluate(() => window.scrollTo(0, 0)); await page.getByRole('button', { name: 'Mehr zum Training' }).click(); await shot('kraft-training-active-kopf-menue'); await closeDialog(); });
     await step('kraft-training-active-studio', async () => { await page.evaluate(() => window.scrollTo(0, 0)); await page.getByRole('button', { name: 'Mehr zum Training' }).click(); await page.getByRole('button', { name: /^Studio wechseln/ }).click(); await shot('kraft-training-active-studio'); await closeDialog(); });
     await step('kraft-training-active-reorder', async () => {
@@ -700,7 +701,7 @@ async function main() {
       await closeDialog();
     });
     await step('kraft-training-active-picker', async () => { await page.getByRole('button', { name: 'Übung hinzufügen' }).click(); await shot('kraft-training-active-uebung-hinzufuegen'); await closeDialog(); });
-    await step('kraft-training-active-set-edit', async () => { await page.getByLabel('Gewicht Satz 1').first().focus(); await shot('kraft-training-active-tippen'); await page.getByLabel('Gewicht Satz 1').first().blur(); });
+    await step('kraft-training-active-set-edit', async () => { await page.getByLabel(/^Gewicht Satz \d+$/).first().focus(); await shot('kraft-training-active-tippen'); await page.getByLabel(/^Gewicht Satz \d+$/).first().blur(); });
     await step('kraft-training-summary', async () => {
       await page.getByRole('button', { name: 'Training beenden' }).click();
       await page.waitForTimeout(800);
