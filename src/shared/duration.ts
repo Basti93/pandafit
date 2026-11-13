@@ -17,18 +17,24 @@ export function gymMinutes(w: TimedWorkout, catalog: readonly Exercise[] = EXERC
   if (w.exercises.length === 0) return 0;
   const work = ruleNumber('duration.set-work-s');
   const warm = work + ruleNumber('rest.warmup-s');
+  const afterWarm = ruleNumber('rest.after-warmup-s');
+  const beforeWarm = ruleNumber('rest.before-warmup-s');
   const isWarm = (s: { type?: string }): boolean => s.type === 'warmup';
   let sets = 0;
   for (let i = 0; i < w.exercises.length; i++) {
     const e = w.exercises[i]!;
     const g = e.supersetId ?? null;
-    sets += e.sets.filter(isWarm).length * warm;
+    const warmups = e.sets.filter(isWarm).length;
+    if (warmups > 0) sets += (warmups - 1) * warm + work + Math.min(afterWarm, restOf(e, catalog));
     sets += e.sets.filter((s) => !isWarm(s)).length * work;
     if (g !== null && w.exercises[i - 1]?.supersetId === g) continue; // the group's rest is counted at its first member
     const members = [e];
     if (g !== null) for (let j = i + 1; w.exercises[j]?.supersetId === g; j++) members.push(w.exercises[j]!);
     const rounds = Math.max(...members.map((x) => x.sets.filter((s) => !isWarm(s)).length));
-    sets += rounds * Math.max(...members.map((x) => restOf(x, catalog)));
+    const rest = Math.max(...members.map((x) => restOf(x, catalog)));
+    sets += rounds * rest;
+    const next = w.exercises[i + members.length];
+    if (rounds > 0 && next?.sets.some(isWarm)) sets -= rest - Math.min(beforeWarm, rest); // only a change of machine before a warm-up
   }
   const changes = (w.exercises.length - 1) * ruleNumber('duration.change-s');
   return roundTo5(ruleNumber('duration.gym-warmup-min') + (sets + changes) / 60);

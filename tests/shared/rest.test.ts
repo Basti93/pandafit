@@ -1,6 +1,6 @@
 import { restOf, restAfterSet } from '../../src/shared/rest';
 import { gymMinutes } from '../../src/shared/duration';
-import { policyRule, ruleNumber } from '../../src/shared/training-policy';
+import { policyRule } from '../../src/shared/training-policy';
 import { currentSet, confirmSet, extendRest, setRest, startFromPlan } from '../../src/tracking/session';
 import type { GymWorkout } from '../../src/shared/gym/types';
 
@@ -30,10 +30,27 @@ describe('rest with warm-ups', () => {
   it('a warm-up pairs with nothing; rounds count work sets', () => {
     const w = startFromPlan({ name: 'S', exercises: [mk(60), { ...ex('b', 120, 10, 1, 2) }] }, [], 10, 'w1');
     const [a, b] = w.exercises;
-    expect(confirmSet(w, a.rid, a.sets[0].rid, 1000).rest?.durationS).toBe(ruleNumber('rest.warmup-s')); // short, whatever the exercise's rest
+    expect(confirmSet(w, a.rid, a.sets[0].rid, 1000).rest?.durationS).toBe(60); // the last warm-up set: the exercise's rest caps the real pause
     const x = confirmSet(w, a.rid, a.sets[1].rid, 1000);
     expect(x.rest).toBeNull();
     expect(confirmSet(x, b.rid, b.sets[0].rid, 2000).rest?.durationS).toBe(120);
+  });
+});
+
+describe('rest around warm-ups', () => {
+  const set = (type: 'normal' | 'warmup', done = false) => ({ type, weightKg: 20, reps: 10, doneMs: done ? 1 : null });
+  const wk = (...exercises: { restS: number | null; sets: ReturnType<typeof set>[] }[]) => ({ exercises: exercises.map((x, i) => ({ rid: `r${i}`, templateId: 'x', supersetId: null, ...x })) });
+  it('ruht zwischen Aufwärmsätzen kurz und vor dem ersten Arbeitssatz richtig', () => {
+    const sets6 = [set('warmup'), set('warmup'), set('warmup'), set('normal'), set('normal'), set('normal')];
+    const w = wk({ restS: 120, sets: sets6 });
+    expect([0, 1, 2].map((i) => restAfterSet(w, 'r0', i))).toEqual([30, 30, 90]);
+    expect(restAfterSet(wk({ restS: 60, sets: sets6 }), 'r0', 2)).toBe(60);
+  });
+  it('wechselt nach der letzten Übung nur kurz, wenn danach aufgewärmt wird', () => {
+    const a = { restS: 120, sets: [set('normal'), set('normal')] };
+    expect(restAfterSet(wk(a, { restS: 120, sets: [set('warmup'), set('normal')] }), 'r0', 1)).toBe(60);
+    expect(restAfterSet(wk(a, { restS: 120, sets: [set('normal'), set('normal')] }), 'r0', 1)).toBe(120);
+    expect(restAfterSet(wk(a, { restS: 120, sets: [set('warmup', true), set('normal')] }), 'r0', 1)).toBe(120);
   });
 });
 
