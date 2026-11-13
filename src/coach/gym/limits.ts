@@ -23,6 +23,8 @@ export const MAX_SESSION_FRACTIONAL_SETS = ruleNumber('gym.max-session-fractiona
 /** Strength sessions per calendar week in which one muscle group gets isolation work (a product choice). */
 export const ISOLATION_SESSIONS_PER_WEEK = ruleNumber('gym.isolation-sessions-per-week');
 export const MAX_FAILURE_SETS = ruleNumber('gym.max-failure-sets');
+/** Questions Bo may add to one note. */
+export const MAX_QUESTIONS = ruleNumber('gym.max-questions');
 export const MAX_WIDOWMAKERS = ruleNumber('gym.max-widowmakers');
 /** Failure and drop sets allowed in one workout when the person trains gently. */
 export const GENTLE_FAILURE_SETS = ruleNumber('push.gentle-no-failure');

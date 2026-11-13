@@ -21,6 +21,15 @@ describe('Gym-Prompt und Rückblick', () => {
   });
 });
 
+describe('Gym-Prompt und Rückfragen', () => {
+  it('erlaubt höchstens eine Rückfrage, nur zu dem, was die Daten nicht zeigen', () => {
+    expect(GYM_SYSTEM_PROMPT).toContain('höchstens 1 freiwillige Rückfrage');
+    expect(GYM_SYSTEM_PROMPT).toContain('nur zu dem, was die Daten nicht zeigen (Beschwerden, Zeit, Geräte, Vorlieben)');
+    expect(GYM_SYSTEM_PROMPT).toContain('erklärst es in der Notiz in einem Satz, statt zu fragen');
+    expect(GYM_SYSTEM_PROMPT).not.toContain('höchstens zwei freiwillige');
+  });
+});
+
 describe('Gym-Prompt und Härte', () => {
   const reserve = (push: string) => { const r = ruleNamedRange('push.rir', push); return `Plane die Arbeitssätze mit ${r.min} bis ${r.max} Wiederholungen Reserve.`; };
   it('vorsichtig: Reserve aus dem Register, keine Versagens- und Drop-Sätze', () => {
