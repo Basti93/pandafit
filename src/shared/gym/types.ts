@@ -13,7 +13,8 @@ export type StrengthWorkout = {
   studio?: string;
   exercises: {
     title: string; templateId: string; sets: number; reps: number; volumeKg: number;
-    workSets: { type: SetType; weightKg: number | null; reps: number | null }[];
+    /** `plannedReps`: the reps the plan asked for (own workouts only). */
+    workSets: { type: SetType; weightKg: number | null; reps: number | null; plannedReps?: number }[];
     /** The rider's answer to "how many more?" (own workouts only). */
     effort?: Effort;
   }[];

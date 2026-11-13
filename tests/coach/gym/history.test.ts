@@ -47,6 +47,18 @@ describe('suggestNext with effort answers', () => {
   });
 });
 
+describe('suggestNext with a failure set far above the plan', () => {
+  const failed = (reps: number): StrengthWorkout => { const w = wk(7, [[60, 8], [60, reps, 'failure']]); w.exercises[0].workSets[1].plannedReps = 12; return w; };
+  it('ein Versagenssatz weit über Plan bringt einen Schritt wie viel übrig', () => {
+    const r = suggestNext('sq', [wk(14, [[60, 10], [60, 10]]), failed(15)], NOW, PLATES);
+    expect(r).toMatchObject({ weightKg: 60, reps: 9, why: 'progress' });
+    expect(r.reason).toBe(REASONS['plenty-left']);
+  });
+  it('13 bei Plan 12 zählt nicht', () => {
+    expect(suggestNext('sq', [wk(14, [[60, 10], [60, 10]]), failed(13)], NOW, PLATES).reason).not.toBe(REASONS['plenty-left']);
+  });
+});
+
 describe('suggestNext', () => {
   it('all reps reached twice in 56 days adds reps first', () => {
     const r = suggest('sq', [wk(14, [[60, 8], [60, 8]]), wk(7, [[60, 8], [60, 9]])], NOW);

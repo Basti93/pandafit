@@ -8,6 +8,7 @@ import type { StrengthWorkout } from './types';
 
 const DAY_MS = 86_400_000;
 const COMPARABLE_DAYS = ruleNumber('gym.comparable-days');
+const FAILURE_PLENTY_MARGIN = ruleNumber('gym.failure-plenty-margin');
 const DROP_STEP_BACK = ruleNumber('gym.drop-step-back-count');
 const LONG_BREAK_DAYS = ruleNumber('gym.long-break-days');
 const MIN_COMPARABLE = ruleNumber('gym.min-comparable');
@@ -64,7 +65,10 @@ function occurrences(templateId: string, workouts: StrengthWorkout[], nowMs: num
     if (w.startMs > nowMs || studioKey(w, main, plan?.renames) !== key) continue;
     const mine = w.exercises.filter((e) => e.templateId === templateId);
     if (mine.length === 0) continue;
-    const effort = [...mine].reverse().find((e) => e.effort)?.effort;
+    const answered = [...mine].reverse().find((e) => e.effort)?.effort;
+    // A failure set far above the plan says "plenty left" without a question; an answer wins.
+    const far = mine.some((e) => e.workSets.some((s) => s.type === 'failure' && s.reps !== null && s.plannedReps !== undefined && s.reps >= s.plannedReps + FAILURE_PLENTY_MARGIN));
+    const effort = answered ?? (far ? 'plenty' : undefined);
     const pre = muscleOf ? preFatigue(w.exercises.map((e) => ({ ...muscleOf(e.templateId), primaryMuscle: muscleOf(e.templateId)?.primaryMuscle, hardSets: hardSetsOf(e.workSets), supersetId: null }))) : [];
     const preSets = pre[w.exercises.findIndex((e) => e.templateId === templateId)] ?? 0;
     out.push({ ms: w.startMs, sets: mine.flatMap((e) => e.workSets), preSets, ...(effort ? { effort } : {}) });

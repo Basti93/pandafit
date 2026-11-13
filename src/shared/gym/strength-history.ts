@@ -16,7 +16,10 @@ export function toStrengthWorkout(w: LoggedWorkout, links: Links): StrengthWorko
       const work = sets.filter((s) => s.type !== 'warmup');
       return {
         title: e.title, templateId: links.get(e.exerciseId) ?? e.exerciseId,
-        workSets: sets.map((s) => ({ type: s.type, weightKg: s.weightKg ?? null, reps: s.reps ?? null })),
+        workSets: sets.map((s) => {
+          const planned = (s as { plannedReps?: unknown }).plannedReps;
+          return { type: s.type, weightKg: s.weightKg ?? null, reps: s.reps ?? null, ...(typeof planned === 'number' ? { plannedReps: planned } : {}) };
+        }),
         ...(e.effort && e.effort !== 'skip' ? { effort: e.effort } : {}),
         sets: work.length,
         reps: work.reduce((a, s) => a + (s.reps ?? 0), 0),

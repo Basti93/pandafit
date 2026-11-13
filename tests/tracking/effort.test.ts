@@ -62,3 +62,10 @@ test('timed exercises are never asked', () => {
   const timed = { ...w, exercises: [{ ...w.exercises[0], timed: true }] };
   expect(asksEffort(doAll(timed, 8), w.exercises[0].rid, [])).toBe(false);
 });
+test('fragt nach einem Versagenssatz nicht', () => {
+  const w = startFromPlan(plan(8), [], 0, 'w');
+  const ex = w.exercises[0];
+  expect(asksEffort(doAll(w, 8), ex.rid, [])).toBe(true);
+  const failed = doAll(editSet(w, ex.rid, ex.sets[1].rid, { type: 'failure' }), 8);
+  expect(asksEffort(failed, ex.rid, [])).toBe(false);
+});
