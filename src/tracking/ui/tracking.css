@@ -531,12 +531,18 @@
 .tk-mark.now, .tk-screen button.tk-mark.now { border-color: var(--accent); color: var(--text); }
 /* A button dot has a 40 px tap area around the 24 px dot; a row of button dots needs a gap of at least 16 px so the areas do not overlap. */
 .tk-mark:is(button)::after { content: ''; position: absolute; inset: -8px; }
+/* The set just done pops once; without motion the dot only turns done. */
+@media (prefers-reduced-motion: no-preference) {
+  .tk-mark-pop { animation: tk-mark-pop 400ms ease-out; }
+  @keyframes tk-mark-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+}
 .tk-stand { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .tk-stand-marks { display: flex; gap: var(--space-2); flex: none; }
-/* The one slim timer card (kit TimerCard): the text is the skip button, a secondary button beside it. */
-.tk-timercard { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); border-radius: var(--radius-card); background: var(--card); border: 1px solid var(--line); box-shadow: 0 4px 14px var(--shadow-lift); }
-.tk-timercard > button.secondary { flex: none; }
-.tk-screen button.tk-rest-main { flex: 1; min-width: 0; min-height: 44px; padding: 0; background: transparent; color: inherit; border: 0; font-weight: 400; font-size: var(--text-m); font-variant-numeric: tabular-nums; text-align: left; }
+/* The one slim timer card (kit TimerCard): the text is plain, two secondary buttons beside it; on a narrow phone they wrap into a second row. */
+.tk-timercard { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); border-radius: var(--radius-card); background: var(--card); border: 1px solid var(--line); box-shadow: 0 4px 14px var(--shadow-lift); }
+.tk-timer-actions { display: flex; gap: var(--space-2); flex: 1 1 auto; justify-content: flex-end; }
+.tk-timer-actions > button.secondary { flex: 1 1 auto; }
+.tk-screen .tk-rest-main { flex: 1 1 8rem; min-width: 0; display: flex; align-items: center; gap: 0.3em; min-height: 44px; padding: 0; color: inherit; font-weight: 400; font-size: var(--text-m); font-variant-numeric: tabular-nums; text-align: left; }
 /* The one part bar (kit Band): parts as wide as their share, filled in the accent. */
 .tk-band { display: flex; align-items: flex-end; gap: 3px; height: 1rem; }
 .tk-band > span { display: block; min-width: 4px; height: 6px; border-radius: 3px; background: var(--field-line); overflow: hidden; }

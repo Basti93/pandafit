@@ -23,12 +23,13 @@ export type GroupBalance = {
 
 /**
  * The groups an exercise works and how: its primary group directly; a secondary muscle indirectly only when its group is
- * a synergist of the primary group (stabilizers do not count). A group counts once; the primary wins.
+ * a synergist of the primary group (stabilizers do not count). A group counts once; the primary wins. `synergists` is the
+ * balance's own list unless a caller (the fatigue of earlier exercises) brings another.
  */
-export function contributions(e: BalanceExercise | null, group?: MuscleGroup | null): { group: MuscleGroup; direct: boolean }[] {
+export function contributions(e: BalanceExercise | null, group?: MuscleGroup | null, synergists: Record<string, string[]> = SYNERGISTS): { group: MuscleGroup; direct: boolean }[] {
   const primary = e ? muscleGroupOf(e) : group ?? 'other';
   const out = [{ group: primary, direct: true }];
-  const allowed = SYNERGISTS[primary] ?? [];
+  const allowed = synergists[primary] ?? [];
   for (const m of e?.secondaryMuscles ?? []) {
     const g = muscleGroupOf({ primaryMuscle: m });
     if (g === 'other' || !allowed.includes(g) || out.some((o) => o.group === g)) continue;

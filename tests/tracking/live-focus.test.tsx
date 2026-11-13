@@ -169,6 +169,50 @@ describe('the focus card', () => {
     expect(focusOf('Kniebeuge').getByRole('button', { name: 'Aufwärmsatz: geschafft' })).toBeTruthy();
   });
 
+  it('erklärt beim Aufwärmen die kurzen Pausen', async () => {
+    const w = withExercises([{ exerciseId: 'pf-squat', title: 'Kniebeuge', supersetId: null, notes: '', sets: [{ ...set(20, 10, null), type: 'warmup' }, set(60, 8, null)] }]);
+    const { port, map } = fakePort([rec(w)]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    const hint = 'Die Aufwärmsätze machst du kurz hintereinander. Vor dem ersten Arbeitssatz kommt eine richtige Pause.';
+    expect(focusOf('Kniebeuge').getByText(hint)).toBeTruthy();
+    doneNow();
+    await waitFor(() => expect(sets(map, 0)[0]!.doneMs).toBe(100_000));
+    await screen.findByText('Nächster Satz · 1 von 1');
+    expect(screen.queryByText(hint)).toBeNull();
+  });
+
+  it('bestätigt einen Satz mit einem kurzen Vibrieren, wo es geht', async () => {
+    const vibrate = vi.fn();
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true });
+    try {
+      const { port, map } = fakePort([rec(open2())]);
+      render(<WorkoutScreen port={port} {...ids} />);
+      await resume();
+      fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz geschafft' }));
+      await waitFor(() => expect(vibrate).toHaveBeenCalledTimes(1));
+      expect(vibrate.mock.calls[0]![0]).toBeLessThanOrEqual(30);
+      // without vibrate (iOS): no error
+      delete (navigator as unknown as { vibrate?: unknown }).vibrate;
+      await later();
+      fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz geschafft' }));
+      await waitFor(() => expect(sets(map, 0)[1]!.doneMs).not.toBeNull());
+    } finally {
+      delete (navigator as unknown as { vibrate?: unknown }).vibrate;
+    }
+  });
+
+  it('markiert den gerade geschafften Satz', async () => {
+    const { port } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    expect(focusOf('Bankdrücken').getByRole('button', { name: 'Satz 1: dran' }).className).not.toContain('tk-mark-pop');
+    fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz geschafft' }));
+    const dot = await focusOf('Bankdrücken').findByRole('button', { name: 'Satz 1: geschafft' });
+    expect(dot.className).toContain('tk-mark-pop');
+    expect(focusOf('Bankdrücken').getByRole('button', { name: 'Satz 2: dran' }).className).not.toContain('tk-mark-pop');
+  });
+
   it('unreadable input blocks Satz geschafft and writes nothing', async () => {
     const { port, map } = fakePort([rec(open2())]);
     render(<WorkoutScreen port={port} {...ids} />);
@@ -250,25 +294,52 @@ describe('the focus card', () => {
     const { port, map } = fakePort([rec(planned)]);
     render(<WorkoutScreen port={port} {...ids} />);
     await resume();
-    const name = 'Wie viele hättest du bei Bankdrücken noch geschafft?';
+    const name = 'Wie liefen die letzten Wiederholungen bei Bankdrücken?';
     expect(screen.queryByRole('group', { name })).toBeNull();
     doneNow();
     const q = await screen.findByRole('group', { name });
     expect(q.closest('.card.soft')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Bankdrücken' }).contains(q)).toBe(false);
-    fireEvent.click(within(q).getByRole('button', { name: '1–2' }));
+    fireEvent.click(within(q).getByRole('button', { name: 'Langsamer, aber sauber' }));
     await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('some'));
     expect(screen.queryByRole('group', { name })).toBeNull();
-    expect(screen.getAllByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toHaveLength(1);
+    expect(screen.getAllByText(/^Nächstes Mal/)).toHaveLength(1);
     const sheet = await setsSheet(1);
-    expect(within(sheet).getByText('Noch möglich: 1–2')).toBeTruthy();
+    expect(within(sheet).getByText('Letzte Wiederholungen: Langsamer, aber sauber.')).toBeTruthy();
     fireEvent.click(within(sheet).getByRole('button', { name: 'Schließen' }));
     fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz hinzufügen' }));
     await waitFor(() => expect(sets(map, 0)).toHaveLength(2));
     await later();
     doneNow();
     await waitFor(() => expect(sets(map, 0)[1]!.doneMs).toBe(100_000));
-    expect(screen.queryByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeNull();
+    expect(screen.queryByText(/^Nächstes Mal/)).toBeNull();
+  });
+
+  describe('die restlichen Sätze leichter', () => {
+    const three = (kg: number) => withExercises([{ exerciseId: 'pf-bench-press', title: 'Bankdrücken', supersetId: null, notes: '', sets: [1, 2, 3].map(() => ({ ...set(kg, 8, null), plannedKg: 60, prefillKg: 60, plannedReps: 8 })) }]);
+    const weight = (n: number) => (focusOf('Bankdrücken').getByLabelText(`Gewicht Satz ${n}`) as HTMLInputElement);
+    it('schlägt nach weniger Gewicht die restlichen Sätze vor', async () => {
+      const { port } = fakePort([rec(three(60))]);
+      render(<WorkoutScreen port={port} {...ids} />);
+      await resume();
+      fireEvent.change(weight(1), { target: { value: '50' } });
+      fireEvent.blur(weight(1));
+      doneNow();
+      expect(await screen.findByText('Die restlichen Sätze auch mit 50 kg?')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Übernehmen' }));
+      expect(await screen.findByText(/Die restlichen Sätze sind jetzt leichter\./)).toBeTruthy();
+      await waitFor(() => expect(weight(2).value).toBe('50'));
+      fireEvent.click(screen.getByRole('button', { name: 'Rückgängig' }));
+      await waitFor(() => expect(weight(2).value).toBe('60'));
+    });
+    it('fragt nicht, wenn die Sätze schon so leicht sind', async () => {
+      const { port } = fakePort([rec(three(60))]);
+      render(<WorkoutScreen port={port} {...ids} />);
+      await resume();
+      doneNow();
+      await waitFor(() => expect(focusOf('Bankdrücken').getByText('Nächster Satz · 2 von 3')).toBeTruthy());
+      expect(screen.queryByText(/Die restlichen Sätze/)).toBeNull();
+    });
   });
 
   it('Anleitung and Mehr open their sheets; a note stays in the focus card', async () => {

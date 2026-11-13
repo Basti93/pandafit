@@ -1,15 +1,16 @@
 import { contiguousGroups } from '../../shared/superset';
 import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from '../../shared/gym/types';
-import { GENTLE_FAILURE_SETS, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
+import { GENTLE_FAILURE_SETS, HIP_DOMINANT_FAMILIES, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_HIP_DOMINANT, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
 import type { Push } from '../../shared/personal';
 import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan, type Suggestion } from './history';
-import { hardSetsOf, muscleOfFrom, preFatigue } from './pre-fatigue';
+import { hardSetsOf, musclesOfFrom, preFatigue } from './pre-fatigue';
 import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
 import { studioName, type Renames } from '../../shared/studio';
 import { repRangeOf } from '../../shared/muscle-targets';
 import { isExcluded, resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
+import { familyOf } from '../../shared/families';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
 import { gymLimit, gymMinutes } from '../../shared/duration';
 
@@ -54,7 +55,7 @@ export function weightCap(suggested: number, withStep: boolean, ladder: Ladder):
 }
 
 /** The plan the suggestions are made for: studio, weight steps and where each exercise stood in past workouts. */
-export const gymPlan = (ctx: GymContext): Plan => ({ studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, muscleOf: muscleOfFrom(ctx.templates, ctx.catalog ?? []) });
+export const gymPlan = (ctx: GymContext): Plan => ({ studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, muscleOf: musclesOfFrom(ctx.templates, ctx.catalog ?? []) });
 
 /**
  * The suggestion without the place (`blind`, the one the prompt shows) and the one for this place (`here`). The place may only
@@ -149,6 +150,16 @@ export function executionKeyOf(e: { templateId: string; title: string }, ctx: Gy
   const c = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links);
   return c ? executionKey(c) : null;
 }
+/** Whether an exercise is hip-dominant: its catalog entry (resolved like the execution key) is in one of the rule's families. Without an entry it does not count. */
+export function isHipDominant(e: { templateId: string; title: string }, ctx: Pick<GymContext, 'catalog' | 'links'>): boolean {
+  const c = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links);
+  return !!c && HIP_DOMINANT_FAMILIES.includes(familyOf(c));
+}
+/** The most hip-dominant exercises a workout may have: the rule's number, or more when the core exercises of the section ask for more (they win). */
+export function hipLimit(ctx: Pick<GymContext, 'catalog' | 'links' | 'block'>): number {
+  const core = (ctx.block?.core ?? []).filter((c) => !ctx.block!.exempt.has(c) && HIP_DOMINANT_FAMILIES.includes(familyOf((ctx.catalog ?? []).find((x) => x.id === c) ?? {}))).length;
+  return Math.max(MAX_HIP_DOMINANT, core);
+}
 const executionKeysOf = (exercises: GymExercise[], ctx: GymContext): string[] =>
   exercises.map((e) => executionKeyOf(e, ctx)).filter((k): k is string => k !== null);
 
@@ -181,6 +192,7 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     // The same execution twice (only the equipment differs) is refused; an exercise without a catalog entry has no key.
     const keys = executionKeysOf(exercises, ctx);
     if (new Set(keys).size < keys.length) return no('dieselbe Ausführung doppelt');
+    if (exercises.filter((e) => isHipDominant(e, ctx)).length > hipLimit(ctx)) return no(`mehr als ${hipLimit(ctx)} hüftdominante Übungen`);
     if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Keine Beine in dieser Einheit');
     const all = exercises.flatMap((e) => e.sets);
     if (all.filter((s) => s.type !== 'warmup').length > MAX_SETS) return no(`mehr als ${MAX_SETS} Sätze`);
@@ -194,10 +206,10 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     const avail = availableExercises(ctx.workouts, ctx.nowMs);
     const known = new Set(avail.map((a) => a.templateId));
     const recentEquipment = new Set(avail.filter((a) => a.recent).map((a) => byId.get(a.templateId)?.equipment).filter((e): e is string => !!e));
-    const muscleOf = muscleOfFrom(ctx.templates, ctx.catalog ?? []);
+    const muscleOf = musclesOfFrom(ctx.templates, ctx.catalog ?? []);
     // Pre-fatigue follows the order the person will see: superset partners pulled together.
     const grouped = contiguousGroups(exercises);
-    const pre = preFatigue(grouped.map((e) => ({ primaryMuscle: muscleOf(e.templateId), hardSets: hardSetsOf(e.sets), supersetId: e.supersetId })));
+    const pre = preFatigue(grouped.map((e) => ({ ...muscleOf(e.templateId), primaryMuscle: muscleOf(e.templateId)?.primaryMuscle, hardSets: hardSetsOf(e.sets), supersetId: e.supersetId })));
     const preOf = new Map(grouped.map((e, i) => [e, pre[i]!]));
     parsed.forEach((p) => checkExercise(p.ex, p.template, ctx, recentEquipment, known, preOf.get(p.ex)!));
     // The weights are for this studio's equipment; the app uses it to refit them when another studio is chosen. Never taken from the answer.
@@ -220,6 +232,7 @@ const REASON_PHRASES: [RegExp, string][] = [
   [/Keine Beine in dieser Einheit/, 'Beinübungen, obwohl die Beine in dieser Einheit pausieren'],
   [/ausgeschlossen/, 'eine Übung, die du ausgeschlossen hast'],
   [/dieselbe Ausführung doppelt/, 'dieselbe Übung zweimal, nur mit anderem Gerät'],
+  [/hüftdominante Übungen/, 'zu viele Übungen für die Hüftstreckung in einem Training'],
   [/mehr als \d+ Übungen/, 'zu viele Übungen'],
   [/Kernübung fehlt/, 'eine Kernübung des Abschnitts fehlt'],
   [/leichte Woche/, 'mehr, als die leichte Woche tragen soll'],

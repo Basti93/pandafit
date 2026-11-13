@@ -120,7 +120,11 @@ export function useWakeLock(active: boolean): void {
         else { release(sentinel); sentinel = got; }
       } catch { /* not allowed, fine */ }
     };
-    const onVisible = () => { if (document.visibilityState === 'visible') void request(); };
+    // Hidden: let the lock go on purpose (the browser mostly does). Back: take it again.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void request();
+      else { release(sentinel); sentinel = null; }
+    };
     void request();
     document.addEventListener('visibilitychange', onVisible);
     return () => {
@@ -131,14 +135,25 @@ export function useWakeLock(active: boolean): void {
   }, [active]);
 }
 
-/** Re-renders every second while active, so the rest timer counts down. */
-export function useTick(active: boolean): void {
-  const [, set] = useState(0);
+/**
+ * The current time, re-read every `periodMs` while `active` and the page is visible. The state lives only in the component that calls it,
+ * so only that component re-renders. When the page hides the beat stops; on return the time is read again at once.
+ */
+export function useNow(periodMs: number, active: boolean, read: () => number = Date.now): number {
+  const [t, setT] = useState(read);
+  const readRef = useRef(read);
+  readRef.current = read;
   useEffect(() => {
     if (!active) return;
-    const t = setInterval(() => set((n) => n + 1), 1000);
-    return () => clearInterval(t);
-  }, [active]);
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const stop = () => { if (timer !== null) { clearInterval(timer); timer = null; } };
+    const start = () => { stop(); setT(readRef.current()); timer = setInterval(() => setT(readRef.current()), periodMs); };
+    const onChange = () => { if (document.visibilityState === 'visible') start(); else stop(); };
+    if (document.visibilityState === 'visible') start();
+    document.addEventListener('visibilitychange', onChange);
+    return () => { stop(); document.removeEventListener('visibilitychange', onChange); };
+  }, [periodMs, active]);
+  return t;
 }
 
 /** Text kept locally while typing, so a slow save never eats characters. Not overwritten from outside while focused. */

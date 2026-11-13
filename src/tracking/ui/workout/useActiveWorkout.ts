@@ -5,13 +5,14 @@ import { readStats, STATS_ID } from '../../../shared/stats';
 import { loadStepOverrides } from '../../../shared/loads';
 import { knownStudios, studioStateOf } from '../../../shared/studio';
 import type { TrackingPort } from '../../ports';
-import { confirmSet, currentSet, restRemainingS, type FinishChoice, type TrackedWorkout } from '../../session';
+import { confirmSet, currentSet, type FinishChoice, type TrackedWorkout } from '../../session';
 import { closeStore, releaseStore } from '../../registry';
 import { hereKey, stepChange } from '../../steps';
-import { useCatalog, useExcluded, usePortRecords, useStoreView, useTick, useWakeLock, type WorkoutStore } from '../hooks';
+import { useCatalog, useExcluded, usePortRecords, useStoreView, useWakeLock, type WorkoutStore } from '../hooks';
 import { effortQuestionsOn } from '../EffortQuestion';
 import type { DragStart } from '../ReorderSheet';
 import { markUsed } from './markUsed';
+import { buzz } from './feedback';
 import { useHold } from './useHold';
 import { useLatest } from './useLatest';
 
@@ -36,6 +37,14 @@ export type UiState = {
   notice: string | null; effortOn: boolean;
   /** The focus exercise: it follows the next open set; a row under "Danach" makes another one the focus. */
   openRid: string | null;
+  /** The set confirmed last: its circle pops once. */
+  justDone: string | null;
+  /** Exercises whose "restliche Sätze leichter" offer was declined. */
+  lighterNo: ReadonlySet<string>;
+  /** The adopted lighter weights of an exercise, with the old ones: shown with "Rückgängig" until the next confirmed set. */
+  lighterUndo: { rid: string; prior: { rid: string; kg: number }[] } | null;
+  /** The exercise whose effort question is asked again ("Doch anders"). */
+  reask: string | null;
 };
 
 type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'askCoach' };
@@ -66,7 +75,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
-    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid,
+    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, lighterNo: new Set(), lighterUndo: null, reask: null,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
@@ -103,10 +112,8 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
     return (r && readStats(r.body)?.muscles) || null;
   }, [statsRecords]);
   useWakeLock(true);
-  useTick(true); // the rest countdown and the total time
   // Leaving the screen: a clean store is let go, a dirty one keeps retrying in the registry until it is clean.
   useEffect(() => () => releaseStore(port, store), [store, port]);
-  const remaining = restRemainingS(w, now());
 
   // The focus follows the next open set (in a superset from round to round).
   useEffect(() => { if (currentRid) set({ openRid: currentRid }); }, [currentRid, set]);
@@ -167,7 +174,8 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
    * exercise, the focus moves on to the next open set of the workout (the same exercise when none is left).
    */
   const confirmShown = useCallback((exRid: string, setRid: string) => {
-    set({ thanked: null });
+    buzz();
+    set({ thanked: null, justDone: setRid, lighterUndo: null });
     let finished = false;
     act((x) => {
       if (x.exercises.find((y) => y.rid === exRid)?.sets.find((y) => y.rid === setRid)?.doneMs !== null) return x;
@@ -217,7 +225,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
 
   return {
     port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown, holdProps, wasHeld, releaseHold,
-    catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, remaining, currentRid, known, act, end, discard,
+    catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, currentRid, known, act, end, discard,
   };
 }
 

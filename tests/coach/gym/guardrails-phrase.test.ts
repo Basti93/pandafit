@@ -16,3 +16,7 @@ it('nennt die Gründe des Abschnitts in eigenen Worten', () => {
   expect(reasonPhrase('Kernübung fehlt')).toBe('eine Kernübung des Abschnitts fehlt');
   expect(reasonPhrase('zu viel für die leichte Woche')).toBe('mehr, als die leichte Woche tragen soll');
 });
+
+it('nennt zu viele hüftdominante Übungen in einem eigenen Satz', () => {
+  expect(reasonPhrase('mehr als 2 hüftdominante Übungen')).toBe('zu viele Übungen für die Hüftstreckung in einem Training');
+});

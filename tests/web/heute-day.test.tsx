@@ -131,6 +131,16 @@ describe('Heute in the Dojo', () => {
     fireEvent.click(go);
     expect(await screen.findByRole('button', { name: 'Training beenden' })).toBeTruthy();
   });
+  it('Bo steht still, solange ein Training offen ist', async () => {
+    await boot([weekplanWithGymToday, planRecord]);
+    await screen.findByLabelText('Satz von Bo');
+    await waitFor(() => expect(document.querySelector('canvas')).not.toBeNull());
+    cleanup();
+    const open = rec('workout', 'w-open', { id: 'w-open', title: 'Pull', startMs: NOW - 600_000, endMs: null, source: 'pandafit', exercises: [] });
+    await boot([weekplanWithGymToday, planRecord, open]);
+    await screen.findByRole('button', { name: 'Weitermachen' });
+    expect(document.querySelector('canvas')).toBeNull();
+  });
   it('a waiting proposal turns Bo’s bubble into Vorschlag ansehen, which opens the chat', async () => {
     await boot([riderMsg, coachMsgWithProposal]);
     fireEvent.click(await screen.findByRole('button', { name: 'Vorschlag ansehen' }));
@@ -211,6 +221,28 @@ describe('Heute in the Dojo', () => {
       await screen.findByRole('button', { name: /^Beweglichkeit/ });
       expect(screen.queryByText('Zum Abschluss')).toBeNull();
     });
+  });
+});
+
+describe('Zusammenfassung auf Heute', () => {
+  afterEach(() => localStorage.removeItem('pandafit-summary-pending'));
+  const done = (endMs: number) => rec('workout', 'w1', { id: 'w1', title: 'Beine', startMs: endMs - 3_000_000, endMs, source: 'pandafit', exercises: [] });
+  it('a recent pending summary shows with the mobility offer', async () => {
+    localStorage.setItem('pandafit-summary-pending', 'w1');
+    const mobility = rec('plan', 'current', {
+      workout: null, reason: 'x', source: 'ai', note: null, questions: [], atMs: NOW - 1000,
+      mobility: { id: `mobility-bike-${NOW - 3_600_000}`, forSession: 'bike', minutes: 8, exercises: [{ id: 'm1', title: 'Hüftbeuger dehnen', howTo: 'Ruhig atmen.', area: 'hueftbeuger' }], reason: 'Tut gut.' },
+    });
+    await boot([done(NOW - 600_000), mobility]);
+    const card = await screen.findByRole('region', { name: 'Zusammenfassung' });
+    expect(card.contains(await screen.findByRole('button', { name: /^Beweglichkeit/ }))).toBe(true);
+  });
+  it('a pending summary older than the window is dropped: the plan card shows and the marker is cleared', async () => {
+    localStorage.setItem('pandafit-summary-pending', 'w1');
+    await boot([done(NOW - 3 * 3_600_000 - 60_000), weekplanWithGymToday, planRecord]);
+    await waitFor(() => expect(localStorage.getItem('pandafit-summary-pending')).toBeNull());
+    expect(screen.queryByRole('region', { name: 'Zusammenfassung' })).toBeNull();
+    expect(screen.queryByText('Gespeichert')).toBeNull();
   });
 });
 

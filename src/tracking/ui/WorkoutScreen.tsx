@@ -51,7 +51,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
   resume?: boolean;
   /** Told whether a workout is running on this screen, so the page around it can drop its own navigation. */
   onActive?: (active: boolean) => void;
-  /** "Fertig" on the summary of a saved workout: the page around it leads on (to Heute). */
+  /** A saved finish: the page around it leads on at once (to Heute, which shows the summary), and "Schließen" on a summary shown here leads on too. */
   onDone?: () => void;
   now?: () => number; newId?: () => string;
 }) {
@@ -62,7 +62,7 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
   const excluded = useExcluded(port);
   const [store, setStore] = useState<{ s: WorkoutStore; autoEnd: boolean; notice?: string | null } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [summaryId, setSummaryId] = useState<string | null>(pendingSummary);
+  const [summaryId, setSummaryId] = useState<string | null>(() => (onDone ? null : pendingSummary())); // with a page around, Heute shows the summary
   const statsQ = usePortRecords(port, 'stats').records;
   const weekplansQ = usePortRecords(port, 'weekplan').records;
   const activitiesQ = usePortRecords(port, 'activities').records;
@@ -182,7 +182,13 @@ export function WorkoutScreen({ port, plan = null, planMeta = null, account = 'l
     if (routine && workouts && c.openRecs.length === 0 && !c.store && started.current !== routine) { started.current = routine; void actions.current.startPlan(routine); }
   }, [routine, workouts, cur, actions]);
 
-  if (store) return <ActiveWorkout port={port} store={store.s} history={history} now={now} newId={newId} autoEnd={store.autoEnd} startNotice={store.notice} onMinimize={() => setStore(null)} onLeave={(m, finishedId) => { setStore(null); if (finishedId) { setPendingSummary(finishedId); setSummaryId(finishedId); setMessage(null); } else setMessage(m); }} />;
+  if (store) return <ActiveWorkout port={port} store={store.s} history={history} now={now} newId={newId} autoEnd={store.autoEnd} startNotice={store.notice} onMinimize={() => setStore(null)} onLeave={(m, finishedId) => {
+    setStore(null);
+    if (!finishedId) { setMessage(m); return; }
+    setPendingSummary(finishedId); setMessage(null);
+    if (onDone) onDone(); // saved: straight on to Heute, where the summary stands
+    else setSummaryId(finishedId);
+  }} />;
   if (workoutsQ.failed) {
     return (
       <div className="tk-screen">

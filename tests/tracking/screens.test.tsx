@@ -69,7 +69,7 @@ test('the rest end is armed once with the end time, and skipping or unmounting c
   fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
   await screen.findByRole('timer', { name: 'Satzpause' });
   expect(restAlarm.mock.calls).toEqual([[160_000]]);
-  fireEvent.click(screen.getByRole('button', { name: 'Pause überspringen' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Pause beenden' }));
   await waitFor(() => expect(restAlarm).toHaveBeenLastCalledWith(null));
   expect(restAlarm).toHaveBeenCalledTimes(2);
   view.unmount();
@@ -728,32 +728,47 @@ describe('effort question after an exercise', () => {
     const { port, map } = fakePort([rec(planned())]);
     render(<WorkoutScreen port={port} {...ids} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-    expect(screen.queryByRole('group', { name: 'Wie viele hättest du bei Bankdrücken noch geschafft?' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Wie liefen die letzten Wiederholungen bei Bankdrücken?' })).toBeNull();
     doneNow();
-    const q = await screen.findByRole('group', { name: 'Wie viele hättest du bei Bankdrücken noch geschafft?' });
-    fireEvent.click(within(q).getByRole('button', { name: '1–2' }));
+    const q = await screen.findByRole('group', { name: 'Wie liefen die letzten Wiederholungen bei Bankdrücken?' });
+    fireEvent.click(within(q).getByRole('button', { name: 'Langsamer, aber sauber' }));
     await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('some'));
-    expect(screen.queryByRole('group', { name: 'Wie viele hättest du bei Bankdrücken noch geschafft?' })).toBeNull();
-    expect(within(await setsSheet(1)).getByText('Noch möglich: 1–2')).toBeTruthy();
+    expect(screen.queryByRole('group', { name: 'Wie liefen die letzten Wiederholungen bei Bankdrücken?' })).toBeNull();
+    expect(within(await setsSheet(1)).getByText('Letzte Wiederholungen: Langsamer, aber sauber.')).toBeTruthy();
   });
-  it('thanks for the answer and says it goes into the next suggestion', async () => {
-    const { port } = fakePort([rec(planned())]);
+  it('fragt nach dem Tempo der letzten Wiederholungen', async () => {
+    const { port, map } = fakePort([rec(planned())]);
     render(<WorkoutScreen port={port} {...ids} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
-    expect(screen.queryByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeNull();
     doneNow();
-    fireEvent.click(within(await screen.findByRole('group', { name: 'Wie viele hättest du bei Bankdrücken noch geschafft?' })).getByRole('button', { name: '1–2' }));
-    expect(await screen.findByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeTruthy();
+    const q = await screen.findByRole('group', { name: 'Wie liefen die letzten Wiederholungen bei Bankdrücken?' });
+    expect(within(q).getAllByRole('button').slice(0, 3).map((b) => b.textContent)).toEqual(['So schnell wie die ersten', 'Langsamer, aber sauber', 'Die letzte ging kaum noch hoch']);
+    fireEvent.click(within(q).getByRole('button', { name: 'So schnell wie die ersten' }));
+    await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('plenty'));
+  });
+  it('zeigt nach der Antwort, was das nächste Mal passiert, und lässt sie ändern', async () => {
+    const { port, map } = fakePort([rec(planned())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
+    doneNow();
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Wie liefen die letzten Wiederholungen bei Bankdrücken?' })).getByRole('button', { name: 'Langsamer, aber sauber' }));
+    expect(await screen.findByText(/^Nächstes Mal/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Doch anders' }));
+    expect(screen.queryByText(/^Nächstes Mal/)).toBeNull();
+    const again = await screen.findByRole('group', { name: 'Wie liefen die letzten Wiederholungen bei Bankdrücken?' });
+    fireEvent.click(within(again).getByRole('button', { name: 'So schnell wie die ersten' }));
+    await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('plenty'));
+    expect(await screen.findByText(/^Nächstes Mal/)).toBeTruthy();
   });
   it('can be skipped, and switched off on this device', async () => {
     const { port, map } = fakePort([rec(planned())]);
     render(<WorkoutScreen port={port} {...ids} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
     doneNow();
-    fireEvent.click(within(await screen.findByRole('group', { name: /noch geschafft/ })).getByRole('button', { name: 'Nicht mehr fragen' }));
+    fireEvent.click(within(await screen.findByRole('group', { name: /^Wie liefen die letzten Wiederholungen/ })).getByRole('button', { name: 'Nicht mehr fragen' }));
     await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('skip'));
     expect(localStorage.getItem('pandafit-effort-questions')).toBe('off');
-    expect(screen.queryByRole('group', { name: /noch geschafft/ })).toBeNull();
+    expect(screen.queryByRole('group', { name: /^Wie liefen die letzten Wiederholungen/ })).toBeNull();
   });
 });
 

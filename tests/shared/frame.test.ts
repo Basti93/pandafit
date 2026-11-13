@@ -43,6 +43,14 @@ describe('gymMinutes', () => {
     expect(gymMinutes({ exercises: [ex(4, 60)] })).toBe(15);
     expect(gymMinutes({ exercises: [] })).toBe(0);
   });
+  it('rechnet den letzten Aufwärmsatz mit der richtigen Pause', () => {
+    const warm = { type: 'warmup' };
+    const b = { restS: 120, sets: [warm, warm, {}, {}, {}] };
+    // 8 min + A (3 x (40 + 120) - 60 s Gerätewechsel) + B (70 + 40 + 90 s Aufwärmen, 3 x (40 + 120)) + 1 change x 60 s = 27.3 min -> 25
+    expect(gymMinutes({ exercises: [ex(3, 120), b] })).toBe(25);
+    // ohne Aufwärmen unverändert: 8 min + 6 x 160 s + 60 s = 25.3 min -> 25 (wie vorher)
+    expect(gymMinutes({ exercises: [ex(3, 120), ex(3, 120)] })).toBe(25);
+  });
 });
 
 describe('gym time budget', () => {

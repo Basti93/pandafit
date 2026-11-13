@@ -38,12 +38,25 @@ export function restAfterSet(w: RestWorkout, rid: string, setIndex: number, cata
   const e = w.exercises[i];
   if (!e) return null;
   const group = e.supersetId;
-  if (e.sets[setIndex]?.type === 'warmup') return ruleNumber('rest.warmup-s'); // a warm-up set pairs with nothing and rests short
-  if (group === null) return restOf(e, catalog);
+  const isWarm = (x: { type?: string }): boolean => x.type === 'warmup';
+  if (isWarm(e.sets[setIndex] ?? {})) {
+    if (e.sets[setIndex + 1] && isWarm(e.sets[setIndex + 1]!)) return ruleNumber('rest.warmup-s'); // a warm-up set pairs with nothing and rests short
+    return Math.min(ruleNumber('rest.after-warmup-s'), restOf(e, catalog)); // the last warm-up set: a real rest before the first work set
+  }
+  /** Only a change of machine when the exercise after `lastIndex` opens with a warm-up set. */
+  const beforeWarmup = (lastIndex: number, rest: number): number => {
+    const next = (w.exercises[lastIndex + 1]?.sets as readonly { type?: string; doneMs: number | null }[] | undefined)?.find((s) => s.doneMs === null);
+    return next && isWarm(next) ? Math.min(ruleNumber('rest.before-warmup-s'), rest) : rest;
+  };
+  if (group === null) return setIndex === e.sets.length - 1 ? beforeWarmup(i, restOf(e, catalog)) : restOf(e, catalog);
   const round = e.sets.slice(0, setIndex).filter((s) => s.type !== 'warmup').length;
   const roundSet = (x: RestWorkout['exercises'][number]): { doneMs: number | null } | undefined => (x.sets as readonly { type?: string; doneMs: number | null }[]).filter((s) => s.type !== 'warmup')[round];
   if (w.exercises.some((x) => x !== e && x.supersetId === group && x.effort !== 'skip' && roundSet(x)?.doneMs === null)) return null;
-  return Math.max(...w.exercises.filter((x) => x.supersetId === group).map((x) => restOf(x, catalog)));
+  const members = w.exercises.filter((x) => x.supersetId === group);
+  const rest = Math.max(...members.map((x) => restOf(x, catalog)));
+  const lastRound = Math.max(...members.map((x) => x.sets.filter((s) => !isWarm(s)).length)) - 1;
+  const groupEnd = w.exercises.reduce((n, x, j) => (x.supersetId === group ? j : n), i);
+  return round >= lastRound ? beforeWarmup(groupEnd, rest) : rest;
 }
 
 export const restExtendS = (): number => ruleNumber('rest.extend-s');

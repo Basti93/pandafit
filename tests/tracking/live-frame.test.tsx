@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
 import { weekDates } from '../../src/shared/week-plan';
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
@@ -106,9 +106,9 @@ describe('the frame of the running workout', () => {
     const { port } = fakePort([rec(w)]);
     render(<WorkoutScreen port={port} {...ids} />);
     await resume();
-    const groups = screen.getAllByRole('group', { name: /noch geschafft\?$/ });
-    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Wie viele hättest du bei Rudern noch geschafft?']);
-    expect(groups[0]!.textContent).toContain('bei Rudern noch geschafft?');
+    const groups = screen.getAllByRole('group', { name: /^Wie liefen die letzten Wiederholungen/ });
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Wie liefen die letzten Wiederholungen bei Rudern?']);
+    expect(groups[0]!.textContent).toContain('bei Rudern?');
   });
 
   it('the head says how long it runs; the progress card says what is done and opens Geschafft', async () => {
@@ -131,7 +131,7 @@ describe('the frame of the running workout', () => {
     expect(within(screen.getByRole('dialog', { name: 'Training' })).queryByText(/Läuft seit/)).toBeNull();
   });
 
-  it('the rest is a slim card: tapping skips, 30 s mehr adds', async () => {
+  it('die Pause endet nur mit dem Knopf', async () => {
     const w = { ...open2(), rest: { startMs: 70_000, durationS: 90 } } as LoggedWorkout;
     const { port, map } = fakePort([rec(w)]);
     render(<WorkoutScreen port={port} {...ids} />);
@@ -140,8 +140,28 @@ describe('the frame of the running workout', () => {
     expect(bar.textContent).toContain('Pause, noch 1:00');
     fireEvent.click(within(bar).getByRole('button', { name: '30 s mehr' }));
     await waitFor(() => expect((bodyOf(map, 'workout:open1') as unknown as { rest: { durationS: number } }).rest.durationS).toBe(120));
-    fireEvent.click(within(screen.getByRole('timer', { name: 'Satzpause' })).getByRole('button', { name: 'Pause überspringen' }));
+    fireEvent.click(within(bar).getByText(/noch/)); // the time text ends nothing
+    expect(screen.getByRole('timer', { name: 'Satzpause' })).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('timer', { name: 'Satzpause' })).getByRole('button', { name: 'Pause beenden' }));
     await waitFor(() => expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull());
+  });
+
+  it('die Pause zählt herunter und verschwindet bei null', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    try {
+      let t = 100_000;
+      const w = { ...open2(), rest: { startMs: 70_000, durationS: 90 } } as LoggedWorkout;
+      const { port } = fakePort([rec(w)]);
+      render(<WorkoutScreen port={port} newId={ids.newId} now={() => t} />);
+      await resume();
+      expect(screen.getByRole('timer', { name: 'Satzpause' }).textContent).toContain('noch 1:00');
+      t += 10_000;
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByRole('timer', { name: 'Satzpause' }).textContent).toContain('noch 0:50');
+      t += 60_000;
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull();
+    } finally { vi.useRealTimers(); }
   });
 
   it('the start notices show on the live screen: without legs and a second session today', async () => {
@@ -162,7 +182,7 @@ describe('the frame of the running workout', () => {
     expect(note.textContent).toContain('Dazu heute: 20 Min.');
   });
 
-  it('after Training beenden: Gespeichert as the main card with Fertig, and Bo says the stretch', async () => {
+  it('after Training beenden: Gespeichert as the main card with Schließen, and Bo says the stretch', async () => {
     const w = benchDone();
     w.exercises = [w.exercises[0]!];
     const { port } = fakePort([rec(w)]);
@@ -173,7 +193,7 @@ describe('the frame of the running workout', () => {
     expect(within(summary).getByText('Gespeichert')).toBeTruthy();
     expect(within(summary).getByRole('heading', { name: 'Zuhause' })).toBeTruthy();
     expect(within(summary).getByText('1 Übung in 2 Minuten.')).toBeTruthy();
-    expect(within(summary).getByRole('button', { name: 'Fertig' }).className).toContain('primary');
+    expect(within(summary).getByRole('button', { name: 'Schließen' }).className).toContain('primary');
     const line = finisherLine({ cardio: true, stretch: true, reason: null });
     expect(document.querySelector('.tk-bo')!.textContent).toContain(line);
     expect(screen.queryByRole('region', { name: 'Zum Abschluss' })).toBeNull();

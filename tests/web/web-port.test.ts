@@ -1,6 +1,7 @@
+// @vitest-environment jsdom
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { TrackedRecord } from '../../src/shared/records';
 import { openIdb } from '../../src/web/idbStore';
 import { createWebPort } from '../../src/web/webPort';
@@ -33,6 +34,23 @@ const mk = async (fetchFn: typeof fetch) => {
 };
 
 describe('webPort', () => {
+  it('gleicht im Hintergrund nicht im Takt ab', async () => {
+    const { s, fetchFn } = server();
+    const store = await openIdb('anna', new IDBFactory());
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const vis = vi.spyOn(document, 'visibilityState', 'get');
+    try {
+      const port = createWebPort({ store, fetchFn, account: 'anna', now: () => 1000, intervalMs: 1000 });
+      vis.mockReturnValue('hidden');
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(s.calls).toHaveLength(0);
+      vis.mockReturnValue('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.waitFor(() => expect(s.calls.length).toBeGreaterThan(0));
+      port.dispose();
+    } finally { vis.mockRestore(); vi.useRealTimers(); }
+  });
+
   it('run records from the server are kept and listed', async () => {
     const { s, fetchFn } = server();
     s.remote = [{ kind: 'run', id: 'settings', updatedMs: 5, deleted: false, body: { type: 'settings', on: true, weekdays: null, answers: null } }];

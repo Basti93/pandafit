@@ -4,11 +4,12 @@ import { Icon } from './Icon';
 /** One vocabulary for week state, set circles and progress: done, now (the next one), open. */
 export type Mark = 'done' | 'now' | 'open';
 
-/** The one state dot. With `onClick` it is a button (44 px tap area) named by `name`; `short` replaces the check (e.g. a set number or "A"). */
-export function MarkDot({ state, short, name, onClick }: { state: Mark; short?: string; name?: string; onClick?: () => void }) {
+/** The one state dot. With `pop` it pops once (the set just done). With `onClick` it is a button (44 px tap area) named by `name`; `short` replaces the check (e.g. a set number or "A"). */
+export function MarkDot({ state, short, name, pop, onClick }: { state: Mark; short?: string; name?: string; pop?: boolean; onClick?: () => void }) {
   const inner = state === 'done' && !short ? <Icon name="haken" size={14} /> : short ?? null;
-  if (onClick) return <button type="button" className={`tk-mark ${state}`} aria-label={name} onClick={onClick}>{inner}</button>;
-  return <span className={`tk-mark ${state}`} aria-hidden="true">{inner}</span>;
+  const cls = `tk-mark ${state}${pop ? ' tk-mark-pop' : ''}`;
+  if (onClick) return <button type="button" className={cls} aria-label={name} onClick={onClick}>{inner}</button>;
+  return <span className={cls} aria-hidden="true">{inner}</span>;
 }
 
 /** The one part bar: each part is as wide as its `grow`, filled `fill` (0 to 1) in the accent; `tall` parts are higher. Named only with `label`. */

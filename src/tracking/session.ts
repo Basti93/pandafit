@@ -10,6 +10,7 @@ import { tidyGroups, contiguousGroups } from '../shared/superset';
 import { warmupRamp, workingWeightOf } from '../shared/warmup';
 import { restAfterSet, restChoices, restExtendS } from '../shared/rest';
 import { applyNextChanges, LIGHTER_PCT, listedIds, type NextChange } from '../shared/changes';
+import { placesOf } from './placement';
 import type { GymExercise, GymWorkout } from '../shared/gym/types';
 
 /** Pure workout logic. No browser, Node or Electron APIs, so the Mac app and the web app share it. */
@@ -18,7 +19,8 @@ import type { GymExercise, GymWorkout } from '../shared/gym/types';
  * `prefillKg`: the weight put in at the start or at the last studio change. A set whose weight still equals `prefillKg` was not edited.
  */
 export type TrackedSet = LoggedSet & { rid: string; repRange?: { start: number; end: number }; plannedReps?: number; plannedKg?: number | null; prefillKg?: number | null };
-export type TrackedExercise = Omit<LoggedExercise, 'sets'> & { rid: string; sets: TrackedSet[]; restS?: number | null; restByUser?: true; timed?: boolean; swappedIn?: true };
+export type TrackedExercise = Omit<LoggedExercise, 'sets'> & { rid: string; sets: TrackedSet[]; restS?: number | null; restByUser?: true; timed?: boolean; swappedIn?: true; placedPre?: number };
+/** `placedPre` (on an exercise): the fatigue of its muscle at the place the coach made the weights for; a move refits against it. */
 /** Stored as the record body. `rest` keeps the timer start, so a reload continues it. Rows have stable ids (`rid`). */
 /** `planStudio`: the studio the plan's weights were made for (a bucket key), kept so a studio change can refit them. */
 export type TrackedWorkout = Omit<LoggedWorkout, 'exercises'> & { exercises: TrackedExercise[]; rest?: { startMs: number; durationS: number } | null; planStudio?: string };
@@ -88,7 +90,7 @@ const typeOf = (id: string, catalog: Exercise[]): string => catalog.find((e) => 
 type Fit = { planStudio?: string; overrides?: LoadStepOverrides };
 
 /** True when the plan was made for another studio than the one chosen (both bucket keys, renames applied). */
-function otherStudio(planStudio: string | undefined, chosen: string, studios: StudioState): boolean {
+export function otherStudio(planStudio: string | undefined, chosen: string, studios: StudioState): boolean {
   return !!planStudio && resolveStudio(planStudio, studios.renames).toLowerCase() !== chosen.toLowerCase();
 }
 
@@ -198,9 +200,12 @@ export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: nu
     const g = o.op === 'lighter' ? plan.exercises.findIndex((x) => x.templateId === o.exerciseId) : -1;
     if (g >= 0) exercises[g] = { ...exercises[g]!, sets: exercises[g]!.sets.map((x, k) => (plan.exercises[g]!.sets[k]?.weightKg === null && x.weightKg !== null ? { ...x, weightKg: lower(o.exerciseId, x.weightKg * (1 - LIGHTER_PCT / 100)) } : x)) };
   }
+  // The place each exercise has now is the place the coach made its weights for.
+  const places = placesOf(exercises, catalog);
+  const placed = exercises.map((e, i) => ({ ...e, placedPre: places[i]! }));
   if (notes.length) next.onSkipped?.(notes);
   const changes = done.map((c) => ({ id: c.id, atMs: nowMs, prior: [], pos: [], after: [] }));
-  return { id, title: plan.name, startMs: nowMs, endMs: null, source: 'pandafit', exercises, rest: null, ...(planStudio ? { planStudio } : {}), ...(changes.length ? { changes } : {}) };
+  return { id, title: plan.name, startMs: nowMs, endMs: null, source: 'pandafit', exercises: placed, rest: null, ...(planStudio ? { planStudio } : {}), ...(changes.length ? { changes } : {}) };
 }
 /**
  * Sets (or, with an empty name, clears) the studio. With `fit` (a workout that started from a plan) the weights follow: exercises

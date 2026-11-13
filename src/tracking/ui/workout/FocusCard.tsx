@@ -12,6 +12,7 @@ import { NumField } from '../SetRow';
 import { exerciseHasNoWeight, lastTimeLine, setTargetHint } from '../setGrid';
 import { BrushTitle, Card, Icon, Kicker, MarkDot, RoundButton, Sheet } from '../kit';
 import { ExerciseMenu } from './ExerciseMenu';
+import { LighterRest } from './LighterRest';
 import { focusExercise, focusSet, markName, setMarks } from './live-view';
 import type { ActiveWorkoutApi } from './useActiveWorkout';
 
@@ -45,7 +46,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
           {lastTime && <p className="tk-maintext">{`Letztes Mal hast du ${lastTime} geschafft.`}</p>}
           {mates.length > 0 && <p className="tk-maintext">{`Im Wechsel mit ${mates.join(' und ')}.`}</p>}
           {exerciseHasNoWeight(e) && <p className="tk-maintext">Das Gewicht wählst du nach Gefühl.</p>}
-          <FocusSet key={e.sets[focus.index]!.rid} a={a} e={e} index={focus.index} barbell={equipment === 'barbell'} range={repRangeOf({ primaryMuscle: own?.primaryMuscle })} />
+          <FocusSet key={e.sets[focus.index]!.rid} a={a} e={e} index={focus.index} equipment={equipment} range={repRangeOf({ primaryMuscle: own?.primaryMuscle })} />
         </>
       ) : (
         <>
@@ -57,7 +58,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
       )}
       <div className="tk-lift-row">
         <div className="tk-lift-marks">
-          {setMarks(e).map((m) => <MarkDot key={m.rid} state={m.state} short={m.short} name={markName(m)} onClick={() => set({ setsRid: e.rid })} />)}
+          {setMarks(e).map((m) => <MarkDot key={m.rid} state={m.state} short={m.short} name={markName(m)} pop={ui.justDone === m.rid} onClick={() => set({ setsRid: e.rid })} />)}
           <MarkDot state="open" short="+" name={`Satz hinzufügen ${e.title}`} onClick={() => { if (a.tapOnce('add')) act((x) => addSet(x, e.rid)); }} />
         </div>
         <div className="tk-lift-tools">
@@ -83,7 +84,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
  * The shown set: its values as two large fields (the same names as in the set table) and "Satz geschafft".
  * Keyed by the set: a draft and an unreadable entry belong to this one set; the next set starts fresh.
  */
-function FocusSet({ a, e, index, barbell, range }: { a: ActiveWorkoutApi; e: TrackedExercise; index: number; barbell: boolean; range?: { min: number; max: number } }) {
+function FocusSet({ a, e, index, equipment, range }: { a: ActiveWorkoutApi; e: TrackedExercise; index: number; equipment: string; range?: { min: number; max: number } }) {
   const { act, tapOnce, confirmShown } = a;
   const s = e.sets[index]!;
   const n = index + 1;
@@ -93,7 +94,7 @@ function FocusSet({ a, e, index, barbell, range }: { a: ActiveWorkoutApi; e: Tra
   const firstWork = e.sets.findIndex((x) => x.type !== 'warmup');
   const target = index === firstWork ? setTargetHint(s, timed, range) : null;
   const kg = s.weightKg ?? shown.weightKg ?? null;
-  const plates = barbell && !timed && kg !== null && kg > 0 ? plateLine(kg) : null;
+  const plates = equipment === 'barbell' && !timed && kg !== null && kg > 0 ? plateLine(kg) : null;
   const edit = (patch: Parameters<typeof editSet>[3]) => act((x) => editSet(x, e.rid, s.rid, patch));
   // Exactly this set (see confirmShown); a double tap never reaches the set that takes its place.
   const confirm = () => { if (tapOnce('confirm')) confirmShown(e.rid, s.rid); };
@@ -108,9 +109,11 @@ function FocusSet({ a, e, index, barbell, range }: { a: ActiveWorkoutApi; e: Tra
           : <NumField big={{ unit: 'Wiederholungen' }} label={`Wiederholungen Satz ${n}`} value={s.reps} placeholder={shown.reps != null ? String(shown.reps) : '–'} integer
             onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(reps) => edit({ reps })} />}
       </div>
+      {s.type === 'warmup' && <p className="muted tk-lift-hint">Die Aufwärmsätze machst du kurz hintereinander. Vor dem ersten Arbeitssatz kommt eine richtige Pause.</p>}
       {target && <p className="muted tk-lift-hint">{target}</p>}
       {plates && <p className="muted tk-lift-hint">{plates}</p>}
       <button type="button" className="primary tk-iconbtn" disabled={bad.w || bad.r} onClick={confirm}><Icon name="haken" size={20} /><span>Satz geschafft</span></button>
+      <LighterRest a={a} e={e} equipment={equipment} />
     </>
   );
 }

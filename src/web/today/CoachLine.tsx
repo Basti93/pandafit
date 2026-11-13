@@ -6,7 +6,7 @@ import type { PandaGesture } from '../../tracking/ui/PandaPortrait';
  * With `onProposal` a waiting proposal adds the main button SeeProposalButton; AskBoButton stays beside it.
  * `pose` is the one pose Bo glides into when Heute opens and keeps until it opens again.
  */
-export function CoachLine({ text, onAsk, pose, onProposal }: { text: string; onAsk?: () => void; pose?: PandaGesture | null; onProposal?: () => void }) {
+export function CoachLine({ text, onAsk, pose, onProposal, still }: { still?: boolean; text: string; onAsk?: () => void; pose?: PandaGesture | null; onProposal?: () => void }) {
   const actions = (onProposal || onAsk) && (
     <>
       {onProposal && <SeeProposalButton onClick={onProposal} />}
@@ -15,7 +15,7 @@ export function CoachLine({ text, onAsk, pose, onProposal }: { text: string; onA
   );
   return (
     <section className="tk-coachline" aria-label="Satz von Bo">
-      <BoBubble place="own" pose={pose} actions={actions}>
+      <BoBubble still={still} place="own" pose={pose} actions={actions}>
         <p className="tk-coachtext">{text}</p>
       </BoBubble>
     </section>

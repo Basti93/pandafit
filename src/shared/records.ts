@@ -6,7 +6,7 @@ export const RECORD_KINDS_SIGNATURE = [...RECORD_KINDS].sort().join(',');
 export type TrackedRecord = { kind: RecordKind; id: string; updatedMs: number; deleted: boolean; body: unknown };
 
 export type LoggedSet = { type: 'warmup' | 'normal' | 'failure' | 'dropset'; weightKg: number | null; reps: number | null; durationS: number | null; doneMs: number | null };
-/** How many more reps were left after an exercise: none (0), some (1–2), plenty (3+); skip means asked and not answered. */
+/** How the last reps of an exercise went; the stored values keep their old meaning (reps left): none (0, the last one barely went up), some (1–2, slower but clean), plenty (3+, as fast as the first). skip means asked and not answered. */
 export type Effort = 'none' | 'some' | 'plenty';
 export type LoggedExercise = { exerciseId: string; title: string; supersetId: number | null; notes: string; sets: LoggedSet[]; effort?: Effort | 'skip' };
 /**

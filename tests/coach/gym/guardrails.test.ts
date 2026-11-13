@@ -490,3 +490,30 @@ describe('capLightWeek', () => {
     expect(out.exercises[0]!.sets).toHaveLength(1);
   });
 });
+
+describe('höchstens zwei hüftdominante Übungen', () => {
+  const ids = ['pf-squat', 'pf-romanian-deadlift', 'pf-hip-thrust', 'pf-glute-bridge'];
+  const templates: ExerciseTemplate[] = ids.map((id) => {
+    const e = EXERCISES.find((c) => c.id === id)!;
+    return { id, title: e.title, type: e.type, primaryMuscle: e.primaryMuscle, equipment: e.equipment };
+  });
+  const ctx: GymContext = { workouts: ids.flatMap((id) => two(id, 20, 10)), templates, nowMs: NOW, catalog: EXERCISES };
+  const row = (id: string) => ex(id, [set(20, 10)]);
+
+  it('lehnt eine dritte hüftdominante Übung ab', () => {
+    const r = checkWorkout(wo([row('pf-romanian-deadlift'), row('pf-hip-thrust'), row('pf-glute-bridge')]), ctx);
+    expect(r.ok).toBe(false);
+    expect(reasonPhrase(r.ok ? '' : r.reason)).toBe('zu viele Übungen für die Hüftstreckung in einem Training');
+    passes(wo([row('pf-squat'), row('pf-romanian-deadlift'), row('pf-hip-thrust')]), ctx);
+  });
+  it('die Kernübungen eines Abschnitts gehen vor der Grenze', () => {
+    const block = { core: ['pf-romanian-deadlift', 'pf-hip-thrust', 'pf-glute-bridge'], exempt: new Set<string>(), light: false, lightCap: null } as unknown as GymContext['block'];
+    passes(wo([row('pf-romanian-deadlift'), row('pf-hip-thrust'), row('pf-glute-bridge')]), { ...ctx, block });
+  });
+  it('die Regel-Auswahl nimmt nach Häufigkeit keine dritte hüftdominante Übung', () => {
+    const r = ruleWorkout({ ...ctx, workouts: ids.flatMap((id) => two(id, 20, 10)) });
+    const hips = r.workout.exercises.filter((e) => e.templateId !== 'pf-squat');
+    expect(hips).toHaveLength(2);
+  });
+});
+

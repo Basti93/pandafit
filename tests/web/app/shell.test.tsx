@@ -168,6 +168,22 @@ describe('web app', () => {
     await waitFor(() => expect(screen.queryByRole('group', { name: 'Kraft' })).toBeNull()); // the Kraft sub-navigation is gone while a workout runs
   });
 
+  it('Training beenden führt mit einem Tipp nach Heute zur Zusammenfassung', async () => {
+    await boot({ account: 'anna', seed: [plan(NOW - 1000)] });
+    fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));
+    fireEvent.click(within(await screen.findByRole('region', { name: 'Nächstes Training' })).getByRole('button', { name: 'Training starten' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Satz geschafft' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Training beenden' }));
+    const card = await screen.findByRole('region', { name: 'Zusammenfassung' });
+    expect(within(card).getByText('Gespeichert')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Heute' })).toBeTruthy();
+    expect([...document.querySelectorAll('.tk-bo')].at(-1)!.textContent).toMatch(/Dehn/); // the finisher proposal
+    expect(screen.queryByRole('button', { name: 'Fertig' })).toBeNull();
+    fireEvent.click(within(card).getByRole('button', { name: 'Schließen' }));
+    expect(screen.queryByRole('region', { name: 'Zusammenfassung' })).toBeNull();
+    expect(screen.getByRole('region', { name: 'Zum Abschluss' })).toBeTruthy();
+  });
+
   it('the tab bar and the profile button step aside while the workout is shown and come back after Verkleinern', async () => {
     await boot({ account: 'anna', seed: [plan(NOW - 1000)] });
     fireEvent.click(await screen.findByRole('button', { name: 'Kraft' }));

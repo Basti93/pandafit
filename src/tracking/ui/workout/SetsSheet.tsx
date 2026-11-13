@@ -2,7 +2,7 @@ import { repRangeOf } from '../../../shared/muscle-targets';
 import { resolveExercise } from '../../exercise-identity';
 import { plateLine } from '../../steps';
 import { addSet, editSet, lastValues, presetOf, removeSet, unconfirmSet } from '../../session';
-import { EFFORT_LABEL } from '../EffortQuestion';
+import { EFFORT_ANSWER } from '../EffortQuestion';
 import { SetHead, SetRow } from '../SetRow';
 import { lastTimeLine, setLabels, setTargetHint } from '../setGrid';
 import { Sheet } from '../kit';
@@ -36,7 +36,7 @@ export function SetsSheet({ a, rid }: { a: ActiveWorkoutApi; rid: string }) {
             onRemove={() => act((x) => removeSet(x, e.rid, s.rid))} />
         ))}
         <button type="button" className="secondary" onClick={() => { if (a.tapOnce('add')) act((x) => addSet(x, e.rid)); }}>Satz hinzufügen</button>
-        {e.effort && e.effort !== 'skip' && <p className="muted tk-sub">Noch möglich: {EFFORT_LABEL[e.effort]}</p>}
+        {e.effort && e.effort !== 'skip' && <p className="muted tk-sub">Letzte Wiederholungen: {EFFORT_ANSWER[e.effort]}.</p>}
       </div>
     </Sheet>
   );

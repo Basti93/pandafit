@@ -94,7 +94,7 @@ try {
   const summary = page.getByRole('region', { name: 'Zusammenfassung' });
   await endSheet.or(summary).first().waitFor();
   if (await endSheet.count() > 0) await endSheet.click();
-  await summary.getByRole('button', { name: 'Fertig' }).click();
+  await summary.getByRole('button', { name: 'Schließen' }).click(); // the summary sits on Heute now
   const nav = (p: Page) => p.getByRole('navigation').getByRole('button', { name: 'Kraft', exact: true });
   const seeWorkout = async (p: Page, timeout = 15_000) => {
     await nav(p).click();

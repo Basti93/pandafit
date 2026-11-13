@@ -1,5 +1,7 @@
 import { bodyOf } from '../../shared/record-bodies';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { readStats, STATS_ID } from '../../shared/stats';
+import { WorkoutSummary, pendingSummary, setPendingSummary } from '../../tracking/ui/WorkoutSummary';
 import { dayMonthLongOfKey, localDayKey, timeLabel, weekdayOfKey } from '../../shared/dates';
 import { addDays, planFor } from '../../shared/week-plan';
 import { bikeOf } from '../../tracking/ui';
@@ -12,7 +14,7 @@ import { planDayLabel, planGymLine } from '../../tracking/ui/plan-text';
 import { tomorrowTarget } from '../today/tomorrow';
 import { MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
-import { complaintsOpenIn, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
+import { complaintsOpenIn, FINISHER_WINDOW_MS, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
 import { mergedActivities } from '../../tracking/ui/done-days';
 import { MobilityOffer } from '../../tracking/ui/MobilityOffer';
 import { useCatalog, useExcluded, usePortRecords } from '../../tracking/ui/hooks';
@@ -61,6 +63,20 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
   const finished = latestFinishedStrength(workouts, now);
   // A workout still open is the one thing to do: no finish card for an earlier one beside it.
   const finisher = finished && !open ? finisherOf({ workout: finished, nowMs: now, today, activities: mergedActivities(activities, workouts).items, complaintsOpen: complaintsOpenIn(complaints) }) : null;
+
+  // A workout just ended on this device: its summary (with the finisher) stands in "Jetzt dran" until it is closed.
+  const [summaryId, setSummaryId] = useState<string | null>(pendingSummary);
+  const statsRecords = usePortRecords(port, 'stats').records;
+  const nextSteps = useMemo(() => {
+    const r = (statsRecords ?? []).find((x) => x.id === STATS_ID && !x.deleted);
+    return (r && readStats(r.body)?.next) || [];
+  }, [statsRecords]);
+  // The summary stays only while it is recent (like the finish card); an unknown, deleted or old one is dropped.
+  const summaryWorkout = summaryId && !open ? (workouts ?? []).filter((r) => !r.deleted && r.id === summaryId).map((r) => bodyOf('workout', r)).find((w) => w.endMs !== null) ?? null : null;
+  const summary = summaryWorkout && summaryWorkout.endMs !== null && now - summaryWorkout.endMs >= 0 && now - summaryWorkout.endMs <= FINISHER_WINDOW_MS ? summaryWorkout : null;
+  const staleSummary = !!summaryId && !open && workouts !== null && !summary;
+  useEffect(() => { if (staleSummary) { setPendingSummary(null); setSummaryId(null); } }, [staleSummary]);
+  const closeSummary = () => { setPendingSummary(null); setSummaryId(null); };
 
   const markDone = async () => {
     if (!session) return;
@@ -116,12 +132,14 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goProfile, goMeal, m
         <p className="tk-dateline">{weekdayOfKey(dayKey)}, {dayMonthLongOfKey(dayKey)}</p>
       </header>
       {week.loaded && <WeekPath days={week.path} kicker="Dein Weg diese Woche" count={week.count} onPick={setSheetDate} />}
-      <CoachLine text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} onProposal={proposals.length > 0 ? goCoach : undefined}
+      <CoachLine still={!!open} text={dayLine(daytexts, account, dayKey).text} onAsk={goCoach} onProposal={proposals.length > 0 ? goCoach : undefined}
         pose={dayReady ? dayClip({ today, dateKey: dayKey, mobility: !!session, finisher: !!finisher, open: !!open, offset: 0 }) ?? 'greet' : undefined} />
-      {/* One "Jetzt dran": an open workout, then the finish card, then the day of the plan. */}
+      {/* One "Jetzt dran": an open workout, then the summary of the one just ended, then the finish card, then the day of the plan. */}
       {open ? (
         <MainCard kicker="Läuft noch" title={bodyOf('workout', open).title} text={`Seit ${sinceText(bodyOf('workout', open).startMs, now)}`} label="Training läuft noch"
           primary={{ label: 'Weitermachen', onClick: () => goTraining('resume') }} more={mobilityRow} />
+      ) : summary ? (
+        <WorkoutSummary workout={summary} next={nextSteps} onDone={closeSummary} nowMs={now} today={today} activities={mergedActivities(activities, workouts).items} complaintsOpen={complaintsOpenIn(complaints)} extra={mobilityRow} />
       ) : finisher ? <Finisher f={finisher} mobility={mobilityRow} />
         : setup ? (
           <MainCard kicker="Jetzt dran" title="Dein Plan" label="Was Pandafit planen kann"
