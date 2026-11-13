@@ -62,7 +62,7 @@ Stand 06.11.2026. Diese Seite ersetzt die parallelen Listen „Auftrag 0–12“
 | ✅ | **Dojo 5 Bos Orte und Logo** | Hinter jeder Pose von Bo steht seine Szene; das App-Logo zeigt Bos Gesicht mit Stirnband und Schweißtropfen, im Dock, auf dem Handy und als Favicon. | Altes Logo (Panda und Maus auf dem Rad) |
 | ✅ | **Kraft-Feedback 10.11.** | Das Gewicht folgt der Stelle im Training (spätere Übungen für denselben Muskel bekommen weniger), der Coach plant dieselbe Ausführung nie doppelt, „Trag das ein“ im Chat übernimmt den offenen Regelvorschlag, Sätze sind immer bearbeitbar, „+“ hängt einen Satz an, das Übungsmenü ist eine Liste. | Training und Chat 10.11.2026 |
 | ✅ | **Monatsrückblick, Härte, Abschnitt** | Bo blickt am Monatsende im Sensai-Chat auf drei Monate zurück, ermutigt, fragt nach Beschwerden und schlägt die nächsten Wochen vor (Stufe A ✅). Härte pro Person „Vorsichtig“, „Normal“, „Fordere mich“ (Stufe B ✅). Optional ein fester Abschnitt mit Kernübungen und leichter Woche, Nachfrage bei Abweichung und Meldung am Ende (Stufe C ✅). | Konzept 2026-11-10-monatsrueckblick-design.md |
-| ⬜ | **Kraft-Feedback 13.11.** | Aufwärmen kurz hintereinander, dann Pause vor dem Arbeitssatz; die Pausenleiste hat eigene Knöpfe; „Satz geschafft“ bestätigt spürbar; weniger Gewicht lässt sich für die restlichen Sätze übernehmen; Verschieben rechnet neu; die Frage zur Reserve fragt nach dem Tempo der letzten Wiederholungen; mitbeteiligte Muskeln zählen zur Vorermüdung; „Training beenden“ beendet sofort; weniger Strom im Training. | Feedback 13.11., Parkplatz |
+| ✅ | **Kraft-Feedback 13.11.** | Aufwärmen kurz hintereinander, dann Pause vor dem Arbeitssatz; die Pausenleiste hat eigene Knöpfe; „Satz geschafft“ bestätigt spürbar; weniger Gewicht lässt sich für die restlichen Sätze übernehmen; Verschieben rechnet neu; die Frage zur Reserve fragt nach dem Tempo der letzten Wiederholungen; mitbeteiligte Muskeln zählen zur Vorermüdung; „Training beenden“ beendet sofort; weniger Strom im Training. | Feedback 13.11., Parkplatz |
 
 Die Reihenfolge folgt dem Nutzen: A–C machen die Kraftdaten verlässlich, D ist die Voraussetzung dafür, dass E–H dem Coach mehr erlauben.
 
@@ -134,6 +134,15 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - Aus Stufe B: Die Frage-Karte zur Härte bleibt angeheftet, auch wenn die Härte schon im Profil gewählt wurde.
   - „Nächstes Mal“-Zeile und Änderungsnotizen (`gym-coach.ts`) kennen die Stelle im Training noch nicht und können ein höheres Gewicht nennen als der Plan.
   - Das Senken nach der Stelle macht eine geplante Pyramide flach.
+- Aus Kraft-Feedback 13.11.:
+  - Der Satz „Nächstes Mal …“ kennt die Stelle der Übung im nächsten Training nicht. Plant die KI anders, kann das nächste Training abweichen.
+  - Beim Verschieben werden Aufwärmsätze nicht neu gerechnet, und nach einem Studiowechsel rechnet das Verschieben gar nicht neu.
+  - Übungen nur aus Hevy (ohne Katalogeintrag) werden beim Verschieben nicht neu gerechnet und ermüden andere nicht.
+  - Nach „Übernehmen“ (weniger Gewicht) gelten die Sätze als selbst eingetippt. Ein zweites Senken wird nicht mehr angeboten.
+  - Bo bewegt sich auf Heute ohne Ende, solange kein Training offen ist.
+  - Den Anteil der mitbeteiligten Muskeln (0,5) pro Person aus eigenen Daten lernen.
+  - Die Kraft-Pausenleiste wurde nicht auf 360 px Breite angesehen, sie ist nur per CSS-Umbruch gelöst.
+  - Kleinkram aus den Prüfungen: veraltete Kommentare in `duration.ts` und `rest.ts`, eine Hilfsfunktion für die wiederholte `muscleOf`-Zeile, `muscleOfFrom` ist ungenutzt, und `hipLimit` erkennt Kernübungen nur über die ID.
 - Aus Monatsrückblick Stufe C:
   - Härte pro betroffener Übung statt fürs ganze Training, sobald Beschwerden Muskeln oder Übungen kennen.
   - Dauerhafter Tausch einer Kernübung durch die Person mitten im Abschnitt.
