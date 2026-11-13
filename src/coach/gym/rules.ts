@@ -3,7 +3,7 @@ import { RECENT_DAYS } from './limits';
 import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
 import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork } from './history';
 import { isExcluded } from '../../shared/excluded';
-import { checkWorkout, executionKeyOf, hipLimit, isCoreExercise, isHipDominant, placedSuggestion, type GymContext } from './guardrails';
+import { checkWorkout, executionKeyOf, isCoreExercise, placedSuggestion, type GymContext } from './guardrails';
 import { hardSetsOf, musclesOfFrom, preFatigue } from './pre-fatigue';
 import { warmupRamp, workingWeightOf } from '../../shared/warmup';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
@@ -71,10 +71,6 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
   const mustHave = (ctx.block?.core ?? []).filter((c) => !ctx.block!.exempt.has(c))
     .flatMap((c) => { const t = ctx.templates.find((x) => allowed(x) && isCoreExercise({ templateId: x.id, title: x.title }, c, ctx)); return t ? [t] : []; });
   for (const t of mustHave) { const key = executionKeyOf({ templateId: t.id, title: t.title }, ctx); if (key !== null) keys.add(key); }
-  // A third hip-dominant exercise is skipped like a double execution; the core exercises of a section count first and may exceed the limit.
-  const hipOf = (t: ExerciseTemplate): boolean => isHipDominant({ templateId: t.id, title: t.title }, ctx);
-  let hips = mustHave.filter(hipOf).length;
-  const hipMax = hipLimit(ctx);
   const frequent = [...count.keys()]
     .map((id) => byId.get(id))
     .filter((t): t is ExerciseTemplate => !!t && allowed(t) && !mustHave.some((m) => m.id === t.id))
@@ -82,7 +78,6 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
     .filter((t) => {
       const key = executionKeyOf({ templateId: t.id, title: t.title }, ctx);
       if (key !== null && keys.has(key)) return false;
-      if (hipOf(t)) { if (hips >= hipMax) return false; hips++; }
       if (key !== null) keys.add(key);
       return true;
     });
