@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { chatThread, proposalAnswer, waitingMessage, MAX_CHAT_TEXT, type ChatMessage } from '../../shared/chat';
 import { mondayOf, type WeekProposal } from '../../shared/week-plan';
-import { dayHeading, dayMonthOfKey, localDayKey } from '../../shared/dates';
+import { dayHeading, dayMonthOfKey, localDayKey, timeLabel } from '../../shared/dates';
 import type { TrackingPort } from '../ports';
 import { weekUndoRefusal } from '../week-take';
 import { UNDO } from '../../shared/wording';
@@ -15,7 +15,7 @@ import { useOpenProposals, useProposalActions, type WeekEntry } from './proposal
 import { ChatBubble, ChatNote } from './ChatBubble';
 import { driftAnswer, storedWeek, weekAnswer } from './chat-open';
 import { useCatalog, usePortRecords } from './hooks';
-import { Icon, RowCard, Sheet } from './kit';
+import { BoBubble, Bubble, Icon, RowCard, Sheet } from './kit';
 import { BO, BO_LINES } from './bo';
 import { PandaPortrait } from './PandaPortrait';
 import { dateLabel } from './labels';
@@ -51,7 +51,12 @@ function ProposalLine({ m, answer, undoWhy, past, loading, onUndo }: { m: WeekEn
  * The first open proposal stands in its bubble with Übernehmen and Nein danke; the others wait behind one strip above the input.
  * Answered ones are one line in the history. Proposals change nothing until the rider takes them.
  */
-export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; now: () => number; newId: () => string; onClose: () => void }) {
+/** A question from Bo's plan, shown as his message; the reply is its answer (`answer` is false when it could not be sent). */
+export type BoQuestion = { question: string; answer: (text: string) => Promise<boolean> };
+
+export function CoachChat({ port, now, newId, onClose, ask }: { port: TrackingPort; now: () => number; newId: () => string; onClose: () => void; ask?: BoQuestion }) {
+  /** The reply sent for the question, once it went out. */
+  const [replied, setReplied] = useState<string | null>(null);
   const chat = usePortRecords(port, 'chat').all;
   const plans = usePortRecords(port, 'weekplan').all;
   const changeRecs = usePortRecords(port, 'change').all;
@@ -101,6 +106,11 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
     const t = text.trim().slice(0, MAX_CHAT_TEXT);
     if (!t) return;
     setError(null);
+    if (ask && replied === null) {
+      const ok = await ask.answer(t).catch(() => false);
+      if (ok) { setReplied(t); setText(''); } else setError('Das ging gerade nicht. Versuch es gleich nochmal.');
+      return;
+    }
     const m: ChatMessage = { role: 'rider', text: t, atMs: now() };
     try { await port.put({ kind: 'chat', id: newId(), updatedMs: now(), deleted: false, body: m }); setText(''); } catch { setError('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.'); }
   };
@@ -114,13 +124,13 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
     <>
       {strip}
       {(error ?? undoError) && <p role="alert" className="tk-note">{error ?? undoError}</p>}
-      {text === '' && (
+      {text === '' && !ask && (
         <div className="tk-chips" aria-label="Das kannst du Bo sagen">
           {BO_LINES.suggestions.map((s) => <button key={s} type="button" onClick={() => setText(s)}>{s}</button>)}
         </div>
       )}
       <form className="tk-chat-form" onSubmit={(e) => { e.preventDefault(); void send(); }}>
-        <textarea aria-label="Nachricht an Bo" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} placeholder="Schreib Bo, was ansteht" />
+        <textarea aria-label="Nachricht an Bo" rows={1} value={text} maxLength={MAX_CHAT_TEXT} onChange={(e) => setText(e.target.value)} onFocus={() => setTyping(true)} onBlur={() => setTyping(false)} placeholder={ask && replied === null ? 'Deine Antwort an Bo' : 'Schreib Bo, was ansteht'} />
         <button type="submit" className="tk-send primary" aria-label="Senden" disabled={!text.trim()}><Icon name="senden" size={22} /></button>
       </form>
     </>
@@ -150,6 +160,13 @@ export function CoachChat({ port, now, newId, onClose }: { port: TrackingPort; n
           </Fragment>
         ))}
         {waiting && <ChatNote>{now() - waiting.atMs > STALE_MS ? BO_LINES.stale : now() - waiting.atMs > SLOW_MS ? BO_LINES.slow : BO_LINES.sent}</ChatNote>}
+        {ask && (
+          <>
+            <BoBubble portrait="mini" foot={<time>{timeLabel(now())}</time>}><p className="tk-msgtext">{ask.question}</p></BoBubble>
+            {replied !== null && <Bubble tail="right" foot={<time>{timeLabel(now())}</time>}><p className="tk-msgtext">{replied}</p></Bubble>}
+            {replied !== null && <BoBubble portrait="mini"><p className="tk-msgtext">Danke dir. Bo macht den Plan gleich neu.</p></BoBubble>}
+          </>
+        )}
         <div ref={endRef} />
       </section>
       {showMore && <ProposalsSheet port={port} now={now} newId={newId} entries={rest} onClose={() => setMoreOpen(false)} />}

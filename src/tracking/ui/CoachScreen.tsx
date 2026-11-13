@@ -3,7 +3,7 @@ import { chatThread, waitingMessage } from '../../shared/chat';
 import { localDayKey } from '../../shared/dates';
 import type { TrackingPort } from '../ports';
 import { useWeekDays } from './week-days';
-import { CoachChat } from './CoachChat';
+import { CoachChat, type BoQuestion } from './CoachChat';
 import { GoalSheet, goalSentence, RulesSheet } from './GoalRules';
 import { ActivityHistory } from './ActivityHistory';
 import { activityText, mergedActivities, planRows, type DayRow } from './done-days';
@@ -24,7 +24,7 @@ import { TogetherPage, togetherOf } from './TogetherScreen';
 
 /** Woche is the week: the week card, the days (Erledigt, Heute, Kommt noch), health, Bo's bubble and three quiet tiles. */
 /** `openChat`: the page opens with the chat already open ("Bo fragen" on Heute leads straight there); `onChatClosed` then runs when that chat closes, to go back where it came from. */
-export function CoachScreen({ port, now, newId, openChat = false, onChatClosed }: { port: TrackingPort; now: () => number; newId: () => string; openChat?: boolean; onChatClosed?: () => void }) {
+export function CoachScreen({ port, now, newId, openChat = false, onChatClosed, ask }: { port: TrackingPort; now: () => number; newId: () => string; openChat?: boolean; onChatClosed?: () => void; /** A question of Bo's plan to answer in the chat: shown as Bo's message, and the reply goes to `answer` instead of the chat. */ ask?: BoQuestion }) {
   const chat = usePortRecords(port, 'chat').all;
   const activityRecords = usePortRecords(port, 'activities').all;
   const workoutRecords = usePortRecords(port, 'workout').all;
@@ -154,7 +154,7 @@ export function CoachScreen({ port, now, newId, openChat = false, onChatClosed }
       )}
       {sheet === 'history' && <ActivityHistory port={port} now={now} onClose={() => setSheet('look')} />}
       {sheet === 'proposals' && <ProposalsSheet port={port} now={now} newId={newId} entries={proposals} onClose={() => setSheet(null)} />}
-      {sheet === 'chat' && <CoachChat port={port} now={now} newId={newId} onClose={() => { setSheet(null); if (openChat) onChatClosed?.(); }} />}
+      {sheet === 'chat' && <CoachChat port={port} now={now} newId={newId} ask={ask} onClose={() => { setSheet(null); if (openChat) onChatClosed?.(); }} />}
     </div>
   );
 }
