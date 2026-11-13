@@ -11,7 +11,7 @@ const DAY = 86_400_000;
 const THURSDAY = new Date(2026, 10, 12, 12).getTime(); // Mon 9.11. to Sun 15.11.
 const byId = (id: string) => EXERCISES.find((e) => e.id === id)!;
 const template = (id: string): ExerciseTemplate => ({ id, title: byId(id).title, type: byId(id).type, primaryMuscle: byId(id).primaryMuscle, equipment: byId(id).equipment });
-const IDS = ['pf-lateral-raise', 'pf-lateral-raise-cable', 'pf-bench-press', 'pf-incline-bench-press', 'pf-chest-press-machine', 'pf-chest-fly-db', 'pf-pec-deck', 'pf-cable-crossover', 'pf-shoulder-press-db'];
+const IDS = ['pf-shoulder-press-machine', 'pf-lateral-raise', 'pf-lateral-raise-cable', 'pf-bench-press', 'pf-incline-bench-press', 'pf-chest-press-machine', 'pf-chest-fly-db', 'pf-pec-deck', 'pf-cable-crossover', 'pf-shoulder-press-db'];
 const done = (id: string, at: number): StrengthWorkout => ({
   id: `${id}@${at}`, title: 'Day', startMs: at, durationS: 3600,
   exercises: [{ title: byId(id).title, templateId: id, sets: 2, reps: 0, volumeKg: 0, workSets: [{ type: 'normal', weightKg: null, reps: 10 }, { type: 'normal', weightKg: null, reps: 10 }] }],
@@ -52,6 +52,10 @@ describe('Isolationsarbeit gebündelt', () => {
   it('begrenzt eine Grundübung nicht', () => {
     const bench = [done('pf-bench-press', THURSDAY - 3 * DAY), done('pf-incline-bench-press', THURSDAY - 2 * DAY)];
     expect(checkWorkout(wo(row('pf-bench-press', 3)), ctxOf(bench)).ok).toBe(true);
+  });
+  it('erlaubt Schulterpresse an der Maschine im dritten Training der Woche', () => {
+    const presses = [done('pf-shoulder-press-machine', THURSDAY - 3 * DAY), done('pf-shoulder-press-machine', THURSDAY - 2 * DAY)];
+    expect(checkWorkout(wo(row('pf-shoulder-press-machine', 3)), ctxOf(presses)).ok).toBe(true);
   });
   it('begrenzt eine Übung ohne Katalogeintrag nicht', () => {
     expect(checkWorkout(wo(row('pf-lateral-raise', 3)), ctxOf(twice, THURSDAY, { catalog: [] })).ok).toBe(true);
