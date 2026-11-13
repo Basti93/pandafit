@@ -303,7 +303,7 @@ describe('the focus card', () => {
     fireEvent.click(within(q).getByRole('button', { name: 'Langsamer, aber sauber' }));
     await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('some'));
     expect(screen.queryByRole('group', { name })).toBeNull();
-    expect(screen.getAllByText(/^Nächstes Mal/)).toHaveLength(1);
+    expect(screen.getByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeTruthy();
     const sheet = await setsSheet(1);
     expect(within(sheet).getByText('Letzte Wiederholungen: Langsamer, aber sauber.')).toBeTruthy();
     fireEvent.click(within(sheet).getByRole('button', { name: 'Schließen' }));
@@ -312,7 +312,7 @@ describe('the focus card', () => {
     await later();
     doneNow();
     await waitFor(() => expect(sets(map, 0)[1]!.doneMs).toBe(100_000));
-    expect(screen.queryByText(/^Nächstes Mal/)).toBeNull();
+    expect(screen.queryByText(/^Danke! Das fließt/)).toBeNull();
   });
 
   describe('die restlichen Sätze leichter', () => {

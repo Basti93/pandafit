@@ -43,8 +43,6 @@ export type UiState = {
   lighterNo: ReadonlySet<string>;
   /** The adopted lighter weights of an exercise, with the old ones: shown with "Rückgängig" until the next confirmed set. */
   lighterUndo: { rid: string; prior: { rid: string; kg: number }[] } | null;
-  /** The exercise whose effort question is asked again ("Doch anders"). */
-  reask: string | null;
 };
 
 type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'askCoach' };
@@ -75,7 +73,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
-    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, lighterNo: new Set(), lighterUndo: null, reask: null,
+    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, lighterNo: new Set(), lighterUndo: null,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
