@@ -66,6 +66,24 @@ describe('Heute in the Dojo', () => {
     expect(screen.queryByRole('button', { name: 'Tag vor' })).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: 'Heute' }).className).toBe('tk-sr');
   });
+  describe('the line under the workout name', () => {
+    const noted = rec('weekplan', '2026-11-02', {
+      weekStart: '2026-11-02', fromMessage: 'c', acceptedMs: NOW,
+      days: weekDates('2026-11-02').map((date) => ({ date, sport: date === '2026-11-04' ? 'gym' : 'rest', hardness: 'moderate', fixed: false, ...(date === '2026-11-04' ? { note: 'Beine und Rumpf' } : {}) })),
+    });
+    const planOf = (atMs: number) => rec('plan', 'current', { ...(planRecord.body as object), atMs });
+    it('never shows the note of another day beside the plan', async () => {
+      await boot([noted, planOf(NOW - DAY)]);
+      const card = await screen.findByRole('region', { name: /^Heute/ });
+      expect(card.textContent).toContain('Krafttraining, etwa');
+      expect(card.textContent).not.toContain('Beine und Rumpf');
+    });
+    it('shows the note of the same day', async () => {
+      await boot([noted, planOf(NOW - 1000)]);
+      const card = await screen.findByRole('region', { name: /^Heute/ });
+      expect(card.textContent).toContain('Beine und Rumpf');
+    });
+  });
   it('a dot of the week path opens that day', async () => {
     await boot([weekplanWithGymToday, yesterdayActivities]);
     fireEvent.click(await screen.findByRole('button', { name: /^Dienstag/ }));
