@@ -1,13 +1,15 @@
 import { contiguousGroups } from '../../shared/superset';
 import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from '../../shared/gym/types';
-import { GENTLE_FAILURE_SETS, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
+import { GENTLE_FAILURE_SETS, ISOLATION_SESSIONS_PER_WEEK, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SESSION_FRACTIONAL_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
 import type { Push } from '../../shared/personal';
 import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan, type Suggestion } from './history';
 import { hardSetsOf, musclesOfFrom, preFatigue } from './pre-fatigue';
 import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
 import { studioName, type Renames } from '../../shared/studio';
-import { repRangeOf } from '../../shared/muscle-targets';
+import { MUSCLE_TARGETS, repRangeOf } from '../../shared/muscle-targets';
+import type { BalanceExercise } from '../../shared/muscle-balance';
+import { isolationGroupOf, isolationSessionsThisWeek, sessionSetsByGroup } from '../../shared/gym/session-limits';
 import { isExcluded, resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
 import { EXERCISES, type Exercise } from '../../shared/exercises';
@@ -164,6 +166,41 @@ function checkBlock(exercises: GymExercise[], all: GymSet[], ctx: GymContext, bl
   if (block.lightCap !== null && hardSetsOf(all) > block.lightCap) no('zu viel für die leichte Woche');
 }
 
+/** The groups that already got isolation work in `ISOLATION_SESSIONS_PER_WEEK` done workouts of this calendar week. */
+export const saturatedIsolationGroups = (ctx: GymContext): Set<string> =>
+  new Set(Object.entries(isolationSessionsThisWeek(ctx.workouts, ctx.nowMs, ctx.catalog ?? [], ctx.links)).filter(([, n]) => n >= ISOLATION_SESSIONS_PER_WEEK).map(([g]) => g));
+
+/** Whether an exercise is a core exercise of today's section. */
+export const isCoreOfSection = (e: { templateId: string; title: string }, ctx: GymContext): boolean =>
+  (ctx.block?.core ?? []).some((c) => isCoreExercise(e, c, ctx));
+
+/** The muscles of a planned exercise for the volume count: its catalog entry, else the main muscle of its Hevy template. */
+export function balanceEntryOf(e: { templateId: string; title: string }, ctx: GymContext): BalanceExercise | null {
+  const own = resolveCatalogEntry(e, ctx.catalog ?? [], ctx.links);
+  if (own) return own;
+  const m = musclesOfFrom(ctx.templates, ctx.catalog ?? [])(e.templateId);
+  return m?.primaryMuscle ? { primaryMuscle: m.primaryMuscle } : null;
+}
+
+/**
+ * The two volume rules. Per workout, no muscle group takes more fractional sets than the limit (a plan of core exercises is not
+ * exempt, the AI or the rule plan has to find room). Per week, an isolation exercise of a group that already had isolation work
+ * in two done workouts of this week is refused, unless it is a core exercise of the section: the core wins.
+ */
+function checkVolume(exercises: GymExercise[], ctx: GymContext): void {
+  const items = exercises.map((e) => ({ exercise: balanceEntryOf(e, ctx), sets: hardSetsOf(e.sets) }));
+  for (const [group, sets] of Object.entries(sessionSetsByGroup(items))) {
+    if (sets > MAX_SESSION_FRACTIONAL_SETS) no(`${MUSCLE_TARGETS[group as keyof typeof MUSCLE_TARGETS].label}: mehr als ${MAX_SESSION_FRACTIONAL_SETS} Sätze für einen Muskel in einem Training`);
+  }
+  const catalog = ctx.catalog ?? [];
+  const full = saturatedIsolationGroups(ctx);
+  if (full.size === 0) return;
+  for (const e of exercises) {
+    const g = isolationGroupOf(resolveCatalogEntry(e, catalog, ctx.links));
+    if (g !== null && full.has(g) && !isCoreOfSection(e, ctx)) no(`${e.title}: Isolationsarbeit für ${MUSCLE_TARGETS[g].label} schon in ${ISOLATION_SESSIONS_PER_WEEK} Trainings dieser Woche`);
+  }
+}
+
 /**
  * Hard limits for an AI workout. Anything outside them is refused whole. Only weights are fitted: snapped to reachable steps and
  * lowered to what the place of the exercise in the workout allows.
@@ -189,6 +226,7 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     if (all.filter((s) => s.type === 'failure').length > MAX_FAILURE_SETS) return no(`mehr als ${MAX_FAILURE_SETS} Sätze bis zum Versagen`);
     if (exercises.filter((e) => isWidowmaker(e.notes)).length > MAX_WIDOWMAKERS) return no(`mehr als ${MAX_WIDOWMAKERS} Widowmaker`);
     if (ctx.block) checkBlock(exercises, all, ctx, ctx.block);
+    checkVolume(exercises, ctx);
     const ids = exercises.map((e) => e.supersetId).filter((v): v is number => v !== null);
     for (const id of new Set(ids)) if (ids.filter((v) => v === id).length < 2) return no('Superset mit nur einer Übung');
     const avail = availableExercises(ctx.workouts, ctx.nowMs);
@@ -224,6 +262,8 @@ const REASON_PHRASES: [RegExp, string][] = [
   [/Kernübung fehlt/, 'eine Kernübung des Abschnitts fehlt'],
   [/leichte Woche/, 'mehr, als die leichte Woche tragen soll'],
   [/Versagen passt nicht zur Härte/, 'Sätze bis zum Versagen, obwohl du vorsichtig trainierst'],
+  [/Sätze für einen Muskel/, 'mehr Sätze für einen Muskel, als in ein Training passen'],
+  [/Isolationsarbeit/, 'Isolationsübungen für einen Muskel, der diese Woche schon genug davon hatte'],
   [/mehr als \d+ Sätze bis zum Versagen/, 'zu viele Sätze bis zum Versagen'],
   [/mehr als \d+ Sätze/, 'zu viele Sätze'],
   [/Widowmaker/, 'ein Widowmaker, der nicht passt'],

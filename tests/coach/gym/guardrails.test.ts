@@ -28,6 +28,8 @@ const CTX: GymContext = { workouts: [...two('sq', 60), ...two('bp', 80), ...two(
 const set = (weightKg: number | null, reps: number | null, type = 'normal') => ({ type, weightKg, reps });
 const ex = (templateId: unknown, sets: unknown[], extra: Record<string, unknown> = {}) => ({ templateId, title: 'x', restS: 90, supersetId: null, notes: '', sets, ...extra });
 const wo = (exercises: unknown) => ({ name: 'Test', exercises });
+/** `n` work sets spread over several muscles, so the limit per muscle and workout (11) does not get in the way of the set limit. */
+const spread = (n: number, warm: unknown[] = []) => [ex('cp', [...warm, ...Array.from({ length: n - 25 }, () => set(40, 8))]), ...['lp', 'lr', 'cu', 'sp', 'hc'].map((id) => ex(id, Array.from({ length: 5 }, () => set(null, 8))))];
 const refused = (raw: unknown, ctx = CTX) => { const r = checkWorkout(raw, ctx); expect(r.ok).toBe(false); return r.ok ? '' : r.reason; };
 const passes = (raw: unknown, ctx = CTX) => { const r = checkWorkout(raw, ctx); if (!r.ok) throw new Error(r.reason); return r.workout; };
 
@@ -51,16 +53,16 @@ describe('checkWorkout', () => {
     const ten = ['cp', 'lp', 'lr', 'cu', 'sp', 'hc', 'cp', 'lp', 'lr', 'cu'].map((id) => ex(id, [set(null, 8)]));
     passes(wo(ten));
     refused(wo([...ten, ex('sp', [set(null, 8)])]));
-    passes(wo([ex('cp', Array.from({ length: 30 }, () => set(40, 8)))]));
-    refused(wo([ex('cp', Array.from({ length: 31 }, () => set(40, 8)))]));
+    passes(wo(spread(30)));
+    refused(wo(spread(31)));
     refused(wo([ex('cp', Array.from({ length: 15 }, () => set(40, 8))), ex('lp', Array.from({ length: 16 }, () => set(null, 8)))]));
     refused(wo([]));
     refused(wo([ex('cp', [])]));
   });
   it('warm-up sets do not count toward the set limit', () => {
     const warm = Array.from({ length: 4 }, () => set(20, 5, 'warmup'));
-    passes(wo([ex('cp', [...warm, ...Array.from({ length: 30 }, () => set(40, 8))])]));
-    refused(wo([ex('cp', [...warm, ...Array.from({ length: 31 }, () => set(40, 8))])]));
+    passes(wo(spread(30, warm)));
+    refused(wo(spread(31, warm)));
   });
   it('the plan keeps all its work sets whatever ramps it adds', () => {
     const plan = ruleWorkout(CTX).workout;
@@ -454,7 +456,7 @@ describe('Abschnitt', () => {
     expect(refused(wo([ex('cp', [set(40, 9), set(40, 9, 'failure')])]), ctx)).toBe('zu viel für die leichte Woche');
   });
   it('ohne Kappe gibt es in der leichten Woche keine Obergrenze für Sätze', () => {
-    passes(wo([ex('cp', Array.from({ length: 12 }, () => set(40, 9)))]), { ...CTX, block: block({ core: [], light: true, lightCap: null }) });
+    passes(wo([ex('cp', Array.from({ length: 6 }, () => set(40, 9))), ex('lp', Array.from({ length: 6 }, () => set(null, 9)))]), { ...CTX, block: block({ core: [], light: true, lightCap: null }) });
   });
   it('bleibt vorsichtig im Abschnitt', () => {
     const ctx = { ...CTX, push: 'gentle' as const, block: block({ core: [] }) };
