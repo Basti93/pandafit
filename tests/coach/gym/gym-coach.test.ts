@@ -153,7 +153,7 @@ describe('planning', () => {
     expect(next.reason).toMatch(/^Mein Plan passte nicht zu deinen Grenzen/);
   });
 
-  it('a new real workout replans once and writes a short note with at most two questions', async () => {
+  it('a new real workout replans once and writes a short note with at most one question', async () => {
     const h = harness();
     await h.coach.tick(ID);
     h.workouts = [...h.workouts, wk(1, 'w1', [{ t: 'cp', kg: 40, reps: 9 }]), wk(-2, 'future', [{ t: 'cp', kg: 40, reps: 9 }])];
@@ -163,7 +163,7 @@ describe('planning', () => {
     const note = h.coach.state(ID).lastNote;
     expect(note?.workoutId).toBe('w1');
     expect(note?.text).toBe('Schön gemacht.');
-    expect(note?.questions).toHaveLength(2);
+    expect(note?.questions).toEqual(['Wie war die Schulter?']);
     await h.coach.tick(ID);
     expect(h.calls).toHaveLength(2);
   });

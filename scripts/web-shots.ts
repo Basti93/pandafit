@@ -488,6 +488,15 @@ async function main() {
   await page.waitForTimeout(1500);
 
   await shot('heute');
+  await step('heute-frage', async () => {
+    // The tab bar is fixed over the full-page capture; the question is photographed on its own, with the card around it.
+    if (filter && !'heute-frage'.includes(filter)) return;
+    const q = page.getByRole('group', { name: 'Fragen von Bo' });
+    await q.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(350);
+    await page.screenshot({ path: join(out, 'heute-frage.png') });
+    taken.push('heute-frage'); console.log('shot heute-frage');
+  });
   await step('heute-gestern', async () => { await page.getByRole('button', { name: 'Tag zurück' }).click(); await page.getByRole('heading', { level: 1, name: 'Gestern' }).waitFor({ timeout: 3000 }); await shot('heute-gestern'); await page.getByRole('button', { name: 'Tag vor' }).click(); });
   await step('heute-morgen', async () => { await page.getByRole('button', { name: 'Tag vor' }).click(); await page.getByRole('heading', { level: 1, name: 'Morgen' }).waitFor({ timeout: 3000 }); await shot('heute-morgen'); await page.getByRole('button', { name: 'Tag zurück' }).click(); await page.getByRole('heading', { level: 1, name: 'Heute' }).waitFor({ timeout: 3000 }); });
   await step('heute-essen', async () => { await page.getByRole('region', { name: 'Essen heute' }).waitFor({ timeout: 3000 }); await shot('heute-essen'); });
@@ -502,7 +511,7 @@ async function main() {
     await page.getByRole('button', { name: 'Schwerer' }).click();
     await page.waitForTimeout(250);
     await shot('fahrt-laeuft-gesendet');
-    await page.getByRole('button', { name: 'Überspringen' }).click();
+    await page.getByRole('button', { name: 'Überspringen', exact: true }).click();
     await shot('fahrt-laeuft-ueberspringen');
     await page.getByRole('button', { name: 'Abbrechen' }).click();
     liveOn = false;

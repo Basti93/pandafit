@@ -12,7 +12,7 @@ import { useWeekDays } from '../../tracking/ui/week-days';
 import { SPORT_ICON } from '../../tracking/ui/week-path';
 import { planDayLabel, planGymLine } from '../../tracking/ui/plan-text';
 import { tomorrowTarget } from '../today/tomorrow';
-import { MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
+import { BoBubble, MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
 import { complaintsOpenIn, FINISHER_WINDOW_MS, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
 import { mergedActivities } from '../../tracking/ui/done-days';
@@ -96,7 +96,6 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goQuestion, skipQues
   const gym: GymPart = {
     name: p?.workout?.name ?? null,
     line: gymLineText,
-    day: p ? localDayKey(p.atMs) : undefined,
     start: () => goTraining(),
     view: gymLineText !== null ? () => goTraining('plan') : undefined,
     notes: p && (
@@ -104,14 +103,14 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goQuestion, skipQues
         {adjusted && <p className="muted">Angepasst</p>}
         {planIsStale(p.atMs, now) && <p className="muted">Der Plan ist schon etwas älter. Bo macht einen neuen, sobald er dazu kommt.</p>}
         {openQuestions.length > 0 && (
-          <ul className="tk-boquestions" aria-label="Fragen von Bo">
+          <div role="group" aria-label="Fragen von Bo">
             {openQuestions.map((q) => (
-              <li key={q}>
-                <button type="button" className="link" onClick={() => (goQuestion ?? goCoach)(q)}>{q}</button>{' '}
+              <BoBubble key={q} portrait="mini" actions={<>
+                <button type="button" className="secondary" aria-label={`Antworten: ${q}`} onClick={() => (goQuestion ?? goCoach)(q)}>Antworten</button>
                 <button type="button" className="link muted" aria-label={`Überspringen: ${q}`} onClick={() => skip(q)}>Überspringen</button>
-              </li>
+              </>}>{q}</BoBubble>
             ))}
-          </ul>
+          </div>
         )}
         {skipFailed && <p role="alert" className="tk-note">Das ging gerade nicht. Versuch es gleich nochmal.</p>}
         {exercises === 0 && p.reason && <p className="muted">{p.reason}</p>}

@@ -34,22 +34,22 @@ describe('Bo\'s questions on Heute', () => {
   it('answering a question in the chat sends gym-answer and the question leaves Heute', async () => {
     const { sent, openLive } = coachSockets();
     await boot({ account: 'anna', seed: [weekplan, withQuestion()], openLive });
-    fireEvent.click(await screen.findByRole('button', { name: QUESTION }));
+    fireEvent.click(await screen.findByRole('button', { name: `Antworten: ${QUESTION}` }));
     const chat = await screen.findByRole('dialog');
     expect(within(chat).getByText(QUESTION)).toBeTruthy();
     fireEvent.change(within(chat).getByLabelText('Nachricht an Bo'), { target: { value: 'Gut, kaum Schmerzen.' } });
     await act(async () => { fireEvent.click(within(chat).getByRole('button', { name: 'Senden' })); });
     await waitFor(() => expect(gymFrames(sent)).toEqual([{ type: 'gym-answer', question: QUESTION, text: 'Gut, kaum Schmerzen.', profileId: 'pa' }]));
     fireEvent.keyDown(chat, { key: 'Escape' });
-    await waitFor(() => expect(screen.queryByRole('button', { name: QUESTION })).toBeNull());
+    await waitFor(() => expect(screen.queryByText(QUESTION)).toBeNull());
   });
 
   it('Überspringen sends gym-skip-question and the question leaves Heute', async () => {
     const { sent, openLive } = coachSockets();
     await boot({ account: 'anna', seed: [weekplan, withQuestion()], openLive });
-    await screen.findByRole('button', { name: QUESTION });
+    await screen.findByText(QUESTION);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: `Überspringen: ${QUESTION}` })); });
     await waitFor(() => expect(gymFrames(sent)).toEqual([{ type: 'gym-skip-question', question: QUESTION, profileId: 'pa' }]));
-    await waitFor(() => expect(screen.queryByRole('button', { name: QUESTION })).toBeNull());
+    await waitFor(() => expect(screen.queryByText(QUESTION)).toBeNull());
   });
 });
