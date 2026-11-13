@@ -533,10 +533,10 @@
 .tk-mark:is(button)::after { content: ''; position: absolute; inset: -8px; }
 .tk-stand { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .tk-stand-marks { display: flex; gap: var(--space-2); flex: none; }
-/* The one slim timer card (kit TimerCard): the text is the skip button, a secondary button beside it. */
-.tk-timercard { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); border-radius: var(--radius-card); background: var(--card); border: 1px solid var(--line); box-shadow: 0 4px 14px var(--shadow-lift); }
+/* The one slim timer card (kit TimerCard): the text is plain, two secondary buttons beside it; on a narrow phone they wrap into a second row. */
+.tk-timercard { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); border-radius: var(--radius-card); background: var(--card); border: 1px solid var(--line); box-shadow: 0 4px 14px var(--shadow-lift); }
 .tk-timercard > button.secondary { flex: none; }
-.tk-screen button.tk-rest-main { flex: 1; min-width: 0; min-height: 44px; padding: 0; background: transparent; color: inherit; border: 0; font-weight: 400; font-size: var(--text-m); font-variant-numeric: tabular-nums; text-align: left; }
+.tk-screen .tk-rest-main { flex: 1 1 8rem; min-width: 0; display: flex; align-items: center; min-height: 44px; padding: 0; color: inherit; font-weight: 400; font-size: var(--text-m); font-variant-numeric: tabular-nums; text-align: left; }
 /* The one part bar (kit Band): parts as wide as their share, filled in the accent. */
 .tk-band { display: flex; align-items: flex-end; gap: 3px; height: 1rem; }
 .tk-band > span { display: block; min-width: 4px; height: 6px; border-radius: 3px; background: var(--field-line); overflow: hidden; }

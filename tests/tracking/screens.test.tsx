@@ -69,7 +69,7 @@ test('the rest end is armed once with the end time, and skipping or unmounting c
   fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
   await screen.findByRole('timer', { name: 'Satzpause' });
   expect(restAlarm.mock.calls).toEqual([[160_000]]);
-  fireEvent.click(screen.getByRole('button', { name: 'Pause überspringen' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Pause beenden' }));
   await waitFor(() => expect(restAlarm).toHaveBeenLastCalledWith(null));
   expect(restAlarm).toHaveBeenCalledTimes(2);
   view.unmount();

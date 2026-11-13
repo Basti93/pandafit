@@ -59,7 +59,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
       {ui.notice && <p role="note" className="tk-note">{ui.notice}</p>}
       {w.rest && remaining > 0 && !ui.ask && (
         <div className="tk-livepause">
-          <TimerCard label="Satzpause" skipName="Pause überspringen" onSkip={() => act((x) => ({ ...x, rest: null }))} more={{ label: '30 s mehr', onClick: () => act((x) => extendRest(x)) }}>
+          <TimerCard label="Satzpause" more={{ label: '30 s mehr', onClick: () => act((x) => extendRest(x)) }} end={{ label: 'Pause beenden', onClick: () => act((x) => ({ ...x, rest: null })) }}>
             Pause, noch <b>{clock(remaining)}</b>
           </TimerCard>
         </div>

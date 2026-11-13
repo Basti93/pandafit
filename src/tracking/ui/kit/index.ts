@@ -9,7 +9,7 @@
  *   RowCard is the only row card (an icon or picture tile in a card of its own); Row is the list row, with an optional icon tile and hint (settings). WordTile is the only word tile.
  *   StandCard is the one orientation card "… · diese Woche" (Kraft, Rad, Laufen); Segments the one switch between sub pages; PillButton the one pill (quiet side action and back);
  *   MarkDot the one state dot (done, now, open; button dots in a row need a gap of at least 16 px); Band the one part bar.
- *   TimerCard is the one slim timer card (the rest between sets): the text is the skip button, a secondary button beside it.
+ *   TimerCard is the one slim timer card (the rest between sets): the text is plain, two secondary buttons beside it (30 s mehr, Pause beenden).
  *   RoundButton is the one round icon button; BackButton is the one back button of pages (RoundButton, or a PillButton with a label); Sheet `page` is for pages like the chat (BackButton instead of ×).
  * Rows, not cards: a list item is a Row (title left, short muted value right, "›" when it opens a new page, "⌄" when it opens in place) inside a RowList.
  *   Cards are for the one main thing on a screen or a group. Never a card inside a card (a nested .card is flattened by the CSS).

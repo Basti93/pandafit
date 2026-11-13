@@ -88,14 +88,15 @@ export function AskBoButton({ onClick }: { onClick: () => void }) {
 }
 
 /**
- * The one slim timer card (the rest between sets): the whole text is one button (`skipName`, e.g. "Pause überspringen"),
- * a `secondary` button beside it. `label` names the timer. Where it sits (sticky) is the screen's layout.
+ * The one slim timer card (the rest between sets): the text is plain text, two `secondary` buttons beside it (`more` and `end`).
+ * On a narrow phone the buttons wrap into a second row. `label` names the timer. Where it sits (sticky) is the screen's layout.
  */
-export function TimerCard({ label, skipName, onSkip, more, children }: { label: string; skipName: string; onSkip: () => void; more: Action; children: ReactNode }) {
+export function TimerCard({ label, more, end, children }: { label: string; more: Action; end: Action; children: ReactNode }) {
   return (
     <div role="timer" aria-label={label} className="tk-timercard">
-      <button type="button" className="tk-rest-main" aria-label={skipName} onClick={onSkip}>{children}</button>
+      <span className="tk-rest-main">{children}</span>
       <button type="button" className="secondary" onClick={more.onClick}>{more.label}</button>
+      <button type="button" className="secondary" onClick={end.onClick}>{end.label}</button>
     </div>
   );
 }

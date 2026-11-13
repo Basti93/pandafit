@@ -131,7 +131,7 @@ describe('the frame of the running workout', () => {
     expect(within(screen.getByRole('dialog', { name: 'Training' })).queryByText(/Läuft seit/)).toBeNull();
   });
 
-  it('the rest is a slim card: tapping skips, 30 s mehr adds', async () => {
+  it('die Pause endet nur mit dem Knopf', async () => {
     const w = { ...open2(), rest: { startMs: 70_000, durationS: 90 } } as LoggedWorkout;
     const { port, map } = fakePort([rec(w)]);
     render(<WorkoutScreen port={port} {...ids} />);
@@ -140,7 +140,9 @@ describe('the frame of the running workout', () => {
     expect(bar.textContent).toContain('Pause, noch 1:00');
     fireEvent.click(within(bar).getByRole('button', { name: '30 s mehr' }));
     await waitFor(() => expect((bodyOf(map, 'workout:open1') as unknown as { rest: { durationS: number } }).rest.durationS).toBe(120));
-    fireEvent.click(within(screen.getByRole('timer', { name: 'Satzpause' })).getByRole('button', { name: 'Pause überspringen' }));
+    fireEvent.click(within(bar).getByText(/noch/)); // the time text ends nothing
+    expect(screen.getByRole('timer', { name: 'Satzpause' })).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('timer', { name: 'Satzpause' })).getByRole('button', { name: 'Pause beenden' }));
     await waitFor(() => expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull());
   });
 
