@@ -9,7 +9,7 @@ export const MAX_EFFORT_QUESTIONS = 4;
 const work = (s: TrackedSet) => s.type !== 'warmup';
 
 /**
- * Whether to ask "how many more could you have done?" after this exercise. Only once all its sets are done, only where the
+ * Whether to ask "how did the last reps go?" after this exercise. Only once all its sets are done, only where the
  * numbers do not already tell: the last working set hit the plan exactly (or landed inside the planned rep range), the exercise
  * was swapped in, or the weight is higher than last time. Never when the last working set is a failure set (the numbers tell), never when the reps were 2 or more off the plan, never for timed
  * exercises, never twice, and at most MAX_EFFORT_QUESTIONS per workout.

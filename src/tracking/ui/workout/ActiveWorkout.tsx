@@ -1,5 +1,6 @@
 import type { Exercise } from '../../../shared/exercises';
 import { asksEffort } from '../../effort';
+import { nextTimeLine } from '../../next-time';
 import { extendRest, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo, otherStudio, setEffort, type TrackedWorkout } from '../../session';
 import { refitPlaces } from '../../placement';
 import { ladderHere } from '../../steps';
@@ -25,8 +26,11 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
   const { picker } = ui;
   const focus = focusExercise(w, ui.openRid, a.currentRid);
   const next = upNext(w, focus?.rid ?? null);
-  const asking = ui.effortOn ? effortAsk(w, (rid) => asksEffort(w, rid, history, catalog, studios)) : null;
-  const thanked = w.exercises.find((e) => e.rid === ui.thanked && e.effort && e.effort !== 'skip');
+  // "Doch anders" asks again about one exercise; its old answer stays until a new one replaces it.
+  const reasking = w.exercises.find((e) => e.rid === ui.reask) ?? null;
+  const asking = reasking ?? (ui.effortOn ? effortAsk(w, (rid) => asksEffort(w, rid, history, catalog, studios)) : null);
+  const thanked = reasking ? undefined : w.exercises.find((e) => e.rid === ui.thanked && e.effort && e.effort !== 'skip');
+  const afterAnswer = thanked ? nextTimeLine(w, thanked.rid, { history, catalog, studios, overrides, nowMs: now() }) ?? 'Danke, das merkt sich Sensai für das nächste Mal.' : null;
   const progress = progressOf(w, focus?.rid ?? null);
   const done = doneSentence(progress.doneTitles);
   // After a move the weights follow the new place; in another studio than the plan's nothing is recomputed.
@@ -78,11 +82,20 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
         onTake={(id, c) => act((x) => takeChange(x, id, c, history, catalog, studios, now(), excluded).workout)} onUndo={(id) => act((x) => undoChange(x, id).workout)} />
       {asking && (
         <Card soft key={`effort-${asking.rid}`}>
-          <EffortQuestion title={asking.title} onAnswer={(ans) => { if (ans !== 'skip') set({ thanked: asking.rid }); act((x) => setEffort(x, asking.rid, ans)); }}
-            onOff={() => { set({ effortOn: false }); act((x) => setEffort(x, asking.rid, 'skip')); }} />
+          <EffortQuestion title={asking.title} onAnswer={(ans) => {
+            if (reasking) { set({ reask: null }); if (ans !== 'skip') act((x) => setEffort(x, asking.rid, ans)); return; }
+            if (ans !== 'skip') set({ thanked: asking.rid });
+            act((x) => setEffort(x, asking.rid, ans));
+          }}
+            onOff={() => { set({ effortOn: false, reask: null }); if (!reasking) act((x) => setEffort(x, asking.rid, 'skip')); }} />
         </Card>
       )}
-      {thanked && <Card soft><p className="tk-maintext">Danke! Das fließt in den nächsten Vorschlag ein.</p></Card>}
+      {thanked && (
+        <Card soft>
+          <p className="tk-maintext">{afterAnswer}</p>
+          <button type="button" className="link" onClick={() => set({ reask: thanked.rid })}>Doch anders</button>
+        </Card>
+      )}
       <FocusCard key={focus?.rid ?? 'none'} a={a} />
       {focus && (
         <Card soft>

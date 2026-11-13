@@ -294,25 +294,25 @@ describe('the focus card', () => {
     const { port, map } = fakePort([rec(planned)]);
     render(<WorkoutScreen port={port} {...ids} />);
     await resume();
-    const name = 'Wie viele hättest du bei Bankdrücken noch geschafft?';
+    const name = 'Wie liefen die letzten Wiederholungen bei Bankdrücken?';
     expect(screen.queryByRole('group', { name })).toBeNull();
     doneNow();
     const q = await screen.findByRole('group', { name });
     expect(q.closest('.card.soft')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Bankdrücken' }).contains(q)).toBe(false);
-    fireEvent.click(within(q).getByRole('button', { name: '1–2' }));
+    fireEvent.click(within(q).getByRole('button', { name: 'Langsamer, aber sauber' }));
     await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises[0].effort).toBe('some'));
     expect(screen.queryByRole('group', { name })).toBeNull();
-    expect(screen.getAllByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toHaveLength(1);
+    expect(screen.getAllByText(/^Nächstes Mal/)).toHaveLength(1);
     const sheet = await setsSheet(1);
-    expect(within(sheet).getByText('Noch möglich: 1–2')).toBeTruthy();
+    expect(within(sheet).getByText('Letzte Wiederholungen: Langsamer, aber sauber.')).toBeTruthy();
     fireEvent.click(within(sheet).getByRole('button', { name: 'Schließen' }));
     fireEvent.click(focusOf('Bankdrücken').getByRole('button', { name: 'Satz hinzufügen' }));
     await waitFor(() => expect(sets(map, 0)).toHaveLength(2));
     await later();
     doneNow();
     await waitFor(() => expect(sets(map, 0)[1]!.doneMs).toBe(100_000));
-    expect(screen.queryByText('Danke! Das fließt in den nächsten Vorschlag ein.')).toBeNull();
+    expect(screen.queryByText(/^Nächstes Mal/)).toBeNull();
   });
 
   describe('die restlichen Sätze leichter', () => {

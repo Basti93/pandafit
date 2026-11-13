@@ -106,9 +106,9 @@ describe('the frame of the running workout', () => {
     const { port } = fakePort([rec(w)]);
     render(<WorkoutScreen port={port} {...ids} />);
     await resume();
-    const groups = screen.getAllByRole('group', { name: /noch geschafft\?$/ });
-    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Wie viele hättest du bei Rudern noch geschafft?']);
-    expect(groups[0]!.textContent).toContain('bei Rudern noch geschafft?');
+    const groups = screen.getAllByRole('group', { name: /^Wie liefen die letzten Wiederholungen/ });
+    expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Wie liefen die letzten Wiederholungen bei Rudern?']);
+    expect(groups[0]!.textContent).toContain('bei Rudern?');
   });
 
   it('the head says how long it runs; the progress card says what is done and opens Geschafft', async () => {
