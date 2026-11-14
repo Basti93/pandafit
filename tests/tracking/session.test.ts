@@ -8,6 +8,8 @@ import { stepHere } from '../../src/tracking/steps';
 import { mergeCatalog } from '../../src/shared/catalog';
 import { EXERCISES } from '../../src/shared/exercises';
 import type { GymWorkout } from '../../src/shared/gym/types';
+import { repRangeOf } from '../../src/shared/muscle-targets';
+import { ruleNumber } from '../../src/shared/training-policy';
 
 const done = (weightKg: number | null, reps: number | null, doneMs: number | null = 1000, type: 'normal' | 'warmup' = 'normal') => ({ type, weightKg, reps, durationS: null, doneMs });
 const past = (id: string, endMs: number, exerciseId: string, sets: ReturnType<typeof done>[], extra: Partial<LoggedWorkout> = {}): LoggedWorkout => ({
@@ -80,12 +82,39 @@ test('sets can be edited, added and removed by stable id', () => {
   const e = ex0(w);
   w = editSet(w, e, set0(w), { weightKg: 12.5, reps: 8 });
   w = addSet(w, e);
-  expect(w.exercises[0].sets[1]).toMatchObject({ weightKg: 12.5, reps: 8, doneMs: null });
+  expect(w.exercises[0].sets[3]).toMatchObject({ weightKg: null, reps: 6, doneMs: null });
   expect(w.exercises[0].sets[1].rid).not.toBe(set0(w));
+  w = editSet(w, e, w.exercises[0].sets[3].rid, { weightKg: 12.5, reps: 8 });
+  w = addSet(w, e);
+  expect(w.exercises[0].sets[4]).toMatchObject({ weightKg: 12.5, reps: 8, doneMs: null });
   w = removeSet(w, e, set0(w));
-  expect(w.exercises[0].sets).toHaveLength(1);
+  expect(w.exercises[0].sets).toHaveLength(4);
   w = removeExercise(w, e);
   expect(w.exercises).toHaveLength(0);
+});
+
+describe('an exercise without history', () => {
+  const bench = EXERCISES.find((e) => e.id === 'pf-bench-press')!;
+  const range = repRangeOf(bench);
+  it('starts with three working sets in its rep range and no weight, added or swapped in', () => {
+    const added = addExercise(startEmpty(1, 'w', 'Frei'), bench, []).exercises[0]!.sets;
+    const planned = startFromPlan(plan, [], 10, 'w2');
+    const swapped = swapExercise(planned, planned.exercises[0]!.rid, bench, []).exercises[0]!.sets;
+    for (const sets of [added, swapped]) {
+      expect(sets).toHaveLength(ruleNumber('gym.new-exercise-sets'));
+      for (const s of sets) expect(s).toMatchObject({ type: 'normal', weightKg: null, reps: range.min, repRange: { start: range.min, end: range.max }, doneMs: null });
+    }
+  });
+  it('keeps the last sets when there is history', () => {
+    const hist = [past('h1', 5000, bench.id, [done(40, 10), done(42.5, 9)])];
+    const sets = addExercise(startEmpty(1, 'w', 'Frei'), bench, hist).exercises[0]!.sets;
+    expect(sets.map((s) => [s.weightKg, s.reps, s.repRange])).toEqual([[40, 10, undefined], [42.5, 9, undefined]]);
+  });
+  it('a timed exercise gets three sets without a rep range', () => {
+    const sets = addExercise(startEmpty(1, 'w', 'Frei'), { id: 't', title: 'Plank', type: 'duration', primaryMuscle: 'abs', equipment: 'none' }, []).exercises[0]!.sets;
+    expect(sets).toHaveLength(3);
+    expect(sets.every((s) => s.repRange === undefined && s.reps === null)).toBe(true);
+  });
 });
 
 test('a stale id does nothing, so a double tap never removes the next row', () => {

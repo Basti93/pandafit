@@ -12,6 +12,8 @@ import { warmupRamp, workingWeightOf } from '../shared/warmup';
 import { restAfterSet, restChoices, restExtendS } from '../shared/rest';
 import { applyNextChanges, LIGHTER_PCT, listedIds, type NextChange } from '../shared/changes';
 import { placesOf } from './placement';
+import { repRangeOf } from '../shared/muscle-targets';
+import { ruleNumber } from '../shared/training-policy';
 import type { GymExercise, GymWorkout } from '../shared/gym/types';
 
 /** Pure workout logic. No browser, Node or Electron APIs, so the Mac app and the web app share it. */
@@ -232,11 +234,20 @@ export const startFromRoutine = startFromPlan;
 export const startEmpty = (nowMs: number, id: string, title = 'Training'): TrackedWorkout =>
   ({ id, title, startMs: nowMs, endMs: null, source: 'pandafit', exercises: [], rest: null });
 
+/**
+ * The sets of an exercise without any history: `gym.new-exercise-sets` working sets without a weight. A rep exercise gets its
+ * rep range (reps at the range's start); the weight goes into the first set once, the following empty sets show it as their preset.
+ */
+function freshSets(e: Exercise): TrackedSet[] {
+  const range = isTimed(e.type) ? null : repRangeOf(e);
+  return Array.from({ length: ruleNumber('gym.new-exercise-sets') }, () => (range ? { ...blank(), reps: range.min, repRange: { start: range.min, end: range.max } } : blank()));
+}
+
 function fromCatalog(e: Exercise, history: LoggedWorkout[], studio: string, keep?: Pick<TrackedExercise, 'supersetId'>, studios: StudioState = NO_STUDIOS): TrackedExercise {
   const last = lastValues(e.id, history, [e], studio, studios);
   const sets: TrackedSet[] = last.length
     ? last.map((l) => ({ rid: newRid(), type: l.type, weightKg: l.weightKg, reps: l.reps, durationS: l.durationS, doneMs: null }))
-    : [blank()];
+    : freshSets(e);
   return { rid: newRid(), exerciseId: e.id, title: e.title, supersetId: keep?.supersetId ?? null, notes: '', sets, ...(isTimed(e.type) ? { timed: true } : {}) };
 }
 

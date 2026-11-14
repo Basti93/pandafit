@@ -2,7 +2,7 @@ import { POLICY_VERSION, RULES, SCENARIOS, SOURCES, policyRule, ruleNamedRange, 
 
 describe('training policy register', () => {
   it('has a version and unique ids', () => {
-    expect(POLICY_VERSION).toBe('2026-11-13.1');
+    expect(POLICY_VERSION).toBe('2026-11-14.1');
     for (const list of [SOURCES, RULES, SCENARIOS]) expect(new Set(list.map((x) => x.id)).size).toBe(list.length);
   });
 

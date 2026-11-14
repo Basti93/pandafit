@@ -45,8 +45,8 @@ test('asks for a heavier weight than last time and for a swapped-in exercise, un
   const fresh = startFromPlan(plan(8), [], 0, 'w');
   const swapped = swapExercise(fresh, fresh.exercises[0].rid, EXERCISES[0], []);
   const ex = swapped.exercises[0];
-  let x = editSet(swapped, ex.rid, ex.sets[0].rid, { reps: 8, weightKg: 20 });
-  x = confirmSet(x, ex.rid, ex.sets[0].rid, 1);
+  let x = swapped;
+  for (const s of ex.sets) x = confirmSet(editSet(x, ex.rid, s.rid, { reps: 8, weightKg: 20 }), ex.rid, s.rid, 1);
   expect(asksEffort(x, ex.rid, [])).toBe(true);
 });
 test('once answered or skipped it is not asked again, and at most four per workout', () => {
