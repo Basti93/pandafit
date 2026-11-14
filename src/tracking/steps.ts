@@ -2,7 +2,7 @@ import type { LoggedWorkout, TrackedRecord } from '../shared/records';
 import { extendDown, ladderFrom, loadStepId, loadStepRecord, platesPerSide, type LoadStepOverrides } from '../shared/loads';
 import { mainStudio, NO_STUDIOS, type Renames } from '../shared/studio';
 import { dedupeSessions, onePerSession } from '../shared/history';
-import { barKgFor, barUseId, barUseRecord, barWeightId, barWeightRecord, NO_BARS, type BarType, type Bars } from '../shared/bars';
+import { barKgFor, barTypeId, barTypeRecord, barUseId, barUseRecord, barWeightId, barWeightRecord, NO_BARS, type BarType, type Bars } from '../shared/bars';
 import { formatDecimal, hereKey } from './session';
 
 export { hereKey };
@@ -56,3 +56,11 @@ export const barUseChange = (stored: readonly TrackedRecord[], exerciseId: strin
 /** The record that sets the weight of a bar type in a studio (`key`, the same bucket key as the weight steps). Stamped above what is stored. */
 export const barWeightChange = (stored: readonly TrackedRecord[], type: BarType, key: string, kg: number, nowMs: number): TrackedRecord =>
   barWeightRecord(type, key, kg, stampedAbove(stored, barWeightId(type, key), nowMs));
+
+/** The record that adds a custom bar type, or renames it (same id). Stamped above what is stored. */
+export const barTypeChange = (stored: readonly TrackedRecord[], id: string, name: string, kg: number, nowMs: number): TrackedRecord =>
+  barTypeRecord(id, name, kg, stampedAbove(stored, barTypeId(id), nowMs));
+
+/** The tombstone of a custom bar type. Stamped above what is stored. */
+export const barTypeDelete = (stored: readonly TrackedRecord[], id: string, name: string, kg: number, nowMs: number): TrackedRecord =>
+  ({ ...barTypeRecord(id, name, kg, stampedAbove(stored, barTypeId(id), nowMs)), deleted: true });

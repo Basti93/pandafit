@@ -157,6 +157,23 @@ describe('the bar line', () => {
     await screen.findByText('Stange: Langhantel, 17,5 kg');
   });
 
+  test('adding a custom bar and choosing it', async () => {
+    const f = await running(wo('o', 1000, null, [ex('pf-squat', 'Kniebeuge', [s(60)])]));
+    await info('Kniebeuge');
+    fireEvent.click(screen.getByRole('button', { name: 'Stange Kniebeuge' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Eigene Stange hinzufügen' }));
+    fireEvent.change(screen.getByLabelText('Name der neuen Stange'), { target: { value: ' Trap-Bar ' } });
+    fireEvent.change(screen.getByLabelText('Gewicht der neuen Stange'), { target: { value: '25' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }));
+    await waitFor(() => expect(f.state.puts.filter((r) => r.kind === 'bar')).toHaveLength(1));
+    const put = f.state.puts.find((r) => r.kind === 'bar')!;
+    expect(put.body).toMatchObject({ what: 'type', name: 'Trap-Bar', kg: 25 });
+    fireEvent.click(await screen.findByRole('radio', { name: 'Trap-Bar' }));
+    await waitFor(() => expect(f.state.puts.filter((r) => r.kind === 'bar')).toHaveLength(2));
+    expect(f.state.puts.filter((r) => r.kind === 'bar')[1].body).toMatchObject({ what: 'use', exerciseId: 'pf-squat', type: (put.body as { id: string }).id });
+    await screen.findByText('Stange: Trap-Bar, 25 kg');
+  });
+
   test('an invalid weight is not saved', async () => {
     await running(wo('o', 1000, null, [ex('pf-squat', 'Kniebeuge', [s(60)])]));
     await info('Kniebeuge');
