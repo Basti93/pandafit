@@ -4,7 +4,7 @@ import { reasonText, repoLinkStored, storeRepoLink } from '../../shared/garmin-u
 import type { LoggedWorkout } from '../../shared/records';
 
 /** Longest time the link stays open for one upload when no final status comes. */
-const HOLD_MAX_MS = 60_000;
+const HOLD_MAX_MS = 150_000; // above the server's upload timeout (120 s)
 
 type Shown = { id: string; startMs: number; endMs: number };
 
