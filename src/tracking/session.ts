@@ -12,15 +12,21 @@ import { warmupRamp, workingWeightOf } from '../shared/warmup';
 import { restAfterSet, restChoices, restExtendS } from '../shared/rest';
 import { applyNextChanges, LIGHTER_PCT, listedIds, type NextChange } from '../shared/changes';
 import { placesOf } from './placement';
+import { repRangeOf } from '../shared/muscle-targets';
+import { ruleNumber } from '../shared/training-policy';
 import type { GymExercise, GymWorkout } from '../shared/gym/types';
 
 /** Pure workout logic. No browser, Node or Electron APIs, so the Mac app and the web app share it. */
 /**
  * `plannedReps`: the reps the plan asked for, kept when the rider edits `reps`. `plannedKg`: the plan's weight (null: none);
  * `prefillKg`: the weight put in at the start or at the last studio change. A set whose weight still equals `prefillKg` was not edited.
+ * `estimatedKg`: the planned weight is Bo's start weight for an exercise without any history (see GymSet.estimated).
  */
-export type TrackedSet = LoggedSet & { rid: string; repRange?: { start: number; end: number }; plannedReps?: number; plannedKg?: number | null; prefillKg?: number | null };
-export type TrackedExercise = Omit<LoggedExercise, 'sets'> & { rid: string; sets: TrackedSet[]; restS?: number | null; restByUser?: true; timed?: boolean; swappedIn?: true; placedPre?: number };
+export type TrackedSet = LoggedSet & { rid: string; repRange?: { start: number; end: number }; plannedReps?: number; plannedKg?: number | null; prefillKg?: number | null; estimatedKg?: true };
+/** What "Wie war das Gewicht?" (Bo's estimated weight) was answered so far: answers with a step (`n`), the done work sets at the last one, or ended. */
+export type EstimateAsk = { n: number; atDone: number; ended: boolean };
+/** `estimateAsk` (on an exercise): kept in the workout, so leaving the screen or a reload never asks again. */
+export type TrackedExercise = Omit<LoggedExercise, 'sets'> & { rid: string; sets: TrackedSet[]; restS?: number | null; restByUser?: true; timed?: boolean; swappedIn?: true; placedPre?: number; estimateAsk?: EstimateAsk };
 /** `placedPre` (on an exercise): the fatigue of its muscle at the place the coach made the weights for; a move refits against it. */
 /** Stored as the record body. `rest` keeps the timer start, so a reload continues it. Rows have stable ids (`rid`). */
 /** `planStudio`: the studio the plan's weights were made for (a bucket key), kept so a studio change can refit them. */
@@ -142,6 +148,8 @@ function plannedExercise(g: GymExercise, history: LoggedWorkout[], catalog: Exer
       reps: p.reps ?? (p.repRange ? p.repRange.start : null) ?? l?.reps ?? null,
       durationS: l?.durationS ?? null, doneMs: null,
       plannedKg: p.weightKg,
+      // Only a weight the plan really gave, and only while there is no history here either.
+      ...(p.estimated && p.weightKg !== null && last.length === 0 ? { estimatedKg: true as const } : {}),
       ...(p.repRange ? { repRange: p.repRange } : {}),
       ...(p.reps !== null && p.reps !== undefined ? { plannedReps: p.reps } : {}),
     };
@@ -232,11 +240,20 @@ export const startFromRoutine = startFromPlan;
 export const startEmpty = (nowMs: number, id: string, title = 'Training'): TrackedWorkout =>
   ({ id, title, startMs: nowMs, endMs: null, source: 'pandafit', exercises: [], rest: null });
 
+/**
+ * The sets of an exercise without any history: `gym.new-exercise-sets` working sets without a weight. A rep exercise gets its
+ * rep range (reps at the range's start); the weight goes into the first set once, the following empty sets show it as their preset.
+ */
+function freshSets(e: Exercise): TrackedSet[] {
+  const range = isTimed(e.type) ? null : repRangeOf(e);
+  return Array.from({ length: ruleNumber('gym.new-exercise-sets') }, () => (range ? { ...blank(), reps: range.min, repRange: { start: range.min, end: range.max } } : blank()));
+}
+
 function fromCatalog(e: Exercise, history: LoggedWorkout[], studio: string, keep?: Pick<TrackedExercise, 'supersetId'>, studios: StudioState = NO_STUDIOS): TrackedExercise {
   const last = lastValues(e.id, history, [e], studio, studios);
   const sets: TrackedSet[] = last.length
     ? last.map((l) => ({ rid: newRid(), type: l.type, weightKg: l.weightKg, reps: l.reps, durationS: l.durationS, doneMs: null }))
-    : [blank()];
+    : freshSets(e);
   return { rid: newRid(), exerciseId: e.id, title: e.title, supersetId: keep?.supersetId ?? null, notes: '', sets, ...(isTimed(e.type) ? { timed: true } : {}) };
 }
 
@@ -290,6 +307,7 @@ export function unconfirmSet(w: TrackedWorkout, ex: string, set: string): Tracke
 }
 export const editSet = (w: TrackedWorkout, ex: string, set: string, patch: Partial<Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS' | 'type'>>): TrackedWorkout =>
   mapSet(w, ex, set, (s) => ({ ...s, ...patch }));
+export const setEstimateAsk = (w: TrackedWorkout, ex: string, estimateAsk: EstimateAsk): TrackedWorkout => mapEx(w, ex, (x) => ({ ...x, estimateAsk }));
 export const setEffort = (w: TrackedWorkout, ex: string, effort: Effort | 'skip'): TrackedWorkout => mapEx(w, ex, (x) => ({ ...x, effort }));
 export const editNotes = (w: TrackedWorkout, ex: string, notes: string): TrackedWorkout => mapEx(w, ex, (x) => ({ ...x, notes }));
 export const addSet = (w: TrackedWorkout, ex: string): TrackedWorkout =>

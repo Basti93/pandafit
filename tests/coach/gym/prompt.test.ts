@@ -15,6 +15,11 @@ describe('Gym-Prompt und Rückblick', () => {
   it('lässt den Block ohne Rückblick weg', () => {
     expect(buildGymPrompt(base)).not.toContain('rueckblick');
   });
+  it('verlangt für eine nie gemachte Übung ein vorsichtiges Startgewicht', () => {
+    expect(GYM_SYSTEM_PROMPT).toContain('noch nie gemacht hat, gib ein vorsichtiges Startgewicht an');
+    expect(GYM_SYSTEM_PROMPT).toContain('lieber zu leicht als zu schwer');
+    expect(GYM_SYSTEM_PROMPT).not.toContain('ohne Verlauf weight null');
+  });
   it('wägt Muskellücken ab', () => {
     expect(GYM_SYSTEM_PROMPT).toContain('gegen Ziel und Schwerpunkt ab');
     expect(GYM_SYSTEM_PROMPT).not.toContain('plane sie bevorzugt ein');

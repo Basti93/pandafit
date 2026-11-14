@@ -11,12 +11,14 @@ const work = (s: TrackedSet) => s.type !== 'warmup';
 /**
  * Whether to ask "how did the last reps go?" after this exercise. Only once all its sets are done, only where the
  * numbers do not already tell: the last working set hit the plan exactly (or landed inside the planned rep range), the exercise
- * was swapped in, or the weight is higher than last time. Never when the last working set is a failure set (the numbers tell), never when the reps were 2 or more off the plan, never for timed
+ * was swapped in, or the weight is higher than last time. Never for an exercise with Bo's estimated weight (it has its own question). Never when the last working set is a failure set (the numbers tell), never when the reps were 2 or more off the plan, never for timed
  * exercises, never twice, and at most MAX_EFFORT_QUESTIONS per workout.
  */
 export function asksEffort(w: TrackedWorkout, ex: string, history: LoggedWorkout[], catalog?: Exercise[], studios: StudioState = NO_STUDIOS): boolean {
   const e = w.exercises.find((x) => x.rid === ex);
   if (!e || e.timed || e.effort !== undefined) return false;
+  // Bo's estimated weight has its own question; one per exercise is enough.
+  if (e.sets.some((s) => s.estimatedKg)) return false;
   if (w.exercises.filter((x) => x.effort !== undefined).length >= MAX_EFFORT_QUESTIONS) return false;
   if (e.sets.length === 0 || e.sets.some((s) => s.doneMs === null)) return false;
   const sets = e.sets.filter(work);
