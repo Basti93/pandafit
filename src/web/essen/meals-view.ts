@@ -36,6 +36,11 @@ export function mealWeeks(records: TrackedRecord[] | null, now: number): Week[] 
   return [current, addWeeks(current, 1)].flatMap((w) => weekAt(records, w) ?? []);
 }
 
+/** Last week's readable plan, to look back at what was planned; null without one. */
+export function lastMealWeek(records: TrackedRecord[] | null, now: number): Week | null {
+  return weekAt(records, addWeeks(weekOf(now), -1));
+}
+
 export const listAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} und ${names[names.length - 1]}` : names[0] ?? '');
 
 // ---- Which meal is next ----
@@ -185,6 +190,16 @@ export function restOfWeek(weeks: Week[], nowMs: number): DayRow[] {
 export function nextWeekRows(weeks: Week[], nowMs: number): DayRow[] {
   const week = weeks.find((w) => w.plan.week === addWeeks(weekOf(nowMs), 1));
   return week ? Array.from({ length: 7 }, (_, i) => dayRow(week, i)) : [];
+}
+
+/** The days of this week before today, to look back at what was planned. */
+export function pastDaysRows(weeks: Week[], nowMs: number): DayRow[] {
+  const week = weeks.find((w) => w.plan.week === weekOf(nowMs));
+  return week ? Array.from({ length: dayIndex(nowMs) }, (_, i) => dayRow(week, i)) : [];
+}
+
+export function lastWeekRows(last: Week | null): DayRow[] {
+  return last ? Array.from({ length: 7 }, (_, i) => dayRow(last, i)) : [];
 }
 
 // ---- Shopping and the tiles ----

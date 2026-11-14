@@ -677,7 +677,8 @@ export class MealCoach {
     const now = this.deps.nowMs();
     const d = this.load();
     const current = weekOf(now);
-    const weeks = [current, addWeeks(current, 1)].filter((w) => d.plans[w]);
+    // Last week too: the web app shows it to read (what was not cooked yet); changes to it are refused.
+    const weeks = [addWeeks(current, -1), current, addWeeks(current, 1)].filter((w) => d.plans[w]);
     for (const p of this.deps.profiles()) {
       try {
         const have = store.all(p.id, 'mealplan');

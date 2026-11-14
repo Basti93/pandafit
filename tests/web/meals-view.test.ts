@@ -2,7 +2,7 @@ process.env.TZ = 'Europe/Berlin'; // the clock-change test must cross a real cha
 import { describe, expect, it } from 'vitest';
 import { addWeeks, type Dish, type Meal, type Slot } from '../../src/shared/meals';
 import {
-  askedSentence, eatersLine, favSentence, headSentence, mealSentence, nextMeal, nextWeekRows, openSentence, placeButton, placeDefault, placedSentence,
+  askedSentence, eatersLine, favSentence, headSentence, lastWeekRows, mealSentence, nextMeal, nextWeekRows, openSentence, pastDaysRows, placeButton, placeDefault, placedSentence,
   mealKicker, recipeSentence, restOfWeek, rowSentence, shoppingSentence, shoppingWeek, slotKicker, todayMeals, type Week,
 } from '../../src/web/essen/meals-view';
 
@@ -85,6 +85,10 @@ describe('Essen in words', () => {
     expect(restOfWeek(weeks, at(SO, 12, 0))).toEqual([]);
     expect(nextWeekRows([thisWeek], at(SA, 12, 0))).toEqual([]);
     expect(nextWeekRows(weeks, at(SA, 12, 0))).toHaveLength(7);
+    expect(lastWeekRows(null)).toEqual([]);
+    expect(pastDaysRows(weeks, at(MO, 12, 0))).toEqual([]);
+    expect(pastDaysRows(weeks, at(SA, 12, 0)).map((r) => r.lead)).toEqual(['Mo 9.', 'Di 10.', 'Mi 11.', 'Do 12.', 'Fr 13.']);
+    expect(lastWeekRows(thisWeek).map((r) => r.meal?.dish.title ?? null)).toEqual(['Suppe', 'Müsli', 'Pfanne', 'Linsencurry', null, null, 'Nudeln']);
   });
   it('In den Plan preselects dinner today, tomorrow once dinner is over, across the week end; nothing without a plan', () => {
     expect(placeDefault(weeks, at(MI, 18, 0))).toMatchObject({ day: 2, slot: 'abend' });

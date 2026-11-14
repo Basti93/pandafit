@@ -244,6 +244,20 @@ describe('off by default', () => {
 });
 
 describe('sync through the account records', () => {
+  it('last week stays in the records to look back at, the week before is tombstoned', async () => {
+    const { coach, store, clock } = setup({ linked: ['lena'] });
+    coach.setSettings('lena', ON());
+    await coach.tick();
+    const live = () => store.all('lena', 'mealplan').filter((r) => !r.deleted).map((r) => r.id).sort();
+    clock.now = at(17, 10);
+    await coach.tick();
+    expect(live()).toEqual(['state-2026-11-09', 'week-2026-11-09']);
+    expect(coach.view('lena').weeks).toEqual([]);
+    clock.now = at(24, 10);
+    await coach.tick();
+    expect(live()).toEqual([]);
+  });
+
   it('a linked profile gets the plan and its state as mealplan records, marked with who it is for', async () => {
     const { coach, store } = setup({ linked: ['lena'] });
     coach.setSettings('max', ON());

@@ -5,7 +5,7 @@ import { BoBubble, Card, HeadCard, Kicker, MainCard, RowCard, Sheet } from '../.
 import type { MealData } from '../MealsScreen';
 import { MealImage } from './MealImage';
 import {
-  favSentence, headKicker, headSentence, mealKicker, mealSentence, NO_PLAN, nextMeal, nextWeekRows, openCount, openSentence, pastSentence,
+  favSentence, headKicker, headSentence, lastWeekRows, mealKicker, mealSentence, NO_PLAN, nextMeal, nextWeekRows, openCount, openSentence, pastDaysRows, pastSentence,
   restOfWeek, rowSentence, shoppingWeek, slotKicker, todayMeals, type DayRow, type MealAt,
 } from './meals-view';
 import { EatersButton } from './RecipeParts';
@@ -30,11 +30,30 @@ export function EssenStart({ data, nowMs, me, onMeal, onShopping, onRecipes, onC
   const [day, setDay] = useState<DayRow | null>(null);
   const { weeks } = data;
   const recipes = <RowCard icon="rezepte" title="Rezepte" sub={favSentence(data.favs.size)} onClick={onRecipes} />;
+  const open = (w: { plan: { week: string } }, m: Meal) => onMeal({ week: w.plan.week, meal: mealKey(m.day, m.slot) });
+  const dayMeals = day ? [...day.week.plan.meals.filter((m) => m.day === day.day)].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot)) : [];
+  const daySheet = day && (
+    <Sheet size="small" title={day.dateLong} onClose={() => setDay(null)}>
+      <div className="tk-rowcards">
+        {dayMeals.map((m) => (
+          <RowCard key={m.slot} picture={<MealImage recipeId={m.dish.recipeId} slot={m.slot} />} kicker={slotKicker(m.slot)} title={m.dish.title} sub={rowSentence(day.week, m)}
+            onClick={() => { const w = day.week; setDay(null); open(w, m); }} />
+        ))}
+      </div>
+    </Sheet>
+  );
+  // The past to look back at: what was planned and maybe not cooked. Below everything.
+  const lastWeek = <>
+    <DaysCard label="Diese Woche bisher" rows={pastDaysRows(weeks, nowMs)} onDay={setDay} />
+    <DaysCard label="Letzte Woche" rows={lastWeekRows(data.last)} onDay={setDay} />
+    {daySheet}
+  </>;
   if (weeks.length === 0) {
     return (
       <div className="tk-screen">
         <HeadCard title="Essen" text={NO_PLAN} />
         <div className="tk-tiles">{recipes}</div>
+        {lastWeek}
       </div>
     );
   }
@@ -43,9 +62,7 @@ export function EssenStart({ data, nowMs, me, onMeal, onShopping, onRecipes, onC
   const current = weeks.find((w) => w.plan.week === weekOf(nowMs));
   const trainingDay = !!current?.plan.trainingDays.includes(dayIndex(nowMs));
   const shopping = shoppingWeek(weeks, nowMs);
-  const open = (w: { plan: { week: string } }, m: Meal) => onMeal({ week: w.plan.week, meal: mealKey(m.day, m.slot) });
   const rest = today.filter((t) => !(next?.when === 'heute' && t.week === next.week && t.meal === next.meal));
-  const dayMeals = day ? [...day.week.plan.meals.filter((m) => m.day === day.day)].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot)) : [];
   return (
     <div className="tk-screen">
       <HeadCard kicker={headKicker(nowMs, trainingDay)} title="Essen" text={headSentence(today, next)} />
@@ -75,16 +92,7 @@ export function EssenStart({ data, nowMs, me, onMeal, onShopping, onRecipes, onC
         {shopping && <RowCard icon="einkauf" title="Einkauf" sub={openSentence(openCount(shopping))} onClick={onShopping} />}
       </div>
       <BoBubble portrait="mini" actions={<button type="button" className="secondary" onClick={onChat}>Plan ändern</button>}>{BO_LINES.mealsChange}</BoBubble>
-      {day && (
-        <Sheet size="small" title={day.dateLong} onClose={() => setDay(null)}>
-          <div className="tk-rowcards">
-            {dayMeals.map((m) => (
-              <RowCard key={m.slot} picture={<MealImage recipeId={m.dish.recipeId} slot={m.slot} />} kicker={slotKicker(m.slot)} title={m.dish.title} sub={rowSentence(day.week, m)}
-                onClick={() => { const w = day.week; setDay(null); open(w, m); }} />
-            ))}
-          </div>
-        </Sheet>
-      )}
+      {lastWeek}
     </div>
   );
 }

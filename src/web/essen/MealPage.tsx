@@ -15,7 +15,8 @@ export function MealPage({ data, at, me, backLabel, onBack }: { data: MealData; 
   const back = { label: backLabel, onClick: onBack };
   // Without the records there is nothing to say yet; the frame alone, so Back works.
   if (data.records === null) return <EssenPage back={back}><div className="tk-screen" /></EssenPage>;
-  const week = data.weeks.find((w) => w.plan.week === at.week);
+  // Last week is there to read: what was planned and not cooked yet.
+  const week = data.weeks.find((w) => w.plan.week === at.week) ?? (data.last?.plan.week === at.week ? data.last : undefined);
   const meal = week?.plan.meals.find((m) => mealKey(m.day, m.slot) === at.meal);
   if (!week || !meal) {
     return <EssenPage back={back}><div className="tk-screen"><Card><p>{MEAL_GONE}</p></Card></div></EssenPage>;

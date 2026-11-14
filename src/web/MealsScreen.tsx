@@ -10,7 +10,7 @@ import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { RowCard, Sheet } from '../tracking/ui/kit';
 import { MealImage } from './essen/MealImage';
-import { mealDayOf, mealWeeks, shoppingWeek, WISH_SENT, type MealAt, type Week } from './essen/meals-view';
+import { lastMealWeek, mealDayOf, mealWeeks, shoppingWeek, WISH_SENT, type MealAt, type Week } from './essen/meals-view';
 import { KeptPage } from './essen/EssenPage';
 import { EssenStart } from './essen/EssenStart';
 import { MealPage } from './essen/MealPage';
@@ -92,6 +92,7 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
   const records = usePortRecords(port, 'mealplan').records;
   const t = now();
   const weeks = useMemo(() => mealWeeks(records, t), [records, t]);
+  const last = useMemo(() => lastMealWeek(records, t), [records, t]);
   const queue = useRef<Promise<void>>(Promise.resolve());
   const favs = useMemo(() => favouriteIds(records), [records]);
   const placed = useMemo(() => placements(records), [records]);
@@ -127,7 +128,7 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
     await port.put({ ...have, updatedMs: nextUpdatedMs(now(), have), deleted: true }).catch(() => { /* still there; try again */ });
   };
   const recipeCtx: RecipeCtx = { fetchFn, now, favs, toggleFav, weeks, place, placements: placed, deleteOwn: (id) => void deleteRecipe(id) };
-  return { records, weeks, change, favs, recipeCtx };
+  return { records, weeks, last, change, favs, recipeCtx };
 }
 
 /** The meals of today on Heute, calm: a row card per slot, a quiet line for what is cooked today for later. A tap opens the meal page in Essen. Reads only; writes go through useMealData. */
