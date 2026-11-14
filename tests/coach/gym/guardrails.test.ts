@@ -548,3 +548,17 @@ describe('limits by experience', () => {
     expect(reasonPhrase('Versagen passt noch nicht zur Erfahrung')).toBe('Sätze bis zum Versagen, die jetzt noch nicht dran sind');
   });
 });
+
+describe('reps around a large step', () => {
+  // cp on a machine: 20 kg x 12 twice, the next step 25 kg is large.
+  const LS: GymContext = { ...CTX, workouts: two('cp', 20, 12) };
+  it('a person who starts stays at the weight with reps above the range; a heavier set keeps the plain range', () => {
+    const neu: GymContext = { ...LS, experience: 'neu' };
+    passes(wo([ex('cp', [set(20, 13)])]), neu);
+    refused(wo([ex('cp', [set(25, 13)])]), neu);
+  });
+  it('reps below the range only at the suggested weight', () => {
+    passes(wo([ex('cp', [set(25, 3)])]), LS);
+    refused(wo([ex('cp', [set(30, 3)])]), LS);
+  });
+});

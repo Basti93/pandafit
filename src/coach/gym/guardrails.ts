@@ -120,8 +120,10 @@ function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, re
   const { blind: sug, here } = placedSuggestion(ex.templateId, t, ctx, preSets);
   const ladder = ladderFor(ex.templateId, t, ctx.workouts, ctx.nowMs, gymPlan(ctx));
   const own = repRangeFor(repRangeOf(t), ctx.experience);
-  // A weight that came with a large step may suggest reps below the range (gym.large-step); those are allowed down to the suggestion.
-  const range = sug.why !== 'none' && sug.weightKg !== null && sug.reps < own.min ? { min: sug.reps, max: own.max } : own;
+  // A large step (gym.large-step) may suggest reps below the range, or above it while the weight waits for the step to fit. Sets at
+  // most at the suggested weight may use those reps; a heavier set keeps the plain range.
+  const widened = sug.why !== 'none' && sug.weightKg !== null ? { min: Math.min(own.min, sug.reps), max: Math.max(own.max, sug.reps) } : own;
+  const rangeOf = (s: GymSet): { min: number; max: number } => (s.weightKg !== null && sug.weightKg !== null && s.weightKg <= sug.weightKg ? widened : own);
   if (!known.has(ex.templateId) && !recentEquipment.has(t.equipment)) no(`${where}: Gerät in den letzten Monaten nicht benutzt`);
   const widow = isWidowmaker(ex.notes);
   const barbell = t.equipment === 'barbell';
@@ -153,7 +155,7 @@ function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, re
     const values = [...(s.reps !== null ? [s.reps] : []), ...(s.repRange ? [s.repRange.start, s.repRange.end] : [])];
     for (const r of values) {
       if (bodyweight) { if (r < 1 || r > MAX_BODYWEIGHT_REPS) no(`${where}: Wiederholungen außerhalb des Rahmens`); }
-      else if (r < range.min || r > range.max) no(`${where}: Wiederholungen außerhalb von ${range.min} bis ${range.max}`);
+      else { const range = rangeOf(s); if (r < range.min || r > range.max) no(`${where}: Wiederholungen außerhalb von ${range.min} bis ${range.max}`); }
     }
   }
 }

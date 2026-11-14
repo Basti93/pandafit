@@ -135,7 +135,7 @@ describe('push question and experience', () => {
 
 describe('experienceAskDue', () => {
   const now = at(12, 9);
-  const ask = { goal: {}, gymDates: ['2026-11-02'], strength: true, sent: {}, prefs: DEFAULT_PREFS, retryMs: 30 * 60_000, reviewOpen: false, nowMs: now };
+  const ask = { goal: {}, gymDates: ['2026-11-02'], strength: true, historyReady: true, sent: {}, prefs: DEFAULT_PREFS, retryMs: 30 * 60_000, reviewOpen: false, nowMs: now };
   const days = (n: number, every: number) => Array.from({ length: n }, (_, i) => new Date(2026, 10, 11 - (n - 1 - i) * every, 12).toISOString().slice(0, 10));
 
   it('fragt einmal, solange die Daten nicht „erfahren“ zeigen', () => {
@@ -149,6 +149,8 @@ describe('experienceAskDue', () => {
     expect(experienceAskDue({ ...ask, goal: { experience: 'neu' } })).toBe(false);
     expect(experienceAskDue({ ...ask, sent: { expAsk: '2026-11-10' } })).toBe(false);
     expect(experienceAskDue({ ...ask, strength: false })).toBe(false);
+    // The first Hevy import is still loading: the data may still show more.
+    expect(experienceAskDue({ ...ask, historyReady: false })).toBe(false);
   });
 
   it('hält dieselben Ruhezeiten wie die Härte-Frage', () => {

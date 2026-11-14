@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StrengthWorkout } from '../../../src/coach/hevy';
-import { stagnates, suggestNext } from '../../../src/coach/gym/history';
+import { REASONS, stagnates, suggestNext } from '../../../src/coach/gym/history';
 import { isLargeStep, repsAt } from '../../../src/shared/gym/progression';
 
 const DAY = 86_400_000;
@@ -75,5 +75,36 @@ describe('stagnation by experience', () => {
     expect(stagnates('cp', ws, NOW, PLATES)).toBe(true);
     expect(stagnates('cp', ws, NOW, PLATES, { experience: 'neu' })).toBe(false);
     expect(stagnates('cp', [wk(28, [[60, 8]]), ...ws], NOW, PLATES, { experience: 'neu' })).toBe(true);
+  });
+});
+
+describe('after a large step (review fixes)', () => {
+  const DB = { type: 'weight_reps', equipment: 'dumbbell', primaryMuscle: 'chest' };
+  const sw = (daysAgo: number, kg: number, reps: number): StrengthWorkout => wk(daysAgo, [[kg, reps], [kg, reps]]);
+  it('a step back after two drops goes to the plain range at the lighter weight', () => {
+    const ws = [sw(28, 10, 12), sw(21, 12.5, 7), sw(14, 12.5, 6), sw(7, 12.5, 5)];
+    expect(next(ws, undefined, DB)).toEqual({ weightKg: 10, reps: 6, why: 'step-back' });
+  });
+  it('a long break after a large step goes to the plain range too', () => {
+    const ws = [sw(50, 10, 12), sw(40, 12.5, 5)];
+    expect(next(ws, undefined, DB)).toEqual({ weightKg: 10, reps: 6, why: 'step-back' });
+  });
+  it('a later place in the workout with a lower weight keeps the plain range', () => {
+    const ws = [sw(14, 10, 12), sw(7, 12.5, 5)];
+    const r = suggestNext('cp', ws, NOW, DB, undefined, 4);
+    expect(r.why).toBe('keep');
+    expect(r.weightKg).toBe(10);
+    expect(r.reps).toBe(6);
+  });
+  it('a person who starts never goes below 8: the weight stays and the reps climb until the step fits', () => {
+    const ws = [sw(14, 10, 12), sw(7, 10, 12)];
+    expect(next(ws, 'neu', DB)).toEqual({ weightKg: 10, reps: 13, why: 'progress' });
+    const later = [sw(14, 10, 15), sw(7, 10, 16)];
+    expect(next(later, 'neu', DB)).toEqual({ weightKg: 12, reps: 8, why: 'progress' });
+  });
+  it('without a plan the reason compares with the last session', () => {
+    const ws = [wk(14, [[60, 8], [60, 8]]), wk(7, [[60, 10], [60, 10]])];
+    expect(suggestNext('cp', ws, NOW, PLATES, { experience: 'neu' }).reason).toBe(REASONS['more-than-last']);
+    expect(REASONS['more-than-last']).toBe('weil du deutlich mehr geschafft hast als beim letzten Mal');
   });
 });

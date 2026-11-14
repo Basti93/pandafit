@@ -120,10 +120,11 @@ export function pushAskDue(o: AskWindow & { goal: { push?: Push; experience?: Ex
 /**
  * Whether Bo asks now how long the person trains with weights: once (`expAsk`, also set by "Später"), never after an answer,
  * only for a person who trains strength, and only while the data shows less than `erfahren` (the estimate is the higher of
- * the answer and the data, so above that the answer changes nothing). The window for a question alone must be open.
+ * the answer and the data, so above that the answer changes nothing). Not while a history is still loading (`historyReady`
+ * false, e.g. the first Hevy import), since the data could still show more. The window for a question alone must be open.
  */
-export function experienceAskDue(o: AskWindow & { goal: { experience?: Experience }; gymDates: readonly string[]; strength: boolean }): boolean {
-  if (o.goal.experience !== undefined || o.sent.expAsk !== undefined || !o.strength) return false;
+export function experienceAskDue(o: AskWindow & { goal: { experience?: Experience }; gymDates: readonly string[]; strength: boolean; historyReady: boolean }): boolean {
+  if (o.goal.experience !== undefined || o.sent.expAsk !== undefined || !o.strength || !o.historyReady) return false;
   if (experienceFromData(o.gymDates, dateKey(o.nowMs)) === 'erfahren') return false;
   return askWindowOpen(o);
 }

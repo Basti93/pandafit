@@ -39,6 +39,9 @@ describe('strengthFacts', () => {
   it('nennt nur Muskeln, die trainiert wurden und in allen drei Fenstern unter dem Ziel lagen', () => {
     const lasting = [1, 29, 57].map((d) => workout(d, 'BP', 'Bench Press (Barbell)', 40, 2));
     expect(strengthFacts(lasting, templates, [], goal, NOW).untenDauerhaft).toEqual(['Brust']);
+    // A person who starts: no muscle is reported low.
+    expect(strengthFacts(lasting, templates, [], goal, NOW, 'neu').untenDauerhaft).toEqual([]);
+    expect(strengthFacts(lasting, templates, [], goal, NOW, 'erfahren').untenDauerhaft).toEqual(['Brust']);
   });
 
   it('nennt einen nie trainierten Muskel nicht', () => {

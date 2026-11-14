@@ -393,7 +393,9 @@ export class GymCoach {
     if (!listed) return null;
     const now = this.deps.nowMs();
     const goal = this.deps.store ? goalOfProfile(this.deps.store, id, dateKey(now)) : goalOf([], dateKey(now));
-    return strengthFacts(this.history(id), [...listed.values()], this.catalog(id), { strength: goal.strength, focus: goal.focus }, now);
+    const real = this.history(id);
+    // The level goes along, so the review does not call a beginner's lower volume low.
+    return strengthFacts(real, [...listed.values()], this.catalog(id), { strength: goal.strength, focus: goal.focus }, now, this.experience(id, real.filter((w) => w.startMs <= now), now));
   }
   /** What the coach changed on exercises, newest last: the notes of the plans, kept up to 20 and 60 days. */
   changeNotes(id: string): ChangeNote[] { return this.state(id).changeNotes.map(({ key: _k, ...n }) => n); }

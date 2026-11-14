@@ -17,7 +17,8 @@ const MIN_COMPARABLE = ruleNumber('gym.min-comparable');
 const PRE_FATIGUE_TOLERANCE = ruleNumber('gym.pre-fatigue-tolerance');
 const STEP_BACK = ruleNumber('gym.step-back-share');
 const LARGE_STEP_PCT = ruleNumber('gym.large-step');
-const BELOW_MIN = ruleValues('gym.large-step').belowMin!;
+/** How far below the range the reps may start after a large step; a person who starts never goes below the rep floor. */
+const belowMinFor = (e: Experience | undefined): number => (e === 'neu' ? ruleValues('gym.large-step').belowMinNeu! : ruleValues('gym.large-step').belowMin!);
 
 /** Whether going from `fromKg` to `toKg` is a large step (`gym.large-step`). */
 export const isLargeStep = (fromKg: number, toKg: number): boolean => toKg > fromKg * (1 + LARGE_STEP_PCT / 100);
@@ -27,12 +28,13 @@ export const repsAt = (fromKg: number, reps: number, toKg: number): number => Ma
 /** The assistance is weight_kg here, so more of it is easier. In this first version its weight is simply kept. */
 export const isAssisted = (type: string | undefined): boolean => type === 'bodyweight_assisted' || type === 'bodyweight_assisted_reps';
 /** Which way the decision went; the key into REASONS. */
-type Path = 'none' | 'all-reps' | 'clearly-more' | 'not-all-reps' | 'few-sessions' | 'zero-left' | 'plenty-left' | 'dropped' | 'long-break' | 'assisted' | 'other-position';
+type Path = 'none' | 'all-reps' | 'clearly-more' | 'more-than-last' | 'not-all-reps' | 'few-sessions' | 'zero-left' | 'plenty-left' | 'dropped' | 'long-break' | 'assisted' | 'other-position';
 /** The words for each decision path, shown to the person as the reason of the next step. */
 export const REASONS: Record<Path, string> = {
   none: '',
   'all-reps': 'weil du alle Wiederholungen geschafft hast',
   'clearly-more': 'weil du deutlich mehr geschafft hast als geplant',
+  'more-than-last': 'weil du deutlich mehr geschafft hast als beim letzten Mal',
   'not-all-reps': 'weil du noch nicht alle Wiederholungen geschafft hast',
   'few-sessions': 'weil erst eine Einheit zum Vergleichen da ist',
   'zero-left': 'weil noch 0 übrig waren und die Leistung hält',
@@ -133,21 +135,26 @@ export function suggestNext(templateId: string, workouts: StrengthWorkout[], now
   const newest = all[all.length - 1];
   if (!newest) return done(null, range.min, 'none', 'none');
   const last = sessions[sessions.length - 1] ?? newest;
+  const belowMin = belowMinFor(plan?.experience);
   // While the exercise stays at a weight it reached with a large step, the reps may sit a little below the range.
-  const floor = cameWithLargeStep(all, last) ? Math.max(1, range.min - BELOW_MIN) : range.min;
+  const floor = cameWithLargeStep(all, last) ? Math.max(1, range.min - belowMin) : range.min;
   // Weighted work stays in the rep range; bodyweight work has no upper limit, since reps are its only progression.
   const fit = (r: number): number => last.weightKg === null ? Math.max(1, r) : Math.min(range.max, Math.max(floor, r));
   const reps = fit(last.minReps);
+  /** The reps at another weight than the last one (step back, break, other place): the plain range, the lowered floor never goes along. */
+  const repsAt0 = (kg: number | null): number => (kg === last.weightKg ? reps : Math.min(range.max, Math.max(range.min, last.minReps)));
   const assisted = isAssisted(ex?.type);
   const ladder = ladderFor(templateId, ex, workouts, nowMs, plan);
   const stepBack = (kg: number): number => snapDown(kg * STEP_BACK, ladder);
   if (sessions.length === 0) {
     if (last.weightKg === null || assisted || preSets <= last.preSets) return done(last.weightKg, reps, 'keep', 'other-position');
     const share = positionShare(preSets - last.preSets);
-    return done(snapDown(last.weightKg * share, ladder), reps, 'keep', 'other-position');
+    const kg = snapDown(last.weightKg * share, ladder);
+    return done(kg, repsAt0(kg), 'keep', 'other-position');
   }
   if (nowMs - last.ms > LONG_BREAK_DAYS * DAY_MS) {
-    return done(last.weightKg === null || assisted ? last.weightKg : stepBack(last.weightKg), reps, 'step-back', 'long-break');
+    const kg = last.weightKg === null || assisted ? last.weightKg : stepBack(last.weightKg);
+    return done(kg, repsAt0(kg), 'step-back', 'long-break');
   }
   const comparable = sessions.filter((s) => nowMs - s.ms <= COMPARABLE_DAYS * DAY_MS);
   // Fewer reps against the session before at exactly the same weight, several times in a row: the weight is too much for now.
@@ -158,7 +165,7 @@ export function suggestNext(templateId: string, workouts: StrengthWorkout[], now
     if (cur.weightKg === null || cur.weightKg !== prev.weightKg || cur.minReps >= prev.minReps) break;
     drops++;
   }
-  if (drops >= DROP_STEP_BACK && last.weightKg !== null && !assisted) return done(stepBack(last.weightKg), reps, 'step-back', 'dropped');
+  if (drops >= DROP_STEP_BACK && last.weightKg !== null && !assisted) { const kg = stepBack(last.weightKg); return done(kg, repsAt0(kg), 'step-back', 'dropped'); }
   // A level with a faster jump (`experience.rep-jump`) takes it when there was clearly room, and then does not wait for a second session.
   const jump = repJumpFor(plan?.experience);
   const prev = comparable[comparable.length - 2];
@@ -171,12 +178,15 @@ export function suggestNext(templateId: string, workouts: StrengthWorkout[], now
     const reached = (last.weightKg ?? 0) >= (before.weightKg ?? 0) && last.sets.every((r) => r >= before.minReps);
     if (!reached) return done(last.weightKg, reps, 'keep', 'not-all-reps');
   }
-  const path: Path = last.effort === 'plenty' ? 'plenty-left' : clearly ? 'clearly-more' : last.effort === 'none' ? 'zero-left' : 'all-reps';
+  const path: Path = last.effort === 'plenty' ? 'plenty-left' : clearly ? (last.planned !== undefined ? 'clearly-more' : 'more-than-last') : last.effort === 'none' ? 'zero-left' : 'all-reps';
   if (last.weightKg === null || last.minReps < range.max) return done(last.weightKg, fit(last.minReps + (fast ? jump : 1)), 'progress', path);
   if (assisted) return done(last.weightKg, reps, 'keep', 'assisted');
   const next = nextUp(last.weightKg, ladder);
   // A large step: the reps start where the new weight allows at the same effort, at most `belowMin` under the range.
-  const start = isLargeStep(last.weightKg, next) ? Math.min(range.min, Math.max(1, range.min - BELOW_MIN, repsAt(last.weightKg, last.minReps, next))) : range.min;
+  const allowed = repsAt(last.weightKg, last.minReps, next);
+  // Without room below the range (a person who starts): the weight stays and the reps climb above the range until the step fits.
+  if (isLargeStep(last.weightKg, next) && allowed < range.min - belowMin) return done(last.weightKg, last.minReps + (fast ? jump : 1), 'progress', path);
+  const start = isLargeStep(last.weightKg, next) ? Math.min(range.min, Math.max(1, range.min - belowMin, allowed)) : range.min;
   return done(next, start, 'progress', path);
 }
 

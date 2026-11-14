@@ -306,7 +306,7 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
             };
             // The experience question comes before the push question (which waits for `einige`), never both in one scan.
             // Only after a first strength session from any source, so a person who only rides is never asked.
-            if (experienceAskDue({ ...window, goal: goalNow, gymDates, strength: gymDates.length > 0 })) {
+            if (experienceAskDue({ ...window, goal: goalNow, gymDates, strength: gymDates.length > 0, historyReady: hevy.status(p.id).state !== 'connected' || hevy.strengthReady(p.id) })) {
               chat.askExperience(p.id);
               pushAsked = true;
               sentPrompts.mark(p.id, 'expAsk', dateKey(now));
