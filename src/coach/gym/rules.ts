@@ -95,10 +95,10 @@ function plainWorkout(ctx: GymContext, machinesOnly: boolean): Plan {
     return {
       workout: { name: HISTORY_NAME, exercises: withRamps(core, exercisesOf(core, ctx), ctx) },
       reason: legsTired && !recentLegs
-        ? 'Heute gibt es deine häufigsten Übungen der letzten Monate, ohne Beinarbeit, damit die Beine geschont bleiben.'
+        ? 'Im nächsten Training gibt es deine häufigsten Übungen der letzten Monate, ohne Beinarbeit, damit die Beine geschont bleiben.'
         : legsTired
-        ? 'Heute gibt es deine häufigsten Übungen der letzten Monate, ohne schwere Beinarbeit, weil die Beine noch Pause brauchen.'
-        : 'Heute gibt es deine häufigsten Übungen der letzten Monate in ruhigem Aufbau, damit sich Fortschritt gut messen lässt.',
+        ? 'Im nächsten Training gibt es deine häufigsten Übungen der letzten Monate, ohne schwere Beinarbeit, weil die Beine noch Pause brauchen.'
+        : 'Im nächsten Training gibt es deine häufigsten Übungen der letzten Monate in ruhigem Aufbau, damit sich Fortschritt gut messen lässt.',
     };
   }
   const machines = ctx.templates.filter((t) => t.equipment === 'machine' && allowed(t));
