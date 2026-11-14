@@ -17,7 +17,7 @@ export type CoachSettingsView = {
 };
 export type CoachLinkSnapshot = { view: CoachSettingsView | null; /** The account has no coach on the server (yet): nothing to show. */ unavailable: boolean };
 type Without<T> = T extends { profileId: string } ? Omit<T, 'profileId'> : never;
-export type SettingsMessage = Without<Extract<CoachClientMessage, { type: 'hevy-connect' | 'hevy-disconnect' | 'garmin-login' | 'garmin-mfa' | 'garmin-disconnect' | 'garmin-upload-settings' | 'gym-start' | 'gym-answer' | 'gym-skip-question' | 'meals-settings' }>>;
+export type SettingsMessage = Without<Extract<CoachClientMessage, { type: 'hevy-connect' | 'hevy-disconnect' | 'garmin-login' | 'garmin-mfa' | 'garmin-disconnect' | 'garmin-upload-settings' | 'garmin-upload-workout' | 'gym-start' | 'gym-answer' | 'gym-skip-question' | 'meals-settings' }>>;
 
 const MIN_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30_000;

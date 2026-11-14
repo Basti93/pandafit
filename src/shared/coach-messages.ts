@@ -34,6 +34,7 @@ const plain = [
   z.object({ type: z.literal('debrief-seen'), ...p }),
   z.object({ type: z.literal('garmin-upload-settings'), ...p, mode: z.enum(['off', 'ask']) }),
   z.object({ type: z.literal('garmin-upload'), ...p, rideId: id, repoLink: z.boolean().optional() }),
+  z.object({ type: z.literal('garmin-upload-workout'), ...p, workoutId: id, repoLink: z.boolean().optional() }),
   z.object({ type: z.literal('debrief-answer'), ...p, rideId: id, question: str, text: str }),
   z.object({ type: z.literal('debrief-skip-question'), ...p, rideId: id, question: str }),
   z.object({ type: z.literal('remove-motive'), ...p, atMs: finite }),

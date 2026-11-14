@@ -74,6 +74,7 @@ export type RuntimeCtx = {
 
   view: (profileId: string) => CoachStateMessage | null;
   startUpload: (profileId: string, rideId: string, repoLink: boolean) => void;
+  startWorkoutUpload: (profileId: string, workoutId: string, repoLink: boolean) => void;
   garminData: (profileId: string) => GarminCoachData | null;
   activitiesOf: (id: string) => ReturnType<typeof allActivities>;
   adviceOf: (id: string) => PublishedAdvice | null;

@@ -108,6 +108,7 @@ export const handlers: Handlers = {
   'debrief-seen': coachMsg((m, ctx) => ctx.coach.debriefSeen(m.profileId)),
   'garmin-upload-settings': coachMsg((m, ctx) => ctx.coach.setUploadMode(m.profileId, m.mode === 'off' ? 'off' : 'ask')),
   'garmin-upload': coachMsg((m, ctx) => ctx.startUpload(m.profileId, m.rideId, m.repoLink === true)),
+  'garmin-upload-workout': coachMsg((m, ctx) => ctx.startWorkoutUpload(m.profileId, m.workoutId, m.repoLink === true)),
   'debrief-answer': coachMsg((m, ctx) => { ctx.coach.answerDebrief(m.profileId, m.rideId, m.question, m.text); refreshing(ctx, m.profileId); }),
   'debrief-skip-question': coachMsg((m, ctx) => ctx.coach.skipDebriefQuestion(m.profileId, m.rideId, m.question)),
   'remove-motive': coachMsg((m, ctx) => { ctx.coach.removeMotive(m.profileId, m.atMs); refreshing(ctx, m.profileId); }),
