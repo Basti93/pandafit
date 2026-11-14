@@ -1,7 +1,8 @@
 import { contiguousGroups } from '../../shared/superset';
 import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate, GymExercise, GymSet, GymWorkout } from '../../shared/gym/types';
-import { GENTLE_FAILURE_SETS, ISOLATION_SESSIONS_PER_WEEK, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_SESSION_FRACTIONAL_SETS, MAX_SETS, MAX_WIDOWMAKERS } from './limits';
+import { GENTLE_FAILURE_SETS, ISOLATION_SESSIONS_PER_WEEK, MAX_EXERCISES } from './limits';
+import { limitsFor, repRangeFor, type Experience } from '../../shared/experience';
 import type { Push } from '../../shared/personal';
 import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan, type Suggestion } from './history';
 import { hardSetsOf, musclesOfFrom, preFatigue } from './pre-fatigue';
@@ -27,6 +28,8 @@ export type GymContext = { workouts: StrengthWorkout[]; templates: ExerciseTempl
   budgetMinutes?: number;
   /** How hard the person trains, an open or healing complaint already counted in. Without it, normal. */
   push?: Push;
+  /** How long the person trains with weights. Without it, erfahren (the general limits). */
+  experience?: Experience;
   /**
    * The fixed section of today. `core`: catalog ids of the core exercises of today's template. `exempt`: core ids the plan may leave
    * out (stagnating, excluded, legs on a leg break, swapped, or all with an open complaint). `lightCap`: most hard sets in the light
@@ -57,7 +60,7 @@ export function weightCap(suggested: number, withStep: boolean, ladder: Ladder):
 }
 
 /** The plan the suggestions are made for: studio, weight steps and where each exercise stood in past workouts. */
-export const gymPlan = (ctx: GymContext): Plan => ({ studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, bars: ctx.bars, muscleOf: musclesOfFrom(ctx.templates, ctx.catalog ?? []) });
+export const gymPlan = (ctx: GymContext): Plan => ({ studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, bars: ctx.bars, muscleOf: musclesOfFrom(ctx.templates, ctx.catalog ?? []), ...(ctx.experience ? { experience: ctx.experience } : {}) });
 
 /**
  * The suggestion without the place (`blind`, the one the prompt shows) and the one for this place (`here`). The place may only
@@ -116,7 +119,9 @@ function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, re
   if (!isRepBased(t)) no(`${where}: nur Übungen mit Wiederholungen`);
   const { blind: sug, here } = placedSuggestion(ex.templateId, t, ctx, preSets);
   const ladder = ladderFor(ex.templateId, t, ctx.workouts, ctx.nowMs, gymPlan(ctx));
-  const range = repRangeOf(t);
+  const own = repRangeFor(repRangeOf(t), ctx.experience);
+  // A weight that came with a large step may suggest reps below the range (gym.large-step); those are allowed down to the suggestion.
+  const range = sug.why !== 'none' && sug.weightKg !== null && sug.reps < own.min ? { min: sug.reps, max: own.max } : own;
   if (!known.has(ex.templateId) && !recentEquipment.has(t.equipment)) no(`${where}: Gerät in den letzten Monaten nicht benutzt`);
   const widow = isWidowmaker(ex.notes);
   const barbell = t.equipment === 'barbell';
@@ -196,8 +201,9 @@ export function balanceEntryOf(e: { templateId: string; title: string }, ctx: Gy
  */
 function checkVolume(exercises: GymExercise[], ctx: GymContext): void {
   const items = exercises.map((e) => ({ exercise: balanceEntryOf(e, ctx), sets: hardSetsOf(e.sets) }));
+  const max = limitsFor(ctx.experience).maxSessionFractionalSets;
   for (const [group, sets] of Object.entries(sessionSetsByGroup(items))) {
-    if (sets > MAX_SESSION_FRACTIONAL_SETS) no(`${MUSCLE_TARGETS[group as keyof typeof MUSCLE_TARGETS].label}: mehr als ${MAX_SESSION_FRACTIONAL_SETS} Sätze für einen Muskel in einem Training`);
+    if (sets > max) no(`${MUSCLE_TARGETS[group as keyof typeof MUSCLE_TARGETS].label}: mehr als ${max} Sätze für einen Muskel in einem Training`);
   }
   const catalog = ctx.catalog ?? [];
   const full = saturatedIsolationGroups(ctx);
@@ -227,11 +233,17 @@ export function checkWorkout(raw: unknown, ctx: GymContext): CheckResult {
     if (new Set(keys).size < keys.length) return no('dieselbe Ausführung doppelt');
     if (ctx.avoidLegs === true && parsed.some((p) => LEG_MUSCLES.includes(p.template.primaryMuscle))) return no('Keine Beine in dieser Einheit');
     const all = exercises.flatMap((e) => e.sets);
-    if (all.filter((s) => s.type !== 'warmup').length > MAX_SETS) return no(`mehr als ${MAX_SETS} Sätze`);
+    const lim = limitsFor(ctx.experience);
+    if (all.filter((s) => s.type !== 'warmup').length > lim.maxSets) return no(`mehr als ${lim.maxSets} Sätze`);
+    const hard = (s: GymSet): boolean => s.type === 'failure' || s.type === 'dropset';
+    const widowmakers = exercises.filter((e) => isWidowmaker(e.notes)).length;
     // Gentle comes first, so the AI hears the reason that matters; a widowmaker is all-out in practice, so it counts too.
-    if (ctx.push === 'gentle' && (all.filter((s) => s.type === 'failure' || s.type === 'dropset').length > GENTLE_FAILURE_SETS || exercises.some((e) => isWidowmaker(e.notes)))) return no('Versagen passt nicht zur Härte');
-    if (all.filter((s) => s.type === 'failure').length > MAX_FAILURE_SETS) return no(`mehr als ${MAX_FAILURE_SETS} Sätze bis zum Versagen`);
-    if (exercises.filter((e) => isWidowmaker(e.notes)).length > MAX_WIDOWMAKERS) return no(`mehr als ${MAX_WIDOWMAKERS} Widowmaker`);
+    if (ctx.push === 'gentle' && (all.filter(hard).length > GENTLE_FAILURE_SETS || widowmakers > 0)) return no('Versagen passt nicht zur Härte');
+    // Below erfahren: failure and drop sets together within the level's limit, only at the end of an exercise, no widowmaker.
+    if (lim.dropsetsCount && (all.filter(hard).length > lim.maxFailureSets || widowmakers > lim.maxWidowmakers)) return no('Versagen passt noch nicht zur Erfahrung');
+    if (lim.failureAtEndOnly && exercises.some((e) => { const work = e.sets.filter((s) => s.type !== 'warmup'); const first = work.findIndex(hard); return first >= 0 && work.slice(first).some((s) => !hard(s)); })) return no('Versagen passt noch nicht zur Erfahrung');
+    if (all.filter((s) => s.type === 'failure').length > lim.maxFailureSets) return no(`mehr als ${lim.maxFailureSets} Sätze bis zum Versagen`);
+    if (widowmakers > lim.maxWidowmakers) return no(`mehr als ${lim.maxWidowmakers} Widowmaker`);
     if (ctx.block) checkBlock(exercises, all, ctx, ctx.block);
     checkVolume(exercises, ctx);
     const ids = exercises.map((e) => e.supersetId).filter((v): v is number => v !== null);
@@ -269,6 +281,7 @@ const REASON_PHRASES: [RegExp, string][] = [
   [/Kernübung fehlt/, 'eine Kernübung des Abschnitts fehlt'],
   [/leichte Woche/, 'mehr, als die leichte Woche tragen soll'],
   [/Versagen passt nicht zur Härte/, 'Sätze bis zum Versagen, obwohl du vorsichtig trainierst'],
+  [/Versagen passt noch nicht zur Erfahrung/, 'Sätze bis zum Versagen, die jetzt noch nicht dran sind'],
   [/Sätze für einen Muskel/, 'mehr Sätze für einen Muskel, als in ein Training passen'],
   [/Isolationsarbeit/, 'Isolationsübungen für einen Muskel, der diese Woche schon genug davon hatte'],
   [/mehr als \d+ Sätze bis zum Versagen/, 'zu viele Sätze bis zum Versagen'],

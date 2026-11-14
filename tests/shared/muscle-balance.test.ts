@@ -95,3 +95,14 @@ describe('statistics and coach agree', () => {
     expect(v.balance.some((g) => g.effective7 > 0)).toBe(true);
   });
 });
+
+describe('muscleBalance by experience', () => {
+  it('a person who starts gets the lower targets and never "low"', () => {
+    const items = [{ exercise: bench, sets: 3, ageMs: DAY }];
+    expect(get(muscleBalance(items, 'muscle'), 'chest')).toMatchObject({ state: 'low', target: { min: 12, max: 18 } });
+    expect(get(muscleBalance(items, 'muscle', [], 'erfahren'), 'chest')).toMatchObject({ state: 'low', target: { min: 12, max: 18 } });
+    expect(get(muscleBalance(items, 'muscle', [], 'neu'), 'chest')).toMatchObject({ state: null, target: { min: 6, max: 8 } });
+    expect(get(muscleBalance(items, 'muscle', [], 'neu'), 'back').state).toBe('none');
+    expect(get(muscleBalance([{ exercise: bench, sets: 7, ageMs: DAY }], 'muscle', [], 'neu'), 'chest').state).toBe('good');
+  });
+});

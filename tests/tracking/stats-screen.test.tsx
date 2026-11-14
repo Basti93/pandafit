@@ -34,8 +34,10 @@ const workouts = [
 const openMuscles = () => { fireEvent.click(screen.getByRole('button', { name: /^Muskeln/ })); return screen.getByRole('dialog', { name: 'Muskeln' }); };
 const BAD = /Serie|Streak|Punkte|musst/;
 
+/** These pages show a person who trains for long (their answer to Bo); a person who starts sees no "Wenig" (own test below). */
+const EXPERIENCED: TrackedRecord = { kind: 'goal', id: 'goal', updatedMs: 1, deleted: false, body: { strength: 'muscle', focus: [], sports: {}, experience: 'erfahren', atMs: 1 } };
 async function show(seed: TrackedRecord[]) {
-  const { port } = fakePort(seed);
+  const { port } = fakePort([...seed, EXPERIENCED]);
   const r = render(<LookBack port={port} now={now} onHistory={() => {}} />);
   await screen.findByRole('button', { name: 'Zeit pro Woche' });
   return r;
@@ -144,7 +146,7 @@ test('broken workout bodies next to a good one do not break the page', async () 
 });
 
 test('a failed first read shows a calm message with a retry', async () => {
-  const { port, state } = fakePort([statsRec(statsBody(days)), ...workouts]);
+  const { port, state } = fakePort([statsRec(statsBody(days)), ...workouts, EXPERIENCED]);
   state.failList = true;
   render(<LookBack port={port} now={now} onHistory={() => {}} />);
   expect((await screen.findByRole('status')).textContent).toMatch(/nicht gelesen/);
@@ -212,7 +214,7 @@ test('the pair verdict names the short group without the numbers', async () => {
 
 test('Fortschritt is in Zeit pro Woche, not on the page', async () => {
   const body = { ...statsBody(days), ftp: [{ atMs: NOW - 86_400_000, ftpW: 210 }], weightKg: 70 };
-  const { port } = fakePort([statsRec(body), ...workouts]);
+  const { port } = fakePort([statsRec(body), ...workouts, EXPERIENCED]);
   render(<LookBack port={port} now={now} onHistory={() => {}} />);
   await screen.findByRole('button', { name: 'Zeit pro Woche' });
   expect(screen.queryByRole('region', { name: 'Fortschritt' })).toBeNull();
@@ -226,4 +228,15 @@ test('only a real gap is orange: a group that is merely low keeps "Wenig" in the
   expect(brust.textContent).toContain('Wenig');
   expect(brust.querySelector('.tk-state-low')).toBeNull();
   expect(brust.querySelector('.tk-state-quiet')).not.toBeNull();
+});
+
+test('a person who starts sees no "Wenig" and the lower weekly targets', async () => {
+  const { port } = fakePort([workout('wa', new Date(2026, 10, 3, 18).getTime(), 'pf-bench-press', 'Bankdrücken', 2)]);
+  render(<LookBack port={port} now={now} onHistory={() => {}} />);
+  await screen.findByRole('button', { name: 'Zeit pro Woche' });
+  const muscles = openMuscles();
+  const brust = within(muscles).getByRole('button', { name: /Brust/ });
+  expect(brust.textContent).not.toContain('Wenig');
+  fireEvent.click(brust);
+  expect(within(muscles).getByText('2 von 6–8 Sätzen diese Woche')).toBeTruthy();
 });

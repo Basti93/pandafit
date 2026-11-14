@@ -5,7 +5,7 @@ import { barKgFor, NO_BARS } from '../../shared/bars';
 import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, plannedKey, recentLegWork } from './history';
 import { isExcluded } from '../../shared/excluded';
 import { balanceEntryOf, checkWorkout, executionKeyOf, isCoreExercise, isCoreOfSection, placedSuggestion, saturatedIsolationGroups, type GymContext } from './guardrails';
-import { MAX_SESSION_FRACTIONAL_SETS } from './limits';
+import { limitsFor, repRangeFor } from '../../shared/experience';
 import { isolationGroupOf, sessionSetsByGroup } from '../../shared/gym/session-limits';
 import { contributions } from '../../shared/muscle-balance';
 import { resolveCatalogEntry } from '../../shared/excluded';
@@ -22,7 +22,7 @@ const FALLBACK_MUSCLES = ['quadriceps', 'chest', 'lats', 'front_delts', 'side_de
 
 function exerciseOf(t: ExerciseTemplate, ctx: GymContext, preSets: number): GymExercise {
   const s = placedSuggestion(t.id, t, ctx, preSets).here;
-  const range = repRangeOf(t);
+  const range = repRangeFor(repRangeOf(t), ctx.experience);
   const reps = s.why === 'none' ? Math.min(range.max, Math.max(range.min, START_REPS)) : s.reps;
   const sets = Array.from({ length: SETS }, () => ({ type: 'normal' as const, weightKg: s.weightKg, reps }));
   return { templateId: t.id, title: t.title, restS: null, supersetId: null, notes: '', sets };
@@ -159,8 +159,9 @@ export function capSessionVolume(w: GymWorkout, ctx: GymContext): GymWorkout {
   const exercises = w.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
   const entries = new Map(exercises.map((e) => [e, balanceEntryOf(e, ctx)]));
   const hardOf = (e: GymExercise): number => hardSetsOf(e.sets);
+  const max = limitsFor(ctx.experience).maxSessionFractionalSets;
   for (;;) {
-    const over = Object.entries(sessionSetsByGroup(exercises.map((e) => ({ exercise: entries.get(e)!, sets: hardOf(e) })))).find(([, n]) => n > MAX_SESSION_FRACTIONAL_SETS)?.[0];
+    const over = Object.entries(sessionSetsByGroup(exercises.map((e) => ({ exercise: entries.get(e)!, sets: hardOf(e) })))).find(([, n]) => n > max)?.[0];
     if (!over) break;
     const hits = exercises.filter((e) => contributions(entries.get(e)!).some((c) => c.group === over)).reverse();
     const plain = hits.filter((e) => !isCoreOfSection(e, ctx));
@@ -168,6 +169,25 @@ export function capSessionVolume(w: GymWorkout, ctx: GymContext): GymWorkout {
     if (!target) break;
     if (hardOf(target) > 1) target.sets.splice(target.sets.length - 1 - [...target.sets].reverse().findIndex((s) => s.type !== 'warmup'), 1);
     else exercises.splice(exercises.indexOf(target), 1);
+  }
+  return { ...w, exercises };
+}
+
+/**
+ * No more work sets than the level allows (`experience.max-sets`): from the last exercises, sets beyond 2 go first, then the last
+ * exercises that are no core exercise of the section. With the general limit a rule workout never reaches it.
+ */
+export function capSessionSets(w: GymWorkout, ctx: GymContext): GymWorkout {
+  const max = limitsFor(ctx.experience).maxSets;
+  const exercises = w.exercises.map((e) => ({ ...e, sets: [...e.sets] }));
+  const work = (e: GymExercise): number => e.sets.filter((s) => s.type !== 'warmup').length;
+  while (exercises.reduce((n, e) => n + work(e), 0) > max) {
+    const long = [...exercises].reverse().find((e) => work(e) > KEEP_SETS);
+    if (long) { long.sets.splice(long.sets.map((s) => s.type).lastIndexOf('normal'), 1); continue; }
+    const extra = exercises.map((e) => isCoreOfSection(e, ctx)).lastIndexOf(false);
+    if (extra >= 0) exercises.splice(extra, 1);
+    else if (exercises.length > 1) exercises.pop();
+    else break;
   }
   return { ...w, exercises };
 }
@@ -188,13 +208,13 @@ export function ruleWorkout(ctx: GymContext): Plan & { guard?: string } {
   const fromHistory = first.workout.name === HISTORY_NAME;
   let guard: string | undefined;
   if (fromHistory) {
-    const checked = checkWorkout(capSessionVolume(capLightWeek(trimToLimit(first.workout, limit, catalog), ctx), ctx), ctx);
+    const checked = checkWorkout(capSessionSets(capSessionVolume(capLightWeek(trimToLimit(first.workout, limit, catalog), ctx), ctx), ctx), ctx);
     if (checked.ok) return finish(first, checked.workout);
     guard = checked.reason;
   }
   const minimal = fromHistory ? plainWorkout(ctx, true) : first;
   if (minimal.workout.exercises.length === 0) return { ...minimal, ...(guard ? { guard } : {}) };
-  const fit = capSessionVolume(capLightWeek(trimToLimit(minimal.workout, limit, catalog), ctx), ctx);
+  const fit = capSessionSets(capSessionVolume(capLightWeek(trimToLimit(minimal.workout, limit, catalog), ctx), ctx), ctx);
   const again = checkWorkout(fit, ctx);
   const done = finish(minimal, again.ok ? again.workout : fit);
   // Even the smallest plan is longer than the time: say so instead of a number that looks like it fits.

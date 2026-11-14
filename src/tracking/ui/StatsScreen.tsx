@@ -11,6 +11,8 @@ import { dateLabel } from './labels';
 import { MuscleIcon } from './MuscleIcon';
 import { progressRows, type ProgressRow } from '../progress';
 import { runView } from './run-view';
+import { experienceOf } from '../../shared/experience';
+import { dateKey } from '../../shared/day-rating';
 import { Row, RowList, Sheet } from './kit';
 
 const SPORT_LABEL: Record<Sport, string> = { bike: 'Rad', strength: 'Kraft', run: 'Laufen', mobility: 'Mobility', other: 'Andere' };
@@ -136,7 +138,12 @@ export function LookBack({ port, now, latest, onHistory }: { port: TrackingPort;
   const nowMs = now();
   const catalog = useCatalog(port);
   const goal = useGoal(port, nowMs);
-  const v = useMemo(() => statsView(stats, workouts, nowMs, catalog, goal.strength, goal.focus), [stats, workouts, nowMs, catalog, goal]);
+  // The experience as the coach sees it, from what is here: logged workouts, strength days of the stats record and the answer.
+  const experience = useMemo(() => experienceOf({
+    dates: [...workouts.map((w) => dateKey(w.startMs)), ...(stats?.days ?? []).filter((d) => d.minutes.strength > 0).map((d) => d.date)],
+    ...(goal.experience ? { answer: goal.experience } : {}), today: dateKey(nowMs),
+  }), [workouts, stats, goal, nowMs]);
+  const v = useMemo(() => statsView(stats, workouts, nowMs, catalog, goal.strength, goal.focus, experience), [stats, workouts, nowMs, catalog, goal, experience]);
   const progress = useMemo(() => progressRows({
     nowMs, ftp: stats?.ftp ?? [], weightKg: stats?.weightKg ?? null, runPace: runView(runRecords ?? [], nowMs).status?.numbers.easyPace ?? null,
     workouts,

@@ -2,6 +2,7 @@ import type { Exercise } from '../shared/exercises';
 import { dedupeSessions, onePerSession } from '../shared/history';
 import { effectiveByGroup, muscleBalance, tally, type BalanceItem, type GroupBalance, type Tally } from '../shared/muscle-balance';
 import { MUSCLE_TARGETS, pairVerdicts, weeklySetRange, type MuscleGroup } from '../shared/muscle-targets';
+import type { Experience } from '../shared/experience';
 import type { LoggedWorkout } from '../shared/records';
 import { SPORTS, type Sport, type StatsBody } from '../shared/stats';
 import { addDays } from '../shared/week-plan';
@@ -65,7 +66,7 @@ export function wellFormed(all: unknown[]): LoggedWorkout[] {
 }
 
 /** The numbers of the statistics page: minutes and hard days from the stats record, sets from the workouts. */
-export function statsView(stats: StatsBody | null, workouts: LoggedWorkout[], nowMs: number, catalog: Exercise[], strength: string | null | undefined = stats?.goal, focus: readonly MuscleGroup[] = []): StatsView {
+export function statsView(stats: StatsBody | null, workouts: LoggedWorkout[], nowMs: number, catalog: Exercise[], strength: string | null | undefined = stats?.goal, focus: readonly MuscleGroup[] = [], experience?: Experience): StatsView {
   const monday = mondayOf(nowMs);
   const starts = Array.from({ length: WEEKS }, (_, i) => isoDate(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 7 * (WEEKS - 1 - i))));
   const weeks: WeekStats[] = starts.map((weekStart) => ({
@@ -139,10 +140,10 @@ export function statsView(stats: StatsBody | null, workouts: LoggedWorkout[], no
   }
 
   const targets = {} as Record<MuscleGroup, { min: number; max: number }>;
-  for (const g of GROUPS) targets[g] = weeklySetRange(g, strength, focus);
+  for (const g of GROUPS) targets[g] = weeklySetRange(g, strength, focus, experience);
 
   return {
-    asOfMs: stats?.atMs ?? null, weeks, thisWeek: weeks[WEEKS - 1], targets, pairs, balance: muscleBalance(balanceItems, strength, focus), verdicts, unknown: [...unknown],
+    asOfMs: stats?.atMs ?? null, weeks, thisWeek: weeks[WEEKS - 1], targets, pairs, balance: muscleBalance(balanceItems, strength, focus, experience), verdicts, unknown: [...unknown],
     sports: SPORTS.filter((s) => weeks.some((w) => w.minutes[s] > 0)),
   };
 }

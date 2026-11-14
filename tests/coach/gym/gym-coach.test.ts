@@ -1175,9 +1175,10 @@ describe('what the coach changed ("Zuletzt geändert")', () => {
 
 describe('Härte', () => {
   const failing = () => ({ name: 'Bis zum Ende', exercises: [ex('cp', [set(40, 9), { type: 'failure', weightKg: 40, reps: 9 }]), ex('lr', [set(50, 9), set(50, 9)])] });
-  const coachWith = (complaints: Complaint[], replies: unknown[]) => {
+  // A person who trains for long (their answer); the short history alone would read as a start.
+  const coachWith = (complaints: Complaint[], replies: unknown[], experience: 'neu' | 'erfahren' = 'erfahren') => {
     const store = new RecordStore({ dir: path.join(tmp, 'tracking') });
-    store.putMany('p1', [goalRecord({ strength: 'muscle', focus: [], sports: {}, push: 'hard' }, NOW)]);
+    store.putMany('p1', [goalRecord({ strength: 'muscle', focus: [], sports: {}, push: 'hard', experience }, NOW)]);
     const calls: Input[] = [];
     const coach = new GymCoach({
       dir, nowMs: () => NOW, store, ask: async (i) => { calls.push(i); return replies.shift() ?? answer(); },
@@ -1203,6 +1204,16 @@ describe('Härte', () => {
     expect(outside(calls[0]!.prompt)).toContain('Härte: Fordere mich.');
     expect(calls).toHaveLength(1);
     expect(coach.state('p1').next?.source).toBe('claude');
+  });
+  it('wer anfängt, bekommt keinen Versagenssatz, auch bei „Fordere mich“', async () => {
+    const { coach, calls } = coachWith([], [answer({ workout: failing() }), answer({ workout: failing() })], 'neu');
+    await coach.tick('p1');
+    expect(calls).toHaveLength(2);
+    expect(block(calls[1]!.prompt, 'ablehnung-nur-daten')).toBe('Versagen passt noch nicht zur Erfahrung');
+    const s = coach.state('p1');
+    expect(s.next?.source).toBe('rules');
+    expect(s.next?.reason).toContain('Sätze bis zum Versagen, die jetzt noch nicht dran sind');
+    expect(s.next?.workout.exercises.flatMap((e) => e.sets).some((x) => x.type === 'failure')).toBe(false);
   });
 });
 

@@ -130,6 +130,8 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     store: records, hevy: gymConnected, catalog: catalogOf,
     mobility: (id) => mobility.promptData(id),
     giveTask: (id, t) => giveTask(id, 'gym', t),
+    // Every source counts for the experience, Garmin strength sessions too.
+    strengthDates: (id) => gymDoneDates(id),
     planHint: (id) => planHint(records.all(id, 'weekplan'), nowMs(), 'gym', todayContextOf(id), doneOf(id)) + longTermHint(records.all(id, 'stats'), nowMs()) + activityHintOf(id) + tasks.hint(id, 'gym', nowMs()),
     ask,
     workouts: (id) => hevy.workouts(id),

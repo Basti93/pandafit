@@ -1,6 +1,7 @@
 import type { Exercise } from './exercises';
 import { MUSCLE_TARGETS, muscleGroupOf, weeklySetRange, type MuscleGroup } from './muscle-targets';
 import { policyRule, ruleNumber } from './training-policy';
+import { lightVolumeView, type Experience } from './experience';
 
 const DAY_MS = 86_400_000;
 const GROUPS = Object.keys(MUSCLE_TARGETS) as MuscleGroup[];
@@ -66,18 +67,20 @@ export function stateOf(effective: number, range: { min: number; max: number }):
 /**
  * The one balance for app, statistics and coach: effective sets per group over the last 7 days against the weekly range, and
  * the weekly average of the last 4 weeks. Unresolved exercises count as `other`, direct only. `other` is listed only when trained.
+ * For a person who starts the targets are the lower ones and a group below them has no state, so the balance never says "Wenig".
  */
-export function muscleBalance(items: BalanceItem[], goal: string | null | undefined, focus: readonly MuscleGroup[] = []): GroupBalance[] {
+export function muscleBalance(items: BalanceItem[], goal: string | null | undefined, focus: readonly MuscleGroup[] = [], experience?: Experience): GroupBalance[] {
   const inDays = (d: number) => items.filter((i) => i.ageMs >= 0 && i.ageMs <= d * DAY_MS);
   const week = tally(inDays(7)), month = tally(inDays(28));
   return GROUPS.filter((g) => g !== 'other' || effectiveOf(month, g) > 0).map((g) => {
-    const target = weeklySetRange(g, goal, focus);
+    const target = weeklySetRange(g, goal, focus, experience);
     const effective7 = effectiveOf(week, g);
+    const state = stateOf(effective7, target);
     return {
       group: g, label: MUSCLE_TARGETS[g].label,
       direct7: week[g]?.direct ?? 0, indirect7: week[g]?.indirect ?? 0, effective7: round1(effective7),
       perWeek4: round1(effectiveOf(month, g) / 4), effective28: round1(effectiveOf(month, g)),
-      state: stateOf(effective7, target), target,
+      state: state === 'low' && lightVolumeView(experience) ? null : state, target,
     };
   });
 }

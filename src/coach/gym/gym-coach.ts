@@ -19,7 +19,8 @@ import { isExcluded } from '../../shared/excluded';
 import { EXERCISES, linkHevyTemplates, type Exercise } from '../../shared/exercises';
 import { FEDB_EXERCISES } from '../../shared/fedb';
 import { onePerSession } from '../../shared/history';
-import { effectivePush, goalOf } from '../../shared/personal';
+import { effectivePush, goalOf, storedGoalOf } from '../../shared/personal';
+import { experienceOf, type Experience } from '../../shared/experience';
 import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
 import { hevyRecord } from '../tracking/hevy-import';
 import { historyFromLogged, mergeHistory } from '../tracking/merge';
@@ -88,6 +89,8 @@ type Deps = {
   onWorkoutFinished?: (id: string) => void;
   /** Null without a Hevy key. This is the only path to a Hevy write, and only `confirm` uses it. */
   writer: (id: string) => HevyRoutines | null;
+  /** Dates (YYYY-MM-DD) with a strength session from every source, Garmin included. The coach adds its own history to them. */
+  strengthDates?: (id: string) => string[];
 };
 
 /** Hevy refuses what we sent, so the stored workout cannot be written. Auth, limits, its own trouble and the network are no such answer. */
@@ -207,7 +210,7 @@ export class GymCoach {
       for (let k = 1; k <= 7 && index === undefined; k++) index = b.rhythm[(weekday + k) % 7]?.template;
     }
     const template = b.templates[index ?? 0]!;
-    const plan = { studio: this.studio(id), renames: this.studios(id).renames, muscleOf: musclesOfFrom(templates, catalog) };
+    const plan = { studio: this.studio(id), renames: this.studios(id).renames, muscleOf: musclesOfFrom(templates, catalog), experience: this.experience(id, real, now) };
     const swapped = new Set(takenChangesOf(this.deps.store, id).flatMap((c) => c.ops.flatMap((o) => (o.op === 'swap' ? [o.exerciseId] : []))));
     const legsTired = avoidLegs || recentLegWork(real, templates, now);
     const exempt = new Set<string>();
@@ -289,6 +292,13 @@ export class GymCoach {
     return new Set((this.deps.store?.all(id, 'workout') ?? []).filter((r) => r.deleted && !goneFromHevy(r)).map((r) => r.id));
   }
   hasHistory(id: string): boolean { return this.history(id).length > 0; }
+  /** How long the person trains with weights: the strength dates of every source and the own history, and the stored answer. */
+  experience(id: string, real: StrengthWorkout[], now: number): Experience {
+    let dates: string[] = real.map((w) => dateKey(w.startMs));
+    try { dates = [...dates, ...(this.deps.strengthDates?.(id) ?? [])]; } catch { /* the own history alone */ }
+    const answer = this.deps.store ? storedGoalOf(this.deps.store.all(id, 'goal')).experience : undefined;
+    return experienceOf({ dates, ...(answer ? { answer } : {}), today: dateKey(now) });
+  }
 
   /** Keeps Hevy workouts in the store, so they stay when Hevy is removed. Identical workouts change nothing. */
   importHevy(id: string): void {
@@ -364,7 +374,7 @@ export class GymCoach {
     const real = this.history(id).filter((w) => w.startMs <= now && hasSetDetails(w));
     const latest = real.reduce<StrengthWorkout | null>((a, w) => (!a || w.startMs > a.startMs ? w : a), null);
     if (!latest) return [];
-    const plan = { studio: this.studio(id), overrides: this.loadSteps(id), renames: this.studios(id).renames, bars: this.bars(id) };
+    const plan = { studio: this.studio(id), overrides: this.loadSteps(id), renames: this.studios(id).renames, bars: this.bars(id), experience: this.experience(id, real, now) };
     const seen = new Set<string>();
     const out: NextStep[] = [];
     for (const e of latest.exercises) {
@@ -400,7 +410,7 @@ export class GymCoach {
       const latest = real.reduce<StrengthWorkout | null>((a, w) => (!a || w.startMs > a.startMs ? w : a), null);
       if (!latest) return;
       const known = this.listed.get(id);
-      const plan = { studio: this.studio(id), overrides: this.loadSteps(id), renames: this.studios(id).renames, bars: this.bars(id) };
+      const plan = { studio: this.studio(id), overrides: this.loadSteps(id), renames: this.studios(id).renames, bars: this.bars(id), experience: this.experience(id, real, now) };
       const firstKg = (sets: { type: string; weightKg: number | null }[]): number | null => sets.find((x) => x.type === 'normal' && x.weightKg !== null)?.weightKg ?? null;
       const fmt = (kg: number): string => String(kg).replace('.', ',');
       let notes = this.state(id).changeNotes;
@@ -531,8 +541,9 @@ export class GymCoach {
       const goal = this.deps.store ? goalOfProfile(this.deps.store, id, dateKey(now)) : goalOf([], dateKey(now));
       // Computed once: the guardrail and the prompt must hold the same push.
       const push = effectivePush(goal, open);
+      const experience = this.experience(id, real, now);
       const section = this.section(id, real, templates, now, open, avoidLegs, excluded);
-      const ctx: GymContext = { ...(section ? { block: section.block } : {}), workouts: real, templates, nowMs: now, push, excluded, catalog: this.catalog(id), links: this.state(id).links, ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, bars: this.bars(id), ...(avoidLegs ? { avoidLegs: true } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) };
+      const ctx: GymContext = { ...(section ? { block: section.block } : {}), workouts: real, templates, nowMs: now, push, experience, excluded, catalog: this.catalog(id), links: this.state(id).links, ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, bars: this.bars(id), ...(avoidLegs ? { avoidLegs: true } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) };
       const rule = ruleWorkout(ctx);
       if (rule.guard) console.warn(`Regel-Training: erster Plan verworfen (${rule.guard})`);
       if (open.length > 0 && rule.workout.exercises.length > 0) rule.reason = `${rule.reason} ${COMPLAINT_HINT}`;

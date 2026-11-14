@@ -1,5 +1,6 @@
 import type { Exercise } from '../../shared/exercises';
 import type { MuscleGroup } from '../../shared/muscle-targets';
+import type { Experience } from '../../shared/experience';
 import { muscleBalance, type BalanceExercise, type BalanceItem, type GroupBalance } from '../../shared/muscle-balance';
 import type { StrengthWorkout } from '../hevy';
 import type { ExerciseTemplate } from '../../shared/gym/types';
@@ -9,7 +10,7 @@ import type { ExerciseTemplate } from '../../shared/gym/types';
  * profile's catalog (secondary muscles included); a template the catalog does not know counts by its primary muscle only;
  * one nobody knows counts as Sonstiges. Warm-ups do not count.
  */
-export function muscleVolume(workouts: StrengthWorkout[], templates: ExerciseTemplate[], catalog: Exercise[], nowMs: number, goal: string | null | undefined, focus: readonly MuscleGroup[] = []): GroupBalance[] {
+export function muscleVolume(workouts: StrengthWorkout[], templates: ExerciseTemplate[], catalog: Exercise[], nowMs: number, goal: string | null | undefined, focus: readonly MuscleGroup[] = [], experience?: Experience): GroupBalance[] {
   const byCatalog = new Map(catalog.map((e) => [e.id, e]));
   const byTemplate = new Map(templates.map((t) => [t.id, t]));
   const items: BalanceItem[] = [];
@@ -23,5 +24,5 @@ export function muscleVolume(workouts: StrengthWorkout[], templates: ExerciseTem
       });
     }
   }
-  return muscleBalance(items, goal, focus);
+  return muscleBalance(items, goal, focus, experience);
 }
