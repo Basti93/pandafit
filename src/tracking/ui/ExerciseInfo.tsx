@@ -2,7 +2,7 @@ import { useState, type ReactNode, type SyntheticEvent } from 'react';
 import { descriptionCredit, type ExerciseDescription } from '../../shared/exercise-descriptions';
 import type { ExerciseImage } from '../../shared/exercise-images';
 import { ruleNumbers } from '../../shared/training-policy';
-import { BAR_LABEL, BAR_TYPES, type BarType } from '../../shared/bars';
+import { BAR_NAME_MAX, barChoices, barLabel, barWeightOf, isCustomBarId, type BarType, type Bars } from '../../shared/bars';
 import { formatDecimal, parseDecimal } from '../session';
 import { Sheet } from './kit';
 import { stepLine } from '../steps';
@@ -97,42 +97,92 @@ const validBarKg = (kg: number | null | undefined): kg is number => {
  * One light line with the bar of a barbell exercise here ("Stange: SZ-Stange, 8,5 kg"). Tapping opens a small sheet: the type
  * (for this exercise) and the weight of that type in this studio.
  */
-export function BarLine({ title, type, kgOf, onType, onKg }: { title: string; type: BarType; kgOf: (t: BarType) => number; onType: (t: BarType) => void; onKg: (type: BarType, kg: number) => void }) {
+type BarHandlers = { onType: (t: BarType) => void; onKg: (type: BarType, kg: number) => void; onAdd: (name: string, kg: number) => void; onRename: (id: string, name: string) => void; onDelete: (id: string) => void };
+
+export function BarLine({ title, type, bars, studio, ...h }: { title: string; type: BarType; bars: Bars; studio: string } & BarHandlers) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <p className="muted tk-step">
-        <button type="button" className="link" aria-label={`Stange ${title}`} onClick={() => setOpen(true)}>{`Stange: ${BAR_LABEL[type]}, ${formatDecimal(kgOf(type))} kg`}</button>
+        <button type="button" className="link" aria-label={`Stange ${title}`} onClick={() => setOpen(true)}>{`Stange: ${barLabel(type, bars)}, ${formatDecimal(barWeightOf(type, studio, bars))} kg`}</button>
       </p>
-      {open && <BarSheet title={title} type={type} kgOf={kgOf} onType={onType} onKg={onKg} onClose={() => setOpen(false)} />}
+      {open && <BarSheet title={title} type={type} bars={bars} studio={studio} {...h} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-function BarSheet({ title, type, kgOf, onType, onKg, onClose }: { title: string; type: BarType; kgOf: (t: BarType) => number; onType: (t: BarType) => void; onKg: (type: BarType, kg: number) => void; onClose: () => void }) {
+function BarSheet({ title, type, bars, studio, onType, onKg, onAdd, onRename, onDelete, onClose }: { title: string; type: BarType; bars: Bars; studio: string; onClose: () => void } & BarHandlers) {
+  const kgOf = (t: BarType) => barWeightOf(t, studio, bars);
   const [draft, setDraft] = useState(formatDecimal(kgOf(type)));
   // The weight shown belongs to the type shown: after a switch the field holds the new type's weight.
   const [shownType, setShownType] = useState(type);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newKg, setNewKg] = useState('');
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
   const parsed = parseDecimal(draft);
   const bad = draft.trim() !== '' && !validBarKg(parsed);
+  const parsedNew = parseDecimal(newKg);
+  const badNew = newKg.trim() !== '' && !validBarKg(parsedNew);
   const [lo, hi] = ruleNumbers('load.bar-range-kg');
+  const range = `Bitte ein Gewicht zwischen ${formatDecimal(lo)} und ${formatDecimal(hi)} kg in Viertelkilo-Schritten.`;
+  // A deleted type falls back to what the exercise uses without it.
+  const shown = bars.custom.has(shownType) || !isCustomBarId(shownType) ? shownType : type;
   return (
     <Sheet size="small" title={`Stange ${title}`} onClose={onClose}>
       <div className="tk-sets">
         <div role="radiogroup" aria-label="Stangentyp">
-          {BAR_TYPES.map((t) => (
-            <label key={t} className="tk-row">
-              <input type="radio" name="bar-type" checked={shownType === t} onChange={() => { setShownType(t); setDraft(formatDecimal(kgOf(t))); onType(t); }} />
-              <span>{BAR_LABEL[t]}</span>
-            </label>
+          {barChoices(bars).map((c) => (
+            <div key={c.id}>
+              <label className="tk-row">
+                <input type="radio" name="bar-type" checked={shown === c.id} onChange={() => { setShownType(c.id); setDraft(formatDecimal(kgOf(c.id))); onType(c.id); }} />
+                <span>{c.label}</span>
+              </label>
+              {c.custom && renaming !== c.id && deleting !== c.id && (
+                <span className="tk-row">
+                  <button type="button" className="link" aria-label={`${c.label} umbenennen`} onClick={() => { setRenaming(c.id); setRenameDraft(c.label); }}>Umbenennen</button>
+                  <button type="button" className="link" aria-label={`${c.label} löschen`} onClick={() => setDeleting(c.id)}>Löschen</button>
+                </span>
+              )}
+              {c.custom && renaming === c.id && (
+                <span className="tk-row">
+                  <input aria-label="Neuer Name der Stange" maxLength={BAR_NAME_MAX} value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} />
+                  <button type="button" className="primary" disabled={renameDraft.trim() === ''} onClick={() => { onRename(c.id, renameDraft.trim()); setRenaming(null); }}>Übernehmen</button>
+                </span>
+              )}
+              {c.custom && deleting === c.id && (
+                <span role="note">
+                  <small>Die Stange wird gelöscht. Übungen mit dieser Stange nutzen wieder den Standard.</small>
+                  <button type="button" className="link" aria-label={`${c.label} endgültig löschen`} onClick={() => { onDelete(c.id); setDeleting(null); if (shownType === c.id) { setShownType(type); setDraft(formatDecimal(kgOf(type))); } }}>Löschen bestätigen</button>
+                  <button type="button" className="link" onClick={() => setDeleting(null)}>Abbrechen</button>
+                </span>
+              )}
+            </div>
           ))}
         </div>
         <label className="tk-field-wrap">
-          <span className="muted">{`Gewicht der ${BAR_LABEL[shownType]} in diesem Studio (kg)`}</span>
+          <span className="muted">{`Gewicht der ${barLabel(shown, bars)} in diesem Studio (kg)`}</span>
           <input className="tk-num" aria-label="Gewicht der Stange" inputMode="decimal" autoComplete="off" aria-invalid={bad} value={draft} onChange={(e) => setDraft(e.target.value)} />
         </label>
-        {bad && <small className="tk-invalid" role="note">{`Bitte ein Gewicht zwischen ${formatDecimal(lo)} und ${formatDecimal(hi)} kg in Viertelkilo-Schritten.`}</small>}
-        <button type="button" className="primary" disabled={!validBarKg(parsed)} onClick={() => { if (validBarKg(parsed)) { onKg(shownType, parsed); onClose(); } }}>Speichern</button>
+        {bad && <small className="tk-invalid" role="note">{range}</small>}
+        <button type="button" className="primary" disabled={!validBarKg(parsed)} onClick={() => { if (validBarKg(parsed)) { onKg(shown, parsed); onClose(); } }}>Speichern</button>
+        {!adding && <button type="button" className="link" onClick={() => setAdding(true)}>Eigene Stange hinzufügen</button>}
+        {adding && (
+          <div className="tk-sets">
+            <label className="tk-field-wrap">
+              <span className="muted">Name</span>
+              <input aria-label="Name der neuen Stange" maxLength={BAR_NAME_MAX} autoComplete="off" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            </label>
+            <label className="tk-field-wrap">
+              <span className="muted">Gewicht (kg)</span>
+              <input className="tk-num" aria-label="Gewicht der neuen Stange" inputMode="decimal" autoComplete="off" aria-invalid={badNew} value={newKg} onChange={(e) => setNewKg(e.target.value)} />
+            </label>
+            {badNew && <small className="tk-invalid" role="note">{range}</small>}
+            <button type="button" className="primary" disabled={newName.trim() === '' || !validBarKg(parsedNew)} onClick={() => { if (newName.trim() !== '' && validBarKg(parsedNew)) { onAdd(newName.trim(), parsedNew); setAdding(false); setNewName(''); setNewKg(''); } }}>Hinzufügen</button>
+          </div>
+        )}
       </div>
     </Sheet>
   );

@@ -7,8 +7,8 @@ import { knownStudios, studioStateOf } from '../../../shared/studio';
 import type { TrackingPort } from '../../ports';
 import { confirmSet, currentSet, editSet, nextInSuperset, type FinishChoice, type TrackedWorkout } from '../../session';
 import { closeStore, releaseStore } from '../../registry';
-import { barUseChange, barWeightChange, hereKey, stepChange } from '../../steps';
-import { readBars, type BarType } from '../../../shared/bars';
+import { barTypeChange, barTypeDelete, barUseChange, barWeightChange, hereKey, stepChange } from '../../steps';
+import { newCustomBarId, readBars, type BarType } from '../../../shared/bars';
 import { useCatalog, useExcluded, usePortRecords, useStoreView, useWakeLock, type WorkoutStore } from '../hooks';
 import { effortQuestionsOn } from '../EffortQuestion';
 import type { DragStart } from '../ReorderSheet';
@@ -113,6 +113,19 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   };
   const chooseBarKg = (type: BarType, kg: number) => {
     void port.list('bar').then((stored) => port.put(barWeightChange(stored, type, studioHere, kg, now()))).catch(() => setNotice(NOT_SAVED));
+  };
+  const addBarType = (name: string, kg: number) => {
+    void port.list('bar').then((stored) => port.put(barTypeChange(stored, newCustomBarId(), name, kg, now()))).catch(() => setNotice(NOT_SAVED));
+  };
+  const renameBarType = (id: string, name: string) => {
+    const kg = bars.custom.get(id)?.kg;
+    if (kg === undefined) return;
+    void port.list('bar').then((stored) => port.put(barTypeChange(stored, id, name, kg, now()))).catch(() => setNotice(NOT_SAVED));
+  };
+  const deleteBarType = (id: string) => {
+    const c = bars.custom.get(id);
+    if (!c) return;
+    void port.list('bar').then((stored) => port.put(barTypeDelete(stored, id, c.name, c.kg, now()))).catch(() => setNotice(NOT_SAVED));
   };
   const chooseStep = (exerciseId: string, stepKg: number | null) => {
     void port.list('loadstep').then((stored) => port.put(stepChange(stored, exerciseId, studioHere, stepKg, now()))).catch(() => setNotice(NOT_SAVED));
@@ -256,7 +269,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
 
   return {
     port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown, editWeight, holdProps, wasHeld, releaseHold,
-    catalog, excluded, studios, overrides, bars, studioHere, statsMuscles, chooseStep, chooseBarType, chooseBarKg, currentRid, known, act, end, discard,
+    catalog, excluded, studios, overrides, bars, studioHere, statsMuscles, chooseStep, chooseBarType, chooseBarKg, addBarType, renameBarType, deleteBarType, currentRid, known, act, end, discard,
   };
 }
 
