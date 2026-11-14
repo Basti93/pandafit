@@ -8,31 +8,31 @@ import { policyRule, ruleNumber } from '../../src/shared/training-policy';
 
 describe('learnLadder', () => {
   test('40/45/50 on a machine is step 5', () => {
-    expect(learnLadder([40, 45, 50], 'machine')).toEqual({ stepKg: 5, anchorKg: 40, learned: true });
+    expect(learnLadder([40, 45, 50], 'machine', 20)).toEqual({ stepKg: 5, anchorKg: 40, learned: true });
   });
   test('7/14/21 is step 7 and 14 goes up to 21', () => {
-    const l = learnLadder([7, 14, 21], 'machine');
+    const l = learnLadder([7, 14, 21], 'machine', 20);
     expect(l.stepKg).toBe(7);
     expect(nextUp(14, l)).toBe(21);
   });
   test('dumbbells 12.5/15 are step 2.5', () => {
-    expect(learnLadder([12.5, 15], 'dumbbell').stepKg).toBe(2.5);
+    expect(learnLadder([12.5, 15], 'dumbbell', 20).stepKg).toBe(2.5);
   });
   test('a single weight gives the equipment default, not learned', () => {
-    expect(learnLadder([30], 'dumbbell')).toMatchObject({ stepKg: 2, learned: false });
-    expect(learnLadder([30, 30], 'machine')).toMatchObject({ stepKg: 5, learned: false });
-    expect(learnLadder([30], 'unheard-of').stepKg).toBe(2.5);
+    expect(learnLadder([30], 'dumbbell', 20)).toMatchObject({ stepKg: 2, learned: false });
+    expect(learnLadder([30, 30], 'machine', 20)).toMatchObject({ stepKg: 5, learned: false });
+    expect(learnLadder([30], 'unheard-of', 20).stepKg).toBe(2.5);
   });
   test('a multiple of the default falls back to the default (few data points overestimate)', () => {
-    expect(learnLadder([20, 30], 'barbell').stepKg).toBe(2.5);
+    expect(learnLadder([20, 30], 'barbell', 20).stepKg).toBe(2.5);
   });
   test('a finer difference than the default is kept, and the step is at least 0.5', () => {
-    expect(learnLadder([10, 11.25], 'machine').stepKg).toBe(1.25);
-    expect(learnLadder([10, 10.25], 'machine').stepKg).toBe(0.5);
+    expect(learnLadder([10, 11.25], 'machine', 20).stepKg).toBe(1.25);
+    expect(learnLadder([10, 10.25], 'machine', 20).stepKg).toBe(0.5);
   });
   test('anchor: smallest weight; barbell without data is the bar; else 0', () => {
-    expect(learnLadder([], 'barbell')).toEqual({ stepKg: 2.5, anchorKg: 20, learned: false });
-    expect(learnLadder([], 'machine').anchorKg).toBe(0);
+    expect(learnLadder([], 'barbell', 20)).toEqual({ stepKg: 2.5, anchorKg: 20, learned: false });
+    expect(learnLadder([], 'machine', 20).anchorKg).toBe(0);
   });
 });
 
@@ -68,7 +68,7 @@ describe('step override', () => {
     expect(loadStepId('e', 'A')).toMatch(/^step-/);
   });
   test('an override wins, keeps the anchor, and a tombstone undoes it', () => {
-    const base = learnLadder([40, 45, 50], 'machine');
+    const base = learnLadder([40, 45, 50], 'machine', 20);
     const key = { exerciseId: 'e', studio: 'A' };
     const on = loadStepOverrides([rec('e', 'A', 10)]);
     expect(withOverride(base, on, key)).toEqual({ stepKg: 10, anchorKg: 40, learned: true });
@@ -83,24 +83,24 @@ describe('step override', () => {
   test('the coach side reads them per profile', () => {
     const store = { all: (p: string, k?: string) => (p === 'p1' && k === 'loadstep' ? [rec('e', 'A', 2.5)] : []) };
     const key = { exerciseId: 'e', studio: 'A' };
-    expect(withOverride(learnLadder([], 'machine'), loadStepsOf(store, 'p1'), key).stepKg).toBe(2.5);
-    expect(withOverride(learnLadder([], 'machine'), loadStepsOf(store, 'p2'), key).stepKg).toBe(5);
+    expect(withOverride(learnLadder([], 'machine', 20), loadStepsOf(store, 'p1'), key).stepKg).toBe(2.5);
+    expect(withOverride(learnLadder([], 'machine', 20), loadStepsOf(store, 'p2'), key).stepKg).toBe(5);
   });
 });
 
 describe('platesPerSide', () => {
   test('62.5 is exact: 20 + 1.25 per side', () => {
-    expect(platesPerSide(62.5)).toEqual({ status: 'exact', perSide: [20, 1.25] });
+    expect(platesPerSide(62.5, 20)).toEqual({ status: 'exact', perSide: [20, 1.25] });
   });
   test('61 lies between 60 and 62.5', () => {
-    expect(platesPerSide(61)).toMatchObject({ status: 'between', lower: 60, upper: 62.5 });
+    expect(platesPerSide(61, 20)).toMatchObject({ status: 'between', lower: 60, upper: 62.5 });
   });
   test('15 is below the bar; the bare bar is exact', () => {
-    expect(platesPerSide(15).status).toBe('below-bar');
-    expect(platesPerSide(20)).toEqual({ status: 'exact', perSide: [] });
+    expect(platesPerSide(15, 20).status).toBe('below-bar');
+    expect(platesPerSide(20, 20)).toEqual({ status: 'exact', perSide: [] });
   });
   test('heavy loads use the big plates in pairs', () => {
-    expect(platesPerSide(120)).toEqual({ status: 'exact', perSide: [25, 25] });
+    expect(platesPerSide(120, 20)).toEqual({ status: 'exact', perSide: [25, 25] });
   });
 });
 
@@ -123,7 +123,7 @@ describe('review fixes', () => {
     expect(snapDown(61.9, grid)).toBe(61.25);
   });
   test('non-finite totals are below the bar, not an endless loop', () => {
-    for (const x of [Infinity, -Infinity, NaN]) expect(platesPerSide(x)).toEqual({ status: 'below-bar', perSide: [] });
+    for (const x of [Infinity, -Infinity, NaN]) expect(platesPerSide(x, 20)).toEqual({ status: 'below-bar', perSide: [] });
   });
   test('a loadstep body is checked', () => {
     expect(validBody('loadstep', { exerciseId: 'e', studio: 'A', stepKg: 5 })).toBe(true);
@@ -152,7 +152,7 @@ describe('one ladder for app and coach', () => {
 
   test('an off-grid anchor (22.68 from lb) keeps its exact value and steps from there', () => {
     const sessions = [{ startMs: 1, sets: [{ type: 'normal', weightKg: 22.68 }, { type: 'normal', weightKg: 27.68 }] }];
-    const { ladder } = ladderFrom(sessions, { exerciseId: 'x', studio: '', main: undefined }, 'machine', none);
+    const { ladder } = ladderFrom(sessions, { exerciseId: 'x', studio: '', main: undefined }, 'machine', none, 0);
     expect(ladder.anchorKg).toBe(22.68);
     expect(nextUp(22.68, ladder)).toBeCloseTo(22.68 + ladder.stepKg, 2);
   });
@@ -173,6 +173,6 @@ describe('a rename keeps the own step', () => {
   test('the ladder of the renamed studio uses it', () => {
     const o = loadStepOverrides([loadStepRecord('pf-bench-press', 'Alt', 5, 10)], ren);
     const sessions = [{ studio: 'Alt', startMs: 1, sets: [{ type: 'normal', weightKg: 40 }, { type: 'normal', weightKg: 42.5 }] }];
-    expect(ladderFrom(sessions, { exerciseId: 'pf-bench-press', studio: 'Neu', main: undefined, renames: ren }, 'machine', o).ladder.stepKg).toBe(5);
+    expect(ladderFrom(sessions, { exerciseId: 'pf-bench-press', studio: 'Neu', main: undefined, renames: ren }, 'machine', o, 0).ladder.stepKg).toBe(5);
   });
 });

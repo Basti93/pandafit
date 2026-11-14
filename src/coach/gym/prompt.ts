@@ -9,6 +9,7 @@ import type { RideSummary } from '../metrics';
 import type { Complaint } from '../motivation';
 import { availableExercises, isRepBased, ladderFor, stepWords, suggestNext } from './history';
 import { ISOLATION_SESSIONS_PER_WEEK, MAX_EXERCISES, MAX_FAILURE_SETS, MAX_QUESTIONS, MAX_SESSION_FRACTIONAL_SETS, MAX_SETS, reserveFor } from './limits';
+import type { Bars } from '../../shared/bars';
 import type { LoadStepOverrides } from '../../shared/loads';
 import { repRangeOf } from '../../shared/muscle-targets';
 import type { GymState } from './state';
@@ -78,7 +79,7 @@ export type PromptInput = {
   /** The profile's exercise catalog; resolves the secondary muscles of the logged exercises. */
   catalog?: Exercise[];
   /** The studio the plan is for, and the person's weight-step overrides. */
-  studio?: string; overrides?: LoadStepOverrides; renames?: Renames;
+  studio?: string; overrides?: LoadStepOverrides; renames?: Renames; bars?: Bars;
   /** The person's goal, the template ids their exclude rules rule out (own ids and linked Hevy ids) and their active wishes for strength. */
   goal?: Omit<GoalBody, 'atMs'>; excluded?: ReadonlySet<string>; wishes?: readonly string[];
   /** The time the person has for this session, if they said. */
@@ -131,7 +132,7 @@ export function buildGymPrompt(i: PromptInput): string {
     dataBlock('geplant', i.previous ? { name: i.previous.workout.name, exercises: i.previous.workout.exercises.map((e) => ({ templateId: e.templateId, title: e.title, sets: e.sets.length })) } : null),
     dataBlock('uebungen', available.map((a) => {
       const t = byId.get(a.templateId);
-      const plan = { studio: i.studio, overrides: i.overrides, renames: i.renames };
+      const plan = { studio: i.studio, overrides: i.overrides, renames: i.renames, bars: i.bars };
       return {
         templateId: a.templateId, title: titleOf.get(a.templateId) ?? t?.title ?? '', tageHer: days(a.lastMs), kuerzlich: a.recent,
         vorschlag: suggestNext(a.templateId, i.workouts, i.nowMs, t, plan),

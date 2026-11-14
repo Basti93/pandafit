@@ -1,19 +1,19 @@
 import { snapDown, type Ladder } from './loads';
-import { ruleNumber, ruleRamp, ruleValues } from './training-policy';
+import { ruleRamp, ruleValues } from './training-policy';
 import { EXERCISES, catalogEntryOf, type Exercise } from './exercises';
 import { muscleGroupOf } from './muscle-targets';
 
-/** Warm-up per movement block: the ramp comes from the register (`prep.ramp`), the bar from `load.bar-kg`. Pure, shared by app and coach. */
+/** Warm-up per movement block: the ramp comes from the register (`prep.ramp`), the bar's weight comes from the caller (0: no bar). Pure, shared by app and coach. */
 export type RampStep = { weightKg: number; reps: number };
 
 /**
  * The warm-up sets before a working weight: for a barbell first the bar, then each ramp share snapped down on the ladder.
  * Assisted exercises get none. Duplicates, steps at or above the working weight and barbell steps below the bar are dropped. No working weight: none.
  */
-export function warmupRamp(a: { workingKg: number | null | undefined; equipment: string; ladder: Ladder; type?: string }): RampStep[] {
+export function warmupRamp(a: { workingKg: number | null | undefined; ladder: Ladder; type?: string; barKg: number }): RampStep[] {
   const w = a.workingKg;
   if (typeof w !== 'number' || !(w > 0) || a.type?.includes('assisted')) return []; // an assisted weight is help: lighter is harder
-  const bar = a.equipment === 'barbell' ? ruleNumber('load.bar-kg') : 0;
+  const bar = a.barKg;
   const candidates: RampStep[] = [
     ...(bar > 0 ? [{ weightKg: bar, reps: ruleValues('prep.ramp').barReps }] : []),
     ...ruleRamp('prep.ramp').map((s) => ({ weightKg: snapDown(w * s.pct / 100, a.ladder), reps: s.reps })),

@@ -7,7 +7,8 @@ import { knownStudios, studioStateOf } from '../../../shared/studio';
 import type { TrackingPort } from '../../ports';
 import { confirmSet, currentSet, editSet, type FinishChoice, type TrackedWorkout } from '../../session';
 import { closeStore, releaseStore } from '../../registry';
-import { hereKey, stepChange } from '../../steps';
+import { barUseChange, barWeightChange, hereKey, stepChange } from '../../steps';
+import { readBars, type BarType } from '../../../shared/bars';
 import { useCatalog, useExcluded, usePortRecords, useStoreView, useWakeLock, type WorkoutStore } from '../hooks';
 import { effortQuestionsOn } from '../EffortQuestion';
 import type { DragStart } from '../ReorderSheet';
@@ -104,7 +105,15 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const studioRecords = usePortRecords(port, 'studio').records;
   const studios = useMemo(() => studioStateOf(studioRecords ?? []), [studioRecords]);
   const overrides = useMemo(() => loadStepOverrides(loadSteps ?? [], studios.renames), [loadSteps, studios]);
+  const barRecords = usePortRecords(port, 'bar').records;
+  const bars = useMemo(() => readBars(barRecords ?? [], studios.renames), [barRecords, studios]);
   const studioHere = hereKey(w, [...history], studios);
+  const chooseBarType = (exerciseId: string, type: BarType) => {
+    void port.list('bar').then((stored) => port.put(barUseChange(stored, exerciseId, type, now()))).catch(() => setNotice(NOT_SAVED));
+  };
+  const chooseBarKg = (type: BarType, kg: number) => {
+    void port.list('bar').then((stored) => port.put(barWeightChange(stored, type, studioHere, kg, now()))).catch(() => setNotice(NOT_SAVED));
+  };
   const chooseStep = (exerciseId: string, stepKg: number | null) => {
     void port.list('loadstep').then((stored) => port.put(stepChange(stored, exerciseId, studioHere, stepKg, now()))).catch(() => setNotice(NOT_SAVED));
   };
@@ -244,7 +253,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
 
   return {
     port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown, editWeight, holdProps, wasHeld, releaseHold,
-    catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, currentRid, known, act, end, discard,
+    catalog, excluded, studios, overrides, bars, studioHere, statsMuscles, chooseStep, chooseBarType, chooseBarKg, currentRid, known, act, end, discard,
   };
 }
 

@@ -3,9 +3,10 @@ import { repRangeOf } from '../../../shared/muscle-targets';
 import { exerciseImages, videoSearchUrl } from '../../media';
 import { resolveExercise } from '../../exercise-identity';
 import { describeExercise } from '../../similar';
+import { barKgFor, barTypeOf, barWeightOf } from '../../../shared/bars';
 import { plateLine, stepHere } from '../../steps';
 import { addSet, editNotes, editSet, filled, formatDecimal, lastValues, presetOf, type TrackedExercise } from '../../session';
-import { ExerciseInfo, StepLine } from '../ExerciseInfo';
+import { BarLine, ExerciseInfo, StepLine } from '../ExerciseInfo';
 import { MuscleIcon } from '../MuscleIcon';
 import { NotesField } from '../NotesField';
 import { NumField } from '../SetRow';
@@ -18,7 +19,7 @@ import type { ActiveWorkoutApi } from './useActiveWorkout';
 
 /** The focus of the running workout: the next set of the focus exercise, large, with "Satz geschafft". Below it the sets as circles, Anleitung and the menu. */
 export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
-  const { w, ui, set, act, store, catalog, studios, overrides, studioHere, statsMuscles, history, chooseStep } = a;
+  const { w, ui, set, act, store, catalog, studios, overrides, bars, studioHere, statsMuscles, history, chooseStep, chooseBarType, chooseBarKg } = a;
   const e = focusExercise(w, ui.openRid, a.currentRid);
   if (!e) {
     return (
@@ -71,7 +72,8 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
         <Sheet title={e.title} lead={icon} onClose={() => set({ infoRid: null })}>
           <ExerciseInfo title={e.title} description={describeExercise(e, catalog)} icon={icon}
             images={own ? exerciseImages(own.id) : []} video={videoSearchUrl({ title: e.title, hevyTitle: own?.hevyTitle })}>
-            <StepLine title={e.title} step={stepHere(e.exerciseId, equipment, history, studioHere, overrides, studios.renames)} onChoose={(kg) => chooseStep(e.exerciseId, kg)} />
+            <StepLine title={e.title} step={stepHere(e.exerciseId, equipment, history, studioHere, overrides, studios.renames, bars)} onChoose={(kg) => chooseStep(e.exerciseId, kg)} />
+            {equipment === 'barbell' && <BarLine title={e.title} type={barTypeOf(e.exerciseId, bars)} kgOf={(t) => barWeightOf(t, studioHere, bars)} onType={(t) => chooseBarType(e.exerciseId, t)} onKg={chooseBarKg} />}
           </ExerciseInfo>
         </Sheet>
       )}
@@ -94,7 +96,7 @@ function FocusSet({ a, e, index, equipment, range }: { a: ActiveWorkoutApi; e: T
   const firstWork = e.sets.findIndex((x) => x.type !== 'warmup');
   const target = index === firstWork ? setTargetHint(s, timed, range) : null;
   const kg = s.weightKg ?? shown.weightKg ?? null;
-  const plates = equipment === 'barbell' && !timed && kg !== null && kg > 0 ? plateLine(kg) : null;
+  const plates = equipment === 'barbell' && !timed && kg !== null && kg > 0 ? plateLine(kg, barKgFor(e.exerciseId, equipment, a.studioHere, a.bars)) : null;
   const edit = (patch: Parameters<typeof editSet>[3]) => act((x) => editSet(x, e.rid, s.rid, patch));
   // Exactly this set (see confirmShown); a double tap never reaches the set that takes its place.
   const confirm = () => { if (tapOnce('confirm')) confirmShown(e.rid, s.rid); };

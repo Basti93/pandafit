@@ -1,5 +1,6 @@
 import { repRangeOf } from '../../../shared/muscle-targets';
 import { resolveExercise } from '../../exercise-identity';
+import { barKgFor } from '../../../shared/bars';
 import { plateLine } from '../../steps';
 import { addSet, editSet, lastValues, presetOf, removeSet, unconfirmSet } from '../../session';
 import { EFFORT_ANSWER } from '../EffortQuestion';
@@ -30,7 +31,7 @@ export function SetsSheet({ a, rid }: { a: ActiveWorkoutApi; rid: string }) {
         {e.sets.length > 0 && <SetHead timed={timed} editing />}
         {e.sets.map((s, si) => (
           <SetRow key={s.rid} index={si} set={s} timed={timed} label={labels[si]} editing preset={presetOf(e.sets, si)} target={si === nextOpen && si === firstWork ? setTargetHint(s, timed, range) : null}
-            plates={s.rid === plateRid ? plateLine(s.weightKg as number) : null}
+            plates={s.rid === plateRid ? plateLine(s.weightKg as number, barKgFor(e.exerciseId, 'barbell', studioHere, a.bars)) : null}
             confirmedNow={() => confirmedNow(s.rid)}
             onEdit={(patch) => ('weightKg' in patch ? a.editWeight(e.rid, s.rid, patch.weightKg ?? null) : act((x) => editSet(x, e.rid, s.rid, patch)))}
             onToggle={() => (s.doneMs === null ? confirmShown(e.rid, s.rid) : act((x) => unconfirmSet(x, e.rid, s.rid)))}

@@ -12,11 +12,11 @@ const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 const round2 = (x: number): number => Math.round(x * 100) / 100;
 
 /** The step and the anchor from the weights (> 0) of one exercise in one studio. `equipment` is the catalog's equipment. */
-export function learnLadder(weights: readonly number[], equipment: string): Ladder {
+export function learnLadder(weights: readonly number[], equipment: string, barKg: number): Ladder {
   const defaults = ruleValues('load.default-step');
   const def = defaults[equipment] ?? defaults.other;
   const units = [...new Set(weights.filter((w) => w > 0).map((w) => Math.round(w * GRID)))].sort((a, b) => a - b);
-  const anchorKg = units.length > 0 ? units[0] / GRID : equipment === 'barbell' ? ruleNumber('load.bar-kg') : 0;
+  const anchorKg = units.length > 0 ? units[0] / GRID : equipment === 'barbell' ? barKg : 0;
   if (units.length < 2) return { stepKg: Math.max(0.5, def), anchorKg, learned: false };
   let g = 0;
   for (let i = 1; i < units.length; i++) g = gcd(g, units[i] - units[i - 1]);
@@ -38,9 +38,8 @@ export function nextUp(w: number, l: Ladder): number {
  * The ladder with its lattice continued below the learned anchor (the lightest weight seen): down to the bar for a barbell, else
  * down to one step. The anchor stays on the lattice; only warm-ups and step-backs can go lighter than anything seen.
  */
-export function extendDown(l: Ladder, equipment: string): Ladder {
-  const bar = ruleNumber('load.bar-kg');
-  const floor = equipment === 'barbell' && l.anchorKg >= bar ? bar : 0;
+export function extendDown(l: Ladder, equipment: string, barKg: number): Ladder {
+  const floor = equipment === 'barbell' && l.anchorKg >= barKg ? barKg : 0;
   const below = floor > 0 ? Math.floor((l.anchorKg - floor) / l.stepKg + EPS) : Math.max(0, Math.ceil(l.anchorKg / l.stepKg - EPS) - 1);
   return { ...l, anchorKg: round2(l.anchorKg - below * l.stepKg) };
 }
@@ -104,13 +103,13 @@ const LADDER_SESSIONS = 10;
  * The learner works on a 0.25 kg grid, but the anchor is the exact lightest weight seen, so an off-grid weight (22.68 from
  * a lb conversion) stays the anchor with its exact value and the steps go on from there.
  */
-export function ladderFrom(sessions: readonly LadderSession[], key: { exerciseId: string; studio: string; main: string | undefined; renames?: Renames }, equipment: string, overrides: LoadStepOverrides): { ladder: Ladder; learned: Ladder } {
+export function ladderFrom(sessions: readonly LadderSession[], key: { exerciseId: string; studio: string; main: string | undefined; renames?: Renames }, equipment: string, overrides: LoadStepOverrides, barKg: number): { ladder: Ladder; learned: Ladder } {
   const weights = sessions
     .filter((s) => studioKey(s, key.main, key.renames) === key.studio)
     .sort((a, b) => b.startMs - a.startMs).slice(0, LADDER_SESSIONS)
     .flatMap((s) => s.sets.filter((x) => x.type === 'normal' || x.type === 'failure').map((x) => x.weightKg ?? 0))
     .filter((x) => x > 0);
-  const base = learnLadder(weights, equipment);
+  const base = learnLadder(weights, equipment, barKg);
   const learned = weights.length > 0 ? { ...base, anchorKg: Math.min(...weights) } : base;
   return { learned, ladder: withOverride(learned, overrides, { exerciseId: key.exerciseId, studio: key.studio }) };
 }
@@ -120,8 +119,8 @@ export function ladderFrom(sessions: readonly LadderSession[], key: { exerciseId
 export type Plates = { status: 'exact' | 'between' | 'below-bar'; perSide: number[]; lower?: number; upper?: number };
 
 /** Plates per side for a total, greedy with the register's plates in unlimited pairs. 'between': the two nearest exact totals. */
-export function platesPerSide(totalKg: number): Plates {
-  const bar = ruleNumber('load.bar-kg');
+export function platesPerSide(totalKg: number, barKg: number): Plates {
+  const bar = barKg;
   if (!Number.isFinite(totalKg) || totalKg < bar - EPS) return { status: 'below-bar', perSide: [] };
   const plates = [...ruleNumbers('load.plates')].sort((a, b) => b - a);
   let rest = Math.round(((totalKg - bar) / 2) * 100); // hundredths of a kg per side

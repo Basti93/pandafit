@@ -51,7 +51,7 @@ function RestBar({ w, now, act }: { w: TrackedWorkout; now: () => number; act: (
 
 export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /** Verkleinern: the screen goes, the workout keeps running (and saving) in the registry. */ onMinimize: () => void }) {
   const a = useActiveWorkout(props);
-  const { port, w, save, ui, set, askCoach, setNotice, catalog, excluded, studios, overrides, history, now, newId, known, act, end, discard } = a;
+  const { port, w, save, ui, set, askCoach, setNotice, catalog, excluded, studios, overrides, bars, history, now, newId, known, act, end, discard } = a;
   const { picker } = ui;
   const focus = focusExercise(w, ui.openRid, a.currentRid);
   const next = upNext(w, focus?.rid ?? null);
@@ -64,7 +64,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
     if (otherStudio(to.planStudio, a.studioHere, studios)) return to;
     const snap = (id: string, kg: number): number => {
       const equipment = catalog.find((c) => c.id === id)?.equipment ?? '';
-      return snapDown(kg, ladderHere(id, equipment, history, a.studioHere, overrides, studios.renames).ladder);
+      return snapDown(kg, ladderHere(id, equipment, history, a.studioHere, overrides, studios.renames, bars).ladder);
     };
     const r = refitPlaces(to, catalog, snap);
     if (r.changed.length > 0) setNotice(`Die Gewichte von ${r.changed.length > 1 ? `${r.changed.slice(0, -1).join(', ')} und ${r.changed[r.changed.length - 1]}` : r.changed[0]} passen jetzt zur neuen Reihenfolge.`);
@@ -147,7 +147,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
       )}
       {ui.studioOpen && (
         <StudioSheet value={w.studio} known={known} onClose={() => set({ studioOpen: false })}
-          onChange={(n, created) => { act((x) => setStudio(x, n ?? '', { history, catalog, studios, overrides })); if (n && created) void rememberStudio(port, n, now()).catch(() => setNotice(NOT_SAVED)); }}
+          onChange={(n, created) => { act((x) => setStudio(x, n ?? '', { history, catalog, studios, overrides, bars })); if (n && created) void rememberStudio(port, n, now()).catch(() => setNotice(NOT_SAVED)); }}
           onRename={(from, to) => { void renameStudio(port, from, to, now()).then(() => act((x) => setStudio(x, to))).catch(() => setNotice(NOT_SAVED)); }} />
       )}
       {ui.ask && ui.ask.question === 'open-sets' && (

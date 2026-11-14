@@ -1,4 +1,5 @@
 import type { Effort } from '../records';
+import { barKgFor, NO_BARS, type Bars } from '../bars';
 import { extendDown, ladderFrom, nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../loads';
 import { repRangeOf } from '../muscle-targets';
 import { mainStudio, studioKey, resolveStudio, type Renames } from '../studio';
@@ -42,7 +43,7 @@ export type ExerciseInfo = { type?: string; equipment?: string; primaryMuscle?: 
  * Where the plan is for: the studio (undefined: the main one) and the person's weight-step overrides. `muscleOf` lets the history
  * see where an exercise stood in each past workout; without it every past session counts as done fresh.
  */
-export type Plan = { studio?: string; overrides?: LoadStepOverrides; renames?: Renames; muscleOf?: (templateId: string) => Muscles | undefined };
+export type Plan = { studio?: string; overrides?: LoadStepOverrides; renames?: Renames; bars?: Bars; muscleOf?: (templateId: string) => Muscles | undefined };
 
 type Sets = StrengthWorkout['exercises'][number]['workSets'];
 /** `preSets`: hard sets for the same muscle before the exercise in that workout. */
@@ -98,8 +99,11 @@ function sessionsOf(templateId: string, workouts: StrengthWorkout[], nowMs: numb
 export function ladderFor(templateId: string, ex: ExerciseInfo | undefined, workouts: StrengthWorkout[], nowMs: number, plan?: Plan): Ladder {
   const sessions = workouts.filter((w) => w.startMs <= nowMs).map((w) => ({ studio: w.studio, startMs: w.startMs, sets: w.exercises.filter((e) => e.templateId === templateId).flatMap((e) => e.workSets), has: w.exercises.some((e) => e.templateId === templateId) }))
     .filter((s) => s.has);
-  const { ladder: l } = ladderFrom(sessions, { exerciseId: templateId, studio: plannedKey(workouts, plan), main: mainStudio(workouts, plan?.renames), renames: plan?.renames }, ex?.equipment ?? 'other', plan?.overrides ?? new Map());
-  return extendDown(l, ex?.equipment ?? 'other');
+  const studio = plannedKey(workouts, plan);
+  const equipment = ex?.equipment ?? 'other';
+  const barKg = barKgFor(templateId, equipment, studio, plan?.bars ?? NO_BARS);
+  const { ladder: l } = ladderFrom(sessions, { exerciseId: templateId, studio, main: mainStudio(workouts, plan?.renames), renames: plan?.renames }, equipment, plan?.overrides ?? new Map(), barKg);
+  return extendDown(l, equipment, barKg);
 }
 
 /**

@@ -10,6 +10,7 @@ import type { TrackingPort } from '../../ports';
 import { startFromPlan, type TrackedWorkout } from '../../session';
 import { takenChanges } from '../../../shared/changes';
 import { loadStepOverrides } from '../../../shared/loads';
+import { NO_BARS, readBars } from '../../../shared/bars';
 import type { StudioState } from '../../../shared/studio';
 import { finishedWorkouts } from '../hooks';
 
@@ -33,9 +34,10 @@ export function planLine(e: GymWorkout['exercises'][number]): string {
  */
 export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now: () => number; newId: () => string; catalog: Exercise[]; studio?: string; studios: StudioState }): Promise<{ workout: TrackedWorkout; notice: string | null; /** Only the line about today's second session: what a start from a draft says (the skipped lines are about the plan). */ also: string | null }> {
   const { now, newId, catalog, studio, studios } = ctx;
-  let changeRecs: TrackedRecord[] = [], records: TrackedRecord[] = [], overrides = loadStepOverrides([], studios.renames), excludedNow: ReadonlySet<string> = new Set();
+  let changeRecs: TrackedRecord[] = [], records: TrackedRecord[] = [], overrides = loadStepOverrides([], studios.renames), bars = NO_BARS, excludedNow: ReadonlySet<string> = new Set();
   try { excludedNow = excludedIds(await port.list('rule'), catalog); } catch { /* start without them */ }
   try { overrides = loadStepOverrides(await port.list('loadstep'), studios.renames); changeRecs = await port.list('change'); } catch { /* start without them: they stay taken for the next time */ }
+  try { bars = readBars(await port.list('bar'), studios.renames); } catch { /* start with the defaults */ }
   // The workouts on their own: a failed load step or change read never empties the history the weights come from.
   try { records = await port.list('workout'); } catch { /* start without the history */ }
   const live = records.filter((r) => !r.deleted);
@@ -52,6 +54,6 @@ export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now
     if (day && day.sport === 'gym' && day.also && day.also.sport !== 'gym' && day.also.minutes) alsoNote = `Dazu heute: ${day.also.minutes} Min. ${SPORT_LABEL[day.also.sport]} ${HARDNESS_LABEL[day.also.hardness]}.`;
   } catch { /* start with the plan as it is */ }
   let skipped: string[] = [];
-  const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
+  const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, bars, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
   return { workout: studio ? { ...w, studio } : w, notice: [...skipped, ...(alsoNote ? [alsoNote] : [])].join(' ') || null, also: alsoNote };
 }

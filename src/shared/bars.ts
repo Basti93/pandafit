@@ -10,6 +10,9 @@ export type BarType = 'langhantel' | 'sz';
 /** `weights`: by `type|studio`. `uses`: by exercise id. */
 export type Bars = { weights: Map<string, number>; uses: Map<string, BarType> };
 
+/** No `bar` records: the defaults of the rules and the catalog. */
+export const NO_BARS: Bars = { weights: new Map(), uses: new Map() };
+
 export const BAR_TYPES: readonly BarType[] = ['langhantel', 'sz'];
 export const BAR_LABEL: Record<BarType, string> = { langhantel: 'Langhantel', sz: 'SZ-Stange' };
 

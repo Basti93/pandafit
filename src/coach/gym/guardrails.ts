@@ -5,6 +5,7 @@ import { GENTLE_FAILURE_SETS, ISOLATION_SESSIONS_PER_WEEK, MAX_EXERCISES, MAX_FA
 import type { Push } from '../../shared/personal';
 import { availableExercises, isAssisted, LEG_MUSCLES, isRepBased, ladderFor, plannedKey, suggestNext, type Plan, type Suggestion } from './history';
 import { hardSetsOf, musclesOfFrom, preFatigue } from './pre-fatigue';
+import type { Bars } from '../../shared/bars';
 import { nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../../shared/loads';
 import { studioName, type Renames } from '../../shared/studio';
 import { MUSCLE_TARGETS, repRangeOf } from '../../shared/muscle-targets';
@@ -17,7 +18,7 @@ import { gymLimit, gymMinutes } from '../../shared/duration';
 
 export type GymContext = { workouts: StrengthWorkout[]; templates: ExerciseTemplate[]; nowMs: number; /** Leave leg exercises out of rule workouts, e.g. for an open leg complaint. */ avoidLegs?: boolean;
   /** The studio the plan is for (undefined: the main one) and the person's weight-step overrides. */
-  studio?: string; overrides?: LoadStepOverrides; renames?: Renames;
+  studio?: string; overrides?: LoadStepOverrides; renames?: Renames; bars?: Bars;
   /** Template ids the person's active exclude rules rule out (own ids and the Hevy ids linked to them). */
   excluded?: Set<string>;
   /** The catalog and Hevy links the exclusion is resolved with (exact id or exact known title, never fuzzy). */
@@ -56,7 +57,7 @@ export function weightCap(suggested: number, withStep: boolean, ladder: Ladder):
 }
 
 /** The plan the suggestions are made for: studio, weight steps and where each exercise stood in past workouts. */
-export const gymPlan = (ctx: GymContext): Plan => ({ studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, muscleOf: musclesOfFrom(ctx.templates, ctx.catalog ?? []) });
+export const gymPlan = (ctx: GymContext): Plan => ({ studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, bars: ctx.bars, muscleOf: musclesOfFrom(ctx.templates, ctx.catalog ?? []) });
 
 /**
  * The suggestion without the place (`blind`, the one the prompt shows) and the one for this place (`here`). The place may only
