@@ -1,22 +1,13 @@
 import { useState } from 'react';
 import { activityName, REPO_DESCRIPTION, type RideUpload } from '../../shared/garmin-upload';
+import { reasonText, repoLinkStored, storeRepoLink } from '../../shared/garmin-upload-ui';
 import type { RideSummary } from '../../coach/metrics';
 
-const REASON: Record<string, string> = {
-  reauth: 'Die Garmin-Anmeldung ist abgelaufen, bitte neu anmelden.',
-  'rate-limit': 'Garmin blockt gerade zu viele Anfragen, bitte später erneut versuchen.',
-  'missing-file': 'Zu dieser Fahrt gibt es keine FIT-Datei.',
-  failed: 'Das Hochladen hat nicht geklappt. Die Fahrt bleibt hier gespeichert.',
-};
-
-const REPO_KEY = 'bike-coach.garmin-repo-link';
-const repoStored = (): boolean => { try { return localStorage.getItem(REPO_KEY) === 'on'; } catch { return false; } };
-
 const Preview = ({ ride, onConfirm, onCancel }: { ride: RideSummary; onConfirm: (repoLink: boolean) => void; onCancel: () => void }) => {
-  const [repoLink, setRepoLink] = useState(repoStored);
+  const [repoLink, setRepoLink] = useState(repoLinkStored);
   const toggle = (on: boolean) => {
     setRepoLink(on);
-    try { localStorage.setItem(REPO_KEY, on ? 'on' : 'off'); } catch { /* then it only applies now */ }
+    storeRepoLink(on);
   };
   const started = new Date(ride.startedAtMs);
   const rows: [string, string | null][] = [
@@ -53,7 +44,7 @@ export const GarminUploadButton = ({ ride, status, connected, onUpload }: { ride
   if (status?.status === 'failed') {
     return (
       <div className="garmin-upload">
-        <p className="notice" role="alert">{REASON[status.reason ?? 'failed'] ?? REASON.failed}</p>
+        <p className="notice" role="alert">{reasonText(status.reason)}</p>
         <button className="secondary" onClick={() => setPreviewing(true)}>Erneut versuchen</button>
       </div>
     );

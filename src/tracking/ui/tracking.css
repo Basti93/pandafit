@@ -663,3 +663,10 @@
 /* The open places fade at the edges like the nest floats: top, sides and bottom of the back layer, the sides of the front layer. */
 .tk-scene:not([data-place="nest"]) .tk-scene-back { mask-image: linear-gradient(to bottom, transparent, black 22%, black 88%, transparent), linear-gradient(to right, transparent, black 14%, black 86%, transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 22%, black 88%, transparent), linear-gradient(to right, transparent, black 14%, black 86%, transparent); mask-composite: intersect; -webkit-mask-composite: source-in; }
 .tk-scene:not([data-place="nest"]) .tk-scene-front { mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); }
+
+/* Garmin upload preview (Heute and the history detail) */
+.tk-garmin-preview dl { margin: 0 0 .6rem; }
+.tk-garmin-preview dl div { display: flex; justify-content: space-between; gap: var(--space-2); padding: .15rem 0; }
+.tk-garmin-preview dt { color: var(--muted); }
+.tk-garmin-preview dd { margin: 0; }
+.tk-garmin-repo { display: block; margin: .5rem 0; }

@@ -5,6 +5,7 @@ import type { LoggedWorkout, TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
 import { editSet, formatDecimal, removeSet, type TrackedSet, type TrackedWorkout } from '../session';
 import { acquireStore, releaseStore } from '../registry';
+import { GarminWorkoutUploadFor } from './GarminWorkoutUpload';
 import { usePortRecords, useStoreView, type WorkoutStore } from './hooks';
 import { ConfirmLink, Row, RowList } from './kit';
 import { dateLabel } from './labels';
@@ -125,6 +126,7 @@ function Detail({ port, store, history, onBack, onDeleted, latest, next, inSheet
         </RowList>
       )}
       <button type="button" className="secondary" onClick={() => setEditing(!editing)}>{editing ? 'Fertig' : 'Bearbeiten'}</button>
+      <GarminWorkoutUploadFor workout={w} />
       <div className="tk-links tk-end">
         <ConfirmLink label="Training löschen" question="Dieses Training wirklich löschen? Es lässt sich nicht zurückholen." onConfirm={() => void store.remove().then((ok) => { if (ok) onDeleted(); })} />
       </div>
