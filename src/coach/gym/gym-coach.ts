@@ -34,6 +34,8 @@ import { MUSCLE_TARGETS } from '../../shared/muscle-targets';
 import { defaultStudio, NO_STUDIOS, type StudioState } from '../../shared/studio';
 import { studiosOf } from '../tracking/studios';
 import { loadStepsOf } from '../tracking/load-steps';
+import { barsOf } from '../tracking/bars';
+import { NO_BARS, type Bars } from '../../shared/bars';
 import { takenChangesOf } from '../tracking/changes';
 import { excludedOf, goalOfProfile, migrateRules, wishesOf } from '../tracking/personal';
 import { gymBudgetOf, gymPlanDateOf } from '../tracking/frame';
@@ -231,6 +233,9 @@ export class GymCoach {
     if (this.deps.loadSteps) return this.deps.loadSteps(id);
     return this.deps.store ? loadStepsOf(this.deps.store, id, this.studios(id).renames) : new Map();
   }
+  private bars(id: string): Bars {
+    return this.deps.store ? barsOf(this.deps.store, id, this.studios(id).renames) : NO_BARS;
+  }
   /** The studio the plan is for: the one of the newest own workout. Undefined when none is known. */
   studio(id: string): string | undefined { const s = this.studios(id); return defaultStudio(this.logged(id), s.renames, s.picks); }
   /** The profile's `studio` records: renames and remembered picks. */
@@ -353,7 +358,7 @@ export class GymCoach {
     const real = this.history(id).filter((w) => w.startMs <= now && hasSetDetails(w));
     const latest = real.reduce<StrengthWorkout | null>((a, w) => (!a || w.startMs > a.startMs ? w : a), null);
     if (!latest) return [];
-    const plan = { studio: this.studio(id), overrides: this.loadSteps(id), renames: this.studios(id).renames };
+    const plan = { studio: this.studio(id), overrides: this.loadSteps(id), renames: this.studios(id).renames, bars: this.bars(id) };
     const seen = new Set<string>();
     const out: NextStep[] = [];
     for (const e of latest.exercises) {
@@ -389,7 +394,7 @@ export class GymCoach {
       const latest = real.reduce<StrengthWorkout | null>((a, w) => (!a || w.startMs > a.startMs ? w : a), null);
       if (!latest) return;
       const known = this.listed.get(id);
-      const plan = { studio: this.studio(id), overrides: this.loadSteps(id), renames: this.studios(id).renames };
+      const plan = { studio: this.studio(id), overrides: this.loadSteps(id), renames: this.studios(id).renames, bars: this.bars(id) };
       const firstKg = (sets: { type: string; weightKg: number | null }[]): number | null => sets.find((x) => x.type === 'normal' && x.weightKg !== null)?.weightKg ?? null;
       const fmt = (kg: number): string => String(kg).replace('.', ',');
       let notes = this.state(id).changeNotes;
@@ -521,7 +526,7 @@ export class GymCoach {
       // Computed once: the guardrail and the prompt must hold the same push.
       const push = effectivePush(goal, open);
       const section = this.section(id, real, templates, now, open, avoidLegs, excluded);
-      const ctx: GymContext = { ...(section ? { block: section.block } : {}), workouts: real, templates, nowMs: now, push, excluded, catalog: this.catalog(id), links: this.state(id).links, ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, ...(avoidLegs ? { avoidLegs: true } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) };
+      const ctx: GymContext = { ...(section ? { block: section.block } : {}), workouts: real, templates, nowMs: now, push, excluded, catalog: this.catalog(id), links: this.state(id).links, ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, bars: this.bars(id), ...(avoidLegs ? { avoidLegs: true } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) };
       const rule = ruleWorkout(ctx);
       if (rule.guard) console.warn(`Regel-Training: erster Plan verworfen (${rule.guard})`);
       if (open.length > 0 && rule.workout.exercises.length > 0) rule.reason = `${rule.reason} ${COMPLAINT_HINT}`;
@@ -542,7 +547,7 @@ export class GymCoach {
       });
       const review = this.deps.store ? latestReview(chatThread(this.deps.store.all(id, 'chat'))) : null;
       const ask = (rejection?: string) => this.deps.ask({
-        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), swaps: this.swapsTaken(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, excluded, ...(avoidLegs ? { avoidLegs: true } : {}), goal, push, ...(this.deps.store ? { wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(review ? { review } : {}), ...(section ? { abschnitt: section.prompt } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
+        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), swaps: this.swapsTaken(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, bars: this.bars(id), excluded, ...(avoidLegs ? { avoidLegs: true } : {}), goal, push, ...(this.deps.store ? { wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(review ? { review } : {}), ...(section ? { abschnitt: section.prompt } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
         systemPrompt: GYM_SYSTEM_PROMPT, schema: gymAnswerJsonSchema,
       });
       let raw = await ask();

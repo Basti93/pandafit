@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { LoggedWorkout, TrackedRecord } from '../../src/shared/records';
+import { barWeightId } from '../../src/shared/bars';
 import { plateLine, stepChange } from '../../src/tracking/steps';
 import { WorkoutScreen } from '../../src/tracking/ui/WorkoutScreen';
 import { fakePort } from './fake-port';
@@ -24,9 +25,12 @@ async function running(open: LoggedWorkout, past: LoggedWorkout[] = []) {
 
 describe('plate line texts', () => {
   test('exact, between and below the bar', () => {
-    expect(plateLine(65)).toBe('Scheiben je Seite: 20 + 2,5');
-    expect(plateLine(62)).toBe('Das geht mit Scheiben nicht genau. Nimm 60 oder 62,5 kg.');
-    expect(plateLine(15)).toBe('Leichter als die Stange (20 kg)');
+    expect(plateLine(65, 20)).toBe('Scheiben je Seite: 20 + 2,5');
+    expect(plateLine(62, 20)).toBe('Das geht mit Scheiben nicht genau. Nimm 60 oder 62,5 kg.');
+    expect(plateLine(15, 20)).toBe('Leichter als die Stange (20 kg)');
+    expect(plateLine(5, 8.5)).toBe('Leichter als die Stange (8,5 kg)');
+    expect(plateLine(8.5, 8.5)).toBe('Nur die Stange (8,5 kg)');
+    expect(plateLine(23.5, 8.5)).toBe('Scheiben je Seite: 5 + 2,5');
   });
 });
 
@@ -113,5 +117,51 @@ describe('studio line', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     fireEvent.click(screen.getByRole('button', { name: 'Leeres Training starten' }));
     await waitFor(() => expect(f.state.puts.some((r) => r.kind === 'workout' && (r.body as LoggedWorkout).studio === 'Testhalle')).toBe(true));
+  });
+});
+
+describe('the bar line', () => {
+  const info = async (title: string) => {
+    fireEvent.click(screen.getByRole('button', { name: 'Anleitung' }));
+    await screen.findByRole('note', { name: `Anleitung ${title}` });
+  };
+
+  test('shows the SZ bar of a preacher curl, and nothing for a machine', async () => {
+    await running(wo('o', 1000, null, [ex('pf-preacher-curl', 'Scott-Curl', [s(20)])]));
+    await info('Scott-Curl');
+    expect(screen.getByRole('button', { name: 'Stange Scott-Curl' }).textContent).toBe('Stange: SZ-Stange, 10 kg');
+    cleanup();
+    await running(wo('o', 1000, null, [ex('pf-leg-press', 'Beinpresse', [s(80)])]));
+    await info('Beinpresse');
+    expect(screen.queryByText(/^Stange:/)).toBeNull();
+  });
+
+  test('the plate line uses the weight of the bar', async () => {
+    const f = fakePort([rec(wo('o', 1000, null, [ex('pf-preacher-curl', 'Scott-Curl', [s(23.5)])])), { kind: 'bar', id: barWeightId('sz', ''), updatedMs: 1, deleted: false, body: { what: 'weight', type: 'sz', studio: '', kg: 8.5 } }]);
+    render(<WorkoutScreen port={f.port} {...ids} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
+    expect(await screen.findByText('Scheiben je Seite: 5 + 2,5')).toBeTruthy();
+  });
+
+  test('choosing the type and typing the weight write the records', async () => {
+    const f = await running(wo('o', 1000, null, [ex('pf-preacher-curl', 'Scott-Curl', [s(20)])]));
+    await info('Scott-Curl');
+    fireEvent.click(screen.getByRole('button', { name: 'Stange Scott-Curl' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Langhantel' }));
+    await waitFor(() => expect(f.state.puts.filter((r) => r.kind === 'bar')).toHaveLength(1));
+    expect(f.state.puts.find((r) => r.kind === 'bar')!.body).toEqual({ what: 'use', exerciseId: 'pf-preacher-curl', type: 'langhantel' });
+    fireEvent.change(screen.getByLabelText('Gewicht der Stange'), { target: { value: '17,5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(f.state.puts.filter((r) => r.kind === 'bar')).toHaveLength(2));
+    expect(f.state.puts.filter((r) => r.kind === 'bar')[1].body).toEqual({ what: 'weight', type: 'langhantel', studio: '', kg: 17.5 });
+    await screen.findByText('Stange: Langhantel, 17,5 kg');
+  });
+
+  test('an invalid weight is not saved', async () => {
+    await running(wo('o', 1000, null, [ex('pf-squat', 'Kniebeuge', [s(60)])]));
+    await info('Kniebeuge');
+    fireEvent.click(screen.getByRole('button', { name: 'Stange Kniebeuge' }));
+    fireEvent.change(screen.getByLabelText('Gewicht der Stange'), { target: { value: '0' } });
+    expect((screen.getByRole('button', { name: 'Speichern' }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

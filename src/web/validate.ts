@@ -4,6 +4,7 @@ import { readRunBody } from '../shared/run';
 import { readStats } from '../shared/stats';
 import { readTogether } from '../shared/together';
 import { readLoadStep } from '../shared/loads';
+import { readBar } from '../shared/bars';
 import { readChange } from '../shared/changes';
 import { readGoal, readRule } from '../shared/personal';
 import { readBlock } from '../shared/block';
@@ -46,6 +47,7 @@ export function validBody(kind: RecordKind, body: unknown): boolean {
     case 'weekplan': return parseProposal(body) !== null;
     case 'coachprefs': return true;
     case 'loadstep': return readLoadStep(body) !== null;
+    case 'bar': return readBar(body) !== null;
     case 'studio': return readStudio(body) !== null;
     case 'change': return readChange('', body) !== null;
     case 'goal': return readGoal(body) !== null;

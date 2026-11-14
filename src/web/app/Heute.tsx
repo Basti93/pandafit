@@ -14,6 +14,7 @@ import { planDayLabel, planGymLine } from '../../tracking/ui/plan-text';
 import { tomorrowTarget } from '../today/tomorrow';
 import { BoBubble, MainCard, RowCard, WeekPath } from '../../tracking/ui/kit';
 import { Finisher } from '../../tracking/ui/FinisherCard';
+import { GarminWorkoutUploadFor } from '../../tracking/ui/GarminWorkoutUpload';
 import { complaintsOpenIn, FINISHER_WINDOW_MS, finisherOf, latestFinishedStrength } from '../../tracking/ui/finisher';
 import { mergedActivities } from '../../tracking/ui/done-days';
 import { MobilityOffer } from '../../tracking/ui/MobilityOffer';
@@ -152,8 +153,8 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goQuestion, skipQues
         <MainCard kicker="Läuft noch" title={bodyOf('workout', open).title} text={`Seit ${sinceText(bodyOf('workout', open).startMs, now)}`} label="Training läuft noch"
           primary={{ label: 'Weitermachen', onClick: () => goTraining('resume') }} more={mobilityRow} />
       ) : summary ? (
-        <WorkoutSummary workout={summary} next={nextSteps} onDone={closeSummary} nowMs={now} today={today} activities={mergedActivities(activities, workouts).items} complaintsOpen={complaintsOpenIn(complaints)} extra={mobilityRow} />
-      ) : finisher ? <Finisher f={finisher} mobility={mobilityRow} />
+        <><WorkoutSummary workout={summary} next={nextSteps} onDone={closeSummary} nowMs={now} today={today} activities={mergedActivities(activities, workouts).items} complaintsOpen={complaintsOpenIn(complaints)} extra={mobilityRow} /><GarminWorkoutUploadFor workout={summary} /></>
+      ) : finisher ? <><Finisher f={finisher} mobility={mobilityRow} /><GarminWorkoutUploadFor workout={finished} /></>
         : setup ? (
           <MainCard kicker="Jetzt dran" title="Dein Plan" label="Was Pandafit planen kann"
             text="Krafttraining, Laufen und Essen schaltest du im Profil ein. Die Woche planst du dann mit Bo."

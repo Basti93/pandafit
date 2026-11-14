@@ -1,7 +1,8 @@
 import type { ExerciseTemplate, GymExercise, GymWorkout } from '../../shared/gym/types';
 import { RECENT_DAYS } from './limits';
 import { muscleGroupOf, repRangeOf } from '../../shared/muscle-targets';
-import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, recentLegWork } from './history';
+import { barKgFor, NO_BARS } from '../../shared/bars';
+import { LEG_MUSCLES, availableExercises, isRepBased, ladderFor, plannedKey, recentLegWork } from './history';
 import { isExcluded } from '../../shared/excluded';
 import { balanceEntryOf, checkWorkout, executionKeyOf, isCoreExercise, isCoreOfSection, placedSuggestion, saturatedIsolationGroups, type GymContext } from './guardrails';
 import { MAX_SESSION_FRACTIONAL_SETS } from './limits';
@@ -37,13 +38,14 @@ function exercisesOf(templates: ExerciseTemplate[], ctx: GymContext): GymExercis
 /** The first exercise of each muscle group gets the warm-up ramp before its work sets, when its working weight is known. Warm-up sets are outside the set limit. */
 function withRamps(templates: ExerciseTemplate[], exercises: GymExercise[], ctx: GymContext): GymExercise[] {
   const seen = new Set<string>();
-  const plan = { studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames };
+  const plan = { studio: ctx.studio, overrides: ctx.overrides, renames: ctx.renames, bars: ctx.bars };
   return exercises.map((e, i) => {
     const t = templates[i]!;
     const group = muscleGroupOf(t);
     if (seen.has(group)) return e;
     seen.add(group);
-    const ramp = warmupRamp({ workingKg: workingWeightOf(e), equipment: t.equipment, type: t.type, ladder: ladderFor(t.id, t, ctx.workouts, ctx.nowMs, plan) });
+    const barKg = barKgFor(t.id, t.equipment, plannedKey(ctx.workouts, plan), ctx.bars ?? NO_BARS);
+    const ramp = warmupRamp({ workingKg: workingWeightOf(e), type: t.type, ladder: ladderFor(t.id, t, ctx.workouts, ctx.nowMs, plan), barKg });
     if (ramp.length === 0) return e; // warm-ups never count toward the set limit, and never take work sets away
     return { ...e, sets: [...ramp.map((r) => ({ type: 'warmup' as const, weightKg: r.weightKg, reps: r.reps })), ...e.sets] };
   });

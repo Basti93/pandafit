@@ -22,7 +22,7 @@ test('an older automatic setting counts as asking, nothing goes up by itself', (
 });
 test('changing the mode keeps what is already uploaded', () => {
   const rides = { new: { status: 'uploaded' as const, atMs: 1 } };
-  expect(withUploadMode(state({ garminUpload: { mode: 'ask', rides } }), 'off')).toEqual({ mode: 'off', rides });
+  expect(withUploadMode(state({ garminUpload: { mode: 'ask', rides } }), 'off')).toEqual({ mode: 'off', rides, workouts: {} });
 });
 test('the description links the public project', () => {
   expect(REPO_DESCRIPTION).toBe('Gefahren mit Pandafit 🚴 https://github.com/Basti93/pandafit #vibeIt');

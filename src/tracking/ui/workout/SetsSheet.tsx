@@ -1,11 +1,13 @@
 import { repRangeOf } from '../../../shared/muscle-targets';
 import { resolveExercise } from '../../exercise-identity';
+import { barKgFor } from '../../../shared/bars';
 import { plateLine } from '../../steps';
 import { addSet, editSet, lastValues, presetOf, removeSet, unconfirmSet } from '../../session';
 import { EFFORT_ANSWER } from '../EffortQuestion';
 import { SetHead, SetRow } from '../SetRow';
 import { lastTimeLine, setLabels, setTargetHint } from '../setGrid';
 import { Sheet } from '../kit';
+import { WeightOffer } from './WeightOffer';
 import type { ActiveWorkoutApi } from './useActiveWorkout';
 
 /** The set table of one exercise in a sheet: every set to fill in, tick or remove. The same SetRow as everywhere. */
@@ -29,12 +31,13 @@ export function SetsSheet({ a, rid }: { a: ActiveWorkoutApi; rid: string }) {
         {e.sets.length > 0 && <SetHead timed={timed} editing />}
         {e.sets.map((s, si) => (
           <SetRow key={s.rid} index={si} set={s} timed={timed} label={labels[si]} editing preset={presetOf(e.sets, si)} target={si === nextOpen && si === firstWork ? setTargetHint(s, timed, range) : null}
-            plates={s.rid === plateRid ? plateLine(s.weightKg as number) : null}
+            plates={s.rid === plateRid ? plateLine(s.weightKg as number, barKgFor(e.exerciseId, 'barbell', studioHere, a.bars)) : null}
             confirmedNow={() => confirmedNow(s.rid)}
-            onEdit={(patch) => act((x) => editSet(x, e.rid, s.rid, patch))}
+            onEdit={(patch) => ('weightKg' in patch ? a.editWeight(e.rid, s.rid, patch.weightKg ?? null) : act((x) => editSet(x, e.rid, s.rid, patch)))}
             onToggle={() => (s.doneMs === null ? confirmShown(e.rid, s.rid) : act((x) => unconfirmSet(x, e.rid, s.rid)))}
             onRemove={() => act((x) => removeSet(x, e.rid, s.rid))} />
         ))}
+        <WeightOffer a={a} e={e} />
         <button type="button" className="secondary" onClick={() => { if (a.tapOnce('add')) act((x) => addSet(x, e.rid)); }}>Satz hinzufügen</button>
         {e.effort && e.effort !== 'skip' && <p className="muted tk-sub">Letzte Wiederholungen: {EFFORT_ANSWER[e.effort]}.</p>}
       </div>

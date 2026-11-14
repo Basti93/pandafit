@@ -177,6 +177,13 @@ export class Coach {
     });
   }
 
+  markWorkoutUpload(profileId: string, workoutId: string, upload: Omit<RideUpload, 'atMs'>): void {
+    this.update(profileId, (s) => {
+      const u = uploadSettings(s);
+      s.garminUpload = { ...u, workouts: { ...u.workouts, [workoutId]: { ...upload, atMs: this.deps.nowMs() } } };
+    });
+  }
+
   garminDisconnected(profileId: string): void { this.setUploadMode(profileId, 'off'); }
 
   debriefSeen(profileId: string): void { this.update(profileId, (s) => { s.debriefToShow = null; }); }

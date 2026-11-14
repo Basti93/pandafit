@@ -5,6 +5,7 @@ import { EXERCISES, exerciseTitles, type Exercise } from '../shared/exercises';
 import { defaultStudio, mainStudio, studioName, studioKey, resolveStudio, NO_STUDIOS, type StudioState } from '../shared/studio';
 import { dedupeSessions, onePerSession } from '../shared/history';
 import type { Effort, LoggedExercise, LoggedSet, LoggedWorkout } from '../shared/records';
+import { barKgFor, NO_BARS, type Bars } from '../shared/bars';
 import { extendDown, ladderFrom, snapDown, type Ladder, type LoadStepOverrides } from '../shared/loads';
 import { tidyGroups, contiguousGroups } from '../shared/superset';
 import { warmupRamp, workingWeightOf } from '../shared/warmup';
@@ -87,7 +88,7 @@ const blank = (): TrackedSet => ({ rid: newRid(), type: 'normal', weightKg: null
 const typeOf = (id: string, catalog: Exercise[]): string => catalog.find((e) => e.id === id)?.type ?? 'weight_reps';
 
 /** What decides the weights of a plan exercise: the studio chosen, the studio the plan is for, the person's step overrides. */
-type Fit = { planStudio?: string; overrides?: LoadStepOverrides };
+type Fit = { planStudio?: string; overrides?: LoadStepOverrides; bars?: Bars };
 
 /** True when the plan was made for another studio than the one chosen (both bucket keys, renames applied). */
 export function otherStudio(planStudio: string | undefined, chosen: string, studios: StudioState): boolean {
@@ -107,7 +108,8 @@ function prefillWeights(e: Pick<TrackedExercise, 'exerciseId' | 'sets'>, chosen:
     if (!ladder) {
       const equipment = catalog.find((c) => c.id === e.exerciseId)?.equipment ?? '';
       const sessions = onePerSession(dedupeSessions([...history])).map((h) => ({ studio: h.studio, startMs: h.startMs, sets: h.exercises.filter((x) => x.exerciseId === e.exerciseId).flatMap((x) => x.sets.filter(isDone)) }));
-      ladder = extendDown(ladderFrom(sessions, { exerciseId: e.exerciseId, studio: chosen, main: mainStudio(history, studios.renames), renames: studios.renames }, equipment, fit.overrides ?? new Map()).ladder, equipment);
+      const barKg = barKgFor(e.exerciseId, equipment, chosen, fit.bars ?? NO_BARS);
+      ladder = extendDown(ladderFrom(sessions, { exerciseId: e.exerciseId, studio: chosen, main: mainStudio(history, studios.renames), renames: studios.renames }, equipment, fit.overrides ?? new Map(), barKg).ladder, equipment, barKg);
     }
     return snapDown(kg, ladder);
   };
@@ -167,7 +169,7 @@ export function isExcludedExercise(e: { templateId: string; title: string }, cat
   return isExcluded(e, excluded, catalog);
 }
 
-export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: number, id: string, catalog: Exercise[] = EXERCISES, studio?: string, studios: StudioState = NO_STUDIOS, next: { changes: NextChange[]; workouts: LoggedWorkout[]; overrides?: LoadStepOverrides; /** Exercise ids the person's rules rule out: dropped from the plan, with a line in `onSkipped`. */ excluded?: ReadonlySet<string>; /** The plan day says no legs: leg exercises are dropped (never all of them). */ noLegs?: boolean; onSkipped?: (lines: string[]) => void } = { changes: [], workouts: [] }): TrackedWorkout {
+export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: number, id: string, catalog: Exercise[] = EXERCISES, studio?: string, studios: StudioState = NO_STUDIOS, next: { changes: NextChange[]; workouts: LoggedWorkout[]; overrides?: LoadStepOverrides; bars?: Bars; /** Exercise ids the person's rules rule out: dropped from the plan, with a line in `onSkipped`. */ excluded?: ReadonlySet<string>; /** The plan day says no legs: leg exercises are dropped (never all of them). */ noLegs?: boolean; onSkipped?: (lines: string[]) => void } = { changes: [], workouts: [] }): TrackedWorkout {
   const out = (e: GymExercise): boolean => !!next.excluded && isExcludedExercise(e, catalog, next.excluded);
   const dropped = w.exercises.filter(out);
   if (dropped.length) w = { ...w, exercises: w.exercises.filter((e) => !out(e)) };
@@ -188,13 +190,13 @@ export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: nu
   const lower = (exerciseId: string, kg: number): number => {
     const equipment = catalog.find((e) => e.id === exerciseId)?.equipment ?? '';
     const own = sessions.map((h) => ({ studio: h.studio, startMs: h.startMs, sets: h.exercises.filter((x) => x.exerciseId === exerciseId).flatMap((x) => x.sets.filter(isDone)) }));
-    return snapDown(kg, ladderFrom(own, { exerciseId, studio: key, main, renames: studios.renames }, equipment, next.overrides ?? new Map()).ladder);
+    return snapDown(kg, ladderFrom(own, { exerciseId, studio: key, main, renames: studios.renames }, equipment, next.overrides ?? new Map(), barKgFor(exerciseId, equipment, key, next.bars ?? NO_BARS)).ladder);
   };
   const { plan, applied } = applyNextChanges(w, todo, catalog, lower, next.excluded);
   const notes = [...dropped.map((e) => `Ohne ${e.title} – deine Regel.`), ...legNotes];
   const done = todo.filter((c) => applied.includes(c.id));
   const planStudio = w.studio ? studioName(w.studio) : undefined;
-  const exercises = plan.exercises.map((g) => plannedExercise(g, history, catalog, studio, studios, { planStudio, overrides: next.overrides }));
+  const exercises = plan.exercises.map((g) => plannedExercise(g, history, catalog, studio, studios, { planStudio, overrides: next.overrides, bars: next.bars }));
   // Lighter also works on weights the last session gave (the plan had none); planned weights were lightened above.
   for (const c of done) for (const o of c.ops) {
     const g = o.op === 'lighter' ? plan.exercises.findIndex((x) => x.templateId === o.exerciseId) : -1;
@@ -212,7 +214,7 @@ export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: nu
  * with no confirmed set get the weights for the new studio (see `prefillWeights`), but only in sets still holding their prefill; a
  * weight the rider typed stays. Confirmed sets are never touched.
  */
-export function setStudio(w: TrackedWorkout, raw: string, fit?: { history: LoggedWorkout[]; catalog?: Exercise[]; studios?: StudioState; overrides?: LoadStepOverrides }): TrackedWorkout {
+export function setStudio(w: TrackedWorkout, raw: string, fit?: { history: LoggedWorkout[]; catalog?: Exercise[]; studios?: StudioState; overrides?: LoadStepOverrides; bars?: Bars }): TrackedWorkout {
   const { studio: _old, ...rest } = w;
   const studio = studioName(raw);
   const next: TrackedWorkout = studio ? { ...rest, studio } : rest;
@@ -222,7 +224,7 @@ export function setStudio(w: TrackedWorkout, raw: string, fit?: { history: Logge
   const chosen = hereKey(next, fit.history, studios);
   return { ...next, exercises: next.exercises.map((e) => {
     if (e.sets.some(isDone) || !e.sets.some((s) => s.prefillKg !== undefined)) return e;
-    const kg = prefillWeights(e, chosen, fit.history, catalog, studios, { planStudio: w.planStudio, overrides: fit.overrides });
+    const kg = prefillWeights(e, chosen, fit.history, catalog, studios, { planStudio: w.planStudio, overrides: fit.overrides, bars: fit.bars });
     return { ...e, sets: e.sets.map((s, i) => (s.prefillKg === undefined || s.weightKg !== s.prefillKg ? s : { ...s, weightKg: kg[i]!, prefillKg: kg[i]! })) };
   }) };
 }
@@ -299,11 +301,11 @@ export const addSet = (w: TrackedWorkout, ex: string): TrackedWorkout =>
  * Inserts the warm-up ramp before the exercise's first work set (the working weight is that set's weight) as normal, editable
  * sets of type warmup. Nothing is added without a working weight, or when the exercise already has a warm-up or a done set.
  */
-export function addWarmup(w: TrackedWorkout, ex: string, ladder: Ladder, catalog: readonly Exercise[] = EXERCISES): TrackedWorkout {
+export function addWarmup(w: TrackedWorkout, ex: string, ladder: Ladder, barKg: number, catalog: readonly Exercise[] = EXERCISES): TrackedWorkout {
   const e = w.exercises.find((x) => x.rid === ex);
   if (!e || e.sets.some((s) => s.type === 'warmup' || s.doneMs !== null)) return w;
   const own = resolveExercise(e, [...catalog]).exercise;
-  const ramp = warmupRamp({ workingKg: workingWeightOf(e), equipment: own?.equipment ?? 'other', ladder, type: own?.type });
+  const ramp = warmupRamp({ workingKg: workingWeightOf(e), ladder, type: own?.type, barKg });
   if (ramp.length === 0) return w;
   const first = Math.max(0, e.sets.findIndex((s) => s.type !== 'warmup'));
   const sets = ramp.map((r): TrackedSet => ({ rid: newRid(), type: 'warmup', weightKg: r.weightKg, reps: r.reps, durationS: null, doneMs: null }));

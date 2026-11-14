@@ -1,5 +1,5 @@
 import { bodyOf } from '../../shared/record-bodies';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { openStoreCount, subscribeStores } from '../../tracking/registry';
 import { bikeOf, hasBike as bikeVisible, ridesOf } from '../../tracking/ui';
 import { Icon, type IconName } from '../../tracking/ui/kit';
@@ -17,6 +17,7 @@ import { Env, HINT_KEY, OPEN_MAX_AGE_MS, get } from './env';
 import { LoginForm } from './LoginForm';
 import { ErrorBoundary } from './ErrorBoundary';
 import { Heute } from './Heute';
+import { GarminUploadContext, type GarminUploadAccess } from '../../tracking/ui/GarminWorkoutUpload';
 import { usePush, PushCard } from './Push';
 import { Tab, TABS, readMealsOn, saveMealsOn, NO_LINK, COACH_ASK_MS, noSub, visibleTabs, saveEndurance, tabFor } from './tabs';
 
@@ -81,6 +82,15 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
     const give = setTimeout(release, COACH_ASK_MS); // not reached: keep what is stored
     return () => { clearTimeout(give); unsub(); release(); };
   }, [link]);
+  // Stable on purpose: a new function would close and reopen the link on every state message.
+  const hold = useCallback(() => { link?.start(); return () => link?.stop(); }, [link]);
+  const garminAccess = useMemo<GarminUploadAccess>(() => ({
+    connected: linkSnap.view?.garmin.state === 'connected',
+    mode: linkSnap.view?.upload?.mode === 'ask' ? 'ask' : 'off',
+    workouts: linkSnap.view?.upload?.workouts ?? {},
+    hold,
+    upload: async (workoutId, repoLink) => (link ? link.sendOnce({ type: 'garmin-upload-workout', workoutId, repoLink }) : false),
+  }), [link, linkSnap.view, hold]);
   const hasMeals = (linkMeals ?? storedMeals) || mealWeeks(mealRecords, env.now()).length > 0;
   // Laufen once "Laufen planen" is on or the run coach suggests it: nothing of it for a person who does not run.
   const runRecords = usePortRecords(port, 'run').records;
@@ -147,6 +157,7 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
         {push.msg && <div className="tk-screen"><p role="status" className="tk-note">{push.msg}</p></div>}
         {hint && !(push.state?.showCard && push.state.env.support === 'install') && <div className="tk-screen"><p role="status" className="tk-note">Tipp: Tippe unten auf Teilen und dann auf „Zum Home-Bildschirm“, dann öffnet sich Pandafit wie eine App.</p></div>}
         {live && <LiveRide client={live} now={env.now} />}
+        <GarminUploadContext.Provider value={garminAccess}>
         <ErrorBoundary key={tab} onTraining={() => setTab('training')}>
           <Suspense fallback={<p className="muted" role="status">Wird geladen.</p>}>
           {tab === 'heute' && <Heute goTraining={(e) => { setEntry(e ?? null); setTab('training'); }} goRun={hasRun ? () => { saveEndurance(env, account, 'laufen'); setTab('ausdauer'); } : undefined} goBike={hasBike ? () => { saveEndurance(env, account, 'rad'); setTab('ausdauer'); } : undefined} goCoach={() => { setChatOnOpen(true); setTab('coach'); }} goQuestion={(q) => { setQuestion(q); setChatOnOpen(true); setTab('coach'); }} skipQuestion={(q) => sendQuestion({ type: 'gym-skip-question', question: q })} goneQuestions={gone} goProfile={() => setTab('profil')} goMeal={(m) => { setMealEntry(m); setTab('essen'); }} planning={hasMeals || hasEndurance || linkSnap.view?.gymOn === true} meals={hasMeals} />}
@@ -158,6 +169,7 @@ export function Shell({ account, env, port, onLogout, onRelogin }: { account: st
           {tab === 'profil' && <Profil link={link} now={env.now} status={status} onLogout={onLogout} push={push.state} storage={env.storage} />}
           </Suspense>
         </ErrorBoundary>
+        </GarminUploadContext.Provider>
       </main>
       {frame && (
         <nav aria-label="Seiten" className={`web-nav${typing ? ' web-nav-away' : ''}`} style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>

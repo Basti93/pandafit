@@ -1,8 +1,10 @@
-import { type ReactNode, type SyntheticEvent } from 'react';
+import { useState, type ReactNode, type SyntheticEvent } from 'react';
 import { descriptionCredit, type ExerciseDescription } from '../../shared/exercise-descriptions';
 import type { ExerciseImage } from '../../shared/exercise-images';
 import { ruleNumbers } from '../../shared/training-policy';
-import { formatDecimal } from '../session';
+import { BAR_LABEL, BAR_TYPES, type BarType } from '../../shared/bars';
+import { formatDecimal, parseDecimal } from '../session';
+import { Sheet } from './kit';
 import { stepLine } from '../steps';
 import { imageSrc } from '../media';
 
@@ -81,5 +83,57 @@ export function StepLine({ title, step, onChoose }: { title: string; step: { ste
         {[...new Set([...ruleNumbers('load.step-choices'), ...(step.own ? [step.stepKg] : [])])].sort((a, b) => a - b).map((n) => <option key={n} value={String(n)}>{formatDecimal(n)} kg</option>)}
       </select>
     </p>
+  );
+}
+
+/** The kg a bar can weigh: the register's range, on the 0.25 kg grid. */
+const validBarKg = (kg: number | null | undefined): kg is number => {
+  if (typeof kg !== 'number' || !Number.isFinite(kg)) return false;
+  const [lo, hi] = ruleNumbers('load.bar-range-kg');
+  return kg >= lo && kg <= hi && Math.abs(kg * 4 - Math.round(kg * 4)) < 1e-9;
+};
+
+/**
+ * One light line with the bar of a barbell exercise here ("Stange: SZ-Stange, 8,5 kg"). Tapping opens a small sheet: the type
+ * (for this exercise) and the weight of that type in this studio.
+ */
+export function BarLine({ title, type, kgOf, onType, onKg }: { title: string; type: BarType; kgOf: (t: BarType) => number; onType: (t: BarType) => void; onKg: (type: BarType, kg: number) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <p className="muted tk-step">
+        <button type="button" className="link" aria-label={`Stange ${title}`} onClick={() => setOpen(true)}>{`Stange: ${BAR_LABEL[type]}, ${formatDecimal(kgOf(type))} kg`}</button>
+      </p>
+      {open && <BarSheet title={title} type={type} kgOf={kgOf} onType={onType} onKg={onKg} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function BarSheet({ title, type, kgOf, onType, onKg, onClose }: { title: string; type: BarType; kgOf: (t: BarType) => number; onType: (t: BarType) => void; onKg: (type: BarType, kg: number) => void; onClose: () => void }) {
+  const [draft, setDraft] = useState(formatDecimal(kgOf(type)));
+  // The weight shown belongs to the type shown: after a switch the field holds the new type's weight.
+  const [shownType, setShownType] = useState(type);
+  const parsed = parseDecimal(draft);
+  const bad = draft.trim() !== '' && !validBarKg(parsed);
+  const [lo, hi] = ruleNumbers('load.bar-range-kg');
+  return (
+    <Sheet size="small" title={`Stange ${title}`} onClose={onClose}>
+      <div className="tk-sets">
+        <div role="radiogroup" aria-label="Stangentyp">
+          {BAR_TYPES.map((t) => (
+            <label key={t} className="tk-row">
+              <input type="radio" name="bar-type" checked={shownType === t} onChange={() => { setShownType(t); setDraft(formatDecimal(kgOf(t))); onType(t); }} />
+              <span>{BAR_LABEL[t]}</span>
+            </label>
+          ))}
+        </div>
+        <label className="tk-field-wrap">
+          <span className="muted">{`Gewicht der ${BAR_LABEL[shownType]} in diesem Studio (kg)`}</span>
+          <input className="tk-num" aria-label="Gewicht der Stange" inputMode="decimal" autoComplete="off" aria-invalid={bad} value={draft} onChange={(e) => setDraft(e.target.value)} />
+        </label>
+        {bad && <small className="tk-invalid" role="note">{`Bitte ein Gewicht zwischen ${formatDecimal(lo)} und ${formatDecimal(hi)} kg in Viertelkilo-Schritten.`}</small>}
+        <button type="button" className="primary" disabled={!validBarKg(parsed)} onClick={() => { if (validBarKg(parsed)) { onKg(shownType, parsed); onClose(); } }}>Speichern</button>
+      </div>
+    </Sheet>
   );
 }

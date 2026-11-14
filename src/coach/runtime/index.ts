@@ -11,8 +11,9 @@ import { GarminDb } from '../garmin-db';
 import { readinessFrom, restingHrRaised, type GarminCoachData } from '../readiness';
 import { GarminSync } from '../garmin-sync';
 import { HevyLinks } from '../hevy';
-import { canUpload } from '../garmin-upload';
-import { activityName, REPO_DESCRIPTION } from '../../shared/garmin-upload';
+import { canUpload, canUploadWorkout } from '../garmin-upload';
+import { exportStrengthFit } from '../../ride-format/export/strength-fit';
+import { activityName, REPO_DESCRIPTION, STRENGTH_ACTIVITY_NAME, STRENGTH_DESCRIPTION } from '../../shared/garmin-upload';
 import { GarminUploader } from '../garmin-uploader';
 import { mergeCatalog } from '../../shared/catalog';
 import { EXERCISES } from '../../shared/exercises';
@@ -56,6 +57,8 @@ import type { RuntimeOptions, CoachRuntime } from './types';
 export type { RuntimeOptions, CoachRuntime } from './types';
 
 const log = createLogger('runtime');
+/** Strength FIT files in the export folder start with this, so the uploader's result finds its workout. */
+const WORKOUT_FILE_PREFIX = 'kraft-';
 const GARMIN_CACHE_MS = 5 * 60_000;
 const GARMIN_DAYS = 60;
 
@@ -380,7 +383,11 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     exportsDir: path.join(dir, 'exports'),
     rideOpen: () => !noOpenRide(),
     tokens: garminTokens,
-    onResult: (profileId, rideId, result) => { coach.markUpload(profileId, rideId, result); publish(); },
+    onResult: (profileId, fileId, result) => {
+      if (fileId.startsWith(WORKOUT_FILE_PREFIX)) coach.markWorkoutUpload(profileId, fileId.slice(WORKOUT_FILE_PREFIX.length), result);
+      else coach.markUpload(profileId, fileId, result);
+      publish();
+    },
     ...spawnOpt,
   });
   const startUpload = (profileId: string, rideId: string, repoLink: boolean): void => {
@@ -389,11 +396,28 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     if (ride && canUpload(s, rideId) && uploader.upload(profileId, rideId, activityName(ride), ride.startedAtMs, repoLink ? REPO_DESCRIPTION : undefined)) coach.markUpload(profileId, rideId, { status: 'uploading' });
   };
 
+  const startWorkoutUpload = (profileId: string, workoutId: string, repoLink: boolean): void => {
+    if (!/^[A-Za-z0-9-]+$/.test(workoutId)) return;
+    const rec = records.all(profileId, 'workout').find((r) => r.id === workoutId);
+    const b = (rec?.body ?? {}) as { source?: unknown; startMs?: unknown; endMs?: unknown };
+    const startMs = b.startMs;
+    const endMs = typeof b.endMs === 'number' && Number.isFinite(b.endMs) ? b.endMs : null;
+    if (!rec || typeof b.source !== 'string' || typeof startMs !== 'number' || !Number.isFinite(startMs)) return;
+    if (!canUploadWorkout(coach.state(profileId), { id: workoutId, source: b.source, endMs, deleted: rec.deleted }) || endMs === null || endMs <= startMs) return;
+    const exportsDir = path.join(dir, 'exports');
+    const fileId = `${WORKOUT_FILE_PREFIX}${workoutId}`;
+    try {
+      fs.mkdirSync(exportsDir, { recursive: true });
+      fs.writeFileSync(path.join(exportsDir, `${fileId}.fit`), exportStrengthFit({ startMs, endMs }));
+    } catch (e) { log.error('strength file not written', e); return; }
+    if (uploader.upload(profileId, fileId, STRENGTH_ACTIVITY_NAME, startMs, repoLink ? STRENGTH_DESCRIPTION : undefined)) coach.markWorkoutUpload(profileId, workoutId, { status: 'uploading' });
+  };
+
   const ctx: RuntimeCtx = {
     opts, profiles, noOpenRide, scheduled, heavyBusy, mealsHere, nowMs, waitMs, ask, dir, coachDir, garminDir,
     known, coachHere, coached, publish, notifyRecords, mealsChanged, refresh,
     records, coach, gym, run, mobility, chat, tasks, exerciseMapper, hevy, garmin, garminSync, uploader, workouts, accountSync,
-    ownCoach, mealsNow, activitySeen, view, startUpload, garminData, activitiesOf, adviceOf, gymDoneDates, personalKey, statsDue,
+    ownCoach, mealsNow, activitySeen, view, startUpload, startWorkoutUpload, garminData, activitiesOf, adviceOf, gymDoneDates, personalKey, statsDue,
   };
 
   return {

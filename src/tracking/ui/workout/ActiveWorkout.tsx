@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { Exercise } from '../../../shared/exercises';
 import { asksEffort } from '../../effort';
 import { extendRest, restRemainingS, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo, otherStudio, setEffort, type TrackedWorkout } from '../../session';
@@ -18,6 +19,7 @@ import { doneSentence, effortAsk, focusExercise, isDoneExercise, progressOf, upN
 import { SetsSheet } from './SetsSheet';
 import { sinceLabel } from './markUsed';
 import { useNow } from '../hooks';
+import { playRestBeep, restBeepAt } from './restSound';
 import { NOT_SAVED, useActiveWorkout, type ActiveWorkoutProps } from './useActiveWorkout';
 
 /** "Läuft seit …": shows minutes only, so it beats once a minute. */
@@ -30,6 +32,13 @@ function LiveSince({ startMs, now }: { startMs: number; now: () => number }) {
 function RestBar({ w, now, act }: { w: TrackedWorkout; now: () => number; act: (f: (x: TrackedWorkout) => TrackedWorkout) => void }) {
   const t = useNow(1000, !!w.rest, now);
   const remaining = restRemainingS(w, t);
+  const shown = useRef<number | null>(null);
+  // The beep follows the same second the bar shows.
+  useEffect(() => {
+    const second = w.rest ? restBeepAt(shown.current, remaining) : null;
+    shown.current = w.rest ? remaining : null;
+    if (second !== null) playRestBeep(second);
+  }, [remaining, w.rest]);
   if (!w.rest || remaining <= 0) return null;
   return (
     <div className="tk-livepause">
@@ -42,7 +51,7 @@ function RestBar({ w, now, act }: { w: TrackedWorkout; now: () => number; act: (
 
 export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /** Verkleinern: the screen goes, the workout keeps running (and saving) in the registry. */ onMinimize: () => void }) {
   const a = useActiveWorkout(props);
-  const { port, w, save, ui, set, askCoach, setNotice, catalog, excluded, studios, overrides, history, now, newId, known, act, end, discard } = a;
+  const { port, w, save, ui, set, askCoach, setNotice, catalog, excluded, studios, overrides, bars, history, now, newId, known, act, end, discard } = a;
   const { picker } = ui;
   const focus = focusExercise(w, ui.openRid, a.currentRid);
   const next = upNext(w, focus?.rid ?? null);
@@ -55,7 +64,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
     if (otherStudio(to.planStudio, a.studioHere, studios)) return to;
     const snap = (id: string, kg: number): number => {
       const equipment = catalog.find((c) => c.id === id)?.equipment ?? '';
-      return snapDown(kg, ladderHere(id, equipment, history, a.studioHere, overrides, studios.renames).ladder);
+      return snapDown(kg, ladderHere(id, equipment, history, a.studioHere, overrides, studios.renames, bars).ladder);
     };
     const r = refitPlaces(to, catalog, snap);
     if (r.changed.length > 0) setNotice(`Die Gewichte von ${r.changed.length > 1 ? `${r.changed.slice(0, -1).join(', ')} und ${r.changed[r.changed.length - 1]}` : r.changed[0]} passen jetzt zur neuen Reihenfolge.`);
@@ -138,7 +147,7 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
       )}
       {ui.studioOpen && (
         <StudioSheet value={w.studio} known={known} onClose={() => set({ studioOpen: false })}
-          onChange={(n, created) => { act((x) => setStudio(x, n ?? '', { history, catalog, studios, overrides })); if (n && created) void rememberStudio(port, n, now()).catch(() => setNotice(NOT_SAVED)); }}
+          onChange={(n, created) => { act((x) => setStudio(x, n ?? '', { history, catalog, studios, overrides, bars })); if (n && created) void rememberStudio(port, n, now()).catch(() => setNotice(NOT_SAVED)); }}
           onRename={(from, to) => { void renameStudio(port, from, to, now()).then(() => act((x) => setStudio(x, to))).catch(() => setNotice(NOT_SAVED)); }} />
       )}
       {ui.ask && ui.ask.question === 'open-sets' && (
