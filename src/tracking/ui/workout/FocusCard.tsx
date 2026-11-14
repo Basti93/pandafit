@@ -12,7 +12,7 @@ import { NumField } from '../SetRow';
 import { exerciseHasNoWeight, lastTimeLine, setTargetHint } from '../setGrid';
 import { BrushTitle, Card, Icon, Kicker, MarkDot, RoundButton, Sheet } from '../kit';
 import { ExerciseMenu } from './ExerciseMenu';
-import { LighterRest } from './LighterRest';
+import { WeightOffer } from './WeightOffer';
 import { focusExercise, focusSet, markName, setMarks } from './live-view';
 import type { ActiveWorkoutApi } from './useActiveWorkout';
 
@@ -85,7 +85,7 @@ export function FocusCard({ a }: { a: ActiveWorkoutApi }) {
  * Keyed by the set: a draft and an unreadable entry belong to this one set; the next set starts fresh.
  */
 function FocusSet({ a, e, index, equipment, range }: { a: ActiveWorkoutApi; e: TrackedExercise; index: number; equipment: string; range?: { min: number; max: number } }) {
-  const { act, tapOnce, confirmShown } = a;
+  const { act, tapOnce, confirmShown, editWeight } = a;
   const s = e.sets[index]!;
   const n = index + 1;
   const timed = !!e.timed;
@@ -102,7 +102,7 @@ function FocusSet({ a, e, index, equipment, range }: { a: ActiveWorkoutApi; e: T
     <>
       <div className="tk-lift-fields">
         {!timed && <NumField big={{ unit: 'Kilogramm' }} label={`Gewicht Satz ${n}`} value={s.weightKg} placeholder={shown.weightKg != null ? formatDecimal(shown.weightKg) : '–'}
-          onValidity={(w) => setBad((b) => ({ ...b, w }))} onCommit={(weightKg) => edit({ weightKg })} />}
+          onValidity={(w) => setBad((b) => ({ ...b, w }))} onCommit={(weightKg) => editWeight(e.rid, s.rid, weightKg)} />}
         {timed
           ? <NumField big={{ unit: 'Sekunden' }} label={`Sekunden Satz ${n}`} value={s.durationS} placeholder={shown.durationS != null ? String(shown.durationS) : '–'} integer
             onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(durationS) => edit({ durationS })} />
@@ -113,7 +113,7 @@ function FocusSet({ a, e, index, equipment, range }: { a: ActiveWorkoutApi; e: T
       {target && <p className="muted tk-lift-hint">{target}</p>}
       {plates && <p className="muted tk-lift-hint">{plates}</p>}
       <button type="button" className="primary tk-iconbtn" disabled={bad.w || bad.r} onClick={confirm}><Icon name="haken" size={20} /><span>Satz geschafft</span></button>
-      <LighterRest a={a} e={e} equipment={equipment} />
+      <WeightOffer a={a} e={e} />
     </>
   );
 }

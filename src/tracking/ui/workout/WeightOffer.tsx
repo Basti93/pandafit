@@ -1,39 +1,40 @@
-import { snapDown } from '../../../shared/loads';
 import { formatDecimal, type TrackedExercise } from '../../session';
-import { restWeights, setWeights } from '../../lighter-rest';
-import { ladderHere } from '../../steps';
+import { followingSameWeight, setWeights } from '../../lighter-rest';
 import type { ActiveWorkoutApi } from './useActiveWorkout';
 
 /**
- * One calm line under "Satz geschafft": after a set off the planned weight, offer the same change for the open sets.
+ * One calm line right after a new weight was typed into an open set: offer it for the following open sets that still have the old weight.
  * After "Übernehmen" the line says so and offers "Rückgängig" until the next confirmed set.
  */
-export function LighterRest({ a, e, equipment }: { a: ActiveWorkoutApi; e: TrackedExercise; equipment: string }) {
-  const { w, ui, set, act, history, studioHere, overrides, studios } = a;
-  const ladder = () => ladderHere(e.exerciseId, equipment, history, studioHere, overrides, studios.renames).ladder;
-  const undo = ui.lighterUndo?.rid === e.rid ? ui.lighterUndo : null;
-  if (undo) {
+export function WeightOffer({ a, e }: { a: ActiveWorkoutApi; e: TrackedExercise }) {
+  const { ui, set, act } = a;
+  const taken = ui.weightTaken?.rid === e.rid ? ui.weightTaken : null;
+  if (taken) {
     return (
       <p className="muted tk-lift-hint">
-        {undo.heavier ? 'Die restlichen Sätze sind jetzt schwerer.' : 'Die restlichen Sätze sind jetzt leichter.'}{' '}
-        <button type="button" className="link" onClick={() => { act((x) => setWeights(x, e.rid, undo.prior)); set({ lighterUndo: null }); }}>Rückgängig</button>
+        {`Die restlichen Sätze sind jetzt auch mit ${formatDecimal(taken.newKg)} kg.`}{' '}
+        <button type="button" className="link" onClick={() => { act((x) => setWeights(x, e.rid, taken.prior)); set({ weightTaken: null }); }}>Rückgängig</button>
       </p>
     );
   }
-  if (ui.lighterNo.has(e.rid)) return null;
-  const proposal = restWeights(w, e.rid, (kg) => snapDown(kg, ladder()));
-  if (!proposal) return null;
+  const offer = ui.weightOffer;
+  if (!offer || offer.exRid !== e.rid) return null;
+  const edited = e.sets.find((s) => s.rid === offer.setRid);
+  if (!edited || edited.doneMs !== null || edited.weightKg !== offer.newKg) return null;
+  const key = `${offer.setRid}:${offer.newKg}`;
+  if (ui.weightOfferNo.has(key)) return null;
+  const following = followingSameWeight(a.w, e.rid, offer.setRid, offer.oldKg);
+  if (following.length === 0) return null;
   const take = () => {
-    const prior = proposal.sets.map((p) => ({ rid: p.rid, kg: e.sets.find((s) => s.rid === p.rid)!.weightKg as number }));
-    set({ lighterUndo: { rid: e.rid, prior, heavier: proposal.heavier } });
-    act((x) => setWeights(x, e.rid, proposal.sets));
+    set({ weightTaken: { rid: e.rid, prior: following.map((f) => ({ rid: f.rid, kg: offer.oldKg })), newKg: offer.newKg }, weightOffer: null });
+    act((x) => setWeights(x, e.rid, following.map((f) => ({ rid: f.rid, kg: offer.newKg }))));
   };
   return (
     <div className="tk-lift-hint">
-      <p className="muted">{proposal.kg !== null ? `Die restlichen Sätze auch mit ${formatDecimal(proposal.kg)} kg?` : `Die restlichen Sätze im selben Verhältnis ${proposal.heavier ? 'schwerer' : 'leichter'} machen?`}</p>
+      <p className="muted">{`Die restlichen Sätze auch mit ${formatDecimal(offer.newKg)} kg?`}</p>
       <div className="tk-row">
         <button type="button" className="secondary" onClick={take}>Übernehmen</button>
-        <button type="button" className="link" onClick={() => set({ lighterNo: new Set([...ui.lighterNo, e.rid]) })}>Nein danke</button>
+        <button type="button" className="link" onClick={() => set({ weightOfferNo: new Set([...ui.weightOfferNo, key]) })}>Nein danke</button>
       </div>
     </div>
   );

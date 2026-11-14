@@ -5,7 +5,7 @@ import { readStats, STATS_ID } from '../../../shared/stats';
 import { loadStepOverrides } from '../../../shared/loads';
 import { knownStudios, studioStateOf } from '../../../shared/studio';
 import type { TrackingPort } from '../../ports';
-import { confirmSet, currentSet, type FinishChoice, type TrackedWorkout } from '../../session';
+import { confirmSet, currentSet, editSet, type FinishChoice, type TrackedWorkout } from '../../session';
 import { closeStore, releaseStore } from '../../registry';
 import { hereKey, stepChange } from '../../steps';
 import { useCatalog, useExcluded, usePortRecords, useStoreView, useWakeLock, type WorkoutStore } from '../hooks';
@@ -40,10 +40,12 @@ export type UiState = {
   openRid: string | null;
   /** The set confirmed last: its circle pops once. */
   justDone: string | null;
-  /** Exercises whose "restliche Sätze auch so" offer was declined. */
-  lighterNo: ReadonlySet<string>;
+  /** The weight just typed into an open work set, with the one before: it asks whether the following sets with the old weight follow. */
+  weightOffer: { exRid: string; setRid: string; oldKg: number; newKg: number } | null;
+  /** Offers declined with "Nein danke", keyed by the edited set and its new weight. */
+  weightOfferNo: ReadonlySet<string>;
   /** The adopted weights of an exercise, with the old ones: shown with "Rückgängig" until the next confirmed set. */
-  lighterUndo: { rid: string; prior: { rid: string; kg: number }[]; heavier: boolean } | null;
+  weightTaken: { rid: string; prior: { rid: string; kg: number }[]; newKg: number } | null;
 };
 
 type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'askCoach' };
@@ -74,7 +76,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
-    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, lighterNo: new Set(), lighterUndo: null,
+    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, weightOffer: null, weightOfferNo: new Set(), weightTaken: null,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
@@ -157,6 +159,23 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   }, [save, w, port, store, latest]);
 
   const act = useCallback((fn: (x: TrackedWorkout) => TrackedWorkout) => void store.apply(fn), [store]);
+  const uiNow = useLatest(ui);
+  /**
+   * Sets the weight of one set. A new weight in an open work set starts the offer for the following sets; typing on keeps
+   * the weight the set had before the first keystroke, so "4", "45" ask about the same sets.
+   */
+  const editWeight = useCallback((exRid: string, setRid: string, weightKg: number | null) => {
+    const s = store.current().exercises.find((x) => x.rid === exRid)?.sets.find((x) => x.rid === setRid);
+    act((x) => editSet(x, exRid, setRid, { weightKg }));
+    if (!s) return;
+    const cur = uiNow.current.weightOffer;
+    const same = cur && cur.setRid === setRid ? cur : null;
+    const oldKg = same ? same.oldKg : s.weightKg;
+    const offerable = s.doneMs === null && s.type !== 'warmup';
+    if (!offerable) { set({ weightOffer: null, weightTaken: null }); return; }
+    if (weightKg === null) { if (!same) set({ weightOffer: null, weightTaken: null }); return; }
+    set({ weightTaken: null, weightOffer: oldKg !== null && oldKg !== weightKg ? { exRid, setRid, oldKg, newKg: weightKg } : null });
+  }, [store, act, set, uiNow]);
 
   // A double tap on a big button lands on what the first tap just put in its place (the next set, a second new set).
   // So a second tap of the same kind within a moment is ignored. Wall clock on purpose: the injected `now` may stand still.
@@ -175,7 +194,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const confirmShown = useCallback((exRid: string, setRid: string) => {
     buzz();
     primeSound();
-    set({ thanked: null, justDone: setRid, lighterUndo: null });
+    set({ thanked: null, justDone: setRid, weightTaken: null, weightOffer: null });
     let finished = false;
     act((x) => {
       if (x.exercises.find((y) => y.rid === exRid)?.sets.find((y) => y.rid === setRid)?.doneMs !== null) return x;
@@ -224,7 +243,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const known = knownStudios([...history, w], studios.renames, studios.picks, studios.hidden);
 
   return {
-    port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown, holdProps, wasHeld, releaseHold,
+    port, store, history, now, newId, w, save, ui, set, toggleNote, askCoach, setNotice, tapOnce, confirmShown, editWeight, holdProps, wasHeld, releaseHold,
     catalog, excluded, studios, overrides, studioHere, statsMuscles, chooseStep, currentRid, known, act, end, discard,
   };
 }
