@@ -39,10 +39,10 @@ export type UiState = {
   openRid: string | null;
   /** The set confirmed last: its circle pops once. */
   justDone: string | null;
-  /** Exercises whose "restliche Sätze leichter" offer was declined. */
+  /** Exercises whose "restliche Sätze auch so" offer was declined. */
   lighterNo: ReadonlySet<string>;
-  /** The adopted lighter weights of an exercise, with the old ones: shown with "Rückgängig" until the next confirmed set. */
-  lighterUndo: { rid: string; prior: { rid: string; kg: number }[] } | null;
+  /** The adopted weights of an exercise, with the old ones: shown with "Rückgängig" until the next confirmed set. */
+  lighterUndo: { rid: string; prior: { rid: string; kg: number }[]; heavier: boolean } | null;
 };
 
 type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'askCoach' };
