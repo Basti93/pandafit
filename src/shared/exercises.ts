@@ -25,6 +25,9 @@ export type Exercise = {
 const x = (id: string, title: string, type: string, primaryMuscle: string, equipment: string, hevyTitle?: string, aliases?: string[]): Exercise =>
   ({ id, title, type, primaryMuscle, equipment, ...(hevyTitle ? { hevyTitle } : {}), ...(aliases ? { aliases } : {}) });
 
+/** Barbell exercises that use an EZ bar (see bars.ts); every other barbell exercise uses the straight bar. */
+export const SZ_BAR_EXERCISES: ReadonlySet<string> = new Set(['pf-preacher-curl', 'pf-skullcrusher']);
+
 /** hevyTitle is the exact English Hevy name that linkHevyTemplates matches on. */
 export const EXERCISES: Exercise[] = [
   x('pf-squat', 'Kniebeuge', 'weight_reps', 'quadriceps', 'barbell', 'Squat (Barbell)'),

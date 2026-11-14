@@ -66,6 +66,8 @@ export const RULES: PolicyRule[] = [
   r('load.default-step', 'gym', 'product', 'checked', 'Ohne genug Daten gilt je Gerät ein Standard-Lastschritt: Langhantel 2,5 kg, Kurzhantel 2 kg, Maschine 5 kg, Kettlebell 4 kg, sonst 2,5 kg.', 'Lastschritt', active, { values: { barbell: 2.5, dumbbell: 2, machine: 5, kettlebell: 4, none: 2.5, other: 2.5 }, unit: 'kg', where: ['src/shared/loads.ts'] }),
   r('load.step-choices', 'gym', 'product', 'checked', 'Den Lastschritt einer Übung kann man auf 0,5, 1, 1,25, 2, 2,5, 4, 5, 7 oder 10 kg setzen.', 'Lastschritt', active, { numbers: [0.5, 1, 1.25, 2, 2.5, 4, 5, 7, 10], unit: 'kg', where: ['src/shared/loads.ts'] }),
   r('load.bar-kg', 'gym', 'product', 'checked', 'Eine Langhantelstange wiegt 20 kg.', 'Scheiben', active, { value: 20, unit: 'kg', where: ['src/shared/loads.ts'] }),
+  r('load.sz-bar-kg', 'gym', 'product', 'checked', 'Eine SZ-Stange wiegt 10 kg, solange die Person für das Studio kein Gewicht eingestellt hat.', 'Scheiben', active, { value: 10, unit: 'kg', where: ['src/shared/bars.ts'] }),
+  r('load.bar-range-kg', 'gym', 'product', 'checked', 'Das Gewicht einer Stange liegt zwischen 1 und 40 kg.', 'Scheiben', active, { numbers: [1, 40], unit: 'kg', where: ['src/shared/bars.ts'] }),
   r('load.plates', 'gym', 'product', 'checked', 'Verfügbare Scheiben pro Seite: 25, 20, 15, 10, 5, 2,5 und 1,25 kg, beliebig viele Paare.', 'Scheiben', active, { numbers: [25, 20, 15, 10, 5, 2.5, 1.25], unit: 'kg', where: ['src/shared/loads.ts'] }),
 
   // Other existing heuristics, foundation §10.
