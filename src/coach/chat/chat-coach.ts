@@ -13,6 +13,7 @@ import { dateKey } from '../day-load';
 import { dataBlock } from '../meals/prompt';
 import type { RecordStore } from '../tracking/store';
 import { excludedOf, goalOfProfile, wishesOf } from '../tracking/personal';
+import { EXPERIENCE_QUESTION } from '../../shared/experience';
 import { FAMILY_IDS, isExcludableFamily, MAX_FAMILIES } from '../../shared/families';
 import { effectivePush, FOCUS_GROUPS, MAX_EXCLUDED, moveRule, PUSH_QUESTION, readRule, ruleId, ruleRecord, RULE_TEXT_MAX, wishLine, type RuleDraft, type RuleKind, type RuleSport, type SportKey } from '../../shared/personal';
 import { LONG_TERM_GUIDE, weekHistory } from './long-term';
@@ -713,6 +714,11 @@ export class ChatCoach {
   /** Bo asks how hard he may push, without AI: the card under the message holds the choices. */
   askPush(id: string): void {
     this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: this.deps.nowMs(), push: true, askPush: true });
+  }
+
+  /** Bo asks how long the person trains with weights, without AI: the card under the message holds the answers. */
+  askExperience(id: string): void {
+    this.put(id, { role: 'coach', text: EXPERIENCE_QUESTION, atMs: this.deps.nowMs(), push: true, askExperience: true });
   }
 
   /** Bo asks whether the fixed section still fits, without AI: the card under the message holds the answers. */

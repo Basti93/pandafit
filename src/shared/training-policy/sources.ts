@@ -6,6 +6,7 @@ import type { PolicySource, SourceDepth } from './types';
  */
 const s = (id: string, citation: string, url: string, studyType: string, depth: SourceDepth, population: string, endpoint: string, limits: string): PolicySource =>
   ({ id, citation, url, studyType, depth, population, endpoint, limits, checkedOn: '2026-11-06' });
+const b = (...a: Parameters<typeof s>): PolicySource => ({ ...s(...a), checkedOn: '2026-11-14' });
 
 export const SOURCES: PolicySource[] = [
   s('S01', 'Currier et al., ACSM-Positionsstand 2026, DOI 10.1249/MSS.0000000000003897', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/', 'Positionsstand / Review-Überblick über 137 systematische Reviews', 'fulltext-excerpts',
@@ -86,4 +87,13 @@ export const SOURCES: PolicySource[] = [
     'Gesunde, sportlich aktive Erwachsene', 'Eiweiß je Mahlzeit etwa 0,25–0,4 g/kg, grob 20–40 g', 'Orientierung für aktive Erwachsene; die Mindestwerte der Rezeptsammlung (10 und 15 g) liegen bewusst darunter, weil sie nur Ungeeignetes aussortieren.'),
   s('S39', 'Remmert et al. 2025, SportRxiv-Preprint (nicht begutachtet)', 'https://sportrxiv.org/index.php/server/preprint/view/537', 'Preprint (Metaanalyse/Dosis-Wirkung, nicht peer-reviewed)', 'abstract',
     'Krafttrainingsstudien mit Hypertrophie-Endpunkt', 'Hypertrophie je Muskel nach Sätzen pro Einheit', 'Nicht begutachtet; Abflachen etwa ab 11 Bruchteilssätzen je Muskel und Einheit, bei sehr hohen Volumen kaum Daten; kein persönliches Optimum.'),
+  // Beginner sources of docs/research/2026-11-14-beginner-science-review.md.
+  b('S40', 'Rhea et al. 2003, Med Sci Sports Exerc 35:456, PMID 12618576', 'https://pubmed.ncbi.nlm.nih.gov/12618576/', 'Metaanalyse, 140 Studien', 'abstract',
+    'Untrainierte und Trainierte', 'Kraftzuwachs nach Sätzen je Muskel und Einheit, Last und Häufigkeit', 'Älter und nur Kraft; Untrainierte am besten mit etwa 4 Sätzen je Muskel und Einheit bei etwa 60 % 1RM, keine Grenze für Einzelne.'),
+  b('S41', 'Ratamess et al. 2009, ACSM-Positionsstand Progressionsmodelle, Med Sci Sports Exerc 41:687', 'https://pubmed.ncbi.nlm.nih.gov/19204579/', 'Positionsstand', 'guideline-summary',
+    'Gesunde Erwachsene, Anfänger bis Fortgeschrittene', 'Sätze, Wiederholungen, Last und Steigerung je Trainingsstand', 'Konsens, nicht neu gelesen; Anfänger 1–3 Sätze je Übung, 8–12 Wiederholungen, etwa 6 Monate regelmäßiges Training für die mittlere Stufe.'),
+  b('S42', 'Grgic et al. 2022, J Sport Health Sci, DOI 10.1016/j.jshs.2021.01.007', 'https://doi.org/10.1016/j.jshs.2021.01.007', 'Metaanalyse', 'abstract',
+    'Krafttrainingsstudien mit und ohne Muskelversagen', 'Kraft und Hypertrophie bei Training bis zum Versagen', 'Kein klarer Vorteil des Versagens; kleiner Hypertrophievorteil nur bei Trainierten in wenigen Studien.'),
+  b('S43', 'Iversen et al. 2021, Sports Med 51:2079, PMC8449772', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8449772/', 'Narrativer Review', 'abstract',
+    'Erwachsene, besonders Einsteiger und Ältere', 'Wirksamkeit von wenig Zeit und wenigen Sätzen', 'Narrativ; einzelne Sätze 2–3 Mal pro Woche wirken, keine genaue Grenze.'),
 ];

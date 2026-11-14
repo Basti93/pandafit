@@ -6,7 +6,7 @@ import { addDays, dayLabel, mondayOf, planFor, type PlanDay } from '../../shared
 import { dateKey } from '../day-load';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
-export type Sent = { week?: string; evening?: string; review?: string; reviewSports?: string; pushAsk?: string; drift?: string; blockEnd?: string };
+export type Sent = { week?: string; evening?: string; review?: string; reviewSports?: string; pushAsk?: string; expAsk?: string; drift?: string; blockEnd?: string };
 
 /** Remembers what was sent per profile (the Monday of the week conversation, the date of the evening suggestion), in a file. */
 export class SentPrompts {

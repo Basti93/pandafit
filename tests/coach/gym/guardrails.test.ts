@@ -506,3 +506,59 @@ describe('capLightWeek', () => {
   });
 });
 
+
+describe('limits by experience', () => {
+  const NEU: GymContext = { ...CTX, experience: 'neu' };
+  const EINIGE: GymContext = { ...CTX, experience: 'einige' };
+  it('erfahren keeps the general limits', () => {
+    passes(wo(spread(30)), { ...CTX, experience: 'erfahren' });
+    passes(wo([ex('cp', [set(40, 8), set(40, 8, 'failure')]), ex('lp', [set(null, 8), set(null, 8, 'dropset')])]), { ...CTX, experience: 'erfahren' });
+  });
+  it('a person who starts gets no failure, drop sets or widowmaker', () => {
+    expect(refused(wo([ex('cp', [set(40, 8), set(40, 8, 'failure')])]), NEU)).toBe('Versagen passt noch nicht zur Erfahrung');
+    expect(refused(wo([ex('cp', [set(40, 8), set(40, 8, 'dropset')])]), NEU)).toBe('Versagen passt noch nicht zur Erfahrung');
+    refused(wo([ex('cp', [set(40, 8), set(40, 20)], { notes: 'Widowmaker' })]), NEU);
+  });
+  it('a few months in: at most 2 such sets, only at the end of an exercise, no widowmaker', () => {
+    passes(wo([ex('cp', [set(40, 8), set(40, 8, 'failure')]), ex('lp', [set(null, 8), set(null, 8, 'failure')])]), EINIGE);
+    refused(wo([ex('cp', [set(40, 8, 'failure'), set(40, 8)])]), EINIGE);
+    refused(wo([ex('cp', [set(40, 8), set(40, 8, 'failure')]), ex('lp', [set(null, 8), set(null, 8, 'failure')]), ex('lr', [set(null, 8), set(null, 8, 'dropset')])]), EINIGE);
+    refused(wo([ex('cp', [set(40, 8), set(40, 20)], { notes: 'Widowmaker' })]), EINIGE);
+  });
+  it('fewer sets per workout and per muscle', () => {
+    const many = (n: number) => ['cp', 'lp', 'lr', 'cu', 'sp', 'hc'].map((id, i) => ex(id, Array.from({ length: i < n % 6 ? Math.ceil(n / 6) : Math.floor(n / 6) }, () => set(id === 'cp' ? 40 : null, 8))));
+    passes(wo(many(15)), NEU);
+    expect(refused(wo(many(16)), NEU)).toBe('mehr als 15 Sätze');
+    passes(wo(many(22)), EINIGE);
+    refused(wo(many(23)), EINIGE);
+    passes(wo([ex('cp', Array.from({ length: 6 }, () => set(40, 8)))]), NEU);
+    expect(refused(wo([ex('cp', Array.from({ length: 7 }, () => set(40, 8)))]), NEU)).toContain('mehr als 6 Sätze für einen Muskel');
+  });
+  it('a person who starts trains chest from 8 reps', () => {
+    passes(wo([ex('cp', [set(40, 6)])]));
+    refused(wo([ex('cp', [set(40, 6)])]), NEU);
+    passes(wo([ex('cp', [set(40, 8)])]), NEU);
+  });
+  it('the rule workout keeps the limits of a person who starts', () => {
+    const six: GymContext = { ...CTX, workouts: [...CTX.workouts, ...two('lp', 100, 10), ...two('lr', 50, 10), ...two('cu', 20, 10)] };
+    const workOf = (c: GymContext) => ruleWorkout(c).workout.exercises.flatMap((e) => e.sets).filter((s) => s.type !== 'warmup');
+    expect(workOf(six)).toHaveLength(18);
+    expect(workOf({ ...six, experience: 'neu' })).toHaveLength(15);
+    expect(checkWorkout(ruleWorkout({ ...six, experience: 'neu' }).workout, { ...six, experience: 'neu' }).ok).toBe(true);
+    expect(reasonPhrase('Versagen passt noch nicht zur Erfahrung')).toBe('Sätze bis zum Versagen, die jetzt noch nicht dran sind');
+  });
+});
+
+describe('reps around a large step', () => {
+  // cp on a machine: 20 kg x 12 twice, the next step 25 kg is large.
+  const LS: GymContext = { ...CTX, workouts: two('cp', 20, 12) };
+  it('a person who starts stays at the weight with reps above the range; a heavier set keeps the plain range', () => {
+    const neu: GymContext = { ...LS, experience: 'neu' };
+    passes(wo([ex('cp', [set(20, 13)])]), neu);
+    refused(wo([ex('cp', [set(25, 13)])]), neu);
+  });
+  it('reps below the range only at the suggested weight', () => {
+    passes(wo([ex('cp', [set(25, 3)])]), LS);
+    refused(wo([ex('cp', [set(30, 3)])]), LS);
+  });
+});

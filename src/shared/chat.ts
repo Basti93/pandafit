@@ -1,5 +1,6 @@
 import type { TrackedRecord } from './records';
 import { PUSHES, type Push } from './personal';
+import { isExperience, type Experience } from './experience';
 import { ruleNumber } from './training-policy';
 import { parseProposal, type WeekProposal } from './week-plan';
 
@@ -51,6 +52,10 @@ export type ChatMessage = {
   askPush?: true;
   /** On the rider's answer to that question: the push before (null: never chosen) and the one chosen, so Rückgängig restores it exactly. */
   pushChange?: { from: Push | null; to: Push };
+  /** Bo asks how long the person trains with weights; the card offers the three answers and "Später". */
+  askExperience?: true;
+  /** On the rider's answer to that question: the answer before (null: none) and the one given, so Rückgängig restores it exactly. */
+  experienceChange?: { from: Experience | null; to: Experience };
 };
 export type ChatEntry = ChatMessage & { id: string };
 
@@ -82,6 +87,8 @@ export function readChat(x: unknown): ChatMessage | null {
   if (typeof x.endBlock === 'string') m.endBlock = x.endBlock;
   if (x.askPush === true) m.askPush = true;
   if (x.pushChange !== undefined) { const c = readPushChange(x.pushChange); if (!c) return null; m.pushChange = c; }
+  if (x.askExperience === true) m.askExperience = true;
+  if (x.experienceChange !== undefined) { const c = readExperienceChange(x.experienceChange); if (!c) return null; m.experienceChange = c; }
   if (x.workoutChange !== undefined) { const c = readWorkoutChange(x.workoutChange); if (!c) return null; m.workoutChange = c; }
   if (x.proposal !== undefined) { const p = parseProposal(x.proposal); if (!p) return null; m.proposal = p; }
   if (x.warnings !== undefined) { if (!strings(x.warnings)) return null; m.warnings = x.warnings; }
@@ -92,6 +99,11 @@ export function readChat(x: unknown): ChatMessage | null {
 function readPushChange(x: unknown): ChatMessage['pushChange'] | null {
   if (!isObj(x) || !PUSHES.includes(x.to as Push) || (x.from !== null && !PUSHES.includes(x.from as Push))) return null;
   return { from: x.from as Push | null, to: x.to as Push };
+}
+
+function readExperienceChange(x: unknown): ChatMessage['experienceChange'] | null {
+  if (!isObj(x) || !isExperience(x.to) || (x.from !== null && !isExperience(x.from))) return null;
+  return { from: x.from as Experience | null, to: x.to };
 }
 
 function readReview(x: unknown): ChatMessage['review'] | null {

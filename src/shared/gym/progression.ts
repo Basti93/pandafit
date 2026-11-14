@@ -3,7 +3,8 @@ import { barKgFor, NO_BARS, type Bars } from '../bars';
 import { extendDown, ladderFrom, nextUp, snapDown, type Ladder, type LoadStepOverrides } from '../loads';
 import { repRangeOf } from '../muscle-targets';
 import { mainStudio, studioKey, resolveStudio, type Renames } from '../studio';
-import { ruleNumber } from '../training-policy';
+import { ruleNumber, ruleValues } from '../training-policy';
+import { clearMargin, repJumpFor, repRangeFor, stagnationSessionsFor, type Experience } from '../experience';
 import { hardSetsOf, positionShare, preFatigue, type Muscles } from './pre-fatigue';
 import type { StrengthWorkout } from './types';
 
@@ -14,17 +15,26 @@ const DROP_STEP_BACK = ruleNumber('gym.drop-step-back-count');
 const LONG_BREAK_DAYS = ruleNumber('gym.long-break-days');
 const MIN_COMPARABLE = ruleNumber('gym.min-comparable');
 const PRE_FATIGUE_TOLERANCE = ruleNumber('gym.pre-fatigue-tolerance');
-const STAGNATION_SESSIONS = ruleNumber('block.stagnation-sessions');
 const STEP_BACK = ruleNumber('gym.step-back-share');
+const LARGE_STEP_PCT = ruleNumber('gym.large-step');
+/** How far below the range the reps may start after a large step; a person who starts never goes below the rep floor. */
+const belowMinFor = (e: Experience | undefined): number => (e === 'neu' ? ruleValues('gym.large-step').belowMinNeu! : ruleValues('gym.large-step').belowMin!);
+
+/** Whether going from `fromKg` to `toKg` is a large step (`gym.large-step`). */
+export const isLargeStep = (fromKg: number, toKg: number): boolean => toKg > fromKg * (1 + LARGE_STEP_PCT / 100);
+/** The reps the same effort allows at `toKg` after `reps` at `fromKg` (Epley: 1RM = kg × (1 + reps / 30)), rounded down. */
+export const repsAt = (fromKg: number, reps: number, toKg: number): number => Math.floor((fromKg / toKg) * (30 + reps) - 30);
 
 /** The assistance is weight_kg here, so more of it is easier. In this first version its weight is simply kept. */
 export const isAssisted = (type: string | undefined): boolean => type === 'bodyweight_assisted' || type === 'bodyweight_assisted_reps';
 /** Which way the decision went; the key into REASONS. */
-type Path = 'none' | 'all-reps' | 'not-all-reps' | 'few-sessions' | 'zero-left' | 'plenty-left' | 'dropped' | 'long-break' | 'assisted' | 'other-position';
+type Path = 'none' | 'all-reps' | 'clearly-more' | 'more-than-last' | 'not-all-reps' | 'few-sessions' | 'zero-left' | 'plenty-left' | 'dropped' | 'long-break' | 'assisted' | 'other-position';
 /** The words for each decision path, shown to the person as the reason of the next step. */
 export const REASONS: Record<Path, string> = {
   none: '',
   'all-reps': 'weil du alle Wiederholungen geschafft hast',
+  'clearly-more': 'weil du deutlich mehr geschafft hast als geplant',
+  'more-than-last': 'weil du deutlich mehr geschafft hast als beim letzten Mal',
   'not-all-reps': 'weil du noch nicht alle Wiederholungen geschafft hast',
   'few-sessions': 'weil erst eine Einheit zum Vergleichen da ist',
   'zero-left': 'weil noch 0 übrig waren und die Leistung hält',
@@ -41,13 +51,15 @@ const done = (weightKg: number | null, reps: number, why: Suggestion['why'], pat
 export type ExerciseInfo = { type?: string; equipment?: string; primaryMuscle?: string | null };
 /**
  * Where the plan is for: the studio (undefined: the main one) and the person's weight-step overrides. `muscleOf` lets the history
- * see where an exercise stood in each past workout; without it every past session counts as done fresh.
+ * see where an exercise stood in each past workout; without it every past session counts as done fresh. `experience`: the person's
+ * level (missing: erfahren), which sets the rep floor, the faster rep jump and how long a core exercise may stall.
  */
-export type Plan = { studio?: string; overrides?: LoadStepOverrides; renames?: Renames; bars?: Bars; muscleOf?: (templateId: string) => Muscles | undefined };
+export type Plan = { studio?: string; overrides?: LoadStepOverrides; renames?: Renames; bars?: Bars; muscleOf?: (templateId: string) => Muscles | undefined; experience?: Experience };
 
 type Sets = StrengthWorkout['exercises'][number]['workSets'];
 /** `preSets`: hard sets for the same muscle before the exercise in that workout. */
-type Session = { ms: number; weightKg: number | null; minReps: number; sets: number[]; preSets: number; effort?: Effort };
+/** `planned`: the fewest reps the plan asked for at the top weight, when the plan is known (own workouts). */
+type Session = { ms: number; weightKg: number | null; minReps: number; sets: number[]; preSets: number; effort?: Effort; planned?: number };
 type Occurrence = { ms: number; sets: Sets; preSets: number; effort?: Effort };
 
 /** The bucket the plan is for. No studio known means the main studio, or the one shared bucket. */
@@ -84,8 +96,10 @@ function sessionsOf(templateId: string, workouts: StrengthWorkout[], nowMs: numb
     const work = o.sets.filter((s) => (s.type === 'normal' || s.type === 'failure') && s.reps !== null && s.reps > 0);
     if (work.length === 0) continue;
     const top = Math.max(...work.map((s) => s.weightKg ?? 0));
-    const atTop = work.filter((s) => (s.weightKg ?? 0) === top).map((s) => s.reps as number);
-    out.push({ ms: o.ms, weightKg: top > 0 ? top : null, minReps: Math.min(...atTop), sets: atTop, preSets: o.preSets, ...(o.effort ? { effort: o.effort } : {}) });
+    const topSets = work.filter((s) => (s.weightKg ?? 0) === top);
+    const atTop = topSets.map((s) => s.reps as number);
+    const planned = topSets.flatMap((s) => (s.plannedReps !== undefined ? [s.plannedReps] : []));
+    out.push({ ms: o.ms, weightKg: top > 0 ? top : null, minReps: Math.min(...atTop), sets: atTop, preSets: o.preSets, ...(o.effort ? { effort: o.effort } : {}), ...(planned.length ? { planned: Math.min(...planned) } : {}) });
   }
   return out;
 }
@@ -117,23 +131,30 @@ export function ladderFor(templateId: string, ex: ExerciseInfo | undefined, work
 export function suggestNext(templateId: string, workouts: StrengthWorkout[], nowMs: number, ex?: ExerciseInfo, plan?: Plan, preSets = 0): Suggestion {
   const all = templateId ? sessionsOf(templateId, workouts, nowMs, plan) : [];
   const sessions = all.filter((s) => Math.abs(s.preSets - preSets) <= PRE_FATIGUE_TOLERANCE);
-  const range = repRangeOf({ primaryMuscle: ex?.primaryMuscle });
+  const range = repRangeFor(repRangeOf({ primaryMuscle: ex?.primaryMuscle }), plan?.experience);
   const newest = all[all.length - 1];
   if (!newest) return done(null, range.min, 'none', 'none');
   const last = sessions[sessions.length - 1] ?? newest;
+  const belowMin = belowMinFor(plan?.experience);
+  // While the exercise stays at a weight it reached with a large step, the reps may sit a little below the range.
+  const floor = cameWithLargeStep(all, last) ? Math.max(1, range.min - belowMin) : range.min;
   // Weighted work stays in the rep range; bodyweight work has no upper limit, since reps are its only progression.
-  const fit = (r: number): number => last.weightKg === null ? Math.max(1, r) : Math.min(range.max, Math.max(range.min, r));
+  const fit = (r: number): number => last.weightKg === null ? Math.max(1, r) : Math.min(range.max, Math.max(floor, r));
   const reps = fit(last.minReps);
+  /** The reps at another weight than the last one (step back, break, other place): the plain range, the lowered floor never goes along. */
+  const repsAt0 = (kg: number | null): number => (kg === last.weightKg ? reps : Math.min(range.max, Math.max(range.min, last.minReps)));
   const assisted = isAssisted(ex?.type);
   const ladder = ladderFor(templateId, ex, workouts, nowMs, plan);
   const stepBack = (kg: number): number => snapDown(kg * STEP_BACK, ladder);
   if (sessions.length === 0) {
     if (last.weightKg === null || assisted || preSets <= last.preSets) return done(last.weightKg, reps, 'keep', 'other-position');
     const share = positionShare(preSets - last.preSets);
-    return done(snapDown(last.weightKg * share, ladder), reps, 'keep', 'other-position');
+    const kg = snapDown(last.weightKg * share, ladder);
+    return done(kg, repsAt0(kg), 'keep', 'other-position');
   }
   if (nowMs - last.ms > LONG_BREAK_DAYS * DAY_MS) {
-    return done(last.weightKg === null || assisted ? last.weightKg : stepBack(last.weightKg), reps, 'step-back', 'long-break');
+    const kg = last.weightKg === null || assisted ? last.weightKg : stepBack(last.weightKg);
+    return done(kg, repsAt0(kg), 'step-back', 'long-break');
   }
   const comparable = sessions.filter((s) => nowMs - s.ms <= COMPARABLE_DAYS * DAY_MS);
   // Fewer reps against the session before at exactly the same weight, several times in a row: the weight is too much for now.
@@ -144,17 +165,38 @@ export function suggestNext(templateId: string, workouts: StrengthWorkout[], now
     if (cur.weightKg === null || cur.weightKg !== prev.weightKg || cur.minReps >= prev.minReps) break;
     drops++;
   }
-  if (drops >= DROP_STEP_BACK && last.weightKg !== null && !assisted) return done(stepBack(last.weightKg), reps, 'step-back', 'dropped');
-  if (last.effort !== 'plenty') {
+  if (drops >= DROP_STEP_BACK && last.weightKg !== null && !assisted) { const kg = stepBack(last.weightKg); return done(kg, repsAt0(kg), 'step-back', 'dropped'); }
+  // A level with a faster jump (`experience.rep-jump`) takes it when there was clearly room, and then does not wait for a second session.
+  const jump = repJumpFor(plan?.experience);
+  const prev = comparable[comparable.length - 2];
+  const target = last.planned ?? (prev && prev.weightKg === last.weightKg ? prev.minReps : undefined);
+  const clearly = jump > 1 && target !== undefined && last.minReps >= target + clearMargin();
+  const fast = jump > 1 && (last.effort === 'plenty' || clearly);
+  if (last.effort !== 'plenty' && !clearly) {
     if (comparable.length < MIN_COMPARABLE) return done(last.weightKg, reps, 'keep', 'few-sessions');
     const before = comparable[comparable.length - 2];
     const reached = (last.weightKg ?? 0) >= (before.weightKg ?? 0) && last.sets.every((r) => r >= before.minReps);
     if (!reached) return done(last.weightKg, reps, 'keep', 'not-all-reps');
   }
-  const path: Path = last.effort === 'plenty' ? 'plenty-left' : last.effort === 'none' ? 'zero-left' : 'all-reps';
-  if (last.weightKg === null || last.minReps < range.max) return done(last.weightKg, fit(last.minReps + 1), 'progress', path);
+  const path: Path = last.effort === 'plenty' ? 'plenty-left' : clearly ? (last.planned !== undefined ? 'clearly-more' : 'more-than-last') : last.effort === 'none' ? 'zero-left' : 'all-reps';
+  if (last.weightKg === null || last.minReps < range.max) return done(last.weightKg, fit(last.minReps + (fast ? jump : 1)), 'progress', path);
   if (assisted) return done(last.weightKg, reps, 'keep', 'assisted');
-  return done(nextUp(last.weightKg, ladder), range.min, 'progress', path);
+  const next = nextUp(last.weightKg, ladder);
+  // A large step: the reps start where the new weight allows at the same effort, at most `belowMin` under the range.
+  const allowed = repsAt(last.weightKg, last.minReps, next);
+  // Without room below the range (a person who starts): the weight stays and the reps climb above the range until the step fits.
+  if (isLargeStep(last.weightKg, next) && allowed < range.min - belowMin) return done(last.weightKg, last.minReps + (fast ? jump : 1), 'progress', path);
+  const start = isLargeStep(last.weightKg, next) ? Math.min(range.min, Math.max(1, range.min - belowMin, allowed)) : range.min;
+  return done(next, start, 'progress', path);
+}
+
+/** Whether the run of sessions at `last`'s weight (ending with `last`) started with a large step up from the session before it. */
+function cameWithLargeStep(all: Session[], last: Session): boolean {
+  if (last.weightKg === null) return false;
+  let i = all.indexOf(last);
+  while (i > 0 && all[i - 1]!.weightKg === last.weightKg) i--;
+  const before = all[i - 1]?.weightKg;
+  return before !== undefined && before !== null && before < last.weightKg && isLargeStep(before, last.weightKg);
 }
 
 /**
@@ -166,9 +208,10 @@ export function stagnates(templateId: string, workouts: StrengthWorkout[], nowMs
   // Like the progression: only sessions with a pre-fatigue similar to the newest one are compared (the studio is the plan's).
   const newest = all[all.length - 1];
   const recent = newest ? all.filter((s) => Math.abs(s.preSets - newest.preSets) <= PRE_FATIGUE_TOLERANCE) : [];
-  if (recent.length < STAGNATION_SESSIONS + 1) return false;
+  const n = stagnationSessionsFor(plan?.experience);
+  if (recent.length < n + 1) return false;
   const assisted = isAssisted(ex?.type);
-  const tail = recent.slice(-(STAGNATION_SESSIONS + 1));
+  const tail = recent.slice(-(n + 1));
   return tail.slice(1).every((cur, i) => {
     const prev = tail[i]!;
     const [c, p] = [cur.weightKg ?? 0, prev.weightKg ?? 0];

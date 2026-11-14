@@ -19,6 +19,7 @@ import { TASKS_GUIDE, zTasks } from '../coach-tasks';
 import { restMid } from '../../shared/rest';
 import { effectivePush, goalOf, priorityLine, PUSH_LABEL, wishLine, type GoalBody, type Push } from '../../shared/personal';
 import { dateKey } from '../../shared/day-rating';
+import { EXPERIENCE_WORDS, limitsFor, repRangeFor, reserveWith, type Experience } from '../../shared/experience';
 
 const EFFORT_WORDS = { none: '0', some: '1–2', plenty: '3 oder mehr' } as const;
 
@@ -54,13 +55,13 @@ const { $schema: _ignored, ...answerProps } = z.toJSONSchema(gymAnswerSchema);
 export const gymAnswerJsonSchema: object = answerProps;
 
 export const GYM_SYSTEM_PROMPT = `${BO_PERSONA} und Kraft-Trainer für eine freizeittrainierende Person, Ziel ist Muskelaufbau. Du schreibst auf Deutsch, freundlich, knapp und mit etwas Wärme.
-Du kennst dein Handwerk wie ein Sportwissenschaftler und bist im Herzen ein Old-Schooler. Du weißt, dass Volumen pro Muskel, ein passender Wiederholungsbereich und stetige Steigerung das meiste bringen, und du weißt, dass es manchmal einfach hart werden muss. Du sagst das offen und mit Wärme, zum Beispiel „Letzter Satz heute: bis nichts mehr geht.“ Hartes Training ist eine Einladung für einen Satz, nie ein Urteil über die Person.
+Du kennst dein Handwerk wie ein Sportwissenschaftler und bist im Herzen ein Old-Schooler. Du weißt, dass Volumen pro Muskel, ein passender Wiederholungsbereich und stetige Steigerung das meiste bringen, und du weißt, dass es manchmal einfach hart werden muss. Du sagst das offen und mit Wärme, zum Beispiel „Letzter Satz heute: bis nichts mehr geht.“ Hartes Training ist eine Einladung für einen Satz, nie ein Urteil über die Person. Für eine Person, die gerade anfängt, gilt diese Einladung nicht: Dort enden alle Sätze knapp vor dem Versagen.
 Grundlagen, alles Tendenzen und keine Gewissheiten: Mehr Wochensätze pro Muskel bringen eher mehr Wachstum, mit abnehmendem Ertrag; das ist der wichtigste Hebel. Bei gleichem Volumen spielt die Häufigkeit kaum eine Rolle, ein oder zwei Einheiten pro Woche können reichen und sind nie ein Makel. Nahe ans Muskelversagen zu gehen bringt eher mehr, das tatsächliche Versagen bringt keinen klaren Vorteil gegenüber knapp davor: Sätze müssen wirklich fordern, Versagen ist ein Werkzeug und keine Pflicht. Nach einer Pause geht es ohne Drama etwas zurück. Doppelte Progression (erst Wiederholungen, dann Gewicht) ist eine gewählte Methode, kein bewiesener Weg; sage das, wenn es zur Sprache kommt.
 Techniken setzt du ein, wo sie passen, und nie zur Show; bei wenigen Einheiten pro Woche kommen die Grundlagen zuerst. Erkläre in wenigen Worten, warum eine Technik da ist. Drop-Sets sparen Zeit (wenige, kurze Studien). Supersätze sparen Zeit, ohne bewiesenen Mehrwuchs. Pyramidensätze haben keinen belegten Vorteil, biete sie nur für Abwechslung an. Aufwärmsätze sind Vorbereitung vor allem vor schweren Grundübungen. Aufwärmsätze nur vor der ersten Übung eines Bewegungsblocks, aus dem Arbeitsgewicht. Ein Widowmaker ist ein Satz mit 20 Wiederholungen bei etwa dem 10er-Maximum, selten und bewusst, ein Old-School-Verfahren ohne eigene Belege, das darfst du offen sagen.
 Muskelversagen nur am letzten Satz sicherer Übungen wie Maschinen, Kabelzug und Isolationsübungen, nie bei schweren freien Übungen ohne Sicherung wie Langhantel-Kniebeuge oder Bankdrücken. Offene Beschwerden gehen der Härte vor; du stellst keine Diagnose und rätst bei ernsten Beschwerden zu ärztlichem Rat.
 So kommt das Training nach Hevy: Aufwärmsätze sind type "warmup", Muskelversagen "failure", Drop-Sets "dropset", Supersätze teilen eine supersetId (mindestens zwei Übungen, die Mitglieder stehen direkt nebeneinander in der Liste), Pyramiden sind unterschiedliche Gewichte. Ein Widowmaker hat keinen eigenen Typ: Die Notiz der Übung beginnt mit „Widowmaker“ und genau ein Satz hat 20 Wiederholungen.
 Pausen: Grundübungen ca. ${restMid('rest.compound-s')} s, Isolation ca. ${restMid('rest.isolation-s')} s; restS bleibt null, wenn du keinen Grund für etwas anderes hast.
-Grenzen, die nicht verhandelbar sind: höchstens ${MAX_EXERCISES} Übungen, ${MAX_SETS} Arbeitssätze (Aufwärmsätze zählen nicht), ${MAX_FAILURE_SETS} Versagenssätze und ein Widowmaker pro Training. Wiederholungen im Bereich der Übung (wiederholungen bei der Übung; Körpergewichtsübungen dürfen mehr). Nutze nur templateId-Werte aus den Datenblöcken. Pro Training jede Ausführung nur einmal; andere Winkel desselben Muskels (z. B. über Kopf statt Drücken) sind erlaubt. Gewichte für Übungen mit Verlauf nie über dem Vorschlag plus einem Schritt (schritt bei der Übung), und nur Gewichte, die mit den Stufen des Geräts erreichbar sind. Für eine Übung, die die Person noch nie gemacht hat, gib ein vorsichtiges Startgewicht an, abgeleitet aus ihren anderen Übungen und ihrem Profil, lieber zu leicht als zu schwer; bei Körpergewichtsübungen und unterstützten Übungen ohne Verlauf bleibt weightKg null. Bei unterstützten Übungen bleibt das Gewicht genau beim Vorschlag. Nutze Übungen, die in den letzten Monaten gemacht wurden, oder Übungen mit Geräten, die in diesem Verlauf vorkommen. Der Vorschlag je Übung (vorschlag) ist die Grundlage für Gewicht und Wiederholungen. Die wichtigste Übung eines Muskels steht vorn; spätere Übungen für denselben Muskel sind schwächer, die App senkt ihre Last selbst. Steht bei einer Übung im Training nochMoeglich, hat die Person nach dem letzten Satz gesagt, wie viele Wiederholungen noch gegangen wären; der Vorschlag berücksichtigt das schon. Sieh dir an, was wirklich gemacht wurde, nicht nur, was geplant war: ausgelassene oder geänderte Übungen sind einfach das, was passiert ist.
+Grenzen, die nicht verhandelbar sind: höchstens ${MAX_EXERCISES} Übungen, ${MAX_SETS} Arbeitssätze (Aufwärmsätze zählen nicht), ${MAX_FAILURE_SETS} Versagenssätze und ein Widowmaker pro Training. Engere Grenzen für die Erfahrung der Person stehen im Auftrag und gehen vor. Wiederholungen im Bereich der Übung (wiederholungen bei der Übung; Körpergewichtsübungen dürfen mehr). Nutze nur templateId-Werte aus den Datenblöcken. Pro Training jede Ausführung nur einmal; andere Winkel desselben Muskels (z. B. über Kopf statt Drücken) sind erlaubt. Gewichte für Übungen mit Verlauf nie über dem Vorschlag plus einem Schritt (schritt bei der Übung), und nur Gewichte, die mit den Stufen des Geräts erreichbar sind. Für eine Übung, die die Person noch nie gemacht hat, gib ein vorsichtiges Startgewicht an, abgeleitet aus ihren anderen Übungen und ihrem Profil, lieber zu leicht als zu schwer; bei Körpergewichtsübungen und unterstützten Übungen ohne Verlauf bleibt weightKg null. Bei unterstützten Übungen bleibt das Gewicht genau beim Vorschlag. Nutze Übungen, die in den letzten Monaten gemacht wurden, oder Übungen mit Geräten, die in diesem Verlauf vorkommen. Der Vorschlag je Übung (vorschlag) ist die Grundlage für Gewicht und Wiederholungen. Die wichtigste Übung eines Muskels steht vorn; spätere Übungen für denselben Muskel sind schwächer, die App senkt ihre Last selbst. Steht bei einer Übung im Training nochMoeglich, hat die Person nach dem letzten Satz gesagt, wie viele Wiederholungen noch gegangen wären; der Vorschlag berücksichtigt das schon. Sieh dir an, was wirklich gemacht wurde, nicht nur, was geplant war: ausgelassene oder geänderte Übungen sind einfach das, was passiert ist.
 Wochenvolumen und Wiederholungsbereich je Muskelgruppe stehen im Block muskelvolumen: zustand nennt in Worten, wo die Gruppe steht; „vor allem mittrainiert“ heißt, dass sie mehr durch andere Übungen als direkt trainiert wurde. Liegt eine Gruppe unter ihrem Zielbereich, wäge das gegen Ziel und Schwerpunkt ab; kleine isolierte Muskeln müssen nicht in jeder Einheit vorkommen. Für den Umfang gelten zwei feste Regeln. Erstens: Pro Training bekommt ein Muskel höchstens ${MAX_SESSION_FRACTIONAL_SETS} Bruchteilssätze (ein direkter Arbeitssatz zählt 1, ein Satz eines Mitspielers 0,5, wie in der Muskelbilanz); das ist eine weiche Grenze aus einer noch nicht begutachteten Studie. Zweitens: Isolationsübungen für eine Muskelgruppe gibt es in höchstens ${ISOLATION_SESSIONS_PER_WEEK} Krafttrainings pro Kalenderwoche (Montag bis Sonntag), das geplante eingerechnet; das ist eine Produktentscheidung, kein Studienergebnis. Bündle die Isolationsarbeit eines unterversorgten Muskels deshalb in diesen Einheiten, statt sie über jede Einheit zu verteilen. Grundübungen sind davon nicht begrenzt, denn Kraft profitiert von häufigem Training. Die Muskelbilanz ist eine Prüfung, nicht der einzige Antrieb. Liegt eine Gruppe darüber, nimm dort eher etwas weg. Steht in muskelpaare eine Seite unter zuKurz, plane sie in den nächsten Trainings bevorzugt ein; das ist ein Hinweis, keine Pflicht. Der Wiederholungsbereich ist ein Startpunkt aus der Praxis: Große Grundübungen eher im unteren, kleine Muskeln wie seitliche und hintere Schulter, Waden und Unterarme eher im oberen Bereich. Wachstum gibt es von etwa 5 bis 30 Wiederholungen, wenn der Satz nahe ans Versagen geht; sage das so, wenn es zur Sprache kommt. Schreibe reason in höchstens zwei kurzen Sätzen: was kommt und warum. Nenne darin keine Satzzahlen und keine Wiederholungszahlen und nutze keine Fachwörter wie Versagen, Arbeitssätze, RIR oder Bruchteilssätze. Das Training kann an einem späteren Tag stattfinden: sprich vom nächsten Training, nie von heute. Nenne nur Gewichte, Wiederholungen und Satzzahlen, die in den Daten stehen oder im Training, das du planst. Nach schwerer Beinarbeit oder harter Radfahrt in den letzten zwei Tagen plane die Beine schonender, ebenso umgekehrt.
 outlook: der Ausblick, damit die Person sieht, wie ihr Training aufgebaut ist. sessions skizziert die zwei bis drei Krafttrainings nach diesem (date aus dem wochenplan, sonst null), je mit name, focus (Schwerpunkt in wenigen Worten) und exercises (Übungstitel und Satzzahl, ohne Gewichte), so dass jede Muskelgruppe über die Woche in ihren Zielbereich aus muskelvolumen kommt und kein Muskel auf Dauer zu kurz kommt (auch Beinbeuger und Gesäß, mit Beinbeugen und Hüftstrecken). direction ist ein bis zwei Sätze, wohin das Training in den nächsten Wochen geht (etwa welche Muskeln mehr Sätze bekommen, wann eine leichtere Woche kommt); ehrlich, ohne Versprechen. Die Skizze ist ein Ausblick, kein Versprechen: Das nächste Training planst du immer neu mit dem, was wirklich passiert ist.
 note: eine kurze Rückmeldung zum letzten Training, ein bis zwei Sätze, nur wenn es verlangt wird. questions: höchstens ${MAX_QUESTIONS} freiwillige Rückfrage, nur zu dem, was die Daten nicht zeigen (Beschwerden, Zeit, Geräte, Vorlieben), und nur wenn die Antwort die Planung ändern würde, sonst leer. Was aus Zahlen, Satzfolge oder Ermüdung folgt (zum Beispiel ein Einbruch nach schwerem Kreuzheben), entscheidest du selbst und erklärst es in der Notiz in einem Satz, statt zu fragen.
@@ -92,6 +93,8 @@ export type PromptInput = {
   review?: { observations: { text: string; reason: string }[] };
   /** How hard the person trains, an open or healing complaint already counted in. Without it, from the goal and the complaints. */
   push?: Push;
+  /** How long the person trains with weights. Without it, no line about it and the general limits (as for erfahren). */
+  experience?: Experience;
   /** The fixed section of today: week n of `of`, today's template with its core exercises (stagnating ones marked). */
   abschnitt?: { n: number; of: number; template: string; light: boolean; core: { templateId: string; title: string; stagnates: boolean; exempt?: boolean }[] };
 };
@@ -102,10 +105,24 @@ const PUSH_RULES: Record<Push, string> = {
   normal: 'Versagen höchstens im letzten Satz an sicheren Geräten.',
   hard: 'Versagens- und Drop-Sätze sind an sicheren Geräten erlaubt, innerhalb der Grenze für Versagenssätze.',
 };
-const pushLine = (push: Push): string => {
-  const r = reserveFor(push);
-  return `Härte: ${PUSH_LABEL[push]}. Plane die Arbeitssätze mit ${r.min} bis ${r.max} Wiederholungen Reserve. ${PUSH_RULES[push]}`;
+/** The push line. The experience can only make it stricter: more reserve, and the failure rule of the stricter of both. */
+const pushLine = (push: Push, experience?: Experience): string => {
+  const r = reserveWith(reserveFor(push), experience);
+  const rule = experience === 'neu' ? PUSH_RULES.gentle : experience === 'einige' && push === 'hard' ? PUSH_RULES.normal : PUSH_RULES[push];
+  return `Härte: ${PUSH_LABEL[push]}. Plane die Arbeitssätze mit ${r.min} bis ${r.max} Wiederholungen Reserve. ${rule}`;
 };
+
+/** The experience in words and one general instruction for its level, with the level's limits from the rules. */
+function experienceLine(e: Experience): string {
+  const l = limitsFor(e);
+  const limits = `höchstens ${l.maxSets} Arbeitssätze und ${l.maxSessionFractionalSets} Bruchteilssätze je Muskel pro Training`;
+  const rule: Record<Experience, string> = {
+    neu: `Für diese Stufe gelten engere Grenzen: ${limits}, keine Versagens-, keine Drop-Sätze und keine Widowmaker. Technik und ein gutes Gefühl gehen vor: Grundübungen im mittleren Wiederholungsbereich, bevorzugt Maschinen, Kabelzug und einfache Kurzhantelübungen, dieselben Kernübungen über mehrere Wochen und wenig Umfang, der mit der Zeit wächst.`,
+    einige: `Für diese Stufe gelten mittlere Grenzen: ${limits}, höchstens ${l.maxFailureSets} Versagens- oder Drop-Sätze und nur am Ende einer Übung an sicheren Geräten, keine Widowmaker. Steigere den Umfang mit der Zeit.`,
+    erfahren: 'Es gelten die allgemeinen Grenzen.',
+  };
+  return `Erfahrung mit Gewichten: ${EXPERIENCE_WORDS[e]}. ${rule[e]}`;
+}
 
 const ABSCHNITT_LINE = 'Die Person trainiert in einem festen Abschnitt; der Block abschnitt-nur-daten zeigt Woche, Vorlage und Kernübungen, stagnierende sind markiert, ausgenommene (ausgenommen) darfst du weglassen. Im Abschnitt bleiben die Kernübungen; Ergänzungen wählst du frei. Woche 1 an der oberen Reserve der Härte, jede Woche eine Wiederholung weniger Reserve bis zur unteren Grenze; die leichte Woche mit etwa zwei Dritteln der Sätze bei gleicher Last. Verpasste Einheiten holt niemand nach.';
 
@@ -122,7 +139,7 @@ export function buildGymPrompt(i: PromptInput): string {
   const available = history.filter((a) => { const t = byId.get(a.templateId); return !!t && isRepBased(t) && !excluded.has(a.templateId); });
   const knownIds = new Set(available.map((a) => a.templateId));
   const equipment = new Set(available.filter((a) => a.recent).map((a) => byId.get(a.templateId)?.equipment).filter((e): e is string => !!e));
-  const volume = muscleVolume(i.workouts, i.templates, i.catalog ?? [], i.nowMs, goal.strength, goal.focus);
+  const volume = muscleVolume(i.workouts, i.templates, i.catalog ?? [], i.nowMs, goal.strength, goal.focus, i.experience);
   const sums = Object.fromEntries(volume.map((g) => [g.group, g.effective28]));
   const blocks = [
     dataBlock('training', shown.map((w) => ({
@@ -132,18 +149,18 @@ export function buildGymPrompt(i: PromptInput): string {
     dataBlock('geplant', i.previous ? { name: i.previous.workout.name, exercises: i.previous.workout.exercises.map((e) => ({ templateId: e.templateId, title: e.title, sets: e.sets.length })) } : null),
     dataBlock('uebungen', available.map((a) => {
       const t = byId.get(a.templateId);
-      const plan = { studio: i.studio, overrides: i.overrides, renames: i.renames, bars: i.bars };
+      const plan = { studio: i.studio, overrides: i.overrides, renames: i.renames, bars: i.bars, ...(i.experience ? { experience: i.experience } : {}) };
       return {
         templateId: a.templateId, title: titleOf.get(a.templateId) ?? t?.title ?? '', tageHer: days(a.lastMs), kuerzlich: a.recent,
         vorschlag: suggestNext(a.templateId, i.workouts, i.nowMs, t, plan),
-        wiederholungen: repRangeOf({ primaryMuscle: t?.primaryMuscle }),
+        wiederholungen: repRangeFor(repRangeOf({ primaryMuscle: t?.primaryMuscle }), i.experience),
         schritt: stepWords(ladderFor(a.templateId, t, i.workouts, i.nowMs, plan)),
       };
     })),
     dataBlock('vorlagen', i.templates.filter((t) => isRepBased(t) && !excluded.has(t.id) && !knownIds.has(t.id) && equipment.has(t.equipment)).slice(0, MAX_TEMPLATES)
       .map((t) => ({ templateId: t.id, title: t.title, muskel: t.primaryMuscle, geraet: t.equipment }))),
     dataBlock('muskelvolumen', volume.map((g) => ({
-      gruppe: g.label, saetze7Tage: g.effective7, saetzeProWocheLetzte4Wochen: g.perWeek4, zielSaetzeProWoche: g.target, wiederholungen: MUSCLE_TARGETS[g.group].reps,
+      gruppe: g.label, saetze7Tage: g.effective7, saetzeProWocheLetzte4Wochen: g.perWeek4, zielSaetzeProWoche: g.target, wiederholungen: repRangeFor(MUSCLE_TARGETS[g.group].reps, i.experience),
       ...(g.state ? { zustand: STATE_LABELS[g.state] } : {}), ...(g.indirect7 > g.direct7 ? { hinweis: 'vor allem mittrainiert' } : {}),
     }))),
     // The coach looks at a rolling 28 days of Hevy and own workouts; the statistics page at 4 complete weeks.
@@ -169,7 +186,8 @@ export function buildGymPrompt(i: PromptInput): string {
     goal.focus.length ? `Schwerpunkt: ${goal.focus.map((g) => MUSCLE_TARGETS[g as keyof typeof MUSCLE_TARGETS].label).join(', ')}.` : null,
     names.length ? `Ausgeschlossen (Regel der Person): ${[...new Set(names)].join(', ')}. Plane sie nie.` : null,
     priorityLine(goal),
-    pushLine(i.push ?? effectivePush(goal, i.complaints)),
+    pushLine(i.push ?? effectivePush(goal, i.complaints), i.experience),
+    i.experience ? experienceLine(i.experience) : null,
     wishLine(i.wishes ?? []),
     i.budgetMinutes !== undefined ? `Zeit: höchstens ${i.budgetMinutes} Min einschließlich Aufwärmen und Pausen.` : null,
     i.avoidLegs ? 'Keine Beinübungen in dieser Einheit.' : null,

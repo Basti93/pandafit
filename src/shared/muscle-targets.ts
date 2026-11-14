@@ -1,4 +1,5 @@
 import { policyRule, ruleNumber } from './training-policy';
+import { lightVolumeView, type Experience } from './experience';
 
 /**
  * Weekly working sets and rep ranges per muscle group.
@@ -58,9 +59,12 @@ export function muscleGroupOf(e: { primaryMuscle: string | null | undefined }): 
 /** The rep range of an exercise: its group's range. An exercise that resolves to no group uses the "other" range. */
 export const repRangeOf = (e: { primaryMuscle: string | null | undefined }): { min: number; max: number } => MUSCLE_TARGETS[muscleGroupOf(e)].reps;
 
-/** The weekly set range for a group: the building range for a muscle goal, the minimum effective range otherwise. */
-export function weeklySetRange(g: MuscleGroup, goal: string | null | undefined, focus: readonly MuscleGroup[] = []): { min: number; max: number } {
-  const r = goal === 'muscle' ? MUSCLE_TARGETS[g].muscle : MUSCLE_TARGETS[g].other;
+/**
+ * The weekly set range for a group: the building range for a muscle goal, the minimum effective range otherwise. A person who
+ * starts gets the lower range whatever the goal (`experience.volume-view`).
+ */
+export function weeklySetRange(g: MuscleGroup, goal: string | null | undefined, focus: readonly MuscleGroup[] = [], experience?: Experience): { min: number; max: number } {
+  const r = goal === 'muscle' && !lightVolumeView(experience) ? MUSCLE_TARGETS[g].muscle : MUSCLE_TARGETS[g].other;
   if (!focus.includes(g)) return r;
   const f = ruleNumber('muscle.focus-factor');
   return { min: Math.round(r.min * f), max: Math.round(r.max * f) };

@@ -8,6 +8,7 @@ import { dateKey } from '../day-load';
 import type { StrengthWorkout } from '../hevy';
 import { isAssisted } from './history';
 import { muscleVolume } from './muscle-volume';
+import type { Experience } from '../../shared/experience';
 
 const DAY_MS = 86_400_000;
 const MAX_EXERCISES_SHOWN = 5;
@@ -27,7 +28,7 @@ const firstWorkKg = (w: StrengthWorkout, templateId: string): number | null =>
  * moved (first work weight of the first against the last session in the window), and the muscle groups that were below their
  * target now, 4 weeks ago and 8 weeks ago. A muscle never trained counts as nothing, not as low. For assisted exercises less weight is progress.
  */
-export function strengthFacts(workouts: StrengthWorkout[], templates: ExerciseTemplate[], catalog: Exercise[], goal: { strength: Strength; focus: MuscleGroup[] }, nowMs: number): StrengthFacts {
+export function strengthFacts(workouts: StrengthWorkout[], templates: ExerciseTemplate[], catalog: Exercise[], goal: { strength: Strength; focus: MuscleGroup[] }, nowMs: number, experience?: Experience): StrengthFacts {
   const weeks = ruleNumber('review.weeks');
   const thisMonday = mondayOf(dateKey(nowMs));
   const mondays = Array.from({ length: weeks }, (_, i) => addDays(thisMonday, -7 * (weeks - 1 - i)));
@@ -50,7 +51,7 @@ export function strengthFacts(workouts: StrengthWorkout[], templates: ExerciseTe
       return { titel, trend: trend as 'steigt' | 'gleich' | 'faellt', einheiten: list.length };
     });
 
-  const under = LOW_CHECK_DAYS.map((d) => new Set(muscleVolume(workouts, templates, catalog, nowMs - d * DAY_MS, goal.strength, goal.focus)
+  const under = LOW_CHECK_DAYS.map((d) => new Set(muscleVolume(workouts, templates, catalog, nowMs - d * DAY_MS, goal.strength, goal.focus, experience)
     .filter((g) => g.state === 'low').map((g) => g.label)));
   const untenDauerhaft = [...under[0]!].filter((label) => under.every((s) => s.has(label)));
   return { wochen, uebungen, untenDauerhaft };

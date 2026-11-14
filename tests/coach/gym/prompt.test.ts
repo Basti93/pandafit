@@ -75,3 +75,31 @@ describe('Gym-Prompt und Abschnitt', () => {
     expect(p).not.toContain('Im Abschnitt bleiben');
   });
 });
+
+describe('Gym-Prompt und Erfahrung', () => {
+  it('ohne Angabe keine Zeile, erfahren mit den allgemeinen Grenzen', () => {
+    expect(buildGymPrompt(base)).not.toContain('Erfahrung mit Gewichten');
+    const p = buildGymPrompt({ ...base, experience: 'erfahren', push: 'hard' });
+    expect(p).toContain('Erfahrung mit Gewichten: erfahren. Es gelten die allgemeinen Grenzen.');
+    expect(p).toContain('Härte: Fordere mich. Plane die Arbeitssätze mit 0 bis 2 Wiederholungen Reserve. Versagens- und Drop-Sätze');
+  });
+  it('wer anfängt: Stufe in Worten, engere Grenzen aus den Regeln, Reserve 2 bis 3 und kein Versagen, auch bei „Fordere mich“', () => {
+    const p = buildGymPrompt({ ...base, experience: 'neu', push: 'hard' });
+    expect(p).toContain('Erfahrung mit Gewichten: fängt an. Für diese Stufe gelten engere Grenzen: höchstens 15 Arbeitssätze und 6 Bruchteilssätze je Muskel pro Training, keine Versagens-, keine Drop-Sätze und keine Widowmaker.');
+    expect(p).toContain('Härte: Fordere mich. Plane die Arbeitssätze mit 2 bis 3 Wiederholungen Reserve. Keine Versagens-, keine Drop-Sätze und keine Widowmaker.');
+    expect(p).toContain('bevorzugt Maschinen, Kabelzug und einfache Kurzhantelübungen');
+  });
+  it('einige Monate: mittlere Grenzen, Versagen höchstens am Ende', () => {
+    const p = buildGymPrompt({ ...base, experience: 'einige', push: 'hard' });
+    expect(p).toContain('Erfahrung mit Gewichten: einige Monate dabei. Für diese Stufe gelten mittlere Grenzen: höchstens 22 Arbeitssätze und 8 Bruchteilssätze je Muskel pro Training, höchstens 2 Versagens- oder Drop-Sätze');
+    expect(p).toContain('Versagen höchstens im letzten Satz an sicheren Geräten.');
+  });
+  it('die Einladung „bis nichts mehr geht“ gilt nicht für eine Person, die anfängt', () => {
+    expect(GYM_SYSTEM_PROMPT).toContain('Für eine Person, die gerade anfängt, gilt diese Einladung nicht');
+    expect(GYM_SYSTEM_PROMPT).toContain('Engere Grenzen für die Erfahrung der Person stehen im Auftrag und gehen vor.');
+  });
+  it('die Wiederholungsbereiche im Block muskelvolumen beginnen bei 8, wer anfängt', () => {
+    expect(buildGymPrompt({ ...base, experience: 'neu' })).toMatch(/"gruppe":"Brust"[^\]]*?"wiederholungen":\{"min":8,"max":12\}/);
+    expect(buildGymPrompt(base)).toMatch(/"gruppe":"Brust"[^\]]*?"wiederholungen":\{"min":6,"max":12\}/);
+  });
+});

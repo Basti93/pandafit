@@ -536,6 +536,8 @@ describe('the push question in the scan', () => {
       fs.writeFileSync(path.join(dir, 'prompts-sent.json'), JSON.stringify({ pa: { reviewSports: '' } }));
       m.runtime.records.put('pa', { kind: 'coachprefs', id: 'prefs', updatedMs: 1, deleted: false, body: { week: { on: false, day: 6, hour: 18 }, evening: { on: false, hour: 19 }, review: { on: true } } });
       m.runtime.records.putMany('pa', [workout(5), workout(15), workout(2, 10), workout(8, 10)]);
+      // Four workouts alone are `neu`; the push question needs `einige`, here from the person's answer.
+      m.runtime.records.put('pa', { kind: 'goal', id: 'goal', updatedMs: 1, deleted: false, body: { strength: 'muscle', focus: [], sports: {}, experience: 'einige', atMs: 1 } });
       const sent = () => (JSON.parse(fs.readFileSync(path.join(dir, 'prompts-sent.json'), 'utf8')) as Record<string, Record<string, string>>).pa!;
       const asks = () => m.runtime.records.all('pa', 'chat').filter((r) => (r.body as { askPush?: boolean }).askPush === true);
       return { ...m, sent, asks };
@@ -569,6 +571,24 @@ describe('the push question in the scan', () => {
     b.runtime.scan(); await settle();
     expect(b.asks()).toHaveLength(1);
     expect(b.sent().pushAsk).toBe('2026-11-30');
+  });
+});
+
+describe('the experience question in the scan', () => {
+  test('a person with little data gets the question once, then the push question waits for einige', async () => {
+    const MONDAY = new Date(2026, 10, 30, 10, 5).getTime();
+    let t = MONDAY;
+    const m = make({ nowMs: () => t });
+    const startMs = new Date(2026, 10, 27, 10).getTime();
+    m.runtime.records.putMany('pa', [{ kind: 'workout', id: 'w1', updatedMs: 1, deleted: false, body: { id: 'w1', title: 'Kraft', startMs, endMs: startMs + 3600_000, exercises: [] } }]);
+    const chat = () => m.runtime.records.all('pa', 'chat').map((r) => r.body as { askExperience?: boolean; askPush?: boolean });
+    m.runtime.scan(); await settle();
+    expect(chat().filter((b) => b.askExperience)).toHaveLength(1);
+    expect(chat().some((b) => b.askPush)).toBe(false);
+    t = MONDAY + 7 * 86_400_000;
+    m.runtime.scan(); await settle();
+    expect(chat().filter((b) => b.askExperience)).toHaveLength(1);
+    expect(chat().some((b) => b.askPush)).toBe(false);
   });
 });
 
