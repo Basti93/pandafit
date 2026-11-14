@@ -7,6 +7,7 @@ import { takenChanges } from './changes';
 import { activeBlock, blockWeek } from './block';
 import type { Exercise } from './exercises';
 import { familyLabel, familyOf, isExcludableFamily, MAX_FAMILIES } from './families';
+import { isExperience, type Experience } from './experience';
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const num = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
@@ -27,7 +28,8 @@ export type Push = 'gentle' | 'normal' | 'hard';
 export const PUSH_LABEL: Record<Push, string> = { gentle: 'Vorsichtig', normal: 'Normal', hard: 'Fordere mich' };
 /** Bo's question for the push, asked once (docs/superpowers/specs/2026-11-10-monatsrueckblick-design.md §4). */
 export const PUSH_QUESTION = 'Wie sehr soll ich dich beim Krafttraining fordern? Du kannst das jederzeit im Profil ändern.';
-export type GoalBody = { strength: Strength; focus: MuscleGroup[]; sports: Partial<Record<SportKey, Prio>>; push?: Push; temporary?: TemporaryFocus; atMs: number };
+/** `experience`: the person's answer to Bo's question how long they train with weights (the estimate is the higher of it and the data). */
+export type GoalBody = { strength: Strength; focus: MuscleGroup[]; sports: Partial<Record<SportKey, Prio>>; push?: Push; experience?: Experience; temporary?: TemporaryFocus; atMs: number };
 export const DEFAULT_GOAL: Omit<GoalBody, 'atMs'> = { strength: 'muscle', focus: [], sports: {} };
 export const MAX_WEEKS = 12;
 /** The goal as the coaches and screens use it: the base with an active temporary focus laid over it, plus a recently ended one. */
@@ -55,7 +57,8 @@ function readGoalParts(b: Record<string, unknown>): Omit<GoalBody, 'atMs'> | nul
     sports[k as SportKey] = v as Prio;
   }
   if (b.push !== undefined && !PUSHES.includes(b.push as Push)) return null;
-  return { strength: b.strength as Strength, focus: b.focus as MuscleGroup[], sports, ...(b.push !== undefined ? { push: b.push as Push } : {}) };
+  if (b.experience !== undefined && !isExperience(b.experience)) return null;
+  return { strength: b.strength as Strength, focus: b.focus as MuscleGroup[], sports, ...(b.push !== undefined ? { push: b.push as Push } : {}), ...(b.experience !== undefined ? { experience: b.experience } : {}) };
 }
 
 const isDateKey = (x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) && addDays(x, 0) === x;
@@ -85,7 +88,7 @@ export const goalRecord = (g: Omit<GoalBody, 'atMs'>, nowMs: number, have?: Trac
 export function storedGoalOf(records: readonly TrackedRecord[]): Omit<GoalBody, 'atMs'> {
   const r = records.find((x) => x.kind === 'goal' && x.id === GOAL_ID && !x.deleted);
   const g = r ? readGoal(r.body) : null;
-  return g ? { strength: g.strength, focus: g.focus, sports: g.sports, ...(g.push ? { push: g.push } : {}), ...(g.temporary ? { temporary: g.temporary } : {}) } : { ...DEFAULT_GOAL, focus: [], sports: {} };
+  return g ? { strength: g.strength, focus: g.focus, sports: g.sports, ...(g.push ? { push: g.push } : {}), ...(g.experience ? { experience: g.experience } : {}), ...(g.temporary ? { temporary: g.temporary } : {}) } : { ...DEFAULT_GOAL, focus: [], sports: {} };
 }
 
 /**
@@ -112,7 +115,7 @@ export type RuleKind = 'exclude' | 'wish' | 'goal';
 export type RuleSport = SportKey | 'all';
 export type RuleState = 'proposed' | 'active' | 'paused' | 'declined';
 export type RuleSource = 'chat' | 'person' | 'migrated';
-export type Rule = { id: string; kind: RuleKind; text: string; sport: RuleSport; exerciseIds?: string[]; families?: string[]; goal?: Partial<Omit<GoalBody, 'atMs' | 'temporary'>> & { weeks?: number }; state: RuleState; source: RuleSource; atMs: number };
+export type Rule = { id: string; kind: RuleKind; text: string; sport: RuleSport; exerciseIds?: string[]; families?: string[]; goal?: Partial<Omit<GoalBody, 'atMs' | 'temporary' | 'experience'>> & { weeks?: number }; state: RuleState; source: RuleSource; atMs: number };
 
 const KINDS: RuleKind[] = ['exclude', 'wish', 'goal'];
 const RULE_STATES: RuleState[] = ['proposed', 'active', 'paused', 'declined'];
