@@ -305,7 +305,8 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
               ...(triedMs !== undefined ? { reviewTriedMs: triedMs } : {}), ...(lastPushMs !== undefined ? { lastPushMs } : {}), ...(s.lastQuestionMs !== undefined ? { lastQuestionMs: s.lastQuestionMs } : {}),
             };
             // The experience question comes before the push question (which waits for `einige`), never both in one scan.
-            if (experienceAskDue({ ...window, goal: goalNow, gymDates, strength: gym.enabled(p.id) || gymDates.length > 0 })) {
+            // Only after a first strength session from any source, so a person who only rides is never asked.
+            if (experienceAskDue({ ...window, goal: goalNow, gymDates, strength: gymDates.length > 0 })) {
               chat.askExperience(p.id);
               pushAsked = true;
               sentPrompts.mark(p.id, 'expAsk', dateKey(now));
