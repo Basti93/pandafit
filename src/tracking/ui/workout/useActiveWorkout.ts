@@ -16,6 +16,7 @@ import { markUsed } from './markUsed';
 import { buzz } from './feedback';
 import { primeSound } from './restSound';
 import { useHold } from './useHold';
+import type { EstimateAsk } from '../../estimate';
 import { useLatest } from './useLatest';
 
 export type Picker = { mode: 'add' } | { mode: 'swap'; ex: string } | null;
@@ -47,6 +48,10 @@ export type UiState = {
   weightOfferNo: ReadonlySet<string>;
   /** The adopted weights of an exercise, with the old ones: shown with "Rückgängig" until the next confirmed set. */
   weightTaken: { rid: string; prior: { rid: string; kg: number }[]; newKg: number } | null;
+  /** Per exercise, what "Wie war das Gewicht?" (Bo's estimated weight) was answered so far. */
+  estimateAsks: ReadonlyMap<string, EstimateAsk>;
+  /** The step after "Zu leicht" or "Zu schwer", with the old weights: shown with "Rückgängig" until the next confirmed set. */
+  estimateTaken: { rid: string; prior: { rid: string; kg: number }[]; newKg: number } | null;
 };
 
 type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'askCoach' };
@@ -77,7 +82,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
-    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, weightOffer: null, weightOfferNo: new Set(), weightTaken: null,
+    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, weightOffer: null, weightOfferNo: new Set(), weightTaken: null, estimateAsks: new Map(), estimateTaken: null,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
@@ -217,7 +222,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const confirmShown = useCallback((exRid: string, setRid: string) => {
     buzz();
     primeSound();
-    set({ thanked: null, justDone: setRid, weightTaken: null, weightOffer: null });
+    set({ thanked: null, justDone: setRid, weightTaken: null, weightOffer: null, estimateTaken: null });
     let finished = false;
     act((x) => {
       if (x.exercises.find((y) => y.rid === exRid)?.sets.find((y) => y.rid === setRid)?.doneMs !== null) return x;

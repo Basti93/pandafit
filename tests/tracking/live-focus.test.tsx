@@ -426,3 +426,69 @@ describe('the weight offer', () => {
     expect(sets(map, 0)[1]!.weightKg).toBe(40);
   });
 });
+
+describe("Bo's estimated start weight", () => {
+  const est = (kg: number) => ({ ...set(kg, 10, null), estimatedKg: true, prefillKg: kg });
+  const estimated = () => withExercises([{ exerciseId: 'pf-seated-row-cable', title: 'Rudern', supersetId: null, notes: '', sets: [est(40), est(40), est(40)] }] as LoggedWorkout['exercises']);
+  const kgs = (m: Parameters<typeof bodyOf>[0]) => sets(m, 0).map((x) => x.weightKg);
+
+  it('shows the hint, asks after the first set, "Zu leicht" moves the rest up with undo, then asks once more', async () => {
+    const { port, map } = fakePort([rec(estimated())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    expect(focusOf('Rudern').getByText('Startgewicht von Bo geschätzt. Pass es nach Gefühl an.')).toBeTruthy();
+    expect(screen.queryByText('Wie war das Gewicht?')).toBeNull();
+    doneNow();
+    expect(await screen.findByText('Wie war das Gewicht?')).toBeTruthy();
+    expect(screen.queryByText('Startgewicht von Bo geschätzt. Pass es nach Gefühl an.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Zu leicht' }));
+    await waitFor(() => expect(sets(map, 0)[1]!.weightKg).toBeGreaterThanOrEqual(46));
+    const up = sets(map, 0)[1]!.weightKg!;
+    expect(kgs(map)).toEqual([40, up, up]);
+    expect(screen.getByText(`Die restlichen Sätze sind jetzt mit ${String(up).replace('.', ',')} kg.`)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Rückgängig' }));
+    await waitFor(() => expect(kgs(map)).toEqual([40, 40, 40]));
+    expect(screen.queryByText('Wie war das Gewicht?')).toBeNull();
+    // the step counted: once more after the next work set, then "Passt" ends it
+    await later();
+    doneNow();
+    expect(await screen.findByText('Wie war das Gewicht?')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Passt' }));
+    expect(screen.queryByText('Wie war das Gewicht?')).toBeNull();
+    expect(kgs(map)).toEqual([40, 40, 40]);
+  });
+
+  it('"Zu schwer" goes down; "Passt" and "Überspringen" end it without a change', async () => {
+    for (const answer of ['Passt', 'Überspringen']) {
+      const { port, map } = fakePort([rec(estimated())]);
+      render(<WorkoutScreen port={port} {...ids} />);
+      await resume();
+      doneNow();
+      fireEvent.click(await screen.findByRole('button', { name: answer }));
+      expect(screen.queryByText('Wie war das Gewicht?')).toBeNull();
+      await later();
+      doneNow();
+      await waitFor(() => expect(sets(map, 0)[1]!.doneMs).not.toBeNull());
+      expect(screen.queryByText('Wie war das Gewicht?')).toBeNull();
+      expect(kgs(map)).toEqual([40, 40, 40]);
+      cleanup();
+    }
+    const { port, map } = fakePort([rec(estimated())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    doneNow();
+    fireEvent.click(await screen.findByRole('button', { name: 'Zu schwer' }));
+    await waitFor(() => expect(sets(map, 0)[1]!.weightKg).toBeLessThanOrEqual(34));
+    expect(sets(map, 0)[2]!.weightKg).toBe(sets(map, 0)[1]!.weightKg);
+  });
+
+  it('an exercise without an estimate is never asked', async () => {
+    const { port } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    doneNow();
+    await later();
+    expect(screen.queryByText('Wie war das Gewicht?')).toBeNull();
+    expect(screen.queryByText('Startgewicht von Bo geschätzt. Pass es nach Gefühl an.')).toBeNull();
+  });
+});

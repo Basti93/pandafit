@@ -14,6 +14,8 @@ import { exerciseHasNoWeight, lastTimeLine, setTargetHint } from '../setGrid';
 import { BrushTitle, Card, Icon, Kicker, MarkDot, RoundButton, Sheet } from '../kit';
 import { ExerciseMenu } from './ExerciseMenu';
 import { WeightOffer } from './WeightOffer';
+import { EstimateQuestion } from './EstimateQuestion';
+import { showsEstimateHint } from '../../estimate';
 import { focusExercise, focusSet, markName, setMarks } from './live-view';
 import type { ActiveWorkoutApi } from './useActiveWorkout';
 
@@ -111,11 +113,13 @@ function FocusSet({ a, e, index, equipment, range }: { a: ActiveWorkoutApi; e: T
           : <NumField big={{ unit: 'Wiederholungen' }} label={`Wiederholungen Satz ${n}`} value={s.reps} placeholder={shown.reps != null ? String(shown.reps) : '–'} integer
             onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(reps) => edit({ reps })} />}
       </div>
+      {showsEstimateHint(e) && <p className="muted tk-lift-hint">Startgewicht von Bo geschätzt. Pass es nach Gefühl an.</p>}
       {s.type === 'warmup' && <p className="muted tk-lift-hint">Die Aufwärmsätze machst du kurz hintereinander. Vor dem ersten Arbeitssatz kommt eine richtige Pause.</p>}
       {target && <p className="muted tk-lift-hint">{target}</p>}
       {plates && <p className="muted tk-lift-hint">{plates}</p>}
       <button type="button" className="primary tk-iconbtn" disabled={bad.w || bad.r} onClick={confirm}><Icon name="haken" size={20} /><span>Satz geschafft</span></button>
       <WeightOffer a={a} e={e} />
+      <EstimateQuestion a={a} e={e} equipment={equipment} />
     </>
   );
 }
