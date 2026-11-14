@@ -16,6 +16,7 @@ describe('the estimated start weight', () => {
   it('steps 15 % of the weight, at least one ladder step, on the ladder', () => {
     expect(ruleNumber('gym.estimate-step-pct')).toBe(15);
     expect(stepKg(30, 'up', ladder)).toBe(35); // 34,5 -> 35
+    expect(stepKg(40, 'up', ladder)).toBe(45); // 46: 45 is nearer than 50
     expect(stepKg(60, 'up', ladder)).toBe(70); // 69 -> 70
     expect(stepKg(60, 'down', ladder)).toBe(50); // 51 -> 50
     expect(stepKg(20, 'down', ladder)).toBe(15); // 17 -> 15

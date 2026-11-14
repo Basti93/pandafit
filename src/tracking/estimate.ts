@@ -52,17 +52,24 @@ export function asksEstimate(e: TrackedExercise): boolean {
 export const answered = (e: TrackedExercise, how: 'end' | 'step'): EstimateAsk =>
   how === 'end' ? { ...askOf(e), ended: true } : { n: askOf(e).n + 1, atDone: doneWork(e), ended: false };
 
-/** The weight after "Zu leicht" (up) or "Zu schwer" (down): `gym.estimate-step-pct` of the weight, at least one ladder step, on the ladder. Null: no lighter weight. */
+/**
+ * The weight after "Zu leicht" (up) or "Zu schwer" (down): the ladder weight nearest to `gym.estimate-step-pct` of the weight,
+ * at least one ladder step. Null: no lighter weight.
+ */
 export function stepKg(kg: number, dir: 'up' | 'down', ladder: Ladder): number | null {
   const share = ruleNumber('gym.estimate-step-pct') / 100;
   if (dir === 'up') {
+    const target = kg * (1 + share);
     let x = nextUp(kg, ladder);
-    while (x < kg * (1 + share) - EPS) x = nextUp(x, ladder);
+    // Go on while the next step lands nearer to the target than this one.
+    for (let n = nextUp(x, ladder); Math.abs(n - target) < Math.abs(x - target) - EPS; n = nextUp(n, ladder)) x = n;
     return x;
   }
-  const one = snapDown(kg - 0.01, ladder);
-  const x = Math.min(one, snapDown(kg * (1 - share), ladder));
-  return x > 0 && x < kg ? x : null;
+  const target = kg * (1 - share);
+  let x = snapDown(kg - 0.01, ladder);
+  if (!(x > 0 && x < kg)) return null;
+  for (let n = snapDown(x - 0.01, ladder); n > 0 && n < x && Math.abs(n - target) < Math.abs(x - target) - EPS; n = snapDown(n - 0.01, ladder)) x = n;
+  return x;
 }
 
 /** The step for every set still at the estimate. `to` and `prior` both go to setEstimate (the step and its undo). */

@@ -442,7 +442,7 @@ describe("Bo's estimated start weight", () => {
     expect(await screen.findByText('Wie war das Gewicht?')).toBeTruthy();
     expect(screen.queryByText('Bo hat das Startgewicht geschätzt. Pass es nach Gefühl an.')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Zu leicht' }));
-    await waitFor(() => expect(sets(map, 0)[1]!.weightKg).toBeGreaterThanOrEqual(46));
+    await waitFor(() => expect(sets(map, 0)[1]!.weightKg).toBeGreaterThan(40));
     const up = sets(map, 0)[1]!.weightKg!;
     expect(kgs(map)).toEqual([40, up, up]);
     expect(screen.getByText(`Die nächsten Sätze machst du mit ${String(up).replace('.', ',')} kg.`)).toBeTruthy();
@@ -530,7 +530,7 @@ describe("Bo's estimated start weight", () => {
     await resume();
     doneNow();
     fireEvent.click(await screen.findByRole('button', { name: 'Zu schwer' }));
-    await waitFor(() => expect(sets(map, 0)[1]!.weightKg).toBeLessThanOrEqual(34));
+    await waitFor(() => expect(sets(map, 0)[1]!.weightKg).toBeLessThan(40));
     expect(sets(map, 0)[2]!.weightKg).toBe(sets(map, 0)[1]!.weightKg);
   });
 
