@@ -5,7 +5,7 @@ import { readStats, STATS_ID } from '../../../shared/stats';
 import { loadStepOverrides } from '../../../shared/loads';
 import { knownStudios, studioStateOf } from '../../../shared/studio';
 import type { TrackingPort } from '../../ports';
-import { confirmSet, currentSet, editSet, nextInSuperset, type FinishChoice, type TrackedWorkout } from '../../session';
+import { confirmSet, currentSet, editSet, nextInSuperset, setEstimateAsk, type EstimateAsk, type FinishChoice, type TrackedWorkout } from '../../session';
 import { closeStore, releaseStore } from '../../registry';
 import { barTypeChange, barTypeDelete, barUseChange, barWeightChange, hereKey, stepChange } from '../../steps';
 import { newCustomBarId, readBars, type BarType } from '../../../shared/bars';
@@ -16,7 +16,7 @@ import { markUsed } from './markUsed';
 import { buzz } from './feedback';
 import { primeSound } from './restSound';
 import { useHold } from './useHold';
-import type { EstimateAsk } from '../../estimate';
+import { answered } from '../../estimate';
 import { useLatest } from './useLatest';
 
 export type Picker = { mode: 'add' } | { mode: 'swap'; ex: string } | null;
@@ -48,10 +48,11 @@ export type UiState = {
   weightOfferNo: ReadonlySet<string>;
   /** The adopted weights of an exercise, with the old ones: shown with "Rückgängig" until the next confirmed set. */
   weightTaken: { rid: string; prior: { rid: string; kg: number }[]; newKg: number } | null;
-  /** Per exercise, what "Wie war das Gewicht?" (Bo's estimated weight) was answered so far. */
-  estimateAsks: ReadonlyMap<string, EstimateAsk>;
-  /** The step after "Zu leicht" or "Zu schwer", with the old weights: shown with "Rückgängig" until the next confirmed set. */
-  estimateTaken: { rid: string; prior: { rid: string; kg: number }[]; newKg: number } | null;
+  /**
+   * The step after "Zu leicht" or "Zu schwer", with the old weights and the answer state before it: shown with "Rückgängig" until
+   * the next confirmed set or the next typed weight. `newKg` null: there was no lighter weight.
+   */
+  estimateTaken: { rid: string; prior: { rid: string; kg: number }[]; newKg: number | null; ask: EstimateAsk | undefined } | null;
 };
 
 type Action = { t: 'set'; patch: Partial<UiState> } | { t: 'toggleNote'; rid: string } | { t: 'askCoach' };
@@ -82,7 +83,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
-    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, weightOffer: null, weightOfferNo: new Set(), weightTaken: null, estimateAsks: new Map(), estimateTaken: null,
+    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, weightOffer: null, weightOfferNo: new Set(), weightTaken: null, estimateTaken: null,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
@@ -193,7 +194,14 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
    */
   const editWeight = useCallback((exRid: string, setRid: string, weightKg: number | null) => {
     const s = store.current().exercises.find((x) => x.rid === exRid)?.sets.find((x) => x.rid === setRid);
-    act((x) => editSet(x, exRid, setRid, { weightKg }));
+    act((x) => {
+      const next = editSet(x, exRid, setRid, { weightKg });
+      // A weight typed into an open work set of an exercise with Bo's estimate is the answer: the question ends.
+      const e = next.exercises.find((y) => y.rid === exRid);
+      const typed = !!s && s.doneMs === null && s.type !== 'warmup' && s.weightKg !== weightKg;
+      return e && typed && e.sets.some((y) => y.estimatedKg) && !e.estimateAsk?.ended ? setEstimateAsk(next, exRid, answered(e, 'end')) : next;
+    });
+    set({ estimateTaken: null });
     if (!s) return;
     const cur = uiNow.current.weightOffer;
     const same = cur && cur.setRid === setRid ? cur : null;

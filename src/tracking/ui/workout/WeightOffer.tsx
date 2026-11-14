@@ -12,7 +12,7 @@ export function WeightOffer({ a, e }: { a: ActiveWorkoutApi; e: TrackedExercise 
   if (taken) {
     return (
       <p className="muted tk-lift-hint">
-        {`Die restlichen Sätze sind jetzt auch mit ${formatDecimal(taken.newKg)} kg.`}{' '}
+        {`Die nächsten Sätze machst du jetzt auch mit ${formatDecimal(taken.newKg)} kg.`}{' '}
         <button type="button" className="link" onClick={() => { act((x) => setWeights(x, e.rid, taken.prior)); set({ weightTaken: null }); }}>Rückgängig</button>
       </p>
     );

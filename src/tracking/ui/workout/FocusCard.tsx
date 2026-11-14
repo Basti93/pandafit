@@ -113,7 +113,7 @@ function FocusSet({ a, e, index, equipment, range }: { a: ActiveWorkoutApi; e: T
           : <NumField big={{ unit: 'Wiederholungen' }} label={`Wiederholungen Satz ${n}`} value={s.reps} placeholder={shown.reps != null ? String(shown.reps) : '–'} integer
             onValidity={(r) => setBad((b) => ({ ...b, r }))} onCommit={(reps) => edit({ reps })} />}
       </div>
-      {showsEstimateHint(e) && <p className="muted tk-lift-hint">Startgewicht von Bo geschätzt. Pass es nach Gefühl an.</p>}
+      {showsEstimateHint(e) && <p className="muted tk-lift-hint">Bo hat das Startgewicht geschätzt. Pass es nach Gefühl an.</p>}
       {s.type === 'warmup' && <p className="muted tk-lift-hint">Die Aufwärmsätze machst du kurz hintereinander. Vor dem ersten Arbeitssatz kommt eine richtige Pause.</p>}
       {target && <p className="muted tk-lift-hint">{target}</p>}
       {plates && <p className="muted tk-lift-hint">{plates}</p>}

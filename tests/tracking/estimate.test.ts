@@ -1,5 +1,6 @@
-import { asksEstimate, estimateStep, NOT_ASKED, setEstimate, showsEstimateHint, stepKg, stillEstimated } from '../../src/tracking/estimate';
-import type { TrackedExercise, TrackedSet, TrackedWorkout } from '../../src/tracking/session';
+import { answered, asksEstimate, estimateStep, NOT_ASKED, setEstimate, showsEstimateHint, stepKg, stillEstimated } from '../../src/tracking/estimate';
+import type { EstimateAsk, TrackedExercise, TrackedSet, TrackedWorkout } from '../../src/tracking/session';
+import { asksEffort } from '../../src/tracking/effort';
 import type { Ladder } from '../../src/shared/loads';
 import { ruleNumber } from '../../src/shared/training-policy';
 
@@ -8,7 +9,7 @@ let n = 0;
 const s = (kg: number | null, done: boolean, extra: Partial<TrackedSet> = {}): TrackedSet =>
   ({ rid: `s${n++}`, type: 'normal', weightKg: kg, reps: 10, durationS: null, doneMs: done ? 1 : null, estimatedKg: true, prefillKg: kg, ...extra });
 const warm = (kg: number, done: boolean) => s(kg, done, { type: 'warmup', estimatedKg: undefined });
-const ex = (sets: TrackedSet[]): TrackedExercise => ({ rid: 'e', exerciseId: 'pf-x', title: 'X', supersetId: null, notes: '', sets });
+const ex = (sets: TrackedSet[], estimateAsk?: EstimateAsk): TrackedExercise => ({ rid: 'e', exerciseId: 'pf-x', title: 'X', supersetId: null, notes: '', sets, ...(estimateAsk ? { estimateAsk } : {}) });
 const wo = (e: TrackedExercise): TrackedWorkout => ({ id: 'w', title: 'T', startMs: 0, endMs: null, source: 'pandafit', exercises: [e], rest: null });
 
 describe('the estimated start weight', () => {
@@ -39,6 +40,31 @@ describe('the estimated start weight', () => {
     expect(asksEstimate(ex([s(30, true, { estimatedKg: undefined }), s(30, false, { estimatedKg: undefined })]))).toBe(false);
   });
 
+  it('never asks when the set just lifted was not at the estimate: the person chose their own weight', () => {
+    expect(asksEstimate(ex([s(30, true, { weightKg: 35 }), s(30, false), s(30, false)]))).toBe(false);
+    // after a step the next lifted set holds the new estimate
+    expect(asksEstimate(ex([s(30, true), s(35, true), s(35, false)], { n: 1, atDone: 1, ended: false }))).toBe(true);
+    expect(asksEstimate(ex([s(30, true), s(35, true, { weightKg: 40 }), s(35, false)], { n: 1, atDone: 1, ended: false }))).toBe(false);
+  });
+
+  it('keeps the answers on the exercise: an end stays ended, a step counts', () => {
+    const e = ex([s(30, true), s(30, false)]);
+    expect(answered(e, 'end')).toEqual({ n: 0, atDone: 0, ended: true });
+    expect(answered(e, 'step')).toEqual({ n: 1, atDone: 1, ended: false });
+    expect(asksEstimate({ ...e, estimateAsk: answered(e, 'end') })).toBe(false);
+    expect(showsEstimateHint(ex([s(30, false)], { ...NOT_ASKED, ended: true }))).toBe(false);
+  });
+
+  it('an exercise with an estimate never gets the effort question', () => {
+    const e = ex([s(30, true, { reps: 10, repRange: { start: 8, end: 12 } })]);
+    expect(asksEffort(wo({ ...e, swappedIn: true }), 'e', [])).toBe(false);
+    expect(asksEffort(wo({ ...e, swappedIn: true, sets: e.sets.map((x) => ({ ...x, estimatedKg: undefined })) }), 'e', [])).toBe(true);
+  });
+
+  it('a skipped warm-up still lets the first work set ask', () => {
+    expect(asksEstimate(ex([warm(15, false), s(30, true), s(30, false)]))).toBe(true);
+  });
+
   it('with warm-ups it asks after the last warm-up set instead', () => {
     expect(asksEstimate(ex([warm(15, true), warm(20, false), s(30, false), s(30, false)]))).toBe(false);
     expect(asksEstimate(ex([warm(15, true), warm(20, true), s(30, false), s(30, false)]))).toBe(true);
@@ -47,11 +73,11 @@ describe('the estimated start weight', () => {
 
   it('after a step it asks once more after the next work set; "Passt" or "Überspringen" end it', () => {
     const after = { n: 1, atDone: 1, ended: false };
-    expect(asksEstimate(ex([s(30, true), s(35, false), s(35, false)]), after)).toBe(false);
-    expect(asksEstimate(ex([s(30, true), s(35, true), s(35, false)]), after)).toBe(true);
-    expect(asksEstimate(ex([s(30, true), s(35, true), s(35, true), s(35, false)]), after)).toBe(false);
-    expect(asksEstimate(ex([s(30, true), s(35, true), s(40, true), s(40, false)]), { n: 2, atDone: 2, ended: false })).toBe(false);
-    expect(asksEstimate(ex([s(30, true), s(30, false)]), { ...NOT_ASKED, ended: true })).toBe(false);
+    expect(asksEstimate(ex([s(30, true), s(35, false), s(35, false)], after))).toBe(false);
+    expect(asksEstimate(ex([s(30, true), s(35, true), s(35, false)], after))).toBe(true);
+    expect(asksEstimate(ex([s(30, true), s(35, true), s(35, true), s(35, false)], after))).toBe(false);
+    expect(asksEstimate(ex([s(30, true), s(35, true), s(40, true), s(40, false)], { n: 2, atDone: 2, ended: false }))).toBe(false);
+    expect(asksEstimate(ex([s(30, true), s(30, false)], { ...NOT_ASKED, ended: true }))).toBe(false);
   });
 
   it('moves only the following open work sets still at the estimate', () => {

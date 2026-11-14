@@ -23,7 +23,10 @@ import type { GymExercise, GymWorkout } from '../shared/gym/types';
  * `estimatedKg`: the planned weight is Bo's start weight for an exercise without any history (see GymSet.estimated).
  */
 export type TrackedSet = LoggedSet & { rid: string; repRange?: { start: number; end: number }; plannedReps?: number; plannedKg?: number | null; prefillKg?: number | null; estimatedKg?: true };
-export type TrackedExercise = Omit<LoggedExercise, 'sets'> & { rid: string; sets: TrackedSet[]; restS?: number | null; restByUser?: true; timed?: boolean; swappedIn?: true; placedPre?: number };
+/** What "Wie war das Gewicht?" (Bo's estimated weight) was answered so far: answers with a step (`n`), the done work sets at the last one, or ended. */
+export type EstimateAsk = { n: number; atDone: number; ended: boolean };
+/** `estimateAsk` (on an exercise): kept in the workout, so leaving the screen or a reload never asks again. */
+export type TrackedExercise = Omit<LoggedExercise, 'sets'> & { rid: string; sets: TrackedSet[]; restS?: number | null; restByUser?: true; timed?: boolean; swappedIn?: true; placedPre?: number; estimateAsk?: EstimateAsk };
 /** `placedPre` (on an exercise): the fatigue of its muscle at the place the coach made the weights for; a move refits against it. */
 /** Stored as the record body. `rest` keeps the timer start, so a reload continues it. Rows have stable ids (`rid`). */
 /** `planStudio`: the studio the plan's weights were made for (a bucket key), kept so a studio change can refit them. */
@@ -304,6 +307,7 @@ export function unconfirmSet(w: TrackedWorkout, ex: string, set: string): Tracke
 }
 export const editSet = (w: TrackedWorkout, ex: string, set: string, patch: Partial<Pick<TrackedSet, 'weightKg' | 'reps' | 'durationS' | 'type'>>): TrackedWorkout =>
   mapSet(w, ex, set, (s) => ({ ...s, ...patch }));
+export const setEstimateAsk = (w: TrackedWorkout, ex: string, estimateAsk: EstimateAsk): TrackedWorkout => mapEx(w, ex, (x) => ({ ...x, estimateAsk }));
 export const setEffort = (w: TrackedWorkout, ex: string, effort: Effort | 'skip'): TrackedWorkout => mapEx(w, ex, (x) => ({ ...x, effort }));
 export const editNotes = (w: TrackedWorkout, ex: string, notes: string): TrackedWorkout => mapEx(w, ex, (x) => ({ ...x, notes }));
 export const addSet = (w: TrackedWorkout, ex: string): TrackedWorkout =>
