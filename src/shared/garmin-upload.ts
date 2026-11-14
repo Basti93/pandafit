@@ -18,6 +18,7 @@ export const uploadSettings = (s: { garminUpload?: GarminUploadSettings }): Garm
 
 export const withUploadMode = (s: { garminUpload?: GarminUploadSettings }, mode: UploadMode): GarminUploadSettings => ({ ...uploadSettings(s), mode });
 
+export const STRENGTH_DESCRIPTION = 'Trainiert mit Pandafit 💪 https://github.com/Basti93/pandafit #vibeIt';
 export const REPO_DESCRIPTION = 'Gefahren mit Pandafit 🚴 https://github.com/Basti93/pandafit #vibeIt';
 
 /** Simple on purpose and from the data, so that no fanciful session name ends up in Garmin. */

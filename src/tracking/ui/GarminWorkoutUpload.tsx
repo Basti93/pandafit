@@ -1,7 +1,10 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { REPO_DESCRIPTION, STRENGTH_ACTIVITY_NAME, type RideUpload } from '../../shared/garmin-upload';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { STRENGTH_ACTIVITY_NAME, STRENGTH_DESCRIPTION, type RideUpload } from '../../shared/garmin-upload';
 import { reasonText, repoLinkStored, storeRepoLink } from '../../shared/garmin-upload-ui';
 import type { LoggedWorkout } from '../../shared/records';
+
+/** Longest time the link stays open for one upload when no final status comes. */
+const HOLD_MAX_MS = 60_000;
 
 type Shown = { id: string; startMs: number; endMs: number };
 
@@ -20,7 +23,7 @@ const Preview = ({ workout, onConfirm, onCancel }: { workout: Shown; onConfirm: 
       <dl>{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
       <p className="muted">Garmin bekommt nur die Sportart, den Start und die Dauer, keine Übungen. Hat deine Uhr das Training aufgezeichnet, steht es danach doppelt in Garmin Connect.</p>
       <label className="tk-garmin-repo"><input type="checkbox" checked={repoLink} onChange={(e) => toggle(e.target.checked)} /> Link zum Projekt in die Beschreibung</label>
-      {repoLink && <p className="muted">Beschreibung: {REPO_DESCRIPTION}</p>}
+      {repoLink && <p className="muted">Beschreibung: {STRENGTH_DESCRIPTION}</p>}
       <div className="row">
         <button type="button" onClick={() => onConfirm(repoLink)}>Jetzt hochladen</button>
         <button type="button" className="link" onClick={onCancel}>Abbrechen</button>
@@ -39,7 +42,7 @@ export const GarminWorkoutUpload = ({ workout, status, connected, mode, onUpload
   if (status?.status === 'failed') {
     return (
       <div className="tk-garmin-upload">
-        <p className="notice" role="alert">{reasonText(status.reason)}</p>
+        <p className="notice" role="alert">{reasonText(status.reason, 'workout')}</p>
         <button type="button" className="secondary" onClick={() => setPreviewing(true)}>Erneut versuchen</button>
       </div>
     );
@@ -52,7 +55,7 @@ export type GarminUploadAccess = {
   connected: boolean;
   mode: 'off' | 'ask';
   workouts: Record<string, RideUpload>;
-  /** Keeps the link open while a button is shown, so the status arrives. Returns the release. */
+  /** Keeps the link open until a final status arrives. Returns the release. */
   hold: () => () => void;
   /** True when the message went out. */
   upload: (workoutId: string, repoLink: boolean) => Promise<boolean>;
@@ -65,13 +68,25 @@ export function GarminWorkoutUploadFor({ workout }: { workout: Pick<LoggedWorkou
   const [offline, setOffline] = useState(false);
   const shown = !!access && access.connected && access.mode === 'ask' && workout?.source === 'pandafit' && workout.endMs !== null;
   const hold = access?.hold;
-  useEffect(() => (shown && hold ? hold() : undefined), [shown, hold]);
+  const status = workout ? access?.workouts[workout.id] : undefined;
+  // The link opens only from "Jetzt hochladen" (or an upload still running) until a final status arrives.
+  const release = useRef<(() => void) | null>(null);
+  const seenActive = useRef(false);
+  const drop = () => { const r = release.current; release.current = null; clearTimeout(timer.current); r?.(); };
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const take = () => { if (!release.current && hold) { release.current = hold(); timer.current = setTimeout(drop, HOLD_MAX_MS); } };
+  useEffect(() => {
+    if (!shown) return;
+    if (status?.status === 'uploading') { seenActive.current = true; take(); }
+    else if (seenActive.current && (status?.status === 'uploaded' || status?.status === 'failed')) { seenActive.current = false; drop(); }
+  });
+  useEffect(() => drop, []);
   if (!access || !shown || !workout || workout.endMs === null) return null;
   return (
     <>
       {offline && <p className="notice" role="alert">Pandafit erreicht gerade den Server nicht. Versuch es gleich noch einmal.</p>}
       <GarminWorkoutUpload workout={{ id: workout.id, startMs: workout.startMs, endMs: workout.endMs }} connected={access.connected} mode={access.mode}
-        status={access.workouts[workout.id]} onUpload={(repoLink) => { setOffline(false); void access.upload(workout.id, repoLink).then((ok) => setOffline(!ok)); }} />
+        status={access.workouts[workout.id]} onUpload={(repoLink) => { setOffline(false); seenActive.current = false; take(); void access.upload(workout.id, repoLink).then((ok) => { setOffline(!ok); if (!ok) drop(); }); }} />
     </>
   );
 }

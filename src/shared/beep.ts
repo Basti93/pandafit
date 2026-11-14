@@ -7,7 +7,7 @@ let context: AudioContext | null = null;
 export const primeBeep = (): void => {
   try {
     context ??= new AudioContext();
-    if (context.state === 'suspended') void context.resume();
+    if (context.state !== 'running') void context.resume();
   } catch { context = null; }
 };
 

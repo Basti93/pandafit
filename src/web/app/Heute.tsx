@@ -153,7 +153,7 @@ export function Heute({ goTraining, goRun, goBike, goCoach, goQuestion, skipQues
         <MainCard kicker="Läuft noch" title={bodyOf('workout', open).title} text={`Seit ${sinceText(bodyOf('workout', open).startMs, now)}`} label="Training läuft noch"
           primary={{ label: 'Weitermachen', onClick: () => goTraining('resume') }} more={mobilityRow} />
       ) : summary ? (
-        <WorkoutSummary workout={summary} next={nextSteps} onDone={closeSummary} nowMs={now} today={today} activities={mergedActivities(activities, workouts).items} complaintsOpen={complaintsOpenIn(complaints)} extra={mobilityRow} />
+        <><WorkoutSummary workout={summary} next={nextSteps} onDone={closeSummary} nowMs={now} today={today} activities={mergedActivities(activities, workouts).items} complaintsOpen={complaintsOpenIn(complaints)} extra={mobilityRow} /><GarminWorkoutUploadFor workout={summary} /></>
       ) : finisher ? <><Finisher f={finisher} mobility={mobilityRow} /><GarminWorkoutUploadFor workout={finished} /></>
         : setup ? (
           <MainCard kicker="Jetzt dran" title="Dein Plan" label="Was Pandafit planen kann"

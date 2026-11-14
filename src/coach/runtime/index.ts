@@ -13,7 +13,7 @@ import { GarminSync } from '../garmin-sync';
 import { HevyLinks } from '../hevy';
 import { canUpload, canUploadWorkout } from '../garmin-upload';
 import { exportStrengthFit } from '../../ride-format/export/strength-fit';
-import { activityName, REPO_DESCRIPTION, STRENGTH_ACTIVITY_NAME } from '../../shared/garmin-upload';
+import { activityName, REPO_DESCRIPTION, STRENGTH_ACTIVITY_NAME, STRENGTH_DESCRIPTION } from '../../shared/garmin-upload';
 import { GarminUploader } from '../garmin-uploader';
 import { mergeCatalog } from '../../shared/catalog';
 import { EXERCISES } from '../../shared/exercises';
@@ -410,7 +410,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       fs.mkdirSync(exportsDir, { recursive: true });
       fs.writeFileSync(path.join(exportsDir, `${fileId}.fit`), exportStrengthFit({ startMs, endMs }));
     } catch (e) { log.error('strength file not written', e); return; }
-    if (uploader.upload(profileId, fileId, STRENGTH_ACTIVITY_NAME, startMs, repoLink ? REPO_DESCRIPTION : undefined)) coach.markWorkoutUpload(profileId, workoutId, { status: 'uploading' });
+    if (uploader.upload(profileId, fileId, STRENGTH_ACTIVITY_NAME, startMs, repoLink ? STRENGTH_DESCRIPTION : undefined)) coach.markWorkoutUpload(profileId, workoutId, { status: 'uploading' });
   };
 
   const ctx: RuntimeCtx = {
