@@ -94,10 +94,23 @@ describe('checkWorkout', () => {
     refused(wo([ex('lat', [set(8, 26)])]), ctx);
     refused(wo([ex('cp', [set(40, 20)])]), ctx);
   });
-  it('a weight without history is refused', () => {
-    refused(wo([ex('lp', [set(30, 8)])]));
+  it('a weight for an exercise never done is kept as estimated, snapped down to its ladder', () => {
+    const sets = passes(wo([ex('lp', [set(32, 8), set(null, 8)])])).exercises[0].sets;
+    expect(sets[0]).toEqual({ type: 'normal', weightKg: 30, reps: 8, estimated: true });
+    expect(sets[1].estimated).toBeUndefined();
+    // below the first step: the lightest reachable weight, never 0
+    expect(passes(wo([ex('lp', [set(2, 8)])])).exercises[0].sets[0]).toMatchObject({ weightKg: 5, estimated: true });
+  });
+  it('a weight without a suggestion is refused for an exercise with history or a bodyweight exercise', () => {
     refused(wo([ex('pu', [set(10, 8)])]));
-    passes(wo([ex('lp', [set(null, 8)])]));
+    const ctx: GymContext = { ...CTX, templates: [...TEMPLATES, T('dip', 'none', 'triceps', 'bodyweight_reps')] };
+    refused(wo([ex('dip', [set(10, 8)])]), ctx);
+    passes(wo([ex('dip', [set(null, 8)])]), ctx);
+  });
+  it('never takes the estimated flag from the answer', () => {
+    const own = passes(wo([ex('cp', [{ ...set(40, 8), estimated: true }]), ex('lp', [{ ...set(null, 8), estimated: true }])])).exercises;
+    expect(own[0].sets[0].estimated).toBeUndefined();
+    expect(own[1].sets[0].estimated).toBeUndefined();
   });
   it("a template from Hevy's list with recent equipment passes without a weight", () => {
     expect(passes(wo([ex('lp', [set(null, 8)])])).exercises[0].title).toBe('Title lp');

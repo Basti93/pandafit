@@ -123,12 +123,18 @@ function checkExercise(ex: GymExercise, t: ExerciseTemplate, ctx: GymContext, re
   if (widow && barbell) no(`${where}: Widowmaker nicht an der Langhantel`);
   if (widow && sug.why === 'none') no(`${where}: Widowmaker nur mit Verlauf`);
   const bodyweight = BODYWEIGHT_TYPES.includes(t.type) || (sug.why !== 'none' && sug.weightKg === null);
+  // An exercise never done before may carry the AI's start weight: kept, snapped to the ladder and marked as estimated.
+  const estimable = !known.has(ex.templateId) && sug.why === 'none' && !BODYWEIGHT_TYPES.includes(t.type) && !isAssisted(t.type);
   const isWidowSet = (s: GymSet): boolean => widow && s.reps === WIDOWMAKER_REPS && !s.repRange;
   const widowSets = ex.sets.filter(isWidowSet);
   if (widow && (widowSets.length !== 1 || widowSets[0].type !== 'normal')) no(`${where}: Widowmaker braucht genau einen Satz mit ${WIDOWMAKER_REPS}`);
   for (const s of ex.sets) {
     if (s.type === 'failure' && barbell) no(`${where}: Muskelversagen nicht an der Langhantel`);
-    if (s.weightKg !== null) {
+    if (s.weightKg !== null && sug.weightKg === null && estimable) {
+      const kg = snapDown(s.weightKg, ladder);
+      s.weightKg = kg > 0 ? kg : nextUp(0, ladder);
+      s.estimated = true;
+    } else if (s.weightKg !== null) {
       if (sug.weightKg === null) no(`${where}: Gewicht ohne Verlauf`);
       if (isAssisted(t.type)) { if (s.weightKg !== sug.weightKg) no(`${where}: Unterstützung bleibt gleich`); }
       // Only reachable weights go on.

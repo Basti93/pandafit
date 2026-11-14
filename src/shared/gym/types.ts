@@ -1,7 +1,8 @@
 import type { Effort } from '../records';
 
 export type ExerciseTemplate = { id: string; title: string; type: string; primaryMuscle: string; equipment: string };
-export type GymSet = { type: 'warmup' | 'normal' | 'failure' | 'dropset'; weightKg: number | null; reps: number | null; repRange?: { start: number; end: number } };
+/** `estimated`: the weight is the AI's cautious start weight for an exercise without any history (set by the guardrails, never taken from the answer). */
+export type GymSet = { type: 'warmup' | 'normal' | 'failure' | 'dropset'; weightKg: number | null; reps: number | null; repRange?: { start: number; end: number }; estimated?: true };
 export type GymExercise = { templateId: string; title: string; restS: number | null; supersetId: number | null; notes: string; sets: GymSet[] };
 /** `studio`: the studio bucket the weights were planned for (set by the guardrails, not by the AI). */
 export type GymWorkout = { name: string; exercises: GymExercise[]; studio?: string };

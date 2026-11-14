@@ -93,6 +93,20 @@ test('sets can be edited, added and removed by stable id', () => {
   expect(w.exercises).toHaveLength(0);
 });
 
+describe('an estimated start weight', () => {
+  const est: GymWorkout = { name: 'Neu', exercises: [{ templateId: 'pf-bench-press', title: 'Bankdrücken', restS: null, supersetId: null, notes: '', sets: [
+    { type: 'normal', weightKg: 40, reps: 8, estimated: true }, { type: 'normal', weightKg: 40, reps: 8, estimated: true }, { type: 'normal', weightKg: null, reps: 8 },
+  ] }] };
+  it('carries the flag into the tracked sets that got the weight', () => {
+    const sets = startFromPlan(est, [], 10, 'w').exercises[0]!.sets;
+    expect(sets.map((s) => [s.weightKg, s.estimatedKg])).toEqual([[40, true], [40, true], [null, undefined]]);
+  });
+  it('drops the flag when the exercise has history after all', () => {
+    const sets = startFromPlan(est, [past('h1', 5000, 'pf-bench-press', [done(40, 10)])], 10, 'w').exercises[0]!.sets;
+    expect(sets.every((s) => s.estimatedKg === undefined)).toBe(true);
+  });
+});
+
 describe('an exercise without history', () => {
   const bench = EXERCISES.find((e) => e.id === 'pf-bench-press')!;
   const range = repRangeOf(bench);

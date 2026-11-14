@@ -20,8 +20,9 @@ import type { GymExercise, GymWorkout } from '../shared/gym/types';
 /**
  * `plannedReps`: the reps the plan asked for, kept when the rider edits `reps`. `plannedKg`: the plan's weight (null: none);
  * `prefillKg`: the weight put in at the start or at the last studio change. A set whose weight still equals `prefillKg` was not edited.
+ * `estimatedKg`: the planned weight is Bo's start weight for an exercise without any history (see GymSet.estimated).
  */
-export type TrackedSet = LoggedSet & { rid: string; repRange?: { start: number; end: number }; plannedReps?: number; plannedKg?: number | null; prefillKg?: number | null };
+export type TrackedSet = LoggedSet & { rid: string; repRange?: { start: number; end: number }; plannedReps?: number; plannedKg?: number | null; prefillKg?: number | null; estimatedKg?: true };
 export type TrackedExercise = Omit<LoggedExercise, 'sets'> & { rid: string; sets: TrackedSet[]; restS?: number | null; restByUser?: true; timed?: boolean; swappedIn?: true; placedPre?: number };
 /** `placedPre` (on an exercise): the fatigue of its muscle at the place the coach made the weights for; a move refits against it. */
 /** Stored as the record body. `rest` keeps the timer start, so a reload continues it. Rows have stable ids (`rid`). */
@@ -144,6 +145,8 @@ function plannedExercise(g: GymExercise, history: LoggedWorkout[], catalog: Exer
       reps: p.reps ?? (p.repRange ? p.repRange.start : null) ?? l?.reps ?? null,
       durationS: l?.durationS ?? null, doneMs: null,
       plannedKg: p.weightKg,
+      // Only a weight the plan really gave, and only while there is no history here either.
+      ...(p.estimated && p.weightKg !== null && last.length === 0 ? { estimatedKg: true as const } : {}),
       ...(p.repRange ? { repRange: p.repRange } : {}),
       ...(p.reps !== null && p.reps !== undefined ? { plannedReps: p.reps } : {}),
     };
