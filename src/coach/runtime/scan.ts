@@ -22,7 +22,7 @@ import { mirrorExercises } from '../tracking/mirror-exercises';
 import { gymLegsKeyOf } from '../tracking/frame';
 import { PlanSeen, adviceKey, weekPlanKey } from '../chat/plan-seen';
 import { duePrompts, SentPrompts } from '../chat/prompts';
-import { pushAskDue, sportsKeyOf, startReview } from '../chat/month-review';
+import { experienceAskDue, pushAllowed, pushAskDue, sportsKeyOf, startReview } from '../chat/month-review';
 import { goalOfProfile } from '../tracking/personal';
 import { addDays, mondayOf, planFor, planOfWeek } from '../../shared/week-plan';
 import { PlannedWeeks, watchBlock } from '../chat/block-watch';
@@ -274,9 +274,13 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
           const due = duePrompts({ id: p.id, records: { prefs: records.all(p.id, 'coachprefs'), weekplan: records.all(p.id, 'weekplan') }, nowMs: now, sent: sentPrompts, detail: (s) => detailOf(p.id, s) });
           if (due.evening) { chat.say(p.id, due.evening); mealsChanged([p.id]); }
           // The review goes first and the week conversation waits for a later scan, so it sees the review in the thread.
+          const goalNow = goalOfProfile(records, p.id, dateKey(now));
+          const gymDates = gymDoneDates(p.id);
+          // The review asks for the push only from experience `einige` on, like the question alone.
+          const pushOk = pushAllowed(goalNow, gymDates, now);
           const tried = startReview({
-            id: p.id, prefs: prefsOf(records.all(p.id, 'coachprefs')), sportsKey: sportsKeyOf(goalOfProfile(records, p.id, dateKey(now))),
-            gymDates: gymDoneDates(p.id), sent: sentPrompts, nowMs: now, tried: reviewTried, retryMs: WEEK_RETRY_MS, open: (id, reason, askPush) => chat.openReview(id, reason, askPush),
+            id: p.id, prefs: prefsOf(records.all(p.id, 'coachprefs')), sportsKey: sportsKeyOf(goalNow),
+            gymDates, sent: sentPrompts, nowMs: now, tried: reviewTried, retryMs: WEEK_RETRY_MS, open: (id, reason, askPush) => chat.openReview(id, reason, askPush && pushOk),
           });
           if (tried) {
             reviewOpen.add(p.id);
@@ -296,11 +300,18 @@ export const createScan = (ctx: RuntimeCtx): (() => void) => {
             const s = coach.state(p.id);
             const lastPushMs = chatThread(records.all(p.id, 'chat')).filter((m) => m.role === 'coach' && m.push).at(-1)?.atMs;
             const triedMs = reviewTried.get(p.id);
-            if (pushAskDue({
-              goal: goalOfProfile(records, p.id, dateKey(now)), complaints: s.complaints ?? [], gymDates: gymDoneDates(p.id), sent: sentPrompts.get(p.id),
-              prefs: prefsOf(records.all(p.id, 'coachprefs')), nowMs: now, reviewOpen: reviewOpen.has(p.id), retryMs: WEEK_RETRY_MS,
+            const window = {
+              sent: sentPrompts.get(p.id), prefs: prefsOf(records.all(p.id, 'coachprefs')), nowMs: now, reviewOpen: reviewOpen.has(p.id), retryMs: WEEK_RETRY_MS,
               ...(triedMs !== undefined ? { reviewTriedMs: triedMs } : {}), ...(lastPushMs !== undefined ? { lastPushMs } : {}), ...(s.lastQuestionMs !== undefined ? { lastQuestionMs: s.lastQuestionMs } : {}),
-            })) {
+            };
+            // The experience question comes before the push question (which waits for `einige`), never both in one scan.
+            if (experienceAskDue({ ...window, goal: goalNow, gymDates, strength: gym.enabled(p.id) || gymDates.length > 0 })) {
+              chat.askExperience(p.id);
+              pushAsked = true;
+              sentPrompts.mark(p.id, 'expAsk', dateKey(now));
+              coach.questionAsked(p.id);
+              mealsChanged([p.id]);
+            } else if (pushAskDue({ ...window, goal: goalNow, complaints: s.complaints ?? [], gymDates })) {
               chat.askPush(p.id);
               pushAsked = true;
               sentPrompts.mark(p.id, 'pushAsk', dateKey(now));

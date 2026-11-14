@@ -14,7 +14,7 @@ export const storedWeek = (plans: TrackedRecord[], weekStart: string): TrackedRe
 export const weekAnswer = (chat: 'taken' | 'declined' | 'undone' | null, undone: boolean, stored: TrackedRecord | undefined, id: string): 'taken' | 'declined' | 'undone' | null =>
   weekTaken(stored, id) ? 'taken' : undone ? 'undone' : chat;
 
-/** The messages with a proposal that still waits for an answer: a week plan (not for a week that is over), a next change, a rule, a fixed section, the question whether the section still fits, the push question. They are pinned above the input. */
+/** The messages with a proposal that still waits for an answer: a week plan (not for a week that is over), a next change, a rule, a fixed section, the question whether the section still fits, the push and the experience question. They are pinned above the input. */
 /** The answer to the question whether the section still fits. The stored sections win over the chat, like `weekAnswer`: a section ended by this message is taken, one that runs on in its `-b` record is undone. */
 export function driftAnswer(thread: Thread, m: ChatEntry, blockRecs: readonly TrackedRecord[]): 'taken' | 'declined' | 'undone' | null {
   if (blockRecs.some((x) => x.id === resumedBlockId(m.drift ?? '') && !x.deleted)) return 'undone';
@@ -34,6 +34,7 @@ export function openProposals(thread: Thread, plans: TrackedRecord[], changeRecs
     if (m.block) { const r = blockRecs.find((x) => x.id === m.block && !x.deleted); return !!r && readBlock(r.body)?.state === 'proposed'; }
     if (m.drift) { const r = blockRecs.find((x) => x.id === m.drift && !x.deleted); return !!r && readBlock(r.body)?.state === 'active' && driftAnswer(thread, m, blockRecs) === null; }
     if (m.askPush) return proposalAnswer(thread, m.id) === null;
+    if (m.askExperience) return proposalAnswer(thread, m.id) === null;
     return false;
   });
 }

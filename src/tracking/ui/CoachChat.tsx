@@ -11,6 +11,7 @@ import { ProposalCard, ProposalsSheet } from './ProposalCard';
 import { BlockCard } from './BlockCard';
 import { DriftCard } from './DriftCard';
 import { PushCard } from './PushCard';
+import { ExperienceCard } from './ExperienceCard';
 import { useOpenProposals, useProposalActions, type WeekEntry } from './proposals';
 import { ChatBubble, ChatNote } from './ChatBubble';
 import { driftAnswer, storedWeek, weekAnswer } from './chat-open';
@@ -153,6 +154,7 @@ export function CoachChat({ port, now, newId, onClose, ask }: { port: TrackingPo
                   {m.endBlock && <BlockCard history endOffer port={port} blockId={m.endBlock} msgId={m.id} now={now} />}
                   {m.drift && driftAnswer(thread, m, blockRecs ?? []) !== null && <DriftCard port={port} now={now} newId={newId} m={m} />}
                   {m.askPush && proposalAnswer(thread, m.id) !== null && <PushCard port={port} now={now} newId={newId} m={m} />}
+                  {m.askExperience && proposalAnswer(thread, m.id) !== null && <ExperienceCard port={port} now={now} newId={newId} m={m} />}
                   {m.proposal && <ProposalLine m={m as WeekEntry} answer={weekAnswer(proposalAnswer(thread, m.id), thread.some((x) => x.undoes === m.id), storedWeek(plans ?? [], m.proposal.weekStart), m.id)} undoWhy={weekUndoRefusal(storedWeek(plans ?? [], m.proposal.weekStart), m.proposal, m.id)} onUndo={() => void undo(m as WeekEntry)} past={m.proposal.weekStart < monday} loading={plans === null} />}
                 </>
               )}

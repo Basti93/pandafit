@@ -5,6 +5,7 @@ import { ruleNumber } from '../../shared/training-policy';
 import { dateKey } from '../day-load';
 import { QUESTION_GAP_DAYS } from '../motivation';
 import type { Sent, SentPrompts } from './prompts';
+import { atLeast, experienceFromData, experienceOf, type Experience } from '../../shared/experience';
 
 export type ReviewReason = 'month' | 'sports' | 'pause';
 /** What opening a review did: nothing written, written, or written and it asked how hard Bo may push. */
@@ -71,28 +72,58 @@ const PUSH_ASK_FROM_HOUR = 8;
 /** After a message Bo sent by himself, the question alone waits this long. */
 const PUSH_ASK_QUIET_MS = 3 * 3_600_000;
 
-/**
- * Whether Bo asks now, outside a review, how hard he may push: never chosen, no open or healing complaint (then gentle applies
- * by itself), at least `push.ask-after-workouts` strength days and no earlier ask (`pushAsk`, also set by a review that asked).
- * Not while a review is being written or was tried within `retryMs` (it may ask itself), not within three hours of Bo's last
- * message of his own, only from 8 o'clock until the evening hour, and the last question of Bo at least QUESTION_GAP_DAYS ago.
- */
-export function pushAskDue(o: {
-  goal: { push?: Push }; complaints: readonly { status: string }[]; gymDates: readonly string[];
+type AskWindow = {
   sent: Sent; prefs: CoachPrefs; nowMs: number;
   /** A review attempt is running now. */
   reviewOpen: boolean; reviewTriedMs?: number; retryMs: number;
   /** When Bo's last message of his own (with a push) was written. */
   lastPushMs?: number;
   lastQuestionMs?: number;
-}): boolean {
-  if (o.goal.push !== undefined || o.sent.pushAsk !== undefined) return false;
-  if (o.complaints.some((c) => c.status === 'active' || c.status === 'healing')) return false;
+};
+
+/**
+ * Whether Bo may ask one of his structured questions alone now: not while a review is being written or was tried within
+ * `retryMs` (it may ask itself), not within three hours of Bo's last message of his own, only from 8 o'clock until the evening
+ * hour, and the last question of Bo at least QUESTION_GAP_DAYS ago.
+ */
+function askWindowOpen(o: AskWindow): boolean {
   if (o.reviewOpen || (o.reviewTriedMs !== undefined && o.nowMs - o.reviewTriedMs < o.retryMs)) return false;
   if (o.lastPushMs !== undefined && o.nowMs - o.lastPushMs < PUSH_ASK_QUIET_MS) return false;
   const hour = new Date(o.nowMs).getHours();
   if (hour < PUSH_ASK_FROM_HOUR || hour >= (o.prefs.evening.on ? o.prefs.evening.hour : DEFAULT_PREFS.evening.hour)) return false;
   if (o.lastQuestionMs !== undefined && o.nowMs - o.lastQuestionMs < QUESTION_GAP_DAYS * 86_400_000) return false;
+  return true;
+}
+
+/** The person's experience as the scan sees it: the strength dates of every source and the stored answer. */
+export const experienceNow = (goal: { experience?: Experience }, gymDates: readonly string[], nowMs: number): Experience =>
+  experienceOf({ dates: gymDates, ...(goal.experience ? { answer: goal.experience } : {}), today: dateKey(nowMs) });
+
+/** Whether Bo may ask how hard he may push at all: only from `einige` on (a person who starts trains without failure anyway). */
+export const pushAllowed = (goal: { experience?: Experience }, gymDates: readonly string[], nowMs: number): boolean =>
+  atLeast(experienceNow(goal, gymDates, nowMs), 'einige');
+
+/**
+ * Whether Bo asks now, outside a review, how hard he may push: never chosen, no open or healing complaint (then gentle applies
+ * by itself), experience at least `einige`, at least `push.ask-after-workouts` strength days and no earlier ask (`pushAsk`, also
+ * set by a review that asked), and the window for a question alone is open (askWindowOpen).
+ */
+export function pushAskDue(o: AskWindow & { goal: { push?: Push; experience?: Experience }; complaints: readonly { status: string }[]; gymDates: readonly string[] }): boolean {
+  if (o.goal.push !== undefined || o.sent.pushAsk !== undefined) return false;
+  if (o.complaints.some((c) => c.status === 'active' || c.status === 'healing')) return false;
+  if (!askWindowOpen(o)) return false;
+  if (!pushAllowed(o.goal, o.gymDates, o.nowMs)) return false;
   const today = dateKey(o.nowMs);
   return new Set(o.gymDates.filter((d) => d <= today)).size >= ruleNumber('push.ask-after-workouts');
+}
+
+/**
+ * Whether Bo asks now how long the person trains with weights: once (`expAsk`, also set by "Später"), never after an answer,
+ * only for a person who trains strength, and only while the data shows less than `erfahren` (the estimate is the higher of
+ * the answer and the data, so above that the answer changes nothing). The window for a question alone must be open.
+ */
+export function experienceAskDue(o: AskWindow & { goal: { experience?: Experience }; gymDates: readonly string[]; strength: boolean }): boolean {
+  if (o.goal.experience !== undefined || o.sent.expAsk !== undefined || !o.strength) return false;
+  if (experienceFromData(o.gymDates, dateKey(o.nowMs)) === 'erfahren') return false;
+  return askWindowOpen(o);
 }
