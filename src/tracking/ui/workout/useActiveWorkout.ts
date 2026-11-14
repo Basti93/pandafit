@@ -5,7 +5,7 @@ import { readStats, STATS_ID } from '../../../shared/stats';
 import { loadStepOverrides } from '../../../shared/loads';
 import { knownStudios, studioStateOf } from '../../../shared/studio';
 import type { TrackingPort } from '../../ports';
-import { confirmSet, currentSet, editSet, type FinishChoice, type TrackedWorkout } from '../../session';
+import { confirmSet, currentSet, editSet, nextInSuperset, type FinishChoice, type TrackedWorkout } from '../../session';
 import { closeStore, releaseStore } from '../../registry';
 import { barUseChange, barWeightChange, hereKey, stepChange } from '../../steps';
 import { readBars, type BarType } from '../../../shared/bars';
@@ -197,8 +197,9 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   }, []);
 
   /**
-   * Confirms exactly this set, and only while it is still open in the newest state. When it was the last open set of its
-   * exercise, the focus moves on to the next open set of the workout (the same exercise when none is left).
+   * Confirms exactly this set, and only while it is still open in the newest state. In a superset the focus moves on to the
+   * group's next set (round by round, also when the group is trained ahead of earlier exercises). When it was the last open
+   * set of its exercise and its group, the focus moves on to the next open set of the workout (the same exercise when none is left).
    */
   const confirmShown = useCallback((exRid: string, setRid: string) => {
     buzz();
@@ -211,7 +212,9 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
       finished = next.exercises.find((y) => y.rid === exRid)?.sets.every((y) => y.doneMs !== null) ?? false;
       return next;
     });
-    if (finished) set({ openRid: currentSet(store.current())?.ex ?? exRid });
+    const group = nextInSuperset(store.current(), exRid);
+    if (group) set({ openRid: group.ex });
+    else if (finished) set({ openRid: currentSet(store.current())?.ex ?? exRid });
   }, [act, set, store, latest, catalog]);
 
   async function end(choice?: FinishChoice) {

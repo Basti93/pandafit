@@ -1,6 +1,6 @@
 import {
   addExercise, addSet, confirmSet, editSet, finish, hereKey, lastValues, parseDecimal, formatDecimal, removeExercise, removeSet,
-  durationLabel, linkWith, currentSet, supersetPartners, unlinkSuperset, setEffort, startEmpty, startFromPlan, startFromRoutine, swapExercise, setRest, restRemainingS, ensureIds, editNotes, setStudio,
+  durationLabel, linkWith, currentSet, nextInSuperset, supersetPartners, unlinkSuperset, setEffort, startEmpty, startFromPlan, startFromRoutine, swapExercise, setRest, restRemainingS, ensureIds, editNotes, setStudio,
 } from '../../src/tracking/session';
 import type { LoggedWorkout } from '../../src/shared/records';
 import { studioRecord, studioStateOf } from '../../src/shared/studio';
@@ -238,6 +238,18 @@ describe('supersets', () => {
     const g = sw.exercises.map((e) => e.supersetId);
     expect(g[0]).toBeNull(); // done-set copy leaves the group
     expect(g.filter((x) => x !== null)).toHaveLength(2);
+  });
+
+  it('nextInSuperset keeps the round order of a group trained ahead of earlier open exercises', () => {
+    const w0 = start();
+    const n = w0.exercises.length;
+    const g = link(w0, n - 2, n - 1); // the last two exercises form the group; earlier ones stay open
+    const a = g.exercises[n - 2]!;
+    const b = g.exercises[n - 1]!;
+    expect(currentSet(g)!.ex).not.toBe(a.rid); // the workout's next set is elsewhere
+    const w1 = confirmSet(g, a.rid, a.sets.find((s) => s.type !== 'warmup')!.rid, 10);
+    expect(nextInSuperset(w1, a.rid)).toMatchObject({ ex: b.rid, round: 1 });
+    expect(nextInSuperset(w1, g.exercises[0]!.rid)).toBeNull(); // a single exercise has no group
   });
 
   it('round order A1 B1 A2 B2, done members are passed over', () => {

@@ -432,6 +432,13 @@ export function currentSet(w: TrackedWorkout): { ex: string; set: string; round:
   return null;
 }
 
+/** The next set of the superset that `exRid` belongs to, in round order, wherever the group stands in the workout. null for a single exercise or a finished group. */
+export function nextInSuperset(w: TrackedWorkout, exRid: string): { ex: string; set: string; round: number } | null {
+  const e = w.exercises.find((x) => x.rid === exRid);
+  if (!e || e.supersetId === null) return null;
+  return currentSet({ ...w, exercises: w.exercises.filter((x) => x.supersetId === e.supersetId) });
+}
+
 /** Takes one exercise out of its superset; a group left with one exercise is dissolved. */
 export function unlinkSuperset(w: TrackedWorkout, ex: string): TrackedWorkout {
   const e = w.exercises.find((x) => x.rid === ex);
