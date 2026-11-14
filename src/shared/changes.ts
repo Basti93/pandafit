@@ -72,14 +72,12 @@ export function listedIds(workouts: readonly { changes?: { id: string }[] }[]): 
 }
 
 /**
- * The plan with the taken changes applied, oldest first. An op whose exercise is not in the plan (any more) is skipped with a
- * short line. `lower`: where a lowered weight lands (default: the nearest 0.5 kg; the app passes the exercise's weight ladder). `applied`: the ids of the changes whose ops all applied; a change applies whole or not at all, and the others stay open.
+ * The plan with the taken changes applied, oldest first. An op whose exercise is not in the plan (any more) is skipped; the
+ * change stays open for a later workout, without any note. `lower`: where a lowered weight lands (default: the nearest 0.5 kg; the app passes the exercise's weight ladder). `applied`: the ids of the changes whose ops all applied; a change applies whole or not at all, and the others stay open.
  */
-export function applyNextChanges(plan: GymWorkout, changes: readonly NextChange[], catalog: readonly Exercise[], lower: (exerciseId: string, kg: number) => number = (_id, kg) => half(kg), excluded?: ReadonlySet<string>): { plan: GymWorkout; notes: string[]; applied: string[] } {
+export function applyNextChanges(plan: GymWorkout, changes: readonly NextChange[], catalog: readonly Exercise[], lower: (exerciseId: string, kg: number) => number = (_id, kg) => half(kg), excluded?: ReadonlySet<string>): { plan: GymWorkout; applied: string[] } {
   let exercises: GymExercise[] = plan.exercises.map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s })) }));
-  const notes: string[] = [];
   const applied: string[] = [];
-  const NOT_FITTING = 'Ein Tausch passte nicht zu diesem Training und bleibt fürs nächste.';
   // A fallback never takes an exercise that a swap produced, that another op names, or that a taken swap wants as its target.
   const targets = new Set(changes.flatMap((c) => c.ops.flatMap((o) => (o.op === 'swap' ? [o.toId] : []))));
   const named = new Set(changes.flatMap((c) => c.ops.map((o) => o.exerciseId)));
@@ -88,7 +86,7 @@ export function applyNextChanges(plan: GymWorkout, changes: readonly NextChange[
   for (const c of changes) {
     let work = exercises.map((e) => ({ ...e, sets: e.sets.map((s) => ({ ...s })) }));
     const madeHere: string[] = [];
-    let failed: NextOp['op'] | null = null;
+    let failed = false;
     for (const o of c.ops) {
       let i = work.findIndex((e) => e.templateId === o.exerciseId);
       if (i < 0 && o.op === 'swap') {
@@ -97,28 +95,28 @@ export function applyNextChanges(plan: GymWorkout, changes: readonly NextChange[
         if (work.some((e) => e.templateId === o.toId)) continue; // the target is planned already
         if (to && !excluded?.has(to.id) && muscle) i = work.findIndex((e) => catalog.find((x) => x.id === e.templateId)?.primaryMuscle === muscle && !excluded?.has(e.templateId) && !produced.has(e.templateId) && !madeHere.includes(e.templateId) && !named.has(e.templateId) && !targets.has(e.templateId));
       }
-      if (i < 0) { failed = o.op; break; }
+      if (i < 0) { failed = true; break; }
       const e = work[i]!;
       if (o.op === 'drop') work = work.filter((_, k) => k !== i);
       else if (o.op === 'swap') {
         const to = catalog.find((x) => x.id === o.toId);
-        if (!to || excluded?.has(to.id)) { failed = 'swap'; break; }
+        if (!to || excluded?.has(to.id)) { failed = true; break; }
         work[i] = { ...e, templateId: to.id, title: to.title, sets: e.sets.map((s) => ({ ...s, weightKg: null })) };
         madeHere.push(to.id);
       } else if (o.op === 'sets') {
         const warm = e.sets.filter((s) => s.type === 'warmup');
         const rows = e.sets.filter((s) => s.type !== 'warmup');
-        if (rows.length === 0) { failed = 'sets'; break; }
+        if (rows.length === 0) { failed = true; break; }
         const fitted = o.sets <= rows.length ? rows.slice(0, o.sets) : [...rows, ...Array.from({ length: o.sets - rows.length }, () => ({ ...rows[rows.length - 1]! }))].filter(Boolean);
         work[i] = { ...e, sets: [...warm, ...fitted] };
       } else work[i] = { ...e, sets: e.sets.map((s) => (s.weightKg !== null ? { ...s, weightKg: lower(e.templateId, s.weightKg * (1 - LIGHTER_PCT / 100)) } : s)) };
     }
-    if (failed) { notes.push(failed === 'swap' ? NOT_FITTING : 'Eine Änderung fürs Training passte nicht mehr zum Plan.'); continue; }
+    if (failed) continue;
     exercises = work;
     madeHere.forEach((id) => produced.add(id));
     applied.push(c.id);
   }
-  return { plan: { ...plan, exercises }, notes: [...new Set(notes)], applied: [...new Set(applied)] };
+  return { plan: { ...plan, exercises }, applied: [...new Set(applied)] };
 }
 
 /** The reason line for the coach's preview: what is taken for the next workout. Empty without any. */

@@ -6,13 +6,11 @@ import type { GymWorkout } from '../../src/shared/gym/types';
 const ex = (templateId: string, title: string) => ({ templateId, title, restS: null, supersetId: null, notes: '', sets: [1, 2, 3].map(() => ({ type: 'normal' as const, weightKg: 40, reps: 8 })) });
 const plan: GymWorkout = { name: 'Plan', exercises: [ex('pf-incline-bench-press', 'Schrägbankdrücken'), ex('pf-squat', 'Kniebeuge')] };
 const swapChange = (from: string, to: string, mid = 's1') => readChange(`chg-${mid}`, moveChange(changeRecord(mid, [{ op: 'swap', exerciseId: from, toId: to }], 'Tausch', 1), 'taken', 2)!.body)!;
-const NOT_FITTING = 'Ein Tausch passte nicht zu diesem Training und bleibt fürs nächste.';
 
 test('the target is already planned: the swap counts as applied', () => {
   const r = applyNextChanges(plan, [swapChange('pf-bench-press', 'pf-incline-bench-press')], EXERCISES);
   expect(r.applied).toEqual(['chg-s1']);
   expect(r.plan.exercises.map((e) => e.templateId)).toEqual(['pf-incline-bench-press', 'pf-squat']);
-  expect(r.notes).toEqual([]);
 });
 
 test('the original is gone: the same muscle takes the swap', () => {
@@ -24,13 +22,11 @@ test('the original is gone: the same muscle takes the swap', () => {
 test('an excluded same-muscle exercise is not swapped', () => {
   const r = applyNextChanges(plan, [swapChange('pf-bench-press', 'pf-chest-press-machine')], EXERCISES, undefined, new Set(['pf-incline-bench-press']));
   expect(r.applied).toEqual([]);
-  expect(r.notes).toEqual([NOT_FITTING]);
 });
 
-test('no fitting exercise: note, not applied', () => {
+test('no fitting exercise: not applied, no note', () => {
   const r = applyNextChanges(plan, [swapChange('pf-pull-up', 'pf-lat-pulldown')], EXERCISES);
   expect(r.applied).toEqual([]);
-  expect(r.notes).toEqual([NOT_FITTING]);
   expect(r.plan.exercises.map((e) => e.templateId)).toEqual(['pf-incline-bench-press', 'pf-squat']);
 });
 
@@ -58,7 +54,6 @@ test('a change applies whole: a failing swap keeps its drop from happening', () 
   const r = applyNextChanges(plan, [c], EXERCISES);
   expect(r.applied).toEqual([]);
   expect(r.plan.exercises.map((e) => e.templateId)).toEqual(['pf-incline-bench-press', 'pf-squat']);
-  expect(r.notes).toEqual([NOT_FITTING]);
 });
 
 test('two swaps of one muscle hit different exercises; one candidate serves only the first', () => {
@@ -70,5 +65,4 @@ test('two swaps of one muscle hit different exercises; one candidate serves only
   expect(r.plan.exercises.map((e) => e.templateId).sort()).toEqual(['pf-chest-press-machine', 'pf-incline-press-db']);
   const one = applyNextChanges(plan, [a, b], EXERCISES);
   expect(one.applied).toEqual(['chg-a']);
-  expect(one.notes).toEqual([NOT_FITTING]);
 });

@@ -190,8 +190,8 @@ export function startFromPlan(w: GymWorkout, history: LoggedWorkout[], nowMs: nu
     const own = sessions.map((h) => ({ studio: h.studio, startMs: h.startMs, sets: h.exercises.filter((x) => x.exerciseId === exerciseId).flatMap((x) => x.sets.filter(isDone)) }));
     return snapDown(kg, ladderFrom(own, { exerciseId, studio: key, main, renames: studios.renames }, equipment, next.overrides ?? new Map()).ladder);
   };
-  const { plan, notes: changeNotes, applied } = applyNextChanges(w, todo, catalog, lower, next.excluded);
-  const notes = [...dropped.map((e) => `Ohne ${e.title} – deine Regel.`), ...legNotes, ...changeNotes];
+  const { plan, applied } = applyNextChanges(w, todo, catalog, lower, next.excluded);
+  const notes = [...dropped.map((e) => `Ohne ${e.title} – deine Regel.`), ...legNotes];
   const done = todo.filter((c) => applied.includes(c.id));
   const planStudio = w.studio ? studioName(w.studio) : undefined;
   const exercises = plan.exercises.map((g) => plannedExercise(g, history, catalog, studio, studios, { planStudio, overrides: next.overrides }));

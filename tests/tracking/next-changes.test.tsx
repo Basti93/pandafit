@@ -66,17 +66,18 @@ test('a declined or undone change is never applied', () => {
   expect(w.changes).toBeUndefined();
 });
 
-test('taken changes apply oldest first; ops for exercises not in the plan are skipped with a note', () => {
+test('taken changes apply oldest first; ops for exercises not in the plan are skipped without a note', () => {
   const lighter = moveChange(changeRecord('l', [{ op: 'lighter', exerciseId: 'pf-bench-press' }, { op: 'sets', exerciseId: 'pf-bench-press', sets: 2 }], 'Leichter.', 500), 'taken', 600)!;
   const gone = moveChange(changeRecord('g', [{ op: 'drop', exerciseId: 'nope' }], 'x', 700), 'taken', 800)!;
   const out = applyNextChanges(plan, takenChanges([gone, taken(), lighter]), EXERCISES);
   expect(out.plan.exercises.map((e) => e.templateId)).toEqual(['pf-bench-press']);
   expect(out.plan.exercises[0]!.sets.map((s) => s.weightKg)).toEqual([54, 54]);
-  expect(out.notes).toHaveLength(1);
+  expect(out.applied).not.toContain('chg-g');
+  expect(out.applied).toHaveLength(2);
   let lines: string[] = [];
   const w = startFromPlan(plan, [], 0, 'w1', EXERCISES, undefined, undefined, { changes: takenChanges([gone]), workouts: [], onSkipped: (l) => { lines = l; } });
-  // the line goes to the rider's screen, never into the exercise notes (those are exported)
-  expect(lines.join(' ')).toContain('passte nicht mehr');
+  // a change that does not fit stays open quietly: no line on the screen, nothing in the exercise notes
+  expect(lines).toEqual([]);
   expect(w.exercises[0]!.notes).toBe('');
   expect(w.changes).toBeUndefined();
 });
@@ -92,12 +93,12 @@ test('lighter lands on the exercise\'s weight ladder of the workout\'s studio, n
   expect(kgs).toEqual([52, 52, 52]);
 });
 
-test('sets on an exercise without working sets is skipped with a note', () => {
+test('sets on an exercise without working sets is skipped without a note', () => {
   const onlyWarm: GymWorkout = { ...plan, exercises: [{ ...plan.exercises[0]!, sets: [{ type: 'warmup', weightKg: 20, reps: 10 }] }] };
   const c = moveChange(changeRecord('s', [{ op: 'sets', exerciseId: 'pf-bench-press', sets: 3 }], 'x', 1), 'taken', 2)!;
   const out = applyNextChanges(onlyWarm, takenChanges([c]), EXERCISES);
   expect(out.plan.exercises[0]!.sets).toEqual(onlyWarm.exercises[0]!.sets);
-  expect(out.notes).toHaveLength(1);
+  expect(out.applied).toEqual([]);
 });
 
 test('starting twice does not apply a change twice, and a start that died before the mark is made up', () => {
