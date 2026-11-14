@@ -1,4 +1,4 @@
-import { applyNextChanges, changeRecord, moveChange, readChange, usedMarks } from '../../src/shared/changes';
+import { applyNextChanges, liveTaken, changeRecord, moveChange, readChange, usedMarks } from '../../src/shared/changes';
 import { EXERCISES } from '../../src/shared/exercises';
 import { startFromPlan } from '../../src/tracking/session';
 import type { GymWorkout } from '../../src/shared/gym/types';
@@ -65,4 +65,13 @@ test('two swaps of one muscle hit different exercises; one candidate serves only
   expect(r.plan.exercises.map((e) => e.templateId).sort()).toEqual(['pf-chest-press-machine', 'pf-incline-press-db']);
   const one = applyNextChanges(plan, [a, b], EXERCISES);
   expect(one.applied).toEqual(['chg-a']);
+});
+
+describe('liveTaken', () => {
+  const c = readChange('chg-x', { target: 'next', ops: [{ op: 'drop', exerciseId: 'a' }], reason: '', state: 'taken', atMs: 100 })!;
+  const w = (startMs: number, endMs: number | null, ids: string[] = []) => ({ startMs, endMs, changes: ids.map((id) => ({ id })) });
+  test('lapses after a later finished workout that does not list it', () => { expect(liveTaken([c], [w(200, 300)])).toEqual([]); });
+  test('stays before any later workout', () => { expect(liveTaken([c], [w(50, 90)])).toEqual([c]); });
+  test('an open workout does not lapse it', () => { expect(liveTaken([c], [w(200, null)])).toEqual([c]); });
+  test('a workout that lists it is no lapse', () => { expect(liveTaken([c], [w(200, 300, ['chg-x'])])).toEqual([c]); });
 });

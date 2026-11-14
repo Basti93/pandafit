@@ -66,6 +66,14 @@ export const changesOf = (records: readonly TrackedRecord[]): NextChange[] =>
 
 export const takenChanges = (records: readonly TrackedRecord[]): NextChange[] => changesOf(records).filter((c) => c.state === 'taken');
 
+/**
+ * A taken change counts for the next strength workout only. When a finished workout started after the change was taken and does not
+ * list it, the change did not fit then and lapses silently. Open workouts (no end) never lapse a change.
+ */
+export function liveTaken(changes: readonly NextChange[], workouts: readonly { startMs: number; endMs: number | null; changes?: { id: string }[] }[]): NextChange[] {
+  return changes.filter((c) => !workouts.some((w) => w.endMs !== null && w.startMs > c.atMs && !(Array.isArray(w.changes) && w.changes.some((x) => x.id === c.id))));
+}
+
 /** The ids of the changes workouts list as applied (`changes` of any workout). */
 export function listedIds(workouts: readonly { changes?: { id: string }[] }[]): Set<string> {
   return new Set(workouts.flatMap((w) => (Array.isArray(w.changes) ? w.changes.map((c) => c.id) : [])));

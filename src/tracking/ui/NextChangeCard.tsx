@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { changesOf, moveChange, type ChangeState } from '../../shared/changes';
+import { changesOf, liveTaken, moveChange, type ChangeState } from '../../shared/changes';
 import type { TrackedRecord } from '../../shared/records';
 import type { TrackingPort } from '../ports';
 import { Tag } from './kit';
+import { usePortRecords } from './hooks';
 import { DECLINE, DECLINED, TAKE, UNDO } from '../../shared/wording';
 
 /**
@@ -12,7 +13,11 @@ import { DECLINE, DECLINED, TAKE, UNDO } from '../../shared/wording';
 export function NextChangeCard({ port, changeId, records, now, history }: { port: TrackingPort; changeId: string; records: TrackedRecord[] | null; now: () => number; /** In the chat history: one line, no buttons except Rückgängig; a proposal still open is pinned elsewhere. */ history?: boolean }) {
   const [failed, setFailed] = useState(false);
   const c = changesOf(records ?? []).find((x) => x.id === changeId);
+  const workoutRecs = usePortRecords(port, 'workout').records;
   if (!c) return null;
+  // A taken change counts for the next workout only: when a later finished workout did not list it, it has lapsed.
+  const lapsed = c.state === 'taken' && liveTaken([c], (workoutRecs ?? []).map((r) => r.body as { startMs: number; endMs: number | null; changes?: { id: string }[] }).filter((w) => w && typeof w.startMs === 'number')).length === 0;
+  if (lapsed) return history ? null : <div className="tk-nextchange"><p className="muted">Das passte nicht ins nächste Training und gilt nicht mehr.</p></div>;
   const go = async (to: ChangeState) => {
     try {
       const cur = (await port.list('change')).find((r) => r.id === changeId);

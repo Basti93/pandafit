@@ -8,7 +8,7 @@ import { HARDNESS_LABEL, hasSport, planFor, SPORT_LABEL } from '../../../shared/
 import type { TrackedRecord } from '../../../shared/records';
 import type { TrackingPort } from '../../ports';
 import { startFromPlan, type TrackedWorkout } from '../../session';
-import { takenChanges } from '../../../shared/changes';
+import { liveTaken, takenChanges } from '../../../shared/changes';
 import { loadStepOverrides } from '../../../shared/loads';
 import { NO_BARS, readBars } from '../../../shared/bars';
 import type { StudioState } from '../../../shared/studio';
@@ -54,6 +54,6 @@ export async function prepareStart(port: TrackingPort, g: GymWorkout, ctx: { now
     if (day && day.sport === 'gym' && day.also && day.also.sport !== 'gym' && day.also.minutes) alsoNote = `Dazu heute: ${day.also.minutes} Min. ${SPORT_LABEL[day.also.sport]} ${HARDNESS_LABEL[day.also.hardness]}.`;
   } catch { /* start with the plan as it is */ }
   let skipped: string[] = [];
-  const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: takenChanges(changeRecs), workouts: all, overrides, bars, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
+  const w = startFromPlan(g, history, now(), newId(), catalog, studio, studios, { changes: liveTaken(takenChanges(changeRecs), all), workouts: all, overrides, bars, excluded: excludedNow, noLegs, onSkipped: (l) => { skipped = l; } });
   return { workout: studio ? { ...w, studio } : w, notice: [...skipped, ...(alsoNote ? [alsoNote] : [])].join(' ') || null, also: alsoNote };
 }
