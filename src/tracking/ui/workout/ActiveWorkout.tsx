@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { Exercise } from '../../../shared/exercises';
 import { asksEffort } from '../../effort';
 import { extendRest, restRemainingS, setStudio, swapExercise, addExercise, moveExercise, moveExerciseTo, otherStudio, setEffort, type TrackedWorkout } from '../../session';
@@ -18,6 +19,7 @@ import { doneSentence, effortAsk, focusExercise, isDoneExercise, progressOf, upN
 import { SetsSheet } from './SetsSheet';
 import { sinceLabel } from './markUsed';
 import { useNow } from '../hooks';
+import { playRestBeep, restBeepAt } from './restSound';
 import { NOT_SAVED, useActiveWorkout, type ActiveWorkoutProps } from './useActiveWorkout';
 
 /** "Läuft seit …": shows minutes only, so it beats once a minute. */
@@ -30,6 +32,13 @@ function LiveSince({ startMs, now }: { startMs: number; now: () => number }) {
 function RestBar({ w, now, act }: { w: TrackedWorkout; now: () => number; act: (f: (x: TrackedWorkout) => TrackedWorkout) => void }) {
   const t = useNow(1000, !!w.rest, now);
   const remaining = restRemainingS(w, t);
+  const shown = useRef<number | null>(null);
+  // The beep follows the same second the bar shows.
+  useEffect(() => {
+    const second = w.rest ? restBeepAt(shown.current, remaining) : null;
+    shown.current = w.rest ? remaining : null;
+    if (second !== null) playRestBeep(second);
+  }, [remaining, w.rest]);
   if (!w.rest || remaining <= 0) return null;
   return (
     <div className="tk-livepause">

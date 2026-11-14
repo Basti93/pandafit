@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HeadCard, Row, RowList, Segments, Sheet } from '../../tracking/ui/kit';
+import { HeadCard, Row, RowList, Segments, Sheet, Switch } from '../../tracking/ui/kit';
 import { CoachPrefs } from '../../tracking/ui/CoachPrefs';
 import { timeLabel } from '../../shared/dates';
 import { bikeOf, hasBike as bikeVisible, ridesOf, RunSettingsCard } from '../../tracking/ui';
@@ -9,6 +9,7 @@ import { ContactSettings } from '../ContactSettings';
 import { ConnectionSettings, ProfileGroup } from '../ConnectionSettings';
 import { readTheme, saveTheme, type Theme } from '../theme';
 import { CoachLink } from '../coachLink';
+import { restSoundOn, saveRestSound } from '../../tracking/ui/workout/restSound';
 import { Env } from './env';
 import { PushState, PushSettings } from './Push';
 
@@ -28,6 +29,7 @@ export function Profil({ now, status, onLogout, push, link, storage }: { link: C
   const { port, account } = useApp();
   const [confirming, setConfirming] = useState(false);
   const [timing, setTiming] = useState(false);
+  const [restSound, setRestSound] = useState(restSoundOn);
   const [theme, setTheme] = useState<Theme>(() => readTheme(storage));
   const pickTheme = (t: Theme) => { saveTheme(storage, t); setTheme(t); };
   const hasBike = bikeVisible(bikeOf(usePortRecords(port, 'bike').records), ridesOf(usePortRecords(port, 'ride').records));
@@ -47,6 +49,9 @@ export function Profil({ now, status, onLogout, push, link, storage }: { link: C
         {(!push || push.on) && <RowList><Row icon="laterne" title="Wann sich der Sensai meldet" hint="Wochengespräch und Gruß am Vorabend." onClick={() => setTiming(true)} /></RowList>}
       </ProfileGroup>
       {timing && <Sheet title="Wann sich der Sensai meldet" onClose={() => setTiming(false)}><CoachPrefs port={port} now={now} nested /></Sheet>}
+      <ProfileGroup title="Training">
+        <Switch label="Ton in der Pause" hint="Drei kurze Töne vor dem Ende der Satzpause und ein höherer am Ende. Die Wahl gilt nur auf diesem Gerät." checked={restSound} onChange={(on) => { saveRestSound(on); setRestSound(on); }} />
+      </ProfileGroup>
       <ProfileGroup title="Darstellung">
         <Segments label="Darstellung" value={theme} onChange={pickTheme} options={[{ value: 'light', label: 'Hell' }, { value: 'dark', label: 'Dunkel' }, { value: 'system', label: 'System' }]} />
         <p className="muted">Mit „System“ folgt Pandafit der Einstellung deines Geräts. Die Wahl gilt nur auf diesem Gerät.</p>

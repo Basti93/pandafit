@@ -13,6 +13,7 @@ import { effortQuestionsOn } from '../EffortQuestion';
 import type { DragStart } from '../ReorderSheet';
 import { markUsed } from './markUsed';
 import { buzz } from './feedback';
+import { primeSound } from './restSound';
 import { useHold } from './useHold';
 import { useLatest } from './useLatest';
 
@@ -173,6 +174,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
    */
   const confirmShown = useCallback((exRid: string, setRid: string) => {
     buzz();
+    primeSound();
     set({ thanked: null, justDone: setRid, lighterUndo: null });
     let finished = false;
     act((x) => {
