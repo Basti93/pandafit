@@ -1063,7 +1063,7 @@ describe('shared exercise catalog', () => {
 describe('changes taken for the next workout', () => {
   it('the plan reason mentions them once, replanning keeps them, and the coach never writes the record', async () => {
     const store = new RecordStore({ dir: path.join(tmp, 'tracking') });
-    const rec = { kind: 'change' as const, id: 'chg-m1', updatedMs: 5, deleted: false, body: { target: 'next', ops: [{ op: 'drop', exerciseId: 'lr' }], reason: 'Ohne Rudern, weil der Rücken müde ist', state: 'taken', atMs: 4 } };
+    const rec = { kind: 'change' as const, id: 'chg-m1', updatedMs: 5, deleted: false, body: { target: 'next', ops: [{ op: 'drop', exerciseId: 'lr' }], reason: 'Ohne Rudern, weil der Rücken müde ist', state: 'taken', atMs: NOW } };
     store.putMany('p1', [rec]);
     const coach = new GymCoach({
       dir, nowMs: () => NOW, store, ask: async () => answer({ reason: 'Zuletzt 40 kg bei 8 Wiederholungen, jetzt eine mehr.' }),
@@ -1078,6 +1078,17 @@ describe('changes taken for the next workout', () => {
     await coach.tick('p1');
     expect(coach.state('p1').next!.reason.match(/Berücksichtigt/g)).toHaveLength(1);
     expect(store.all('p1', 'change')).toEqual([rec]);
+  });
+  it('a taken change that does not fit the planned workout is not named', async () => {
+    const store = new RecordStore({ dir: path.join(tmp, 'tracking') });
+    store.putMany('p1', [{ kind: 'change' as const, id: 'chg-m2', updatedMs: 5, deleted: false, body: { target: 'next', ops: [{ op: 'drop', exerciseId: 'not-planned' }], reason: 'Ohne Beinpresse', state: 'taken', atMs: NOW } }]);
+    const coach = new GymCoach({
+      dir, nowMs: () => NOW, store, ask: async () => answer(),
+      workouts: () => history(), templates: async () => TEMPLATES, refreshTemplates: async () => TEMPLATES, ready: () => true,
+      bike: () => ({ summaries: [], complaints: [] }), complaint: () => {}, writer: () => null,
+    });
+    await coach.tick('p1');
+    expect(coach.state('p1').next!.reason).not.toContain('Berücksichtigt');
   });
 });
 
