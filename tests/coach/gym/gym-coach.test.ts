@@ -1208,6 +1208,7 @@ describe('Härte', () => {
   it('wer anfängt, bekommt keinen Versagenssatz, auch bei „Fordere mich“', async () => {
     const { coach, calls } = coachWith([], [answer({ workout: failing() }), answer({ workout: failing() })], 'neu');
     await coach.tick('p1');
+    expect(outside(calls[0]!.prompt)).toContain('Erfahrung mit Gewichten: fängt an.');
     expect(calls).toHaveLength(2);
     expect(block(calls[1]!.prompt, 'ablehnung-nur-daten')).toBe('Versagen passt noch nicht zur Erfahrung');
     const s = coach.state('p1');

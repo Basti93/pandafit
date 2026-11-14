@@ -564,7 +564,7 @@ export class GymCoach {
       });
       const review = this.deps.store ? latestReview(chatThread(this.deps.store.all(id, 'chat'))) : null;
       const ask = (rejection?: string) => this.deps.ask({
-        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), swaps: this.swapsTaken(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, bars: this.bars(id), excluded, ...(avoidLegs ? { avoidLegs: true } : {}), goal, push, ...(this.deps.store ? { wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(review ? { review } : {}), ...(section ? { abschnitt: section.prompt } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
+        prompt: buildGymPrompt({ state: this.state(id), workouts: real, templates, nowMs: now, ...this.deps.bike(id), previous, wantNote, rejection, mobility: this.mobilityData(id), swaps: this.swapsTaken(id), catalog: this.catalog(id), ...(studio ? { studio } : {}), overrides, renames: this.studios(id).renames, bars: this.bars(id), excluded, ...(avoidLegs ? { avoidLegs: true } : {}), goal, push, experience, ...(this.deps.store ? { wishes: wishesOf(this.deps.store, id, 'gym') } : {}), ...(review ? { review } : {}), ...(section ? { abschnitt: section.prompt } : {}), ...(budget !== null ? { budgetMinutes: budget } : {}) }) + (this.deps.planHint?.(id) ?? ''),
         systemPrompt: GYM_SYSTEM_PROMPT, schema: gymAnswerJsonSchema,
       });
       let raw = await ask();
