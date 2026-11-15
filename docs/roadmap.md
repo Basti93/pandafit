@@ -260,3 +260,8 @@ Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
   - Browser-Zurück in verschachtelten Sheets schließt das ganze Sheet. Für Essen erledigt mit Dojo 4 (Seiten statt Sheets); offen für Kraft und Woche.
   - ~~„Woche planen“ auf Heute führt zur Woche, dort braucht es einen zweiten Tipp bis zum Chat.~~ Erledigt mit Dojo 2.
   - ~~Der Rad-Verlauf zeigt Wattbereiche nur bei „bei N %“-Bezeichnungen.~~ Erledigt mit Dojo 3.
+- Aus dem Gespräch 15.11.2026:
+  - ~~Wochenplan der nächsten Woche sichtbar, sobald Bo ihn vorschlägt: Umschalter „Diese Woche“ / „Nächste Woche“ auf der Coach-Seite mit Plan, offenem Vorschlag oder „Jetzt planen lassen“.~~ Erledigt am 15.11.2026.
+  - Geparkt: Wochengespräch am Samstag 6:00 zusammen mit dem Essensplan; der Essensplan nimmt die Trainingstage aus dem Vorschlag.
+  - Geparkt: Nach einer Aktivität am Samstag oder Sonntag prüft Bo auch die nächste Woche; `checkWeekPlan` prüft den Übergang Sonntag → Montag.
+  - Einkaufsliste: gleiche Zutat mit anderer Einheit steht doppelt (Basilikum 1 Bund + 20 g, Feta Packung + g, Tofu/Naturtofu); Vorrat-Posten stehen zusätzlich auf dem Zettel.

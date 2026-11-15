@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { CoachScreen } from '../../src/tracking/ui/CoachScreen';
+import { CoachScreen, NEXT_WEEK_ASK } from '../../src/tracking/ui/CoachScreen';
 import type { TrackedRecord } from '../../src/shared/records';
 import { changeRecord } from '../../src/shared/changes';
 import { weekDates } from '../../src/shared/week-plan';
@@ -234,9 +234,8 @@ test('without a plan: seven calm dots, no count, and Bo offers Woche planen', as
   expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensai' })).toBeTruthy();
 });
 
-test('Rückblick, Was Bo beachtet and Nächste Woche open their sheets from quiet rows', async () => {
-  const nextPlan: TrackedRecord = { ...takenPlan, id: '2026-11-09', body: { ...(takenPlan.body as object), weekStart: '2026-11-09', days: weekDates('2026-11-09').map((date, i) => ({ date, sport: i === 1 ? 'gym' : 'rest', hardness: 'moderate', fixed: false })) } };
-  const { port } = fakePort([takenPlan, nextPlan]);
+test('Rückblick and Was Bo beachtet open their sheets from quiet rows', async () => {
+  const { port } = fakePort([takenPlan]);
   render(<CoachScreen port={port} {...env} />);
   fireEvent.click(await screen.findByRole('button', { name: 'Rückblick' }));
   expect(await screen.findByRole('dialog', { name: 'Rückblick' })).toBeTruthy();
@@ -244,10 +243,49 @@ test('Rückblick, Was Bo beachtet and Nächste Woche open their sheets from quie
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   fireEvent.click(screen.getByRole('button', { name: 'Was Bo beachtet' }));
   expect(await screen.findByRole('dialog', { name: 'Was Bo beachtet' })).toBeTruthy();
-  fireEvent.keyDown(document, { key: 'Escape' });
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-  fireEvent.click(screen.getByRole('button', { name: 'Nächste Woche' }));
-  expect(within(await screen.findByRole('dialog', { name: 'Nächste Woche' })).getByRole('list', { name: 'Wochenplan nächste Woche' })).toBeTruthy();
+});
+
+const nextDays = weekDates('2026-11-09').map((date, i) => ({ date, sport: i === 1 ? 'gym' : 'rest', hardness: 'moderate', fixed: false }));
+const showNextWeek = async () => {
+  fireEvent.click(await screen.findByRole('button', { name: 'Nächste Woche' }));
+  return screen.findByRole('region', { name: 'Nächste Woche' });
+};
+
+test('Nächste Woche shows the taken plan of next week in place of this week', async () => {
+  const nextPlan: TrackedRecord = { ...takenPlan, id: '2026-11-09', body: { ...(takenPlan.body as object), weekStart: '2026-11-09', days: nextDays } };
+  const { port } = fakePort([takenPlan, nextPlan]);
+  render(<CoachScreen port={port} {...env} />);
+  expect(screen.getByRole('button', { name: 'Diese Woche' }).getAttribute('aria-pressed')).toBe('true');
+  const next = await showNextWeek();
+  expect(within(next).getByRole('list', { name: 'Wochenplan nächste Woche' })).toBeTruthy();
+  expect(screen.queryByRole('region', { name: 'Diese Woche' })).toBeNull();
+  expect(screen.queryByRole('region', { name: 'Tage' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Diese Woche' }));
+  expect(await screen.findByRole('region', { name: 'Diese Woche' })).toBeTruthy();
+});
+
+test('Nächste Woche shows Bo\'s open proposal for next week, and Übernehmen stores it', async () => {
+  const offer: TrackedRecord = { kind: 'chat', id: 'c2', updatedMs: 3, deleted: false, body: { role: 'coach', text: 'So ginge die nächste Woche.', atMs: NOW - 100, proposal: { weekStart: '2026-11-09', days: nextDays } } };
+  const { port, map } = fakePort([takenPlan, offer]);
+  render(<CoachScreen port={port} {...env} />);
+  const next = await showNextWeek();
+  const take = await within(next).findByRole('button', { name: 'Übernehmen' });
+  await waitFor(() => expect((take as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(take);
+  await waitFor(() => expect(records(map, 'weekplan').some((r) => r.id === '2026-11-09')).toBe(true));
+  expect(await within(next).findByRole('list', { name: 'Wochenplan nächste Woche' })).toBeTruthy();
+});
+
+test('without plan or proposal, Jetzt planen lassen asks Bo in the chat', async () => {
+  const { port, map } = fakePort([takenPlan]);
+  render(<CoachScreen port={port} {...env} />);
+  const next = await showNextWeek();
+  expect(next.textContent).toContain('Für nächste Woche gibt es noch keinen Plan.');
+  const ask = within(next).getByRole('button', { name: 'Jetzt planen lassen' });
+  await waitFor(() => expect((ask as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(ask);
+  await waitFor(() => expect(records(map, 'chat').some((r) => (r.body as { text?: string }).text === NEXT_WEEK_ASK)).toBe(true));
+  expect(await screen.findByRole('dialog', { name: 'Bo, dein Sensai' })).toBeTruthy();
 });
 
 test('Escape in the proposal sheet closes only that sheet: the chat and its composer stay open and no plan changes', async () => {

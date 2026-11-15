@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { chatThread, waitingMessage } from '../../shared/chat';
+import { chatThread, waitingMessage, type ChatMessage } from '../../shared/chat';
+import { addDays } from '../../shared/week-plan';
 import { localDayKey } from '../../shared/dates';
 import type { TrackingPort } from '../ports';
 import { useWeekDays } from './week-days';
@@ -17,10 +18,13 @@ import { HealthCard, HealthPage } from './HealthPage';
 import { healthOf } from './health-view';
 import { DaySheet } from './DaySheet';
 import { BlockLine } from './BlockLine';
-import { ProposalsSheet } from './ProposalCard';
+import { ProposalCard, ProposalsSheet } from './ProposalCard';
 import { useOpenProposals } from './proposals';
 import { isRest, KIND_ICON, SPORT_ICON, restDaysText, shortDay, weekRangeText, weekSentence } from './week-path';
 import { TogetherPage, togetherOf } from './TogetherScreen';
+
+/** What "Jetzt planen lassen" writes to Bo. */
+export const NEXT_WEEK_ASK = 'Plan bitte meine nächste Woche.';
 
 /** Woche is the week: the week card, the days (Erledigt, Heute, Kommt noch), health, Bo's bubble and three quiet tiles. */
 /** `openChat`: the page opens with the chat already open ("Bo fragen" on Heute leads straight there); `onChatClosed` then runs when that chat closes, to go back where it came from. */
@@ -29,9 +33,10 @@ export function CoachScreen({ port, now, newId, openChat = false, onChatClosed, 
   const activityRecords = usePortRecords(port, 'activities').all;
   const workoutRecords = usePortRecords(port, 'workout').all;
   const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | 'look' | 'proposals' | 'next' | null>(openChat ? 'chat' : null);
+  const [sheet, setSheet] = useState<'goal' | 'rules' | 'chat' | 'history' | 'look' | 'proposals' | null>(openChat ? 'chat' : null);
   const [dayDate, setDayDate] = useState<string | null>(null);
   const [page, setPage] = useState<'week' | 'health' | 'together'>('week');
+  const [shown, setShown] = useState<'this' | 'next'>('this');
   const health = healthOf(usePortRecords(port, 'health').records);
   const together = togetherOf(usePortRecords(port, 'together').records);
   const goal = useGoal(port, now());
@@ -53,6 +58,15 @@ export function CoachScreen({ port, now, newId, openChat = false, onChatClosed, 
   if (page === 'together' && together) return <TogetherPage t={together} now={now()} onBack={() => setPage('week')} />;
 
   const noPlan = !current && !spontaneous;
+  // Next week: the taken plan, else Bo's open proposal for it, else a way to ask for one.
+  const nextMonday = addDays(monday, 7);
+  const nextProposal = proposals.find((m) => m.proposal?.weekStart === nextMonday) ?? null;
+  const askForNext = async () => {
+    setError(null);
+    const m: ChatMessage = { role: 'rider', text: NEXT_WEEK_ASK, atMs: now() };
+    try { await port.put({ kind: 'chat', id: newId(), updatedMs: now(), deleted: false, body: m }); setSheet('chat'); } catch { setError('Das konnte gerade nicht gespeichert werden. Versuch es gleich nochmal.'); }
+  };
+  const showNext = shown === 'next' && !spontaneous;
 
   // The days: Erledigt (past days with something done), Heute, Kommt noch. Rest days before today stay in the week path only.
   const runsOn = (date: string) => runs.filter((r) => r.date === date);
@@ -91,7 +105,27 @@ export function CoachScreen({ port, now, newId, openChat = false, onChatClosed, 
   return (
     <div className="tk-screen tk-coach">
       <PageHead title="Deine Woche" />
-      <Card label="Diese Woche">
+      {!spontaneous && (
+        <div className="tk-textseg" role="group" aria-label="Woche">
+          <button type="button" className="link" aria-pressed={!showNext} onClick={() => setShown('this')}>Diese Woche</button>
+          <button type="button" className="link" aria-pressed={showNext} onClick={() => setShown('next')}>Nächste Woche</button>
+        </div>
+      )}
+      {showNext && (
+        <Card label="Nächste Woche">
+          <p className="tk-kicker">{weekRangeText(nextMonday)}</p>
+          {next ? <Week rows={planRows(next.days)} label="Wochenplan nächste Woche" />
+            : nextProposal ? <ProposalCard port={port} now={now} newId={newId} m={nextProposal} />
+            : asking ? <p className="tk-weeksentence">{BO_LINES.thinking}</p>
+            : (
+              <>
+                <p className="tk-weeksentence">Für nächste Woche gibt es noch keinen Plan.</p>
+                <div className="tk-mainactions"><button type="button" className="primary" disabled={!boReady} onClick={() => void askForNext()}>Jetzt planen lassen</button></div>
+              </>
+            )}
+        </Card>
+      )}
+      {!showNext && <Card label="Diese Woche">
         {loaded && <WeekPath days={path} kicker={weekRangeText(monday)} count={count} onPick={setDayDate} />}
         <p className="tk-weeksentence">
           {spontaneous ? `Heute: ${fr.advice.line}` : current ? weekSentence(dayRows, today, current.days) : loaded ? 'Für diese Woche gibt es noch keinen Plan.' : ''}
@@ -102,8 +136,8 @@ export function CoachScreen({ port, now, newId, openChat = false, onChatClosed, 
           <p><b>Dein Ziel:</b> {goalSentence(goal)}{!goalChosen && <> <span className="muted">Das ist ein Vorschlag.</span></>}</p>
           <RoundButton icon="stift" name="Ziel und Planung" onClick={() => setSheet('goal')} />
         </div>
-      </Card>
-      {loaded && anyDays && (
+      </Card>}
+      {!showNext && loaded && anyDays && (
         <Card label="Tage">
           {doneRows.length > 0 && (
             <div className="tk-daysection">
@@ -126,10 +160,8 @@ export function CoachScreen({ port, now, newId, openChat = false, onChatClosed, 
               {comingRuns.map((r) => <RowCard key={r.date + r.kind} flat lead={shortDay(r.date)} icon="lauf" title={runText(r)} onClick={open(r.date)} />)}
             </div>
           )}
-          {next && !spontaneous && <RowCard flat icon="woche" title="Nächste Woche" onClick={() => setSheet('next')} />}
         </Card>
       )}
-      {loaded && !anyDays && next && !spontaneous && <RowCard icon="woche" title="Nächste Woche" onClick={() => setSheet('next')} />}
       {health && <HealthCard health={health} onOpen={() => setPage('health')} />}
       <BoBubble portrait="mini" actions={boActions}>{boText}</BoBubble>
       {error && <p role="alert" className="tk-note">{error}</p>}
@@ -139,11 +171,6 @@ export function CoachScreen({ port, now, newId, openChat = false, onChatClosed, 
         {together && <RowCard icon="ausdauer" title="Gemeinsam" end="none" onClick={() => setPage('together')} />}
       </div>
       {dayDate && <DaySheet port={port} date={dayDate} now={now} spontaneous={spontaneous} onClose={() => setDayDate(null)} />}
-      {sheet === 'next' && next && (
-        <Sheet size="small" title="Nächste Woche" onClose={() => setSheet(null)}>
-          <Week rows={planRows(next.days)} label="Wochenplan nächste Woche" runs={runs} />
-        </Sheet>
-      )}
       {sheet === 'goal' && <GoalSheet port={port} now={now} onClose={() => setSheet(null)} frame={fr.frame}
         onMode={(m) => void fr.setMode(m).catch(saveFailed)} onMinutes={(m) => void fr.setMinutes(m).catch(saveFailed)} />}
       {sheet === 'rules' && <RulesSheet port={port} now={now} newId={newId} onClose={() => setSheet(null)} />}
