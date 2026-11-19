@@ -15,7 +15,7 @@ const tmp = () => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'rplan-')); 
 afterEach(() => { for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true }); });
 
 const PEOPLE = [{ id: 'max', name: 'Max' }, { id: 'lena', name: 'Lena' }];
-const at = (day: number, hour: number) => new Date(2026, 10, day, hour).getTime(); // 7 Nov 2026 is a Saturday
+const at = (day: number, hour: number) => new Date(2026, 10, day, hour).getTime(); // 9 Nov 2026 is a Monday
 const ON = (over: Partial<MealSettings> = {}): MealSettings => ({ on: true, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' }, ...over });
 const week = '2026-11-09';
 
@@ -29,7 +29,7 @@ const setup = (o: { ask?: (i: { prompt: string }) => Promise<unknown>; fetchPage
   let r = 0;
   const store = new RecordStore({ dir: path.join(dir, 'tracking') });
   const ask = o.ask ? vi.fn(o.ask) : undefined;
-  const clock = { now: at(7, 6) };
+  const clock = { now: at(9, 6) };
   const coach = new MealCoach({
     dir: path.join(dir, 'meals'), ...(o.noRecipes ? {} : { recipesDir: path.join(dir, 'recipes') }), nowMs: o.now ?? (() => clock.now), profiles: () => PEOPLE, noOpenRide: () => true, ask,
     ...(o.fetchPage ? { fetchPage: o.fetchPage } : {}), ...(o.fetchPicture ? { fetchPicture: o.fetchPicture } : {}), store, linked: (id) => (o.linked ?? []).includes(id), trainingDays: () => [0, 2], random: () => ((r = (r * 9301 + 49297) % 233280) / 233280),
@@ -61,7 +61,7 @@ describe('planning with real recipes', () => {
     await fill(coach, 20, 'collection');
     await fill(coach, 3, 'link');
     expect(coach.recipes()!.unlocked()).toBe(false);
-    await coach.replan('max', week);
+    await coach.tick();
     const meals = coach.view('max').weeks.find((w) => w.plan.week === week)!.plan.meals;
     const real = meals.filter((m) => m.dish.source === 'rezept');
     expect(real.length).toBeGreaterThan(0);
@@ -71,15 +71,16 @@ describe('planning with real recipes', () => {
     // Each link recipe once at most; the rest is what the AI invented, as before.
     expect(new Set(real.map((m) => m.dish.recipeId)).size).toBe(real.length);
     expect(meals.filter((m) => m.dish.source === 'coach').length).toBeGreaterThan(0);
-    expect(ask!.mock.calls.filter(([i]) => isMealPrompt(i.prompt))).toHaveLength(1);
+    // One call per week part: this week, and the first day of the next.
+    expect(ask!.mock.calls.filter(([i]) => isMealPrompt(i.prompt))).toHaveLength(2);
   });
 
   it('with no link recipe the plan is exactly the one of before, collection or not', async () => {
     const plain = setup({ ask: async () => AI_PLAN(), noRecipes: true });
-    await plain.coach.replan('max', week);
+    await plain.coach.tick();
     const withStore = setup({ ask: async () => AI_PLAN() });
     await fill(withStore.coach, 20, 'collection');
-    await withStore.coach.replan('max', week);
+    await withStore.coach.tick();
     const titles = (c: MealCoach) => c.view('max').weeks.find((w) => w.plan.week === week)!.plan.meals.map((m) => `${m.day}-${m.slot}-${m.dish.title}`);
     expect(titles(withStore.coach)).toEqual(titles(plain.coach));
   });
@@ -93,7 +94,7 @@ describe('planning with real recipes', () => {
         const { coach, ask } = setup({ ask: async (i) => (i.prompt.includes('rezepte-nur-daten') ? { rezepte: [] } : { auswahl: [] }) });
         await fill(coach, 40, 'collection');
         expect(coach.recipes()!.unlocked()).toBe(true);
-        await coach.replan('max', week);
+        await coach.tick();
         const plan = coach.view('max').weeks.find((w) => w.plan.week === week)!.plan;
         const real = plan.meals.filter((m) => m.dish.source === 'rezept');
         expect(real.length).toBe(plan.meals.length);
@@ -113,7 +114,8 @@ describe('planning with real recipes', () => {
           const block = /<mahlzeiten-nur-daten>\n([\s\S]*?)\n<\/mahlzeiten-nur-daten>/.exec(i.prompt);
           if (block && i.prompt.includes('"rezepte":[{"id"')) {
             const entries = JSON.parse(block[1]!) as { schluessel: string; rezepte: { id: string }[] }[];
-            const list = entries.find((e) => e.schluessel === '1-abend')!.rezepte;
+            const list = entries.find((e) => e.schluessel === '1-abend')?.rezepte;
+            if (!list) return { auswahl: [] }; // the part with next week's first day
             expect(list.length).toBeLessThanOrEqual(30);
             picked = list[list.length - 1]!.id;
             return { auswahl: [{ schluessel: '1-abend', rezept: picked }, { schluessel: '2-abend', rezept: 'c-gibt-es-nicht' }] };
@@ -121,7 +123,7 @@ describe('planning with real recipes', () => {
           return { rezepte: [] };
         } });
         await fill(coach, 40, 'collection');
-        await coach.replan('max', week);
+        await coach.tick();
         const meals = coach.view('max').weeks.find((w) => w.plan.week === week)!.plan.meals;
         expect(picked).not.toBeNull();
         expect(meals.find((m) => m.day === 1 && m.slot === 'abend')!.dish.recipeId).toBe(picked);
@@ -138,7 +140,7 @@ describe('planning with real recipes', () => {
         const s = coach.recipes()!;
         for (let i = 1; i <= 12; i++) await s.add({ source: 'collection', url: `https://rezepte.example/m${i}`, recipe: recipe(i, { name: `Sammlung Pfanne ${i}` }) });
         await s.tagWaiting(taggingAi(() => ({ mahlzeit: ['mittag', 'abend'] })), 5);
-        await coach.replan('max', week);
+        await coach.tick();
         const meals = coach.view('max').weeks.find((w) => w.plan.week === week)!.plan.meals;
         expect(meals.filter((m) => m.slot === 'fruehstueck').every((m) => m.dish.source === 'coach')).toBe(true);
         expect(meals.filter((m) => m.slot !== 'fruehstueck').every((m) => m.dish.source === 'rezept')).toBe(true);
@@ -152,7 +154,7 @@ describe('planning with real recipes', () => {
         coach.setSettings('lena', ON({ diet: 'vegan', dislikes: ['Karotten'] }));
         await fill(coach, 6, 'collection', (i) => (i === 1 ? { recipeIngredient: ['100 g Käse', '1 Zwiebel'] } : {}));
         await coach.recipes()!.add({ source: 'collection', url: 'https://rezepte.example/untagged', recipe: recipe(99, { name: 'Sammlung Ungetaggt' }) });
-        await coach.replan('max', week);
+        await coach.tick();
         const meals = coach.view('max').weeks.find((w) => w.plan.week === week)!.plan.meals;
         // Every recipe has carrots, and Lena dislikes them: nothing from the collection fits a meal she eats; the rest is invented.
         expect(meals.every((m) => !m.dish.title.includes('Ungetaggt'))).toBe(true);
@@ -165,7 +167,7 @@ describe('planning with real recipes', () => {
       try {
         const { coach } = setup({ ask: async (i) => (isMealPrompt(i.prompt) ? AI_PLAN() : { auswahl: [] }) });
         await fill(coach, 10, 'collection', (i) => (i <= 5 ? { nutrition: undefined, recipeIngredient: ['300 g Kartoffeln', '1 Zwiebel', '1 EL Öl'] } : i === 6 ? { nutrition: undefined, recipeIngredient: ['300 g Quittenmus', '200 g Hanfschrot'] } : {}));
-        await coach.replan('max', week);
+        await coach.tick();
         const plan = coach.view('max').weeks.find((w) => w.plan.week === week)!.plan;
         // Monday and Wednesday are training days: only recipes with 28 g are chosen there.
         for (const m of plan.meals.filter((x) => plan.trainingDays.includes(x.day) && x.dish.source === 'rezept')) expect(m.dish.proteinG).toBeGreaterThanOrEqual(20);

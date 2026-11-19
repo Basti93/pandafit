@@ -33,7 +33,7 @@ describe('Essen on the phone with the coach on the Mac', () => {
     });
     mac.setSettings('pa', ON);
     mac.setSettings('pb', ON);
-    await mac.replan('pa', week);
+    await mac.tick(); // the first tick plans from today
     const a = await boot({ account: 'anna', seed: store.all('pb') });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Plan ändern' }));

@@ -16,10 +16,10 @@ export const baseEaters = (members: Member[], day: number, slot: Slot): string[]
 export const takenAlong = (members: Member[], day: number, slot: Slot): boolean =>
   day < WORKDAYS && members.some((m) => m.settings.habits[slot] === 'mitnehmen');
 
-/** The meals of a week from `fromDay` on, in order. `pairs`: the rule plan's cook-once-eat-twice lunches. */
-export function skeleton(members: Member[], fromDay: number, pairs: boolean): Slotted[] {
+/** The meals of a week from `fromDay` up to (not including) `toDay`, in order. `pairs`: the rule plan's cook-once-eat-twice lunches. */
+export function skeleton(members: Member[], fromDay: number, pairs: boolean, toDay = 7): Slotted[] {
   const out: Slotted[] = [];
-  for (let day = fromDay; day < 7; day++) {
+  for (let day = fromDay; day < toDay; day++) {
     for (const slot of SLOTS) {
       const reuse = pairs && slot === 'mittag' && COOK_TWICE.includes(day - 1) && day - 1 >= fromDay && takenAlong(members, day - 1, slot);
       out.push({ day, slot, eaters: baseEaters(members, day, slot), takeAlong: takenAlong(members, day, slot), reuseOf: reuse ? mealKey(day - 1, slot) : null });

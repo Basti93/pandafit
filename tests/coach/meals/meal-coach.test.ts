@@ -8,13 +8,13 @@ import { cookPortions, EMPTY_STATE, itemKey, mealKey, readMealPlan, shoppingList
 import type { MealAnswer } from '../../../src/coach/meals/prompt';
 
 const PEOPLE = [{ id: 'max', name: 'Max' }, { id: 'lena', name: 'Lena', avatar: '🦊' }];
-const at = (day: number, hour: number, minute = 0) => new Date(2026, 10, day, hour, minute).getTime(); // November 2026: the 7th is a Saturday
+const at = (day: number, hour: number, minute = 0) => new Date(2026, 10, day, hour, minute).getTime(); // November 2026: the 9th is a Monday
 const ON = (over: Partial<MealSettings> = {}) => ({ on: true, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' }, ...over });
 
 type Opts = { now?: number; ride?: boolean; ask?: (i: { prompt: string }) => Promise<unknown>; linked?: string[]; store?: RecordStore };
 const setup = (o: Opts = {}) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'meals-'));
-  const clock = { now: o.now ?? at(7, 6) };
+  const clock = { now: o.now ?? at(9, 6) };
   const ride = { open: o.ride ?? false };
   const store = o.store ?? new RecordStore({ dir: path.join(dir, 'tracking') });
   const ask = o.ask ? vi.fn(o.ask) : undefined;
@@ -36,47 +36,93 @@ const answer = (dish: (day: number, slot: (typeof SLOTS)[number]) => Partial<Mea
 });
 
 describe('when the plan is made', () => {
-  it('on Saturday from 06:00 at the first tick, once, for the coming Monday to Sunday', async () => {
-    const { coach, clock } = setup({ now: at(7, 5, 59) });
+  const days = (w: { plan: { meals: { day: number }[] } }) => [...new Set(w.plan.meals.map((m) => m.day))];
+  const titles = (w: { plan: { meals: { day: number; slot: string; dish: { title: string } }[] } }, from: number, to: number) =>
+    w.plan.meals.filter((m) => m.day >= from && m.day <= to).map((m) => `${m.day}-${m.slot}:${m.dish.title}`);
+
+  it('a new household gets today through the seventh day after, whatever the weekday', async () => {
+    const { coach } = setup({ now: at(19, 9) }); // a Thursday
     coach.setSettings('max', ON());
     await coach.tick();
-    expect(coach.view('max').weeks).toEqual([]);
-    clock.now = at(7, 6, 0);
-    await coach.tick();
-    const weeks = coach.view('max').weeks;
-    expect(weeks.map((w) => w.plan.week)).toEqual(['2026-11-09']);
-    expect(weeks[0]!.plan.meals).toHaveLength(21);
-    const created = weeks[0]!.plan.createdMs;
-    clock.now = at(7, 9);
-    await coach.tick();
-    expect(coach.view('max').weeks[0]!.plan.createdMs).toBe(created);
+    const w = coach.view('max').weeks;
+    expect(w.map((x) => x.plan.week)).toEqual(['2026-11-16', '2026-11-23']);
+    expect(days(w[0]!)).toEqual([3, 4, 5, 6]);
+    expect(days(w[1]!)).toEqual([0, 1, 2, 3]);
   });
 
-  it('on Sunday too when the Mac was off on Saturday, but not on a weekday', async () => {
-    const { coach, clock } = setup({ now: at(6, 20) });
+  it('the next day only the new day is added; the planned days stay as they are', async () => {
+    const { coach, clock } = setup({ now: at(19, 9) });
     coach.setSettings('max', ON());
     await coach.tick();
-    expect(coach.view('max').weeks).toEqual([]);
-    clock.now = at(8, 10);
+    const before = titles(coach.view('max').weeks[1]!, 0, 3);
+    clock.now = at(20, 9);
     await coach.tick();
-    expect(coach.view('max').weeks.map((w) => w.plan.week)).toEqual(['2026-11-09']);
+    const b = coach.view('max').weeks[1]!;
+    expect(days(b)).toEqual([0, 1, 2, 3, 4]);
+    expect(titles(b, 0, 3)).toEqual(before);
+    // Nothing more on the same day.
+    const created = b.plan.createdMs;
+    clock.now = at(20, 15);
+    await coach.tick();
+    expect(coach.view('max').weeks[1]!.plan.createdMs).toBe(created);
   });
 
-  it('never with a ride open: neither the Saturday plan, nor Neu planen, nor Tauschen, nor the AI', async () => {
+  it('an old file with only a Saturday plan gets the missing days of next week', async () => {
+    const { coach, clock, dir } = setup({ now: at(16, 7) }); // a Monday: the first tick plans the whole week
+    coach.setSettings('max', ON());
+    await coach.tick();
+    const file = path.join(dir, 'meals', 'household.json');
+    const old = JSON.parse(fs.readFileSync(file, 'utf8')) as { plans: Record<string, { meals: { day: number }[] }>; plannedUntil?: unknown; lastAuto?: unknown };
+    const week = old.plans['2026-11-16']!;
+    expect(days({ plan: week })).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    // What the Saturday plan of the old rule left: one week, a lastAuto, no plannedUntil.
+    delete old.plannedUntil;
+    old.lastAuto = '2026-11-16';
+    old.plans = { '2026-11-16': week };
+    fs.writeFileSync(file, JSON.stringify(old));
+    const fresh = new MealCoach({ dir: path.join(dir, 'meals'), nowMs: () => clock.now, profiles: () => PEOPLE, noOpenRide: () => true });
+    clock.now = at(19, 9);
+    await fresh.tick();
+    const w = fresh.view('max').weeks;
+    expect(days(w[1]!)).toEqual([0, 1, 2, 3]);
+    expect(JSON.stringify(w[0]!.plan.meals)).toBe(JSON.stringify(week.meals));
+  });
+
+  it('a meal already in a gap day stays when the day is filled', async () => {
+    const { coach, clock, dir } = setup({ now: at(19, 9) });
+    coach.setSettings('max', ON());
+    await coach.tick();
+    const file = path.join(dir, 'meals', 'household.json');
+    const data = JSON.parse(fs.readFileSync(file, 'utf8')) as { plans: Record<string, { meals: { day: number; slot: string; dish: { title: string }; eaters: string[]; reuseOf: null; takeAlong: boolean }[] }> };
+    const donor = data.plans['2026-11-23']!.meals[0]!;
+    data.plans['2026-11-23']!.meals.push({ ...donor, day: 4, slot: 'abend', dish: { ...donor.dish, title: 'Mein Wunsch' } });
+    fs.writeFileSync(file, JSON.stringify(data));
+    const again = new MealCoach({ dir: path.join(dir, 'meals'), nowMs: () => clock.now, profiles: () => PEOPLE, noOpenRide: () => true });
+    again.setSettings('max', ON());
+    clock.now = at(20, 9);
+    await again.tick();
+    const meals = again.view('max').weeks[1]!.plan.meals.filter((m) => m.day === 4);
+    expect(meals.map((m) => m.slot).sort()).toEqual(['abend', 'fruehstueck', 'mittag']);
+    expect(meals.find((m) => m.slot === 'abend')!.dish.title).toBe('Mein Wunsch');
+  });
+
+  it('never with a ride open, and not in quiet hours; then at the next tick', async () => {
     const ask = async () => answer(() => ({}));
-    const { coach, ride, ask: spy } = setup({ ride: true, ask });
+    const { coach, ride, ask: spy } = setup({ ride: true, ask, now: at(19, 9) });
     coach.setSettings('max', ON());
     await coach.tick();
-    await coach.replan('max', '2026-11-09');
+    await coach.replan('max');
     expect(coach.view('max').weeks).toEqual([]);
     expect(coach.view('max').canPlan).toBe(false);
     expect(spy).not.toHaveBeenCalled();
     ride.open = false;
+    await coach.tick({ plan: false });
+    expect(coach.view('max').weeks).toEqual([]);
     await coach.tick();
-    expect(coach.view('max').weeks).toHaveLength(1);
+    expect(coach.view('max').weeks).toHaveLength(2);
     ride.open = true;
     const before = JSON.stringify(coach.view('max').weeks[0]!.plan);
-    await coach.swap('max', '2026-11-09', '0-abend', false);
+    await coach.swap('max', '2026-11-16', '4-abend', false);
     expect(JSON.stringify(coach.view('max').weeks[0]!.plan)).toBe(before);
   });
 });
@@ -206,9 +252,9 @@ describe('Tauschen', () => {
   it('asks the AI when told to, and falls back to the list when its dish does not fit', async () => {
     let n = 0;
     const ask = async (i: { prompt: string }) => {
-      n++;
       if (i.prompt.includes('mahlzeiten-nur-daten')) return answer(() => ({}));
-      return { mahlzeiten: [{ tag: 0, slot: 'abend', restVon: null, titel: n === 2 ? 'Koriander-Suppe' : 'Linsen-Dal', minuten: 20, eiweissG: 18, haltbarTage: 2, schritte: ['Kochen.'], zutaten: [{ name: 'Rote Linsen', menge: 60, einheit: 'g', abteilung: 'Vorrat', roh: false }] }] };
+      n++;
+      return { mahlzeiten: [{ tag: 0, slot: 'abend', restVon: null, titel: n === 1 ? 'Koriander-Suppe' : 'Linsen-Dal', minuten: 20, eiweissG: 18, haltbarTage: 2, schritte: ['Kochen.'], zutaten: [{ name: 'Rote Linsen', menge: 60, einheit: 'g', abteilung: 'Vorrat', roh: false }] }] };
     };
     const { coach } = setup({ ask });
     coach.setSettings('max', ON({ dislikes: ['Koriander'] }));
@@ -226,7 +272,7 @@ describe('off by default', () => {
     const { coach, ask, store, dir } = setup({ ask: async () => answer(() => ({})), linked: ['max', 'lena'] });
     expect(coach.settings('max').on).toBe(false);
     for (const now of [at(7, 6), at(7, 12), at(8, 10)]) { (coach as unknown as { deps: { nowMs: () => number } }).deps.nowMs = () => now; expect(await coach.tick()).toEqual([]); }
-    await coach.replan('max', '2026-11-09');
+    await coach.replan('max');
     expect(ask).not.toHaveBeenCalled();
     expect(coach.view('max').weeks).toEqual([]);
     expect(store.all('max')).toEqual([]);
@@ -238,7 +284,7 @@ describe('off by default', () => {
     const { coach, store } = setup({ linked: ['max', 'lena'] });
     coach.setSettings('max', ON());
     await coach.tick();
-    expect(store.all('max', 'mealplan').map((r) => r.id).sort()).toEqual(['state-2026-11-09', 'week-2026-11-09']);
+    expect(store.all('max', 'mealplan').map((r) => r.id).sort()).toEqual(['state-2026-11-09', 'state-2026-11-16', 'week-2026-11-09', 'week-2026-11-16']);
     expect(store.all('lena')).toEqual([]);
   });
 });
@@ -251,11 +297,11 @@ describe('sync through the account records', () => {
     const live = () => store.all('lena', 'mealplan').filter((r) => !r.deleted).map((r) => r.id).sort();
     clock.now = at(17, 10);
     await coach.tick();
-    expect(live()).toEqual(['state-2026-11-09', 'week-2026-11-09']);
-    expect(coach.view('lena').weeks).toEqual([]);
+    expect(live()).toEqual(['state-2026-11-09', 'state-2026-11-16', 'state-2026-11-23', 'week-2026-11-09', 'week-2026-11-16', 'week-2026-11-23']);
+    expect(coach.view('lena').weeks.map((w) => w.plan.week)).toEqual(['2026-11-16', '2026-11-23']);
     clock.now = at(24, 10);
     await coach.tick();
-    expect(live()).toEqual([]);
+    expect(live()).toEqual(['state-2026-11-16', 'state-2026-11-23', 'state-2026-11-30', 'week-2026-11-16', 'week-2026-11-23', 'week-2026-11-30']);
   });
 
   it('a linked profile gets the plan and its state as mealplan records, marked with who it is for', async () => {
@@ -329,7 +375,7 @@ describe('sync through the account records', () => {
     expect(shoppingList(coach.view('max').weeks[0]!.plan, coach.view('max').weeks[0]!.state).own.map((i) => i.name)).toEqual(['Kaffee']);
     // A new plan for the same week: the list of the plan changes, the own item stays.
     clock.now += 1000;
-    await coach.replan('max', '2026-11-09');
+    await coach.replan('max');
     const w = coach.view('max').weeks[0]!;
     expect(shoppingList(w.plan, w.state).own).toEqual([{ key: 'own-abc12345', name: 'Kaffee', amount: '2 Pakete', state: 'offen', dishes: [] }]);
     const maxState = store.all('max', 'mealplan').find((r) => r.id === 'state-2026-11-09')!;

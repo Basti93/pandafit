@@ -90,7 +90,7 @@ export const handlers: Handlers = {
   'meals-settings': meals((m, c) => c.setSettings(m.profileId, m.settings)),
   'meals-eater': meals((m, c, atMs) => c.setEater(m.profileId, m.week, m.meal, m.person, m.on === true, atMs)),
   'meals-item': meals((m, c, atMs) => c.setItem(m.profileId, m.week, m.item, m.state, atMs)),
-  'meals-replan': meals((m, c, _at, sync) => { void c.replan(m.profileId, m.week).catch((e) => log.error('meals replan', e)).finally(sync); }),
+  'meals-replan': meals((m, c, _at, sync) => { void c.replan(m.profileId).catch((e) => log.error('meals replan', e)).finally(sync); }),
   'meals-swap': meals((m, c, _at, sync) => { void c.swap(m.profileId, m.week, m.meal, m.ai === true).catch((e) => log.error('meals swap', e)).finally(sync); }),
   'meals-chat': meals((m, c, _at, sync) => { void c.chat(m.profileId, m.week, m.text).catch((e) => log.error('meals chat', e)).finally(sync); }),
 

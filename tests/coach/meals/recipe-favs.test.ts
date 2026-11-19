@@ -23,13 +23,13 @@ const recipe = (n: number, over: Record<string, unknown> = {}) => ({
 });
 const fav = (id: string, t: number, deleted = false): TrackedRecord => ({ kind: 'mealplan', id: favRecordId(id), updatedMs: t, deleted, body: { atMs: t } });
 
-const setup = (o: { ask?: (i: { prompt: string }) => Promise<unknown>; linked?: string[] } = {}) => {
+const setup = (o: { ask?: (i: { prompt: string }) => Promise<unknown>; linked?: string[]; now?: number } = {}) => {
   const dir = tmp();
   let r = 0;
   const store = new RecordStore({ dir: path.join(dir, 'tracking') });
   const ask = o.ask ? vi.fn(o.ask) : undefined;
   const coach = new MealCoach({
-    dir: path.join(dir, 'meals'), recipesDir: path.join(dir, 'recipes'), nowMs: () => at(7, 6), profiles: () => PEOPLE, noOpenRide: () => true, ask,
+    dir: path.join(dir, 'meals'), recipesDir: path.join(dir, 'recipes'), nowMs: () => o.now ?? at(7, 6), profiles: () => PEOPLE, noOpenRide: () => true, ask,
     store, linked: (id) => (o.linked ?? ['max', 'lena']).includes(id), trainingDays: () => [0, 2], random: () => ((r = (r * 9301 + 49297) % 233280) / 233280),
   });
   coach.setSettings('max', ON);
@@ -158,12 +158,12 @@ describe('planning with favourites', () => {
   it('leads the shortlist with favourites of the people eating, each at most once in the week', async () => {
     const restore = unlockAt(5);
     try {
-      const { coach, store } = setup({ ask: chooserAi });
+      const { coach, store } = setup({ ask: chooserAi, now: at(9, 6) });
       await fill(coach, 60);
       const favs = [7, 21, 40].map((n) => idByTitle(coach, `Sammlung Pfanne ${n}`)!.id);
       store.putMany('max', favs.map((f) => fav(f, 1000)), 'remote');
       store.putMany('lena', favs.slice(0, 1).map((f) => fav(f, 1000)), 'remote');
-      await coach.replan('max', week);
+      await coach.tick(); // Monday: the first tick plans the whole week
       // A leftover meal (cook once, eat twice) is the same pot, not a second cooking.
       const ids = planOf(coach).meals.filter((m) => !m.reuseOf).map((m) => m.dish.recipeId);
       for (const f of favs) expect(ids.filter((x) => x === f)).toHaveLength(1);
@@ -173,11 +173,11 @@ describe('planning with favourites', () => {
   it('tells the AI which options are favourites', async () => {
     const restore = unlockAt(5);
     try {
-      const { coach, store, ask } = setup({ ask: chooserAi });
+      const { coach, store, ask } = setup({ ask: chooserAi, now: at(9, 6) });
       await fill(coach, 40);
       const f = idByTitle(coach, 'Sammlung Pfanne 12')!.id;
       store.putMany('max', [fav(f, 1000)], 'remote');
-      await coach.replan('max', week);
+      await coach.tick(); // Monday: the first tick plans the whole week
       const prompt = ask!.mock.calls.map(([i]) => i.prompt).find((p) => p.includes('<mahlzeiten-nur-daten>') && p.includes('"rezepte":[{"id"'))!;
       expect(prompt).toContain('"favorit":true');
       expect(prompt).toContain(`"id":"${f}","titel":"Sammlung Pfanne 12"`);
@@ -185,12 +185,12 @@ describe('planning with favourites', () => {
   });
 
   it('are candidates below the unlock, like own recipes, within the same cap', async () => {
-    const { coach, store } = setup({ ask: async () => ({ mahlzeiten: [] }) });
+    const { coach, store } = setup({ ask: async () => ({ mahlzeiten: [] }), now: at(9, 6) });
     await fill(coach, 30);
     expect(coach.recipes()!.unlocked()).toBe(false);
     const f = [3, 9].map((n) => idByTitle(coach, `Sammlung Pfanne ${n}`)!.id);
     store.putMany('lena', f.map((x) => fav(x, 1000)), 'remote');
-    await coach.replan('max', week);
+    await coach.tick(); // Monday: the first tick plans the whole week
     const real = planOf(coach).meals.filter((m) => m.dish.source === 'rezept');
     expect(real.map((m) => m.dish.recipeId).sort()).toEqual([...f].sort());
   });
@@ -204,7 +204,7 @@ describe('In den Plan', () => {
   it('replaces the meal with the recipe, like a swap, and answers in the record', async () => {
     const { coach, store } = setup({ ask: async () => ({}) });
     await fill(coach, 6);
-    await coach.replan('max', week);
+    await coach.replan('max');
     const r = idByTitle(coach, 'Sammlung Pfanne 4')!.id;
     store.putMany('max', [placeRec('place-aaaa0001', { recipeId: r })], 'remote');
     await coach.tick();
@@ -221,8 +221,8 @@ describe('In den Plan', () => {
     const { coach, store } = setup({ ask: async () => ({}) });
     await fill(coach, 3);
     coach.setSettings('lena', { ...ON, diet: 'vegan', dislikes: ['Karotten'] });
-    await coach.replan('max', week);
-    await coach.replan('max', '2026-11-02');
+    await coach.replan('max');
+    await coach.replan('max');
     const r = idByTitle(coach, 'Sammlung Pfanne 1')!.id;
     store.putMany('max', [
       placeRec('place-aaaa0002', { recipeId: r }), placeRec('place-aaaa0003', { recipeId: r, week: '2026-11-02', meal: '1-mittag' }),
@@ -237,7 +237,7 @@ describe('In den Plan', () => {
   it('does not show a person another person\'s link recipe', async () => {
     const { coach, store } = setup({ ask: async () => ({}) });
     await fill(coach, 1, 'link', 'lena', 'Lenas');
-    await coach.replan('max', week);
+    await coach.replan('max');
     store.putMany('max', [placeRec('place-aaaa0006', { recipeId: idByTitle(coach, 'Lenas Pfanne 1')!.id })], 'remote');
     await coach.tick();
     expect(result(store, 'place-aaaa0006')).toBe('gone');
@@ -246,7 +246,7 @@ describe('In den Plan', () => {
   it('adds a meal into a free slot, eaten by the people of the plan', async () => {
     const { coach, store } = setup({ ask: async () => ({}) });
     await fill(coach, 2);
-    await coach.replan('max', week);
+    await coach.replan('max');
     // A day the plan left free (the plan is the coach's own state, so the test reaches in once).
     const own = (coach as unknown as { load(): { plans: Record<string, { meals: { day: number; slot: string }[] }> } }).load().plans[week]!;
     own.meals = own.meals.filter((m) => !(m.day === 4 && m.slot === 'abend'));
