@@ -127,6 +127,12 @@ Fällt weg: Tage/Einkauf-Umschalter, „In den Plan“-Sheet. Nicht dabei: neue 
 Fällt weg: Panda und Maus auf dem Rad. Nicht dabei: neue Posen-Animationen.
 
 ## Parkplatz
+- Aus Rollender Essensplan 19.11.:
+  - Der Hinweis „Bo war gerade nicht erreichbar“ bleibt an einer Woche stehen, auch wenn ein späteres Auffüllen gelingt.
+  - Häkchen bei kleinen Mengen (EL, TL, Prise) wandern beim Neuplanen nicht zu den neuen Gerichten.
+  - Nach „Neu planen“ kann sich der Häkchen-Stand von Einträgen vor morgen ändern (nur Anzeige).
+  - Nach „Tauschen“, Chat-Änderung oder „In den Plan“ wandern Gekauftes nicht zum neuen Gericht.
+  - `tests/web/app/recipe-page.test.tsx` schlägt im vollen Lauf gelegentlich fehl, einzeln grün.
 - Aus Kraft-Feedback 10.11.:
   - Wochentage als feste Einstellung (Freitag gut, Wochenende lang, Montag kurz) statt freier Wunsch-Regel; prüfen, ob der Planer `wish`-Regeln für Tage liest.
   - Der Ausblick nutzt Hevy-Titel statt der eigenen Übungsnamen.
