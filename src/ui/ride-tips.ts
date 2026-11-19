@@ -8,6 +8,8 @@ export const TIP_SHOW_S = 15;
 const HISTORY_S = 60;
 const LOW_CADENCE = 60;
 const HARD_FRACTION = 0.75;
+// Own setting: personal tips from the coach come after minute 10.
+const PERSONAL_FROM_S = 600;
 
 export type Tip = { id: string; text: string };
 export type TipContext = {
@@ -32,6 +34,8 @@ export const pickTip = ({ engine, session, cadences, zones }: TipContext, given:
     !hold && zones.length > 0 && zones.every((z) => z > stepTargetZone(step)) && { id: `hr-${stepIndex}`, text: 'Puls über dem Ziel: ruhig ausatmen, Schultern locker.' },
     cadences.length > 0 && cadences.every((c) => c < LOW_CADENCE) && { id: `cadence-${Math.floor(t / 600)}`, text: 'Dreh etwas schneller, das nimmt Druck aus den Beinen.' },
     !!next && stepRemainingS <= 90 && stepRemainingS > 30 && stepFtpFraction(next) >= HARD_FRACTION && stepFtpFraction(next) >= stepFtpFraction(step) + 0.15 && { id: `prepare-${stepIndex}`, text: 'Gleich wird es härter: jetzt noch locker treten und trinken.' },
+    // The coach's own tips: after the body tips, never early and never in a hard section.
+    ...(t >= PERSONAL_FROM_S && !hard ? (session.tips ?? []).map((text, i): Tip => ({ id: `coach-${i}`, text })) : []),
     hard && { id: 'hard-cadence', text: 'Im harten Block helfen meist 80 bis 95 Umdrehungen.' },
     left <= 300 && left > 120 && { id: 'final', text: 'Fast geschafft, nur noch wenige Minuten.' },
     t >= total / 2 && t < total / 2 + 120 && { id: 'half', text: 'Halbzeit, du liegst gut im Plan.' },

@@ -549,3 +549,26 @@ test('a coach session with a fitting hold keeps it, an unfitting hold is dropped
 test('the prompt tells the coach how to plan a heart rate hold', () => {
   expect(SYSTEM_PROMPT).toContain('hrHold: true');
 });
+test('the coach puts at most two short tips on the session and the alternatives', async () => {
+  const long = 'x'.repeat(200);
+  const alt = { session: { id: 'alt', name: 'Alt', steps: good.steps }, why: 'Anders.' };
+  const c = make(async () => answer({ rideTips: [long, 'b', 'c'], alternatives: [alt] })); afterRamp(c);
+  await c.refresh('pa');
+  const s = c.state('pa');
+  expect(s.next.source).toBe('claude');
+  expect(s.next.session.tips).toEqual(['x'.repeat(120), 'b']);
+  expect(s.alternatives?.[0].session.tips).toEqual(['x'.repeat(120), 'b']);
+});
+test('without tips from the coach the session has no tips', async () => {
+  const c = make(); afterRamp(c);
+  await c.refresh('pa');
+  expect(c.state('pa').next.session.tips).toBeUndefined();
+});
+test('blank tips are dropped', async () => {
+  const c = make(async () => answer({ rideTips: ['  ', 'ok'] })); afterRamp(c);
+  await c.refresh('pa');
+  expect(c.state('pa').next.session.tips).toEqual(['ok']);
+});
+test('the prompt tells the coach about rideTips', () => {
+  expect(SYSTEM_PROMPT).toContain('rideTips');
+});

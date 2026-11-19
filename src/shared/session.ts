@@ -5,7 +5,7 @@ const stepSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('erg'), ftpFraction: z.number().positive(), hrHold: z.boolean().optional(), ...base }),
   z.object({ kind: z.literal('grade'), gradePct: z.number(), scale: z.number().positive(), sudden: z.boolean().optional(), ...base }),
 ]);
-export const sessionSchema = z.object({ id: z.string().min(1), name: z.string(), description: z.string().optional(), steps: z.array(stepSchema).min(1) });
+export const sessionSchema = z.object({ id: z.string().min(1), name: z.string(), description: z.string().optional(), tips: z.array(z.string()).max(2).optional(), steps: z.array(stepSchema).min(1) });
 
 export type Step = z.infer<typeof stepSchema>;
 export type Session = z.infer<typeof sessionSchema>;
