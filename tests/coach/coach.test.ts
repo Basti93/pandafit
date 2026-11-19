@@ -510,3 +510,21 @@ test('notes are capped at 50 per profile and 500 characters each', () => {
   expect(notes[0]!.text.startsWith('n10 ')).toBe(true);
   expect(notes[49]!.text).toHaveLength(500);
 });
+
+test('an answer without change adds no change note', async () => {
+  const c = make(async () => answer({ change: undefined })); afterRamp(c);
+  const before = c.state('pa').changes.length;
+  await c.refresh('pa');
+  expect(c.state('pa').next.source).toBe('claude');
+  expect(c.state('pa').changes.length).toBe(before);
+});
+test('an answer with a blank change adds no change note', async () => {
+  const c = make(async () => answer({ change: '   ' })); afterRamp(c);
+  const before = c.state('pa').changes.length;
+  await c.refresh('pa');
+  expect(c.state('pa').next.source).toBe('claude');
+  expect(c.state('pa').changes.length).toBe(before);
+});
+test('the prompt asks to leave change out when nothing changes', () => {
+  expect(SYSTEM_PROMPT).toContain('Lass change weg, wenn sich an der Einheit nichts ändert.');
+});
