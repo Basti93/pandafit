@@ -8,6 +8,7 @@ import {
   SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf,
   type Meal, type MealPlan, type MealState, type Slot,
 } from '../../shared/meals';
+import { MEAL_OVER_MS, mealOver } from '../../shared/meal-window';
 import { localDayKey } from '../../shared/dates';
 import { longDateLabel, longDayOfKey } from '../../tracking/ui/labels';
 import { cap, numberWord } from '../../tracking/ui/week-path';
@@ -45,15 +46,8 @@ export const listAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0
 
 // ---- Which meal is next ----
 
-/** A meal of today counts as "dran" until two hours after its time. */
-export const MEAL_OVER_MS = 2 * 3_600_000;
-
-export function isOver(slot: Slot, nowMs: number): boolean {
-  const [h, m] = SLOT_TIME[slot].split(':').map(Number);
-  const at = new Date(nowMs);
-  at.setHours(h!, m!, 0, 0);
-  return nowMs >= at.getTime() + MEAL_OVER_MS;
-}
+export { MEAL_OVER_MS };
+export const isOver = mealOver;
 
 const inSlotOrder = (meals: Meal[]): Meal[] => [...meals].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
 
