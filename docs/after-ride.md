@@ -92,3 +92,9 @@ The film window floats over a fullscreen video on every Space, but the main wind
 - Drive the position from the ride itself, not from a UI timer: the service already has every second's power, so it (or the UI from `engine.rideElapsedS`) can integrate the distance without gaps.
 - At least: integrate the full gap since the last tick instead of capping at 5 s, and set `backgroundThrottling: false` on the main window (`src/main/index.ts`).
 - Needs `src/main/**` or `src/service/**`, so it goes with the next restart, not during a ride.
+
+## BLE-Verbindung hängt nach Zeitüberschreitung (19.11.2026)
+
+- Symptom: Nach `connect-try` für hr um 20:08:08 kam kein Ergebnis mehr. Danach gab es keine Verbindungsversuche mehr für hr und clicker, bis die App neu startete.
+- Vermutete Ursache: `src/service/ble/noble-adapter.ts` wartet im catch auf `peripheral.disconnectAsync()` oder in `find()` auf `stopScanningAsync()`, ohne Zeitgrenze. Wenn das nicht zurückkommt, bleibt `busy` true und die Warteschlange steht.
+- Fix: Zeitgrenze für disconnectAsync und stopScanningAsync. Test: hängendes disconnectAsync blockiert die nächsten Versuche nicht.
