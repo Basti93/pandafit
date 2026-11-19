@@ -1,9 +1,10 @@
 process.env.TZ = 'Europe/Berlin'; // the clock-change test must cross a real change on any machine
 import { describe, expect, it } from 'vitest';
+import { windowShoppingList } from '../../src/shared/meal-list';
 import { addWeeks, type Dish, type Meal, type Slot } from '../../src/shared/meals';
 import {
-  askedSentence, eatersLine, favSentence, headSentence, lastWeekRows, mealSentence, nextMeal, nextWeekRows, openSentence, pastDaysRows, placeButton, placeDefault, placedSentence,
-  mealKicker, recipeSentence, restOfWeek, rowSentence, shoppingSentence, shoppingWeek, slotKicker, todayMeals, type Week,
+  askedSentence, eatersLine, favSentence, headSentence, lastWeekRows, mealSentence, nextMeal, nextWeekRows, openCount, openSentence, pastDaysRows, placeButton, placeDefault, placedSentence,
+  mealKicker, recipeSentence, restOfWeek, rowSentence, shoppingSentence, slotKicker, todayMeals, type Week,
 } from '../../src/web/essen/meals-view';
 
 const MO = 0, MI = 2, SA = 5, SO = 6;
@@ -104,10 +105,26 @@ describe('Essen in words', () => {
   });
   it('the tiles and the list count calmly', () => {
     expect([favSentence(0), favSentence(1), favSentence(2), openSentence(11), openSentence(1), openSentence(0)]).toEqual(['Alle Rezepte durchsuchen', '1 Favorit', '2 Favoriten', '11 Dinge offen', '1 Ding offen', 'Alles ist erledigt']);
-    expect([shoppingSentence(2), shoppingSentence(1)]).toEqual(['Die Liste reicht für die ganze Woche und für zwei Personen.', 'Die Liste reicht für die ganze Woche und für eine Person.']);
-    expect(shoppingWeek(weeks, at(SA, 9, 0))!.plan.week).toBe(NEXT);
-    expect(shoppingWeek(weeks, at(MI, 9, 0))!.plan.week).toBe(THIS);
     expect(recipeSentence({ minutes: 30, proteinG: 25, keepsDays: 2 })).toBe('In 30 Minuten fertig, mit viel Eiweiß, und es hält sich zwei Tage.');
     expect(recipeSentence({ minutes: 10, proteinG: 8, keepsDays: 0 })).toBe('In 10 Minuten fertig, am besten frisch.');
+  });
+});
+
+describe('the shopping list over the next days', () => {
+  const tofu = (title: string) => dish(title, { ingredients: [{ name: 'Tofu natur', amount: 100, unit: 'g', section: 'Kühlregal' }] });
+  const m = (day: number, slot: Slot, title: string, eaters = ['pa', 'pb']): Meal => ({ ...meal(day, slot, title), dish: tofu(title), eaters });
+  const A = '2026-11-16', B = '2026-11-23';
+  const ws = [week(A, [m(4, 'abend', 'Pfanne')]), week(B, [m(0, 'abend', 'Pfanne'), m(3, 'abend', 'Pfanne')])];
+  const d19 = (h: number) => new Date(2026, 10, 19, h).getTime(); // a Thursday
+  it('says when the list ends and for whom; in the evening it starts tomorrow', () => {
+    expect(shoppingSentence(windowShoppingList(ws, d19(9)), d19(9))).toBe('Die Liste reicht bis Montag und ist für zwei Personen.');
+    expect(shoppingSentence(windowShoppingList(ws, d19(21)), d19(21))).toBe('Die Liste beginnt morgen, reicht bis Donnerstag und ist für zwei Personen.');
+    expect(shoppingSentence(windowShoppingList([week(A, [m(4, 'abend', 'Pfanne')])], d19(9)), d19(9))).toBe('Die Liste reicht bis Freitag und ist für zwei Personen.');
+    expect(shoppingSentence(windowShoppingList([{ ...ws[0]!, plan: { ...ws[0]!.plan, people: [ws[0]!.plan.people[0]!] } }], d19(9)), d19(9))).toBe('Die Liste reicht bis Freitag und ist für eine Person.');
+    expect(shoppingSentence(windowShoppingList([week(A, [])], d19(9)), d19(9))).toBe('');
+  });
+  it('counts the open rows of both weeks', () => {
+    expect(openCount(ws, d19(9))).toBe(1);
+    expect(openCount([], d19(9))).toBe(0);
   });
 });

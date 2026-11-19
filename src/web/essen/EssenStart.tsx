@@ -6,7 +6,7 @@ import type { MealData } from '../MealsScreen';
 import { MealImage } from './MealImage';
 import {
   favSentence, headKicker, headSentence, lastWeekRows, mealKicker, mealSentence, NO_PLAN, nextMeal, nextWeekRows, openCount, openSentence, pastDaysRows, pastSentence,
-  restOfWeek, rowSentence, shoppingWeek, slotKicker, todayMeals, type DayRow, type MealAt,
+  restOfWeek, rowSentence, slotKicker, todayMeals, type DayRow, type MealAt,
 } from './meals-view';
 import { EatersButton } from './RecipeParts';
 
@@ -61,7 +61,6 @@ export function EssenStart({ data, nowMs, me, onMeal, onShopping, onRecipes, onC
   const next = nextMeal(weeks, nowMs);
   const current = weeks.find((w) => w.plan.week === weekOf(nowMs));
   const trainingDay = !!current?.plan.trainingDays.includes(dayIndex(nowMs));
-  const shopping = shoppingWeek(weeks, nowMs);
   const rest = today.filter((t) => !(next?.when === 'heute' && t.week === next.week && t.meal === next.meal));
   return (
     <div className="tk-screen">
@@ -89,7 +88,7 @@ export function EssenStart({ data, nowMs, me, onMeal, onShopping, onRecipes, onC
       <DaysCard label="Nächste Woche" rows={nextWeekRows(weeks, nowMs)} onDay={setDay} />
       <div className="tk-tiles">
         {recipes}
-        {shopping && <RowCard icon="einkauf" title="Einkauf" sub={openSentence(openCount(shopping))} onClick={onShopping} />}
+        <RowCard icon="einkauf" title="Einkauf" sub={openSentence(openCount(weeks, nowMs))} onClick={onShopping} />
       </div>
       <BoBubble portrait="mini" actions={<button type="button" className="secondary" onClick={onChat}>Plan ändern</button>}>{BO_LINES.mealsChange}</BoBubble>
       {lastWeek}

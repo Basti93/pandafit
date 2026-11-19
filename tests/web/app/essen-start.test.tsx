@@ -103,10 +103,11 @@ describe('Essen start page', () => {
     expect(screen.getByRole('region', { name: 'Nächste Mahlzeit' }).textContent).toContain('Donnerstag · Mittagessen um 13 Uhr');
   });
 
-  it('Plan ändern opens the message sheet and writes for the week Einkauf shows first', async () => {
-    const sat = at(16, 10);
-    const nextWeek = addWeeks(weekOf(sat), 1);
-    const a = await boot({ account: 'anna', seed: [planFor(sat, [meal(dayIndex(sat), 'abend', 'Tomatensuppe')]), planFor(at(18, 10), [meal(0, 'abend', 'Haferbrei')])], now: sat });
+  it('Plan ändern opens the message sheet and writes for the week of the first day the list shows', async () => {
+    // Sunday evening: dinner is over, the list starts on Monday of next week.
+    const sun = at(17, 21, 30);
+    const nextWeek = addWeeks(weekOf(sun), 1);
+    const a = await boot({ account: 'anna', seed: [planFor(sun, [meal(dayIndex(sun), 'abend', 'Tomatensuppe')]), planFor(at(18, 10), [meal(0, 'abend', 'Haferbrei')])], now: sun });
     await goEssen();
     fireEvent.click(await screen.findByRole('button', { name: 'Plan ändern' }));
     const dialog = await screen.findByRole('dialog', { name: 'Plan ändern' });

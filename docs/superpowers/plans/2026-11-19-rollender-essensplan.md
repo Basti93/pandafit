@@ -40,6 +40,12 @@
 9. **Stock in the planner:** bought, not yet used items (`stockOf`) go as a data block `vorrat` into the AI prompts and move fitting recipes to the front of the shortlist and the rule plan.
 10. **Own items:** shown from all week records in view. A new one goes into the week of the last planned day of the window, so it lives longest.
 11. **Essen start page:** "Der Rest der Woche" and "Nächste Woche" become one card "Die nächsten Tage" (tomorrow through the last planned day). "Diese Woche bisher" and "Letzte Woche" stay. The coach page week switcher (training, commit 2d4d2ef) is not affected.
+12. **Commits:** Task 2 and Task 3 share one commit, because `stockOf` and `retieStock` sit in the same file as the list and share its need and cover helpers.
+13. **Stock count:** `stockOf` sums the cover keys of an entry from `from` on, also when the dish on that key changed meanwhile (a swap keeps the cover on the key, decision 7). So a swap does not lose bought amounts.
+14. **Chat week:** "Plan ändern" writes for the week of the first day the list shows (`firstWeek`: today until its last meal is over, then tomorrow). The old rule "from Saturday next week" is gone with the Saturday plan.
+15. **Replan records:** the newest `LINK_KEEP` replan records are kept in `exportAll` for every synced profile, not in `keepRecipeRecords`, which only runs with a recipe folder.
+16. **`MealCoach.setItem`** takes an optional `cover` (used by tests and by later callers that know it). The `meals-item` message from the Mac does not send one and keeps covering its whole week.
+17. **Test clock:** the old tests that planned "the coming week" on Saturday 06:00 now run on Monday 09.11.2026 06:00, so the first tick plans the whole current week.
 
 ## Review Focus
 

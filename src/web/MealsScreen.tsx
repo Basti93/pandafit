@@ -10,7 +10,7 @@ import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { RowCard, Sheet } from '../tracking/ui/kit';
 import { MealImage } from './essen/MealImage';
-import { lastMealWeek, mealDayOf, mealWeeks, shoppingWeek, WISH_SENT, type MealAt, type Week } from './essen/meals-view';
+import { lastMealWeek, mealDayOf, mealWeeks, firstWeek, WISH_SENT, type MealAt, type Week } from './essen/meals-view';
 import { KeptPage } from './essen/EssenPage';
 import { EssenStart } from './essen/EssenStart';
 import { MealPage } from './essen/MealPage';
@@ -169,7 +169,7 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
   const [page, setPage] = useState<Page>(() => (entry ? { name: 'meal', at: entry, from: 'heute' } : { name: 'start' }));
   useEffect(() => { if (entry) onEntryDone?.(); }, [entry, onEntryDone]);
   const t = now();
-  const first = shoppingWeek(weeks, t); // the week Einkauf shows first, also the one "Plan ändern" writes for
+  const first = firstWeek(weeks, t); // the week of the first day the list shows, also the one "Plan ändern" writes for
   const [chatOpen, setChatOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const chat = useMemo(() => mealChats(records), [records]);
@@ -179,7 +179,7 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
     const at = now();
     await port.put({ kind: 'mealplan', id: newLinkId(at), updatedMs: at, deleted: false, body: { url, atMs: at, result: null, answeredMs: null } }).catch(() => { /* the field is empty again; nothing else is lost */ });
   };
-  /** A new record of its own: only the Mac writes it again, with the reply. The week is the one Einkauf shows first. */
+  /** A new record of its own: only the Mac writes it again, with the reply. The week is the one of the first day the list shows. */
   const say = async (text: string) => {
     const at = now();
     await port.put({ kind: 'mealplan', id: newChatId(at), updatedMs: at, deleted: false, body: { week: first?.plan.week, text, atMs: at, reply: null, answeredMs: null, changed: [] } }).catch(() => { /* the field stays empty; nothing else is lost */ });

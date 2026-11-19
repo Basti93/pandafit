@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
-import { addWeeks, dayIndex, itemKey, weekOf } from '../../../src/shared/meals';
+import { addWeeks, DAY_LONG, dayIndex, itemKey, weekOf } from '../../../src/shared/meals';
 import type { LiveSocket } from '../../../src/web/live';
 import { ShoppingPage } from '../../../src/web/essen/ShoppingPage';
 import { NOW, DAY, json, boot, openMeal, pill } from './helpers';
@@ -203,25 +203,36 @@ describe('Essen on the phone', () => {
     expect(screen.getByRole('button', { name: 'Doch kaufen' })).toBeTruthy();
   });
 
-  it('from Saturday the shopping list opens on next week when its plan is there, and the switch back works', async () => {
+  const tofuWeeks = () => {
     const next = addWeeks(week, 1);
-    const nextPlan: TrackedRecord = { ...mealPlan, id: `week-${next}`, body: { ...(mealPlan.body as object), week: next, meals: [{ day: 0, slot: 'abend', dish: { ...dish('Nudeln'), ingredients: [{ name: 'Nudeln', amount: 100, unit: 'g', section: 'Vorrat' }] }, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false }] } };
-    const a = await boot({ account: 'anna', seed: [mealPlan, nextPlan], now: NOW + ((5 - today + 7) % 7) * DAY });
+    const tofu = { ...dish('Tofupfanne'), ingredients: [{ name: 'Tofu natur', amount: 100, unit: 'g', section: 'Kühlregal' }] };
+    const meal = (day: number) => ({ day, slot: 'abend', dish: tofu, reuseOf: null, eaters: ['pa', 'pb'], takeAlong: false });
+    const planOf = (w: string, day: number): TrackedRecord => ({ ...mealPlan, id: `week-${w}`, body: { ...(mealPlan.body as object), week: w, meals: [meal(day)] } });
+    return { next, seed: [planOf(week, today), planOf(next, 0)] };
+  };
+
+  it('Einkauf has no week switch and shows both weeks in one list', async () => {
+    await boot({ account: 'anna', seed: tofuWeeks().seed });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Einkauf/ }));
-    expect(screen.getByRole('button', { name: 'Nächste Woche' }).getAttribute('aria-pressed')).toBe('true');
-    expect(await screen.findByRole('checkbox', { name: 'Nudeln gekauft' })).toBeTruthy();
-    // A tick on this page lands in the record of the week shown.
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Nudeln gekauft' }));
+    expect(screen.queryByRole('group', { name: 'Woche' })).toBeNull();
+    expect(await screen.findByText('2 Packungen à 200 g')).toBeTruthy();
+  });
+
+  it('a tick writes the cover into both week records', async () => {
+    const { next, seed } = tofuWeeks();
+    const a = await boot({ account: 'anna', seed });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Einkauf/ }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Tofu natur gekauft' }));
     await waitFor(async () => {
       const s = await openIdb('anna', a.factory);
-      const rec = (await s.list('mealplan')).find((r) => r.id === `state-${next}`);
+      const all = await s.list('mealplan');
       s.close();
-      expect((rec?.body as { items?: Record<string, { state: string }> } | undefined)?.items?.[itemKey('Nudeln', 'g')]?.state).toBe('gekauft');
+      const cover = (w: string) => (all.find((r) => r.id === `state-${w}`)?.body as { items?: Record<string, { cover?: Record<string, number> }> } | undefined)?.items?.[itemKey('Tofu natur', 'g')]?.cover;
+      expect(cover(week)).toEqual({ [`${today}-abend`]: 200 });
+      expect(cover(next)).toEqual({ '0-abend': 200 });
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Diese Woche' }));
-    expect(await screen.findByText('Skyr')).toBeTruthy();
-    expect(screen.queryByRole('checkbox', { name: 'Nudeln gekauft' })).toBeNull();
   });
 
   it('Einkauf is a page with a back pill; Essen comes back', async () => {
@@ -229,7 +240,7 @@ describe('Essen on the phone', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Einkauf/ }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Einkauf' })).toBeTruthy();
-    expect(screen.getByText('Die Liste reicht für die ganze Woche und für zwei Personen.')).toBeTruthy();
+    expect(screen.getByText(`Die Liste reicht bis ${DAY_LONG[(today + 1) % 7]} und ist für zwei Personen.`)).toBeTruthy();
     fireEvent.click(pill('Essen'));
     expect(await screen.findByRole('region', { name: 'Essen' })).toBeTruthy();
   });
@@ -243,7 +254,7 @@ describe('Essen on the phone', () => {
     await boot({ account: 'anna', seed: [mealPlan] });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Einkauf.*(Dinge? offen|Alles ist erledigt)$/ }));
-    expect(screen.getByText('Die Liste reicht für die ganze Woche und für zwei Personen.')).toBeTruthy();
+    expect(screen.getByText(`Die Liste reicht bis ${DAY_LONG[(today + 1) % 7]} und ist für zwei Personen.`)).toBeTruthy();
     // The field to add comes first; "Menge (optional)" says it may stay empty.
     const add = screen.getByLabelText('Etwas dazuschreiben');
     expect(screen.getByPlaceholderText('Menge (optional)')).toBeTruthy();
