@@ -407,6 +407,17 @@ export function readPlaceRequest(id: string, body: unknown): PlaceRequest | null
   if (!isPlaceRecordId(id) || !isObj(body) || !isWeekKey(body.week) || typeof body.meal !== 'string' || !parseMealKey(body.meal) || typeof body.recipeId !== 'string' || !RECIPE_ID.test(body.recipeId) || !num(body.atMs)) return null;
   return { id, week: body.week, meal: body.meal, recipeId: body.recipeId, atMs: body.atMs, result: PLACE_STATES.includes(body.result as string) ? body.result as PlaceState : null, answeredMs: num(body.answeredMs) ? body.answeredMs : null };
 }
+// ---- "Neu planen" from the phone: a request record, answered once by the coach ----
+
+/** A person's wish to plan again from tomorrow; written by the device, answered once more by the coach with `answeredMs`. */
+export type ReplanRequest = { id: string; atMs: number; answeredMs: number | null };
+export const isReplanRecordId = (id: string): boolean => /^replan-[a-z0-9]{4,40}$/.test(id);
+export const newReplanId = (nowMs: number, random: () => number = Math.random): string => `replan-${Math.round(nowMs).toString(36)}${Math.floor(random() * 2 ** 40).toString(36).padStart(8, '0')}`;
+export function readReplanRequest(id: string, body: unknown): ReplanRequest | null {
+  if (!isReplanRecordId(id) || !isObj(body) || !num(body.atMs)) return null;
+  return { id, atMs: body.atMs, answeredMs: num(body.answeredMs) ? body.answeredMs : null };
+}
+
 export const placeAnswer = (r: PlaceState | null): string => {
   switch (r) {
     case 'placed': return 'Das Rezept ist jetzt im Plan.';

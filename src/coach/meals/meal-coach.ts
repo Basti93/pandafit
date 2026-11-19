@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   addWeeks, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
-  isFavRecordId, isLinkRecordId, isPlaceRecordId, parseMealKey, readPlaceRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
+  isFavRecordId, isLinkRecordId, isPlaceRecordId, isReplanRecordId, parseMealKey, readPlaceRequest, readReplanRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
   type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
@@ -309,6 +309,37 @@ export class MealCoach {
     return any;
   }
 
+  /**
+   * "Neu planen" requests from phones. Any number of open ones are answered by one replan, once no ride is open and no planning run is going.
+   * Also in quiet hours: a person asked for it.
+   */
+  private async answerReplans(): Promise<boolean> {
+    const { store } = this.deps;
+    if (!store || this.planning || !this.deps.noOpenRide()) return false;
+    const open: { profile: string; r: TrackedRecord; atMs: number }[] = [];
+    try {
+      for (const p of this.deps.profiles()) {
+        if (!this.synced(p.id)) continue;
+        for (const r of store.all(p.id, 'mealplan')) {
+          if (r.deleted || !isReplanRecordId(r.id)) continue;
+          const req = readReplanRequest(r.id, r.body);
+          if (req && req.answeredMs === null) open.push({ profile: p.id, r, atMs: req.atMs });
+        }
+      }
+      if (open.length === 0) return false;
+      await this.replan([...open].sort((a, b) => b.atMs - a.atMs)[0]!.profile);
+      const now = this.deps.nowMs();
+      const touched = new Set<string>();
+      for (const { profile, r } of open) {
+        store.putMany(profile, [{ ...r, updatedMs: Math.max(now, r.updatedMs + 1), body: { ...(isObj(r.body) ? r.body : {}), answeredMs: now } }]);
+        touched.add(profile);
+      }
+      this.exportAll();
+      try { this.deps.onExport?.([...touched]); } catch { /* a listener never matters here */ }
+      return true;
+    } catch { return false; }
+  }
+
   /** A person deleted a recipe from their list (the record has a tombstone): the recipe goes too. */
   private removeDeletedRecipes(owner: string, have: TrackedRecord[]): void {
     const store = this.recipes();
@@ -374,6 +405,7 @@ export class MealCoach {
       this.importStates();
       await this.answerLinks();
       this.answerPlacements();
+      await this.answerReplans();
       let touched = this.exportAll();
       // Messages from phones, and those typed here during a ride, once no ride is open.
       if (await this.answerPending()) touched = [...new Set([...touched, ...this.exportAll()])];
@@ -731,6 +763,9 @@ export class MealCoach {
         const recipes = this.synced(p.id) ? this.recipes() : null;
         if (recipes) this.keepRecipeRecords(p.id, have, recipes, wanted, keep);
         if (this.synced(p.id)) {
+          // The newest replan requests stay, like link requests; older ones are tombstoned.
+          const replans = have.flatMap((r) => { const q = !r.deleted && isReplanRecordId(r.id) ? readReplanRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
+          for (const q of replans.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
           for (const w of weeks) {
             wanted.set(planRecordId(w), { ...d.plans[w], you: p.id });
             wanted.set(stateRecordId(w), d.states[w] ?? EMPTY_STATE);

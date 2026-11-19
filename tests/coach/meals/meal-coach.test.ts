@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MealCoach, NOTICE_NO_AI, usualTrainingDays } from '../../../src/coach/meals/meal-coach';
 import { RecordStore } from '../../../src/coach/tracking/store';
 import { tickWrites, windowShoppingList } from '../../../src/shared/meal-list';
-import { cookPortions, EMPTY_STATE, itemKey, mealKey, readMealPlan, shoppingList, SLOTS, type MealSettings } from '../../../src/shared/meals';
+import { readReplanRequest, cookPortions, EMPTY_STATE, itemKey, mealKey, readMealPlan, shoppingList, SLOTS, type MealSettings } from '../../../src/shared/meals';
 import type { MealAnswer } from '../../../src/coach/meals/prompt';
 
 const PEOPLE = [{ id: 'max', name: 'Max' }, { id: 'lena', name: 'Lena', avatar: '🦊' }];
@@ -452,5 +452,53 @@ describe('Neu planen', () => {
     const l = windowShoppingList(weeks(), clock.now);
     const row = [...l.sections.flatMap((x) => x.items), ...l.have].find((x) => x.key === key)!;
     expect(row.state).toBe('gekauft');
+  });
+});
+
+describe('Neu planen vom Handy', () => {
+  const rec = (id: string, atMs: number, answeredMs: number | null = null) => ({ kind: 'mealplan', id, updatedMs: atMs, deleted: false, body: { atMs, answeredMs } }) as const;
+  const answered = (store: RecordStore, id: string) => readReplanRequest(id, store.all('max', 'mealplan').find((r) => r.id === id)?.body)?.answeredMs;
+
+  it('a replan record from the phone is answered once: new plan from tomorrow, answeredMs set', async () => {
+    const { coach, clock, store } = setup({ now: at(19, 9), linked: ['max'] });
+    coach.setSettings('max', ON());
+    await coach.tick();
+    const created = coach.view('max').weeks[1]!.plan.createdMs;
+    clock.now += 60_000;
+    store.putMany('max', [rec('replan-abcd1234', clock.now)], 'remote');
+    await coach.tick();
+    const after = coach.view('max').weeks[1]!.plan.createdMs;
+    expect(after).not.toBe(created);
+    expect(answered(store, 'replan-abcd1234')).not.toBeNull();
+    clock.now += 60_000;
+    await coach.tick();
+    expect(coach.view('max').weeks[1]!.plan.createdMs).toBe(after);
+  });
+
+  it('two open requests make one replan', async () => {
+    const { coach, clock, store, ask } = setup({ now: at(19, 9), linked: ['max'], ask: async () => answer(() => ({})) });
+    coach.setSettings('max', ON());
+    await coach.tick();
+    ask!.mockClear();
+    clock.now += 60_000;
+    store.putMany('max', [rec('replan-abcd0001', clock.now - 10), rec('replan-abcd0002', clock.now)], 'remote');
+    await coach.tick();
+    expect(ask!.mock.calls.filter(([i]) => i.prompt.includes('mahlzeiten-nur-daten'))).toHaveLength(2); // two week parts, once each
+    expect(answered(store, 'replan-abcd0001')).not.toBeNull();
+    expect(answered(store, 'replan-abcd0002')).not.toBeNull();
+  });
+
+  it('waits while a ride is open, then answers', async () => {
+    const { coach, clock, store, ride } = setup({ now: at(19, 9), linked: ['max'] });
+    coach.setSettings('max', ON());
+    await coach.tick();
+    clock.now += 60_000;
+    store.putMany('max', [rec('replan-abcd1234', clock.now)], 'remote');
+    ride.open = true;
+    await coach.tick();
+    expect(answered(store, 'replan-abcd1234')).toBeNull();
+    ride.open = false;
+    await coach.tick({ plan: false }); // also in quiet hours: a person asked
+    expect(answered(store, 'replan-abcd1234')).not.toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addWeeks, cookPortions, dayIndex, eatersOf, EMPTY_STATE, itemKey, mergeStates, readMealPlan, readMealState, shopAmount, shoppingList,
+  addWeeks, cookPortions, dayIndex, eatersOf, EMPTY_STATE, itemKey, mergeStates, readMealPlan, readReplanRequest, readMealState, shopAmount, shoppingList,
   weekOf, withEater, withItem, withOwn, changeOwn, type Dish, type MealPlan,
 } from '../../src/shared/meals';
 
@@ -164,5 +164,15 @@ describe('cover in item entries', () => {
     expect(readMealState({ items: { k: { state: 'gekauft', atMs: 1, cover: { '4-abend': 200, '9-x': 1, '1-mittag': -1, '2-abend': 'x' } } } }).items.k)
       .toEqual({ state: 'gekauft', atMs: 1, cover: { '4-abend': 200 } });
     expect(readMealState({ items: { k: { state: 'gekauft', atMs: 1, cover: 5 } } }).items.k).toEqual({ state: 'gekauft', atMs: 1 });
+  });
+});
+
+describe('replan requests', () => {
+  it('reads a request and skips bad ones', () => {
+    expect(readReplanRequest('replan-abcd1234', { atMs: 1, answeredMs: null })).toEqual({ id: 'replan-abcd1234', atMs: 1, answeredMs: null });
+    expect(readReplanRequest('replan-abcd1234', { atMs: 1, answeredMs: 5 })).toEqual({ id: 'replan-abcd1234', atMs: 1, answeredMs: 5 });
+    expect(readReplanRequest('replan-x', { atMs: 1 })).toBeNull();
+    expect(readReplanRequest('replan-abcd1234', { answeredMs: null })).toBeNull();
+    expect(readReplanRequest('replan-abcd1234', 'x')).toBeNull();
   });
 });
