@@ -46,7 +46,7 @@ const showMain = (): void => {
   app.focus({ steal: true });
 };
 const openMain = (): void => {
-  const win = new BrowserWindow({ width: 1200, height: 800, title: 'Pandafit', webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false } });
+  const win = new BrowserWindow({ width: 1200, height: 800, title: 'Pandafit', webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, backgroundThrottling: false } });
   mainWindow = win;
   // The window gets the machine's token in its URL; the local WebSockets need it.
   const devUrl = process.env.ELECTRON_RENDERER_URL;
