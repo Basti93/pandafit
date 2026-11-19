@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addWeeks, cookPortions, dayIndex, eatersOf, EMPTY_STATE, itemKey, mergeStates, readMealPlan, readReplanRequest, readMealState, shopAmount, shoppingList,
+  addWeeks, cookPortions, dayIndex, eatersOf, EMPTY_STATE, itemKey, mergeStates, readMealPlan, readAliases, acceptAliases, canonName, readReplanRequest, readMealState, shopAmount, shoppingList,
   weekOf, withEater, withItem, withOwn, changeOwn, type Dish, type MealPlan,
 } from '../../src/shared/meals';
 
@@ -174,5 +174,144 @@ describe('replan requests', () => {
     expect(readReplanRequest('replan-x', { atMs: 1 })).toBeNull();
     expect(readReplanRequest('replan-abcd1234', { answeredMs: null })).toBeNull();
     expect(readReplanRequest('replan-abcd1234', 'x')).toBeNull();
+  });
+});
+
+describe('canonical ingredient key', () => {
+  const same = (a: string, b: string) => expect(itemKey(a, 'g'), `${a} = ${b}`).toBe(itemKey(b, 'g'));
+  const apart = (a: string, b: string) => expect(itemKey(a, 'g'), `${a} != ${b}`).not.toBe(itemKey(b, 'g'));
+
+  it('merges spelling, word order, plural, filler words and synonyms', () => {
+    same('Basmati-Reis', 'Basmatireis');
+    same('Ei', 'Eier');
+    same('Feta', 'Feta Käse');
+    same('Möhre', 'Karotte');
+    same('Möhren', 'Karotten');
+    same('Kirschtomaten', 'Cherrytomaten');
+    same('Tofu', 'Naturtofu');
+    same('Tofu natur', 'Tofu');
+    same('Sojasauce', 'Sojasoße');
+    same('Paprika, rot', 'Rote Paprika');
+    same('Paprika, gelb', 'Gelbe Paprika');
+    same('Zwiebel', 'Speisezwiebel');
+    same('Zwiebeln', 'Zwiebel');
+    same('Milch', 'Vollmilch');
+    same('Skyr', 'Skyr natur');
+    same('Oregano', 'Oregano, getrocknet');
+    same('Paprikapulver', 'Paprikapulver edelsüß');
+    same('Champignons', 'Braune Champignons');
+    same('Kürbiskerne', 'Kürbiskern');
+    same('KARTOFFELN', 'kartoffel');
+  });
+
+  it('keeps different things apart', () => {
+    apart('Räuchertofu', 'Tofu');
+    apart('Rote Linsen', 'Grüne Linsen');
+    apart('Rote Paprika', 'Gelbe Paprika');
+    apart('Vegetarischer Hartkäse', 'Parmesan');
+    apart('Kichererbsen', 'Kichererbsen (Dose, abgetropft)');
+    apart('Tomate getrocknet', 'Tomate');
+    apart('Brauner Reis', 'Reis');
+    apart('Linsen', 'Rote Linsen');
+  });
+
+  it('is stable: a canonical key maps to itself', () => {
+    for (const n of ['Rote Paprika', 'Eier', 'Kirschtomaten', 'Basmati-Reis', 'Champignons', 'Walnüsse']) {
+      const [name, fam] = itemKey(n, 'g').split('|');
+      expect(itemKey(name!, fam as 'g')).toBe(itemKey(n, 'g'));
+    }
+  });
+});
+
+describe('one row for the same ingredient', () => {
+  const ing = (name: string, amount: number, unit: Dish['ingredients'][number]['unit'], section: Dish['ingredients'][number]['section'] = 'Obst und Gemüse') => ({ name, amount, unit, section });
+  const solo = (dishes: Dish[]): MealPlan => ({
+    week: '2026-11-09', createdMs: 1, source: 'liste', trainingDays: [], people: [{ id: 'max', name: 'Max' }],
+    meals: dishes.map((d, i) => ({ day: i, slot: 'mittag' as const, dish: d, reuseOf: null, eaters: ['max'], takeAlong: false })),
+  });
+  const rows = (p: MealPlan, s = EMPTY_STATE) => { const l = shoppingList(p, s); return [...l.sections.flatMap((x) => x.items), ...l.pantry, ...l.have]; };
+
+  it('names that differ in spelling become one row with the most common spelling and all dishes', () => {
+    const p = solo([dish('A', [ing('Paprika, rot', 1, 'Stk')]), dish('B', [ing('Rote Paprika', 1, 'Stk')]), dish('C', [ing('Rote Paprika', 1, 'Stk')])]);
+    const r = rows(p);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ name: 'Rote Paprika', amount: '3 Stück', dishes: ['A', 'B', 'C'] });
+  });
+
+  it('Stk and g of a known ingredient sum in grams; a lone unit stays as written', () => {
+    const p = solo([dish('A', [ing('Tomate', 2, 'Stk')]), dish('B', [ing('Tomaten', 300, 'g')])]);
+    expect(rows(p)).toHaveLength(1);
+    expect(rows(p)[0]!.amount).toBe('500 g');
+    expect(rows(solo([dish('A', [ing('Tomate', 2, 'Stk')])]))[0]!.amount).toBe('2 Stück');
+  });
+
+  it('Bund, EL and g merge where a typical weight is known', () => {
+    const herbs = solo([dish('A', [ing('Basilikum', 1, 'Bund')]), dish('B', [ing('Basilikum', 30, 'g')])]);
+    expect(rows(herbs)).toHaveLength(1);
+    expect(rows(herbs)[0]!.amount).toBe('50 g');
+    const seeds = solo([dish('A', [ing('Kürbiskerne', 2, 'EL', 'Vorrat')]), dish('B', [ing('Kürbiskerne', 30, 'g', 'Vorrat')])]);
+    expect(rows(seeds)).toHaveLength(1);
+    expect(rows(seeds)[0]!.amount).toBe('50 g');
+    const paste = solo([dish('A', [ing('Tomatenmark', 2, 'EL', 'Vorrat')]), dish('B', [ing('Tomatenmark', 40, 'g', 'Vorrat')])]);
+    expect(rows(paste)).toHaveLength(1);
+  });
+
+  it('a pantry-only item stays a reminder', () => {
+    const p = solo([dish('A', [ing('Kürbiskerne', 2, 'EL', 'Vorrat')])]);
+    expect(shoppingList(p, EMPTY_STATE).pantry.map((i) => i.amount)).toEqual(['aus dem Vorrat']);
+  });
+
+  it('without a known weight the units stay separate rows', () => {
+    const p = solo([dish('A', [ing('Brot', 2, 'Scheibe', 'Vorrat')]), dish('B', [ing('Brot', 100, 'g', 'Vorrat')])]);
+    expect(rows(p)).toHaveLength(2);
+  });
+
+  it('a tick stored under an old key still counts', () => {
+    const p = solo([dish('A', [ing('Tomate', 2, 'Stk')]), dish('B', [ing('Tomaten', 300, 'g')])]);
+    expect(rows(p, withItem(EMPTY_STATE, 'tomate|Stk', 'gekauft', 1))[0]!.state).toBe('gekauft');
+    expect(rows(p, withItem(EMPTY_STATE, 'tomaten|g', 'da', 1))[0]!.state).toBe('da');
+    expect(rows(p, withItem(withItem(EMPTY_STATE, 'tomaten|g', 'da', 1), itemKey('Tomate', 'g'), 'offen', 2))[0]!.state).toBe('offen');
+  });
+});
+
+describe('learned aliases (second layer behind the rules)', () => {
+  const ing = (name: string, amount: number, unit: Dish['ingredients'][number]['unit']) => ({ name, amount, unit, section: 'Kühlregal' as const });
+  const solo = (dishes: Dish[]): MealPlan => ({
+    week: '2026-11-09', createdMs: 1, source: 'liste', trainingDays: [], people: [{ id: 'max', name: 'Max' }],
+    meals: dishes.map((d, i) => ({ day: i, slot: 'mittag' as const, dish: d, reuseOf: null, eaters: ['max'], takeAlong: false })),
+  });
+  const aliases = { [canonName('Hüttenkäse')]: canonName('Körniger Frischkäse') };
+
+  it('an alias maps a canonical name onto another; spelling variants of the source follow', () => {
+    expect(itemKey('Hüttenkäse', 'g', aliases)).toBe(itemKey('Körniger Frischkäse', 'g'));
+    expect(itemKey('Hüttenkäse', 'g')).not.toBe(itemKey('Körniger Frischkäse', 'g'));
+    const p = solo([dish('A', [ing('Hüttenkäse', 100, 'g')]), dish('B', [ing('Körniger Frischkäse', 100, 'g')])]);
+    expect(shoppingList(p, EMPTY_STATE).sections.flatMap((s) => s.items)).toHaveLength(2);
+    expect(shoppingList(p, EMPTY_STATE, aliases).sections.flatMap((s) => s.items)).toHaveLength(1);
+  });
+
+  it('a tick under the key from before the alias still counts', () => {
+    const p = solo([dish('A', [ing('Hüttenkäse', 100, 'g')]), dish('B', [ing('Körniger Frischkäse', 100, 'g')])]);
+    const s = withItem(EMPTY_STATE, itemKey('Hüttenkäse', 'g'), 'gekauft', 1);
+    expect(shoppingList(p, s, aliases).sections.flatMap((x) => x.items)[0]!.state).toBe('gekauft');
+  });
+
+  it('reads stored aliases and drops what is wrong: not text, self, chains', () => {
+    expect(readAliases({ map: { a: 'b', c: 'c', d: 5, e: 'f', f: 'g', '': 'x' } })).toEqual({ a: 'b', f: 'g' });
+    expect(readAliases(null)).toEqual({});
+    expect(readAliases({ map: [] })).toEqual({});
+  });
+
+  it('accepts an answer only for a known candidate and an existing key, never as a chain', () => {
+    const existing = new Set(['frischkäse körnig', 'tofu', 'skyr']);
+    const candidates = new Map([['Hüttenkäse', 'hüttenkäse'], ['Seidentofu', 'seidentofu'], ['Quark', 'quark']]);
+    const got = acceptAliases({}, existing, candidates, [
+      { from: 'Hüttenkäse', to: 'frischkäse körnig' }, // fine
+      { from: 'Seidentofu', to: 'nicht da' },           // unknown key
+      { from: 'Unbekannt', to: 'tofu' },                // not a candidate
+      { from: 'Quark', to: 'hüttenkäse' },              // target is a source: chain
+    ]);
+    expect(got).toEqual({ hüttenkäse: 'frischkäse körnig' });
+    expect(acceptAliases(got, existing, candidates, [{ from: 'Hüttenkäse', to: 'skyr' }])).toEqual(got);
   });
 });

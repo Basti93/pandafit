@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { ALIAS_SYSTEM_PROMPT } from '../../../src/coach/meals/aliases';
 import { MealCoach, NOTICE_NO_AI, usualTrainingDays } from '../../../src/coach/meals/meal-coach';
 import { RecordStore } from '../../../src/coach/tracking/store';
 import { tickWrites, windowShoppingList } from '../../../src/shared/meal-list';
@@ -21,7 +22,7 @@ const setup = (o: Opts = {}) => {
   const ask = o.ask ? vi.fn(o.ask) : undefined;
   let r = 0;
   const coach = new MealCoach({
-    dir: path.join(dir, 'meals'), nowMs: () => clock.now, profiles: () => PEOPLE, noOpenRide: () => !ride.open, ask,
+    dir: path.join(dir, 'meals'), nowMs: () => clock.now, profiles: () => PEOPLE, noOpenRide: () => !ride.open, ask: ask ? (i) => (i.systemPrompt === ALIAS_SYSTEM_PROMPT ? Promise.resolve({ paare: [] }) : ask(i)) : undefined,
     store, linked: (id) => (o.linked ?? []).includes(id), trainingDays: () => [0], random: () => ((r = (r * 9301 + 49297) % 233280) / 233280),
   });
   return { coach, clock, ride, store, ask, dir };

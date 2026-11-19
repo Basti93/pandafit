@@ -5,7 +5,7 @@
 import type { TrackedRecord } from '../../shared/records';
 import {
   addWeeks, dateOf, dayIndex, DAY_LONG, DAY_SHORT, eatersOf, mealKey, parseMealKey, readMealPlan, readMealState, reusesOf,
-  SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf,
+  ALIASES_RECORD_ID, readAliases, type Aliases, SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf,
   type Meal, type MealPlan, type MealState, type Slot,
 } from '../../shared/meals';
 import { windowShoppingList, type WindowList } from '../../shared/meal-list';
@@ -14,7 +14,7 @@ import { localDayKey } from '../../shared/dates';
 import { longDateLabel, longDayOfKey } from '../../tracking/ui/labels';
 import { cap, numberWord } from '../../tracking/ui/week-path';
 
-export type Week = { plan: MealPlan; state: MealState };
+export type Week = { plan: MealPlan; state: MealState; aliases?: Aliases };
 export type MealAt = { week: string; meal: string };
 export type MealRef = { week: Week; meal: Meal; when: 'heute' | 'morgen' | 'später' };
 
@@ -23,7 +23,9 @@ function weekAt(records: TrackedRecord[] | null, key: string): Week | null {
   const find = (id: string) => (records ?? []).find((r) => r.id === id && !r.deleted);
   const rec = find(`week-${key}`);
   const plan = rec ? readMealPlan(rec.body) : null;
-  return plan ? { plan, state: readMealState(find(stateRecordId(key))?.body) } : null;
+  if (!plan) return null;
+  const aliases = readAliases(find(ALIASES_RECORD_ID)?.body);
+  return { plan, state: readMealState(find(stateRecordId(key))?.body), ...(Object.keys(aliases).length > 0 ? { aliases } : {}) };
 }
 
 /** The plan of the week `ms` lies in (any week, also the previous and the next) and the day index; null without a readable plan. */

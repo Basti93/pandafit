@@ -3,8 +3,8 @@
  * Pure code over the per-week records, shared by the coach and the web app.
  */
 import {
-  cookPortions, itemKey, mealKey, SLOTS, parseMealKey, shopAmount, sideIngredient, SECTIONS, UNITS,
-  type ItemEntry, type ItemState, type Meal, type MealState, type Section, type ShopItem, type ShopList, type Unit,
+  cookPortions, mealKey, SLOTS, parseMealKey, sideIngredient, SECTIONS, UNITS, normIngredient, newRow, addToRow, rowName, rowIsPantry, rowAmount, migrateKey,
+  type ItemEntry, type ItemState, type Meal, type MealState, type Row, type ShopItem, type ShopList, type Unit,
 } from './meals';
 import { addDays, cmpRef, dayRefOf, listStart, windowMeals, type DayRef, type PlanWeek } from './meal-window';
 
@@ -12,11 +12,12 @@ export type WindowList = ShopList & { start: DayRef; lastDay: DayRef | null; peo
 export type StockItem = { key: string; name: string; unit: Unit; amount: number; state: 'gekauft' | 'da' };
 
 const EPS = 1e-9;
-const PANTRY = ['EL', 'TL', 'Prise'];
+const PANTRY: readonly string[] = ['EL', 'TL', 'Prise'];
 
 type Placed = { week: PlanWeek; meal: Meal; at: DayRef };
-type Need = { week: string; key: string; at: DayRef; amount: number };
-type Acc = { name: string; unit: Unit; section: Section; dishes: Set<string>; needs: Need[] };
+/** The amount in the merged unit; `parts`: what each old key and unit contributed, to read ticks stored under old keys. */
+type Need = { week: string; key: string; at: DayRef; amount: number; parts: { legacy: string; factor: number; amount: number }[] };
+type Acc = { row: Row; needs: Need[] };
 
 /** What each item needs per meal. Source meals only: a rest eats what its source cooked. */
 function collectNeeds(meals: Placed[]): Map<string, Acc> {
@@ -27,14 +28,42 @@ function collectNeeds(meals: Placed[]): Map<string, Acc> {
     const portions = cookPortions(week.plan, week.state, key).total;
     if (portions === 0) continue;
     for (const i of meal.dish.side ? [...meal.dish.ingredients, sideIngredient(meal.dish.side)] : meal.dish.ingredients) {
-      const ik = itemKey(i.name, i.unit);
-      const a = acc.get(ik) ?? { name: i.name.trim(), unit: i.unit, section: i.section, dishes: new Set<string>(), needs: [] };
-      a.dishes.add(meal.dish.title);
-      a.needs.push({ week: week.plan.week, key, at, amount: i.amount * portions });
-      acc.set(ik, a);
+      const n = normIngredient(i, week.aliases);
+      const a = acc.get(n.key) ?? { row: newRow(i, n), needs: [] };
+      addToRow(a.row, i, n, meal.dish.title);
+      const amount = n.amount * portions;
+      const have = a.needs.find((x) => x.week === week.plan.week && x.key === key);
+      const need = have ?? { week: week.plan.week, key, at, amount: 0, parts: [] };
+      if (!have) a.needs.push(need);
+      need.amount += amount;
+      for (const legacy of n.legacy) {
+        const part = need.parts.find((p) => p.legacy === legacy);
+        if (part) part.amount += amount; else need.parts.push({ legacy, factor: n.factor, amount });
+      }
+      acc.set(n.key, a);
     }
   }
   return acc;
+}
+
+/**
+ * The entry of one item in one week. Ticks stored under an old key (before names and units were merged) count too,
+ * unless the entry under the new key is newer: then an untick is not undone by an old tick.
+ */
+function resolveEntry(state: MealState, key: string, needs: Need[]): ItemEntry | undefined {
+  const canon = state.items[key];
+  const old = [...new Set(needs.flatMap((n) => n.parts.map((p) => p.legacy)))].filter((k) => k !== key)
+    .flatMap((k) => { const e = state.items[k]; return e && e.state !== 'offen' && (!canon || e.atMs > canon.atMs) ? [{ k, e }] : []; });
+  if (old.length === 0) return canon;
+  const cover: Record<string, number> = {};
+  const give = (n: Need, v: number) => { cover[n.key] = Math.min(n.amount, (cover[n.key] ?? 0) + v); };
+  if (canon && canon.state !== 'offen') for (const n of needs) give(n, canon.cover ? canon.cover[n.key] ?? 0 : n.amount);
+  for (const { k, e } of old) {
+    for (const n of needs) for (const p of n.parts) if (p.legacy === k) give(n, e.cover ? (e.cover[n.key] ?? 0) * p.factor : p.amount);
+  }
+  const all = [...old.map((o) => o.e), ...(canon && canon.state !== 'offen' ? [canon] : [])];
+  const newest = all.reduce((x, y) => (y.atMs > x.atMs ? y : x));
+  return Object.values(cover).some((v) => v > EPS) ? { state: newest.state, atMs: newest.atMs, cover } : canon;
 }
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
@@ -51,7 +80,9 @@ export function windowShoppingList(weeks: PlanWeek[], nowMs: number): WindowList
   const meals = windowMeals(weeks, nowMs);
   const acc = collectNeeds(meals);
   const all = [...acc.entries()].map(([key, a]) => {
-    const entries = a.needs.map((n) => ({ n, e: weekOfPlan(weeks, n.week)?.state.items[key] }));
+    const resolved = new Map<string, ItemEntry | undefined>();
+    for (const n of a.needs) if (!resolved.has(n.week)) { const w = weekOfPlan(weeks, n.week); resolved.set(n.week, w ? resolveEntry(w.state, key, a.needs.filter((x) => x.week === n.week)) : undefined); }
+    const entries = a.needs.map((n) => ({ n, e: resolved.get(n.week) }));
     const remaining = sum(a.needs.map((n) => n.amount)) - sum(entries.map(({ n, e }) => coverOf(e, n)));
     let state: ItemState = 'offen';
     let shown = remaining;
@@ -60,8 +91,8 @@ export function windowShoppingList(weeks: PlanWeek[], nowMs: number): WindowList
       state = newest?.state ?? 'offen';
       shown = sum(a.needs.map((n) => n.amount));
     }
-    const item: ShopItem = { key, name: a.name, amount: shopAmount(a.name, a.unit, shown), state, dishes: [...a.dishes] };
-    return { section: a.section, pantry: PANTRY.includes(a.unit), item };
+    const item: ShopItem = { key, name: rowName(a.row), amount: rowAmount(a.row, shown), state, dishes: [...a.row.dishes] };
+    return { section: a.row.section, pantry: rowIsPantry(a.row), item };
   });
   const byName = (x: ShopItem, y: ShopItem) => x.name.localeCompare(y.name, 'de');
   const sections = SECTIONS.map((section) => ({ section, items: all.filter((x) => x.section === section && !x.pantry && x.item.state !== 'da').map((x) => x.item).sort(byName) })).filter((s) => s.items.length > 0);
@@ -89,13 +120,15 @@ export function ownWeekOf(weeks: PlanWeek[], nowMs: number): string | null {
 /** Is the meal of `at` still ahead of the window, so a tick made now keeps its cover? */
 const beyondWindow = (at: DayRef, start: DayRef): boolean => cmpRef(at, addDays(start, 6)) > 0;
 
+const allPlaced = (w: PlanWeek): Placed[] => w.plan.meals.map((meal) => ({ week: w, meal, at: { week: w.plan.week, day: meal.day } }));
+
 export function tickWrites(weeks: PlanWeek[], nowMs: number, key: string, state: ItemState): { week: string; cover?: Record<string, number> }[] {
   const start = listStart(weeks, nowMs);
   const needs = collectNeeds(windowMeals(weeks, nowMs)).get(key)?.needs ?? [];
   const out: { week: string; cover?: Record<string, number> }[] = [];
   for (const w of weeks) {
     const inWeek = needs.filter((n) => n.week === w.plan.week);
-    const entry = w.state.items[key];
+    const entry = resolveEntry(w.state, key, collectNeeds(allPlaced(w)).get(key)?.needs ?? []);
     if (state === 'offen') {
       if (entry || inWeek.length > 0) out.push({ week: w.plan.week });
       continue;
@@ -126,6 +159,7 @@ const placedFrom = (weeks: PlanWeek[], from: DayRef): Placed[] =>
 
 /** Per item the cover on meals at or after `from`, in any week. */
 export function stockOf(weeks: PlanWeek[], from: DayRef): StockItem[] {
+  const aliases = weeks.find((w) => w.aliases)?.aliases;
   const acc = collectNeeds(placedFrom(weeks, from));
   const names = collectNeeds(weeks.flatMap((week) => week.plan.meals.map((meal) => ({ week, meal, at: { week: week.plan.week, day: meal.day } }))));
   const found = new Map<string, { amount: number; state: 'gekauft' | 'da'; atMs: number }>();
@@ -135,10 +169,13 @@ export function stockOf(weeks: PlanWeek[], from: DayRef): StockItem[] {
     found.set(key, { amount: (have?.amount ?? 0) + amount, state: !have || e.atMs >= have.atMs ? e.state : have.state, atMs: Math.max(have?.atMs ?? 0, e.atMs) });
   };
   for (const w of weeks) {
-    for (const [key, e] of Object.entries(w.state.items)) {
+    const moved = Object.entries(w.state.items).map(([old, e]) => ({ old, e, ...migrateKey(old, aliases) }));
+    for (const { old, e, key, factor } of moved) {
       if (e.state === 'offen') continue;
+      const canon = w.state.items[key];
+      if (old !== key && canon && canon.atMs >= e.atMs) continue;
       if (e.cover) {
-        add(key, sum(Object.entries(e.cover).filter(([k]) => { const m = parseMealKey(k); return m !== null && cmpRef({ week: w.plan.week, day: m.day }, from) >= 0; }).map(([, v]) => v)), e);
+        add(key, factor * sum(Object.entries(e.cover).filter(([k]) => { const m = parseMealKey(k); return m !== null && cmpRef({ week: w.plan.week, day: m.day }, from) >= 0; }).map(([, v]) => v)), e);
       } else {
         add(key, sum((acc.get(key)?.needs ?? []).filter((n) => n.week === w.plan.week).map((n) => n.amount)), e);
       }
@@ -148,9 +185,9 @@ export function stockOf(weeks: PlanWeek[], from: DayRef): StockItem[] {
   for (const [key, f] of found) {
     const [name, family] = key.split('|') as [string, string];
     const known = names.get(key);
-    const unit: Unit | null = known?.unit ?? ((UNITS as readonly string[]).includes(family) ? family as Unit : null);
+    const unit: Unit | null = known?.row.unit ?? ((UNITS as readonly string[]).includes(family) ? family as Unit : null);
     if (!unit || PANTRY.includes(unit)) continue;
-    out.push({ key, name: known?.name ?? name, unit, amount: f.amount, state: f.state });
+    out.push({ key, name: known ? rowName(known.row) : name, unit, amount: f.amount, state: f.state });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name, 'de'));
 }
@@ -171,7 +208,7 @@ export function retieStock(weeks: PlanWeek[], from: DayRef, stock: StockItem[], 
       fresh.set(n.week, { ...(fresh.get(n.week) ?? {}), [n.key]: give });
     }
     for (const w of weeks) {
-      const old = w.state.items[s.key];
+      const old = resolveEntry(w.state, s.key, collectNeeds(allPlaced(w)).get(s.key)?.needs ?? []);
       const before = (() => {
         if (!old || old.state === 'offen') return {} as Record<string, number>;
         if (old.cover) return Object.fromEntries(Object.entries(old.cover).filter(([k]) => { const m = parseMealKey(k); return m !== null && cmpRef({ week: w.plan.week, day: m.day }, from) < 0; }));

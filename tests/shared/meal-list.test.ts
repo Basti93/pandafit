@@ -2,7 +2,7 @@ process.env.TZ = 'Europe/Berlin';
 import { describe, expect, it } from 'vitest';
 import { retieStock, stockNames, stockOf, tickWrites, windowShoppingList, ownWeekOf, type StockItem, type WindowList } from '../../src/shared/meal-list';
 import type { PlanWeek } from '../../src/shared/meal-window';
-import { itemKey, withItem, withOwn, type Dish, type ItemState, type Meal, type Slot } from '../../src/shared/meals';
+import { canonName, itemKey, withItem, withOwn, type Dish, type ItemState, type Meal, type Slot } from '../../src/shared/meals';
 
 const at = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m).getTime(); // 19.11.2026 is a Thursday
 const tofu: Dish = { title: 'Tofupfanne', ingredients: [{ name: 'Tofu natur', amount: 100, unit: 'g', section: 'Kühlregal' }], steps: [], minutes: 20, proteinG: 25, keepsDays: 0, source: 'liste' };
@@ -78,5 +78,74 @@ describe('stock', () => {
     const none = [pw('2026-11-16', []), pw('2026-11-23', [])].map((w, i) => ({ ...w, state: bought()[i]!.state }));
     const states = retieStock(none, from, stock400, 5);
     expect(states['2026-11-16']!.items[KEY]).toEqual({ state: 'offen', atMs: 5 });
+  });
+});
+
+describe('merged ingredients and old ticks', () => {
+  const dishOf = (name: string, amount: number, unit: 'Stk' | 'g'): Dish => ({ title: name, ingredients: [{ name, amount, unit, section: 'Obst und Gemüse' }], steps: [], minutes: 5, proteinG: 1, keepsDays: 0, source: 'liste' });
+  const m = (day: number, d: Dish): Meal => ({ day, slot: 'abend', dish: d, reuseOf: null, eaters: ['max', 'lena'], takeAlong: false });
+  const base = [pw('2026-11-16', [m(4, dishOf('Tomate', 1, 'Stk'))]), pw('2026-11-23', [m(0, dishOf('Tomaten', 150, 'g'))])];
+  const TK = itemKey('Tomate', 'g');
+  const items = (l: WindowList) => [...l.sections.flatMap((s) => s.items), ...l.have];
+  const withItems = (ws: PlanWeek[], week: string, it: Record<string, { state: ItemState; atMs: number; cover?: Record<string, number> }>) =>
+    ws.map((w) => (w.plan.week === week ? { ...w, state: { ...w.state, items: it } } : w));
+
+  it('Tomate [Stk] and Tomaten [g] are one row across both weeks', () => {
+    const l = windowShoppingList(base, now);
+    expect(items(l)).toHaveLength(1);
+    expect(items(l)[0]).toMatchObject({ key: TK, amount: '500 g' });
+  });
+
+  it('an old tick with cover under the old key covers its meal in the old unit', () => {
+    const old = withItems(base, '2026-11-16', { 'tomate|Stk': { state: 'gekauft', atMs: 1, cover: { '4-abend': 2 } } });
+    expect(items(windowShoppingList(old, now))[0]).toMatchObject({ state: 'offen', amount: '300 g' });
+  });
+
+  it('old ticks of both old keys together cover the whole row', () => {
+    const old = withItems(withItems(base, '2026-11-16', { 'tomate|Stk': { state: 'gekauft', atMs: 1 } }), '2026-11-23', { 'tomaten|g': { state: 'gekauft', atMs: 2 } });
+    const l = windowShoppingList(old, now);
+    expect(items(l)[0]).toMatchObject({ state: 'gekauft' });
+    expect(l.open).toBe(0);
+  });
+
+  it('a new tick keeps what the old tick covered, and untick then clears it', () => {
+    const old = withItems(base, '2026-11-16', { 'tomate|Stk': { state: 'gekauft', atMs: 1 } });
+    const w = tickWrites(old, now, TK, 'gekauft');
+    const ticked = old.map((x) => { const o = w.find((y) => y.week === x.plan.week); return o ? { ...x, state: withItem(x.state, TK, 'gekauft', 5, o.cover) } : x; });
+    expect(items(windowShoppingList(ticked, now))[0]!.state).toBe('gekauft');
+    const off = tickWrites(ticked, now, TK, 'offen');
+    const cleared = ticked.map((x) => (off.some((y) => y.week === x.plan.week) ? { ...x, state: withItem(x.state, TK, 'offen', 9) } : x));
+    expect(items(windowShoppingList(cleared, now))[0]!.state).toBe('offen');
+  });
+
+  it('stock reads old keys, converted to the new unit', () => {
+    const old = withItems(base, '2026-11-16', { 'tomate|Stk': { state: 'gekauft', atMs: 1, cover: { '4-abend': 2 } } });
+    expect(stockOf(old, { week: '2026-11-16', day: 0 })).toEqual([{ key: TK, name: 'Tomate', unit: 'g', amount: 200, state: 'gekauft' }]);
+  });
+
+  it('keys that no recipe knows any more never throw', () => {
+    const odd = withItems(base, '2026-11-16', { 'irgendwas|Stk': { state: 'gekauft', atMs: 1, cover: { '4-abend': 1 } }, '': { state: 'da', atMs: 1 } });
+    expect(() => stockOf(odd, { week: '2026-11-16', day: 0 })).not.toThrow();
+    expect(() => windowShoppingList(odd, now)).not.toThrow();
+  });
+});
+
+describe('learned aliases in the rolling list', () => {
+  const dishOf = (name: string): Dish => ({ title: name, ingredients: [{ name, amount: 100, unit: 'g', section: 'Kühlregal' }], steps: [], minutes: 5, proteinG: 1, keepsDays: 0, source: 'liste' });
+  const m = (day: number, d: Dish): Meal => ({ day, slot: 'abend', dish: d, reuseOf: null, eaters: ['max'], takeAlong: false });
+  const aliases = { [canonName('Hüttenkäse')]: canonName('Körniger Frischkäse') };
+  const ws = (a?: typeof aliases): PlanWeek[] => [{ ...pw('2026-11-16', [m(4, dishOf('Hüttenkäse'))]), ...(a ? { aliases: a } : {}) }, { ...pw('2026-11-23', [m(0, dishOf('Körniger Frischkäse'))]), ...(a ? { aliases: a } : {}) }];
+  const rows = (l: WindowList) => [...l.sections.flatMap((s) => s.items), ...l.have];
+
+  it('two spellings the rules keep apart become one row with the alias', () => {
+    expect(rows(windowShoppingList(ws(), now))).toHaveLength(2);
+    expect(rows(windowShoppingList(ws(aliases), now))).toHaveLength(1);
+  });
+
+  it('a tick made before the alias (old key, with cover) still covers its meal', () => {
+    const base = ws(aliases);
+    const ticked = base.map((w) => (w.plan.week === '2026-11-16' ? { ...w, state: withItem(w.state, itemKey('Hüttenkäse', 'g'), 'gekauft', 1, { '4-abend': 100 }) } : w));
+    expect(rows(windowShoppingList(ticked, now))[0]).toMatchObject({ state: 'offen', amount: '1 Becher à 200 g' });
+    expect(stockOf(ticked, { week: '2026-11-16', day: 0 })).toEqual([{ key: itemKey('Körniger Frischkäse', 'g'), name: 'Hüttenkäse', unit: 'g', amount: 100, state: 'gekauft' }]);
   });
 });
