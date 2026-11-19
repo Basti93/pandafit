@@ -146,6 +146,6 @@ describe('learned aliases in the rolling list', () => {
     const base = ws(aliases);
     const ticked = base.map((w) => (w.plan.week === '2026-11-16' ? { ...w, state: withItem(w.state, itemKey('Hüttenkäse', 'g'), 'gekauft', 1, { '4-abend': 100 }) } : w));
     expect(rows(windowShoppingList(ticked, now))[0]).toMatchObject({ state: 'offen', amount: '1 Becher à 200 g' });
-    expect(stockOf(ticked, { week: '2026-11-16', day: 0 })).toEqual([{ key: itemKey('Körniger Frischkäse', 'g'), name: 'Körniger Frischkäse', unit: 'g', amount: 100, state: 'gekauft' }]);
+    expect(stockOf(ticked, { week: '2026-11-16', day: 0 })).toEqual([{ key: itemKey('Körniger Frischkäse', 'g'), name: 'Hüttenkäse', unit: 'g', amount: 100, state: 'gekauft' }]);
   });
 });
