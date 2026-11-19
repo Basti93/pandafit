@@ -162,6 +162,7 @@ export const summarizeRide = (input: { meta: RideMeta; samples: Sample[]; ftpW: 
   const np = powers.length ? mean(rollingMeans(powers, 30).map((p) => p ** 4))! ** 0.25 : null;
   const intensityFactor = np === null ? null : np / ftpW;
   const hours = powers.length / 3600;
+  const cad = round(mean(samples.map((s) => s.cadenceRpm).filter((c): c is number => c !== null && c > 0)));
   const onTarget = session ? onTargetPctOf(samples, session) : undefined;
   return {
     ...(session ? { sessionName: session.name } : {}),
@@ -176,6 +177,7 @@ export const summarizeRide = (input: { meta: RideMeta; samples: Sample[]; ftpW: 
     ...(removed > samples.length * SUSPECT_SHARE ? { suspectData: true } : {}),
     ...(session ? countIntervals(session, samples, ftpW) : {}),
     ...heartRateFacts(samples, session, input.hrMaxBpm),
+    ...(cad === null ? {} : { avgCadenceRpm: cad }),
     powerCurve: powerCurveOf(powers),
     ...(onTarget === undefined ? {} : { onTargetPct: onTarget }),
   };

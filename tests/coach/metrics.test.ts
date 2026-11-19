@@ -94,3 +94,13 @@ describe('heart rate in the summary', () => {
     expect(r.avgHrBpm).toBe(130);
   });
 });
+
+test('average cadence counts only pedalling seconds', () => {
+  const s = samples([100, 100, 100, 100]);
+  s[0].cadenceRpm = 90; s[1].cadenceRpm = 90; s[2].cadenceRpm = 0; s[3].cadenceRpm = null;
+  expect(summarizeRide({ meta, samples: s, ftpW: 200, plannedS: 4 }).avgCadenceRpm).toBe(90);
+});
+test('a ride without cadence has no average cadence', () => {
+  const s = samples([100, 100]).map((x) => ({ ...x, cadenceRpm: null }));
+  expect('avgCadenceRpm' in summarizeRide({ meta, samples: s, ftpW: 200, plannedS: 2 })).toBe(false);
+});

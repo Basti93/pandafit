@@ -528,3 +528,7 @@ test('an answer with a blank change adds no change note', async () => {
 test('the prompt asks to leave change out when nothing changes', () => {
   expect(SYSTEM_PROMPT).toContain('Lass change weg, wenn sich an der Einheit nichts ändert.');
 });
+test('the prompts explain the cadence value', async () => {
+  expect(SYSTEM_PROMPT).toContain('avgCadenceRpm');
+  expect((await import('../../src/coach/debrief')).DEBRIEF_SYSTEM_PROMPT).toContain('avgCadenceRpm');
+});
