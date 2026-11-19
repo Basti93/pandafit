@@ -2,17 +2,6 @@
 
 Audit of 2026-11-19. Built entries are removed; see git history (debrief 3af7fb8/529efe3, Garmin upload de11d05/aebfd46, way back from the film window aebfd46, sudden climbs and heart rate zones 8d62400, Garmin profile 29ba04c, no intervals for beginners 4786c27).
 
-## Built by the plan 2026-11-19-after-ride-rest
-
-Plan: `docs/superpowers/plans/2026-11-19-after-ride-rest.md`. Remove each line when its task is merged.
-
-- Vocabulary: "Gleich kannst du antworten." before the reveal, plus/minus hint with a clicker after it.
-- No change note "Keine Änderung" when the coach changes nothing.
-- Cadence: average cadence in the ride summary for the coach and the debrief (no target ranges).
-- Heart rate: the coach can plan easy sections by heart rate (`hrHold`) within fixed limits.
-- Ramp test ends by itself when the rider can no longer hold the target.
-- Personal tips from the coach during the ride, written with the next session.
-
 ## Needs a real device test
 
 Not buildable without the bike, the clicker or the real Mac:

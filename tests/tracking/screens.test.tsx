@@ -285,7 +285,7 @@ const twoEx = (): LoggedWorkout => open({ exercises: [
 const resume = async () => fireEvent.click(await screen.findByRole('button', { name: 'Weitermachen' }));
 // The exercise menu ("⋯"): sets are removed in edit mode, a note appears on request.
 const openMenu = async (title: string) => fireEvent.click(await screen.findByRole('button', { name: `Menü ${title}` }));
-const editSets = async (title: string) => { fireEvent.click(await screen.findByRole('button', { name: /^(Satz 1|Aufwärmsatz):/ })); };
+const editSets = async (_title: string) => { fireEvent.click(await screen.findByRole('button', { name: /^(Satz 1|Aufwärmsatz):/ })); };
 const noteField = async (title: string) => { await openMenu(title); fireEvent.click(screen.getByRole('button', { name: `Notiz hinzufügen ${title}` })); return (await screen.findByLabelText(`Notiz zu ${title}`)) as HTMLTextAreaElement; };
 
 test('a double tap on remove never removes the next row', async () => {
