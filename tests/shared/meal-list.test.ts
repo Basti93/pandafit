@@ -80,3 +80,52 @@ describe('stock', () => {
     expect(states['2026-11-16']!.items[KEY]).toEqual({ state: 'offen', atMs: 5 });
   });
 });
+
+describe('merged ingredients and old ticks', () => {
+  const dishOf = (name: string, amount: number, unit: 'Stk' | 'g'): Dish => ({ title: name, ingredients: [{ name, amount, unit, section: 'Obst und Gemüse' }], steps: [], minutes: 5, proteinG: 1, keepsDays: 0, source: 'liste' });
+  const m = (day: number, d: Dish): Meal => ({ day, slot: 'abend', dish: d, reuseOf: null, eaters: ['max', 'lena'], takeAlong: false });
+  const base = [pw('2026-11-16', [m(4, dishOf('Tomate', 1, 'Stk'))]), pw('2026-11-23', [m(0, dishOf('Tomaten', 150, 'g'))])];
+  const TK = itemKey('Tomate', 'g');
+  const items = (l: WindowList) => [...l.sections.flatMap((s) => s.items), ...l.have];
+  const withItems = (ws: PlanWeek[], week: string, it: Record<string, { state: ItemState; atMs: number; cover?: Record<string, number> }>) =>
+    ws.map((w) => (w.plan.week === week ? { ...w, state: { ...w.state, items: it } } : w));
+
+  it('Tomate [Stk] and Tomaten [g] are one row across both weeks', () => {
+    const l = windowShoppingList(base, now);
+    expect(items(l)).toHaveLength(1);
+    expect(items(l)[0]).toMatchObject({ key: TK, amount: '500 g' });
+  });
+
+  it('an old tick with cover under the old key covers its meal in the old unit', () => {
+    const old = withItems(base, '2026-11-16', { 'tomate|Stk': { state: 'gekauft', atMs: 1, cover: { '4-abend': 2 } } });
+    expect(items(windowShoppingList(old, now))[0]).toMatchObject({ state: 'offen', amount: '300 g' });
+  });
+
+  it('old ticks of both old keys together cover the whole row', () => {
+    const old = withItems(withItems(base, '2026-11-16', { 'tomate|Stk': { state: 'gekauft', atMs: 1 } }), '2026-11-23', { 'tomaten|g': { state: 'gekauft', atMs: 2 } });
+    const l = windowShoppingList(old, now);
+    expect(items(l)[0]).toMatchObject({ state: 'gekauft' });
+    expect(l.open).toBe(0);
+  });
+
+  it('a new tick keeps what the old tick covered, and untick then clears it', () => {
+    const old = withItems(base, '2026-11-16', { 'tomate|Stk': { state: 'gekauft', atMs: 1 } });
+    const w = tickWrites(old, now, TK, 'gekauft');
+    const ticked = old.map((x) => { const o = w.find((y) => y.week === x.plan.week); return o ? { ...x, state: withItem(x.state, TK, 'gekauft', 5, o.cover) } : x; });
+    expect(items(windowShoppingList(ticked, now))[0]!.state).toBe('gekauft');
+    const off = tickWrites(ticked, now, TK, 'offen');
+    const cleared = ticked.map((x) => (off.some((y) => y.week === x.plan.week) ? { ...x, state: withItem(x.state, TK, 'offen', 9) } : x));
+    expect(items(windowShoppingList(cleared, now))[0]!.state).toBe('offen');
+  });
+
+  it('stock reads old keys, converted to the new unit', () => {
+    const old = withItems(base, '2026-11-16', { 'tomate|Stk': { state: 'gekauft', atMs: 1, cover: { '4-abend': 2 } } });
+    expect(stockOf(old, { week: '2026-11-16', day: 0 })).toEqual([{ key: TK, name: 'Tomate', unit: 'g', amount: 200, state: 'gekauft' }]);
+  });
+
+  it('keys that no recipe knows any more never throw', () => {
+    const odd = withItems(base, '2026-11-16', { 'irgendwas|Stk': { state: 'gekauft', atMs: 1, cover: { '4-abend': 1 } }, '': { state: 'da', atMs: 1 } });
+    expect(() => stockOf(odd, { week: '2026-11-16', day: 0 })).not.toThrow();
+    expect(() => windowShoppingList(odd, now)).not.toThrow();
+  });
+});

@@ -164,12 +164,21 @@ const familyOf = (u: Unit): Family => (PANTRY_UNITS.includes(u) ? 'etwas' : (u a
 export const legacyItemKey = (name: string, unit: Unit): string => `${lower(name)}|${familyOf(unit)}`;
 
 /** An ingredient line in the shape of the list: the canonical key, the amount in the merged unit (g where a typical weight is known). */
-export type Norm = { key: string; legacy: string; canon: string; srcUnit: Unit; unit: Unit; amount: number };
+export type Norm = { key: string; legacy: string; canon: string; srcUnit: Unit; unit: Unit; amount: number; factor: number };
 export function normIngredient(i: { name: string; unit: Unit; amount: number }): Norm {
   const canon = canonName(i.name);
   const f = i.unit === 'g' ? undefined : gramsPer(canon, i.unit);
   const unit: Unit = f === undefined ? i.unit : 'g';
-  return { key: `${canon}|${familyOf(unit)}`, legacy: legacyItemKey(i.name, i.unit), canon, srcUnit: i.unit, unit, amount: i.amount * (f ?? 1) };
+  return { key: `${canon}|${familyOf(unit)}`, legacy: legacyItemKey(i.name, i.unit), canon, srcUnit: i.unit, unit, amount: i.amount * (f ?? 1), factor: f ?? 1 };
+}
+/** An item key stored before the merge, as the current key plus how many new units one old unit is. Never throws. */
+export function migrateKey(old: string): { key: string; factor: number } {
+  const at = old.lastIndexOf('|');
+  if (at < 0) return { key: old, factor: 1 };
+  const canon = canonName(old.slice(0, at));
+  const fam = old.slice(at + 1);
+  const f = fam === 'etwas' ? gramsPer(canon, 'EL') ?? gramsPer(canon, 'TL') : fam === 'g' ? undefined : gramsPer(canon, fam);
+  return f === undefined ? { key: `${canon}|${fam}`, factor: 1 } : { key: `${canon}|g`, factor: f };
 }
 export const itemKey = (name: string, unit: Unit): string => normIngredient({ name, unit, amount: 1 }).key;
 
