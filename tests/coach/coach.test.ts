@@ -532,3 +532,20 @@ test('the prompts explain the cadence value', async () => {
   expect(SYSTEM_PROMPT).toContain('avgCadenceRpm');
   expect((await import('../../src/coach/debrief')).DEBRIEF_SYSTEM_PROMPT).toContain('avgCadenceRpm');
 });
+test('a coach session with a fitting hold keeps it, an unfitting hold is dropped', async () => {
+  const held: Session = { id: 'ki', name: 'KI', steps: [
+    good.steps[0],
+    { kind: 'erg', durationS: 1200, ftpFraction: 0.6, label: 'Locker', hrZone: 2, hrHold: true },
+    { kind: 'erg', durationS: 300, ftpFraction: 0.6, label: 'Kurz', hrZone: 2, hrHold: true },
+  ] };
+  const c = make(async () => answer({ session: held })); afterRamp(c);
+  await c.refresh('pa');
+  const next = c.state('pa').next;
+  expect(next.source).toBe('claude');
+  const steps = next.session.steps;
+  expect(steps[1]).toMatchObject({ hrZone: 2, hrHold: true });
+  expect('hrHold' in steps[2]).toBe(false);
+});
+test('the prompt tells the coach how to plan a heart rate hold', () => {
+  expect(SYSTEM_PROMPT).toContain('hrHold: true');
+});

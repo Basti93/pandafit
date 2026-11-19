@@ -1,4 +1,4 @@
-import { estimateTss, parseSession, RAMP_ID, stepFtpFraction, type Session } from '../shared/session';
+import { estimateTss, parseSession, RAMP_ID, stepFtpFraction, type Session, type Step } from '../shared/session';
 import { loadModel, type RideSummary } from './metrics';
 
 export type CoachContext = { ftpW: number; summaries: RideSummary[]; nowMs: number; careful?: boolean; complaint?: boolean };
@@ -13,6 +13,11 @@ export const LIMITS = {
 } as const;
 
 const DAY_MS = 86_400_000;
+
+/** Own setting: a heart rate hold only fits an easy, long erg section, the heart rate follows too slowly for anything else. */
+export const HOLD = { minS: 10 * 60, maxFraction: 0.7, maxZone: 3 } as const;
+export const holdFits = (s: Step): boolean =>
+  s.kind === 'erg' && s.hrZone !== undefined && s.hrZone >= 1 && s.hrZone <= HOLD.maxZone && s.durationS >= HOLD.minS && s.ftpFraction <= HOLD.maxFraction;
 
 /** Gentle program: after a hard ride, a long break or with no history at all. */
 export const mustBeEasy = (ctx: CoachContext): boolean => {

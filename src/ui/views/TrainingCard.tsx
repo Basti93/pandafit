@@ -33,7 +33,7 @@ export const StepList = ({ session, ftpW }: { session: Session; ftpW: number }) 
       {session.steps.map((s, i) => (
         <li key={i}>
           <span>{s.label}</span>
-          <span className="muted">{fmtMin(s.durationS)} · {s.kind === 'erg' ? `${Math.round(s.ftpFraction * ftpW)} W` : `${s.gradePct.toLocaleString('de-DE')} %`}{s.hrZone ? <> · Puls bis <ZoneChip zone={s.hrZone}>Zone {s.hrZone}</ZoneChip></> : ''}{s.kind === 'grade' && s.sudden ? ' · plötzlich' : ''}</span>
+          <span className="muted">{fmtMin(s.durationS)} · {s.kind === 'erg' ? `${Math.round(s.ftpFraction * ftpW)} W` : `${s.gradePct.toLocaleString('de-DE')} %`}{s.hrZone ? (s.kind === 'erg' && s.hrHold ? <> · Die Watt folgen deinem Puls in <ZoneChip zone={s.hrZone}>Zone {s.hrZone}</ZoneChip></> : <> · Puls bis <ZoneChip zone={s.hrZone}>Zone {s.hrZone}</ZoneChip></>) : ''}{s.kind === 'grade' && s.sudden ? ' · plötzlich' : ''}</span>
         </li>
       ))}
     </ol>

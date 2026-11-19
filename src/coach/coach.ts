@@ -11,7 +11,7 @@ import type { Session } from '../shared/session';
 import { thinSamples } from '../shared/bike';
 import { ClaudeError } from './claude-client';
 import { readTasks, type GivenTask, TASKS_GUIDE, zTasks } from './coach-tasks';
-import { checkSession, type CoachContext } from './session-limits';
+import { checkSession, holdFits, type CoachContext } from './session-limits';
 import { RAMP_ID } from '../shared/session';
 import { cleanDebrief, debriefAnswerSchema, debriefJsonSchema, DEBRIEF_SYSTEM_PROMPT, ruleDebrief } from './debrief';
 import { uploadSettings, withUploadMode, type RideUpload, type UploadMode } from '../shared/garmin-upload';
@@ -51,7 +51,7 @@ const answerSession = z.object({
   id: z.string(), name: z.string(),
   steps: z.array(z.object({
     kind: z.enum(['erg', 'grade']), durationS: z.number(), label: z.string(),
-    ftpFraction: z.number().optional(), gradePct: z.number().optional(), scale: z.number().optional(), hrZone: z.number().optional(), sudden: z.boolean().optional(),
+    ftpFraction: z.number().optional(), gradePct: z.number().optional(), scale: z.number().optional(), hrZone: z.number().optional(), hrHold: z.boolean().optional(), sudden: z.boolean().optional(),
   })),
 });
 export const answerSchema = z.object({
@@ -82,7 +82,7 @@ Grenzen: 10 bis 120 Minuten, Warmup zuerst (mindestens 5 Minuten, höchstens 60 
 Lege in alternatives zwei bis drei weitere Einheiten mit anderem Charakter an, mindestens eine aus grade-Abschnitten wie eine Strecke mit Auf und Ab. why ist ein kurzer Satz, wann diese Einheit passt. Für alternatives gelten dieselben Grenzen.
 Prüfe die Daten mit gesundem Menschenverstand, bevor du sie deutest. Technische Eigenheiten, Probefahrten, Abbrüche oder lückenhafte Werte sind kein Grund für eine Einheit und kommen in der Begründung nicht vor. Begründe nur mit dem, was der Person wirklich hilft.
 Anstiege beginnen sanft über 25 Sekunden. Setze sudden: true nur bei grade-Abschnitten, wenn das Training einen plötzlichen Anstieg braucht, etwa Antritte; die App warnt vorher. Nach Beschwerden oder harter Fahrt nicht.
-Mit hrZone (1 bis 5, Prozent vom Maximalpuls: 50–60, 60–70, 70–80, 80–90, 90–100) kannst du für lockere Abschnitte ab etwa 5 Minuten eine Pulsobergrenze setzen: Bleibt der Puls länger darüber, senkt die App die Watt. Nicht für Intervalle, der Puls folgt zu langsam. In fahrten stehen hrZoneMinutes (Minuten je Zone), hrTargetPct (Anteil im Ziel oder darunter), hrDriftPct (Anstieg bei gleicher Leistung) und hrRecoveryBpm (Abfall in der Minute nach Hartem). Vergleiche sie nur über mehrere Fahrten derselben Person, Wärme und Müdigkeit wirken mit, und stelle keine Diagnosen.
+Mit hrZone (1 bis 5, Prozent vom Maximalpuls: 50–60, 60–70, 70–80, 80–90, 90–100) kannst du für lockere Abschnitte ab etwa 5 Minuten eine Pulsobergrenze setzen: Bleibt der Puls länger darüber, senkt die App die Watt. Nicht für Intervalle, der Puls folgt zu langsam. Für lockere Fahrten kannst du mit hrHold: true bei einem erg-Abschnitt ab 10 Minuten, höchstens 70 % FTP und hrZone 1 bis 3 die Watt dem Puls folgen lassen. Ohne Pulsgurt fährt die App dann einfach nach Watt. In fahrten stehen hrZoneMinutes (Minuten je Zone), hrTargetPct (Anteil im Ziel oder darunter), hrDriftPct (Anstieg bei gleicher Leistung) und hrRecoveryBpm (Abfall in der Minute nach Hartem). Vergleiche sie nur über mehrere Fahrten derselben Person, Wärme und Müdigkeit wirken mit, und stelle keine Diagnosen.
 Schreibe in encouragement ein bis zwei aufmunternde Sätze für den nächsten Besuch. Stütze dich auf die Beweggründe der Person und nimm ihre eigenen Worte auf; erfinde keine. Fehlen sie, nenne etwas Konkretes, das sie geschafft hat. Stärke Wahlfreiheit und eigenes Können: keine Schuld, kein Druck, kein „musst“, keine Vergleiche mit anderen, keine Serien und kein Zählen von Pausen.
 Steht ein Block krafttraining in den Daten, nutze ihn, um schwere Beine und Erholung einzuschätzen, zum Beispiel keine harte Einheit direkt nach schwerem Beintraining. Das Volumen ist nicht mit der Belastung vom Rad vergleichbar. Ohne den Block weißt du nichts über Krafttraining und sagst dazu nichts.
 In fahrten steht avgCadenceRpm (mittlere Trittfrequenz beim Treten). Gib dazu höchstens einen Tipp, wenn sie über mehrere Fahrten unter 70 liegt, und mache keine Vorgabe daraus.
@@ -94,8 +94,10 @@ const stripSession = (s: z.infer<typeof answerSession>): unknown => ({
   id: s.id, name: s.name,
   steps: s.steps.map((x) => {
     const zone = x.hrZone === undefined ? {} : { hrZone: x.hrZone };
+    // A hold that does not fit is dropped quietly, the section stays a valid power section.
+    const hold = x.kind === 'erg' && x.hrHold && holdFits({ kind: 'erg', durationS: x.durationS, label: x.label, ftpFraction: x.ftpFraction ?? Infinity, ...zone });
     return x.kind === 'erg'
-      ? { kind: 'erg', durationS: x.durationS, label: x.label, ftpFraction: x.ftpFraction, ...zone }
+      ? { kind: 'erg', durationS: x.durationS, label: x.label, ftpFraction: x.ftpFraction, ...zone, ...(hold ? { hrHold: true } : {}) }
       : { kind: 'grade', durationS: x.durationS, label: x.label, gradePct: x.gradePct, scale: x.scale, ...zone, ...(x.sudden ? { sudden: true } : {}) };
   }),
 });
