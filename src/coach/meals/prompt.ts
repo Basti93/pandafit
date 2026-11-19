@@ -35,7 +35,9 @@ export const dataBlock = (name: string, value: unknown): string => `<${name}-nur
 /** People appear as letters only. Names and ids stay on this Mac. */
 export const letters = (members: Member[]): Map<string, string> => new Map(members.map((m, i) => [m.id, String.fromCharCode(65 + i)]));
 
-export function buildMealPrompt(i: { members: Member[]; slots: Slotted[]; trainingDays: number[]; lastWeek: string[] }): string {
+export const STOCK_SENTENCE = 'Nutze Zutaten aus vorrat-nur-daten bevorzugt, damit nichts übrig bleibt.';
+
+export function buildMealPrompt(i: { members: Member[]; slots: Slotted[]; trainingDays: number[]; lastWeek: string[]; stock?: string[] }): string {
   const L = letters(i.members);
   const blocks = [
     dataBlock('personen', i.members.map((m) => ({ person: L.get(m.id), ernaehrung: m.settings.diet, abneigungen: m.settings.dislikes, unvertraeglichkeiten: m.settings.intolerances }))),
@@ -44,8 +46,10 @@ export function buildMealPrompt(i: { members: Member[]; slots: Slotted[]; traini
       wer: s.eaters.map((id) => L.get(id)), mitnehmen: s.takeAlong, trainingstag: i.trainingDays.includes(s.day),
     }))),
     dataBlock('letzte-woche', i.lastWeek),
+    ...(i.stock && i.stock.length > 0 ? [dataBlock('vorrat', i.stock)] : []),
   ];
-  return `${blocks.join('\n\n')}\n\nPlane für jede Mahlzeit im Block mahlzeiten-nur-daten genau ein Gericht, mit tag und slot wie dort. Wiederhole möglichst keine Gerichte aus letzte-woche-nur-daten.`;
+  const stock = i.stock && i.stock.length > 0 ? ` ${STOCK_SENTENCE}` : '';
+  return `${blocks.join('\n\n')}\n\nPlane für jede Mahlzeit im Block mahlzeiten-nur-daten genau ein Gericht, mit tag und slot wie dort. Wiederhole möglichst keine Gerichte aus letzte-woche-nur-daten.${stock}`;
 }
 
 export function buildSwapPrompt(i: { members: Member[]; slot: Slotted; training: boolean; avoid: string[] }): string {

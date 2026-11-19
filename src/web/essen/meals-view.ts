@@ -4,10 +4,12 @@
  */
 import type { TrackedRecord } from '../../shared/records';
 import {
-  addWeeks, dateOf, dayIndex, DAY_LONG, DAY_SHORT, eatersOf, mealKey, parseMealKey, readMealPlan, readMealState, reusesOf, shoppingList,
+  addWeeks, dateOf, dayIndex, DAY_LONG, DAY_SHORT, eatersOf, mealKey, parseMealKey, readMealPlan, readMealState, reusesOf,
   SLOT_LABEL, SLOT_TIME, SLOTS, stateRecordId, weekOf,
   type Meal, type MealPlan, type MealState, type Slot,
 } from '../../shared/meals';
+import { windowShoppingList, type WindowList } from '../../shared/meal-list';
+import { addDays, cmpRef, dayRefOf, FILL_DAYS, listStart, MEAL_OVER_MS, mealOver } from '../../shared/meal-window';
 import { localDayKey } from '../../shared/dates';
 import { longDateLabel, longDayOfKey } from '../../tracking/ui/labels';
 import { cap, numberWord } from '../../tracking/ui/week-path';
@@ -45,15 +47,8 @@ export const listAnd = (names: string[]) => (names.length > 1 ? `${names.slice(0
 
 // ---- Which meal is next ----
 
-/** A meal of today counts as "dran" until two hours after its time. */
-export const MEAL_OVER_MS = 2 * 3_600_000;
-
-export function isOver(slot: Slot, nowMs: number): boolean {
-  const [h, m] = SLOT_TIME[slot].split(':').map(Number);
-  const at = new Date(nowMs);
-  at.setHours(h!, m!, 0, 0);
-  return nowMs >= at.getTime() + MEAL_OVER_MS;
-}
+export { MEAL_OVER_MS };
+export const isOver = mealOver;
 
 const inSlotOrder = (meals: Meal[]): Meal[] => [...meals].sort((a, b) => SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
 
@@ -95,7 +90,7 @@ export const SLOT_WHEN: Record<Slot, string> = { fruehstueck: 'früh', mittag: '
 
 // ---- The head of Essen ----
 
-export const NEXT_PLAN = 'Der nächste Plan kommt am Samstagmorgen.';
+export const NEXT_PLAN = 'Bo plant die nächsten Tage bald.';
 
 export const NO_PLAN = `Noch gibt es keinen Essensplan. ${NEXT_PLAN}`;
 
@@ -181,15 +176,17 @@ function dayRow(week: Week, day: number): DayRow {
   return { week, day, lead: `${DAY_SHORT[day]} ${date.getDate()}.`, dateLong: longDayOfKey(localDayKey(date.getTime())), meal };
 }
 
-export function restOfWeek(weeks: Week[], nowMs: number): DayRow[] {
-  const week = weeks.find((w) => w.plan.week === weekOf(nowMs));
-  if (!week) return [];
-  return Array.from({ length: 6 - dayIndex(nowMs) }, (_, i) => dayRow(week, dayIndex(nowMs) + 1 + i));
-}
-
-export function nextWeekRows(weeks: Week[], nowMs: number): DayRow[] {
-  const week = weeks.find((w) => w.plan.week === addWeeks(weekOf(nowMs), 1));
-  return week ? Array.from({ length: 7 }, (_, i) => dayRow(week, i)) : [];
+/** Tomorrow through the last planned day (at most today + FILL_DAYS); days without a plan are left out, trailing days without a meal are cut. */
+export function comingDays(weeks: Week[], nowMs: number): DayRow[] {
+  const today = dayRefOf(nowMs);
+  const rows: DayRow[] = [];
+  for (let n = 1; n <= FILL_DAYS; n++) {
+    const ref = addDays(today, n);
+    const week = weeks.find((w) => w.plan.week === ref.week);
+    if (week) rows.push(dayRow(week, ref.day));
+  }
+  while (rows.length > 0 && !rows[rows.length - 1]!.meal) rows.pop();
+  return rows;
 }
 
 /** The days of this week before today, to look back at what was planned. */
@@ -204,21 +201,26 @@ export function lastWeekRows(last: Week | null): DayRow[] {
 
 // ---- Shopping and the tiles ----
 
-/** The week the shopping list shows first: from Saturday the next one if it exists, else the current one, else the first. */
-export function shoppingWeek(weeks: Week[], nowMs: number): Week | undefined {
-  const current = weekOf(nowMs);
-  return (dayIndex(nowMs) >= 5 && weeks.find((w) => w.plan.week !== current)) || weeks.find((w) => w.plan.week === current) || weeks[0];
-}
-
-export function openCount(week: Week): number {
-  const list = shoppingList(week.plan, week.state);
+/** Open rows of the list over the next seven days: what the plan needs and what the person added. */
+export function openCount(weeks: Week[], nowMs: number): number {
+  const list = windowShoppingList(weeks, nowMs);
   return list.open + list.own.filter((o) => o.state === 'offen').length;
 }
 
+/** The week of the first day the list shows: the one "Plan ändern" writes for. */
+export const firstWeek = (weeks: Week[], nowMs: number): Week | undefined => {
+  const start = listStart(weeks, nowMs).week;
+  return weeks.find((w) => w.plan.week === start) ?? weeks[0];
+};
+
 export const favSentence = (n: number): string => (n === 0 ? 'Alle Rezepte durchsuchen' : n === 1 ? '1 Favorit' : `${n} Favoriten`);
 export const openSentence = (n: number): string => (n === 0 ? 'Alles ist erledigt' : n === 1 ? '1 Ding offen' : `${n} Dinge offen`);
-export const shoppingSentence = (people: number): string =>
-  `Die Liste reicht für die ganze Woche und für ${people === 1 ? 'eine Person' : `${numberWord(people)} Personen`}.`;
+export function shoppingSentence(list: WindowList, nowMs: number): string {
+  if (!list.lastDay) return '';
+  const who = list.people === 1 ? 'eine Person' : `${numberWord(list.people)} Personen`;
+  const tomorrow = cmpRef(list.start, dayRefOf(nowMs)) > 0;
+  return `Die Liste ${tomorrow ? 'beginnt morgen, reicht' : 'reicht'} bis ${DAY_LONG[list.lastDay.day]} und ist für ${who}.`;
+}
 
 // ---- In den Plan ----
 

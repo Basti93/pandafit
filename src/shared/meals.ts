@@ -47,10 +47,15 @@ export type Meal = { day: number; slot: Slot; dish: Dish; reuseOf: string | null
 export type Person = { id: string; name: string; avatar?: string };
 export type MealPlan = { week: string; createdMs: number; source: 'coach' | 'liste' | 'gemischt'; people: Person[]; meals: Meal[]; trainingDays: number[] };
 export type ItemState = 'offen' | 'gekauft' | 'da';
+/**
+ * A tick on an item. `cover` is the amount per meal (`mealKey`) that the tick covered. An entry without `cover` (old records,
+ * old clients) covers its whole week.
+ */
+export type ItemEntry = { state: ItemState; atMs: number; cover?: Record<string, number> };
 /** Changes on top of the plan, each with its own time, so two devices merge entry by entry. */
 export type MealState = {
   eaters: Record<string, Record<string, { on: boolean; atMs: number }>>;
-  items: Record<string, { state: ItemState; atMs: number }>;
+  items: Record<string, ItemEntry>;
   /** The person's own shopping items ("Kaffee"), added on the phone. They live here, not in the plan, so a new plan for the week never touches them. */
   own?: Record<string, OwnItem>;
 };
@@ -113,8 +118,8 @@ export function cookPortions(plan: MealPlan, state: MealState, key: string): { t
 
 export const withEater = (state: MealState, key: string, person: string, on: boolean, atMs: number): MealState =>
   ({ ...state, eaters: { ...state.eaters, [key]: { ...(state.eaters[key] ?? {}), [person]: { on, atMs } } } });
-export const withItem = (state: MealState, item: string, s: ItemState, atMs: number): MealState =>
-  ({ ...state, items: { ...state.items, [item]: { state: s, atMs } } });
+export const withItem = (state: MealState, item: string, s: ItemState, atMs: number, cover?: Record<string, number>): MealState =>
+  ({ ...state, items: { ...state.items, [item]: { state: s, atMs, ...(s !== 'offen' && cover ? { cover } : {}) } } });
 /** Adds an own item (blank names are ignored); `change` ticks or removes one that is there. */
 export function withOwn(state: MealState, key: string, name: string, amount: string, atMs: number): MealState {
   const n = name.trim().replace(/\s+/g, ' ').slice(0, OWN_NAME_MAX);
@@ -211,7 +216,8 @@ export function recipeAmount(i: Ingredient, portions: number): string {
   return `${t} ${i.unit}`;
 }
 
-export type ShopItem = { key: string; name: string; amount: string; state: ItemState; dishes: string[] };
+/** `week`: for the person's own items, the week whose state holds them. */
+export type ShopItem = { key: string; name: string; amount: string; state: ItemState; dishes: string[]; week?: string };
 /** `pantry`: spoonfuls and pinches, usually at home already: only a reminder to check. */
 export type ShopList = {
   sections: { section: Section; items: ShopItem[] }[]; pantry: ShopItem[]; have: ShopItem[]; open: number; total: number;
@@ -285,7 +291,11 @@ export function readMealState(body: unknown): MealState {
     }
   }
   if (isObj(body.items)) {
-    for (const [k, v] of Object.entries(body.items)) if (isObj(v) && (v.state === 'offen' || v.state === 'gekauft' || v.state === 'da') && num(v.atMs)) out.items[k] = { state: v.state, atMs: v.atMs };
+    for (const [k, v] of Object.entries(body.items)) {
+      if (!isObj(v) || !(v.state === 'offen' || v.state === 'gekauft' || v.state === 'da') || !num(v.atMs)) continue;
+      const cover = isObj(v.cover) ? Object.fromEntries(Object.entries(v.cover).filter((e): e is [string, number] => parseMealKey(e[0]) !== null && num(e[1]) && e[1] >= 0)) : null;
+      out.items[k] = { state: v.state, atMs: v.atMs, ...(cover ? { cover } : {}) };
+    }
   }
   if (isObj(body.own)) {
     const own: Record<string, OwnItem> = {};
@@ -397,6 +407,17 @@ export function readPlaceRequest(id: string, body: unknown): PlaceRequest | null
   if (!isPlaceRecordId(id) || !isObj(body) || !isWeekKey(body.week) || typeof body.meal !== 'string' || !parseMealKey(body.meal) || typeof body.recipeId !== 'string' || !RECIPE_ID.test(body.recipeId) || !num(body.atMs)) return null;
   return { id, week: body.week, meal: body.meal, recipeId: body.recipeId, atMs: body.atMs, result: PLACE_STATES.includes(body.result as string) ? body.result as PlaceState : null, answeredMs: num(body.answeredMs) ? body.answeredMs : null };
 }
+// ---- "Neu planen" from the phone: a request record, answered once by the coach ----
+
+/** A person's wish to plan again from tomorrow; written by the device, answered once more by the coach with `answeredMs`. */
+export type ReplanRequest = { id: string; atMs: number; answeredMs: number | null };
+export const isReplanRecordId = (id: string): boolean => /^replan-[a-z0-9]{4,40}$/.test(id);
+export const newReplanId = (nowMs: number, random: () => number = Math.random): string => `replan-${Math.round(nowMs).toString(36)}${Math.floor(random() * 2 ** 40).toString(36).padStart(8, '0')}`;
+export function readReplanRequest(id: string, body: unknown): ReplanRequest | null {
+  if (!isReplanRecordId(id) || !isObj(body) || !num(body.atMs)) return null;
+  return { id, atMs: body.atMs, answeredMs: num(body.answeredMs) ? body.answeredMs : null };
+}
+
 export const placeAnswer = (r: PlaceState | null): string => {
   switch (r) {
     case 'placed': return 'Das Rezept ist jetzt im Plan.';

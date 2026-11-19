@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { cleanup, fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openIdb } from '../../../src/web/idbStore';
-import { dayIndex, weekOf } from '../../../src/shared/meals';
+import { dayIndex } from '../../../src/shared/meals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,7 +14,6 @@ import { NOW, boot } from './helpers';
 
 afterEach(cleanup);
 
-const week = weekOf(NOW);
 const today = dayIndex(NOW);
 
 describe('Essen on the phone with the coach on the Mac', () => {
@@ -33,7 +32,7 @@ describe('Essen on the phone with the coach on the Mac', () => {
     });
     mac.setSettings('pa', ON);
     mac.setSettings('pb', ON);
-    await mac.replan('pa', week);
+    await mac.tick(); // the first tick plans from today
     const a = await boot({ account: 'anna', seed: store.all('pb') });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Plan ändern' }));
@@ -63,4 +62,35 @@ describe('Essen on the phone with the coach on the Mac', () => {
     expect(store.all('pa').some((r) => r.id.startsWith('chat-'))).toBe(false);
   });
 
+  it('Neu planen on the phone reaches the coach and the new plan comes back', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'phone-replan-'));
+    const store = new RecordStore({ dir: path.join(dir, 'tracking') });
+    const ON = { on: true, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' } };
+    let clock = NOW + 60_000;
+    const mac = new MealCoach({
+      dir: path.join(dir, 'meals'), nowMs: () => clock, profiles: () => [{ id: 'pa', name: 'Max' }, { id: 'pb', name: 'Lena' }], noOpenRide: () => true, random: () => 0.5, store, linked: () => true,
+    });
+    mac.setSettings('pa', ON);
+    mac.setSettings('pb', ON);
+    await mac.tick();
+    const before = mac.view('pb').weeks.map((w) => w.plan.createdMs);
+    const a = await boot({ account: 'anna', seed: store.all('pb') });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Neu planen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
+    expect(await screen.findByText('Bo plant ab morgen neu. Gleich steht der neue Plan hier.')).toBeTruthy();
+    const phone = await openIdb('anna', a.factory);
+    const sent = (await phone.list('mealplan')).filter((r) => r.id.startsWith('replan-'));
+    phone.close();
+    expect(sent).toHaveLength(1);
+    store.putMany('pb', sent, 'remote');
+    clock += 60_000;
+    await mac.tick();
+    expect(mac.view('pb').weeks.some((w, i) => w.plan.createdMs !== before[i])).toBe(true);
+    cleanup();
+    await boot({ account: 'anna', seed: store.all('pb') });
+    fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
+    await screen.findByRole('button', { name: 'Neu planen' });
+    expect(screen.queryByText('Bo plant ab morgen neu. Gleich steht der neue Plan hier.')).toBeNull();
+  });
 });

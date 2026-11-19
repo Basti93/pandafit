@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   addWeeks, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
-  isFavRecordId, isLinkRecordId, isPlaceRecordId, parseMealKey, readPlaceRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
+  isFavRecordId, isLinkRecordId, isPlaceRecordId, isReplanRecordId, parseMealKey, readPlaceRequest, readReplanRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
   type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
@@ -16,15 +16,14 @@ import { pickSide, planFromRecipes, recipeDish, type Favourites } from './recipe
 import { RecipeStore, shownLink } from './recipe-store';
 import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
-import { constraintsFor, ruleMeals, seeded, skeleton, type Member, type Slotted } from './rules';
+import { constraintsFor, ruleMeals, seeded, skeleton, stockSet, type Member, type Slotted } from './rules';
 import { applyChat, buildChatPrompt, CHAT_SYSTEM_PROMPT, chatAnswerJsonSchema, chatAnswerSchema, listDish, putDish, REPLY_NO_AI, REPLY_NO_PLAN, replySwapped, ruleTarget, type ChatResult } from './chat';
+import { retieStock, stockNames, stockOf, type StockItem } from '../../shared/meal-list';
+import { addDays, cmpRef, dayKeyOf, dayRefOf, FILL_DAYS, splitByWeek, type DayRef, type PlanWeek } from '../../shared/meal-window';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
-/** The plan for the coming week is made on Saturday from 06:00, or on Sunday if the Mac was off. */
-const PLAN_DAY = 5;
-const PLAN_HOUR = 6;
 const PLAN_TIMEOUT_MS = 300_000;
 const SWAP_TIMEOUT_MS = 120_000;
 const CHAT_TIMEOUT_MS = 120_000;
@@ -64,7 +63,9 @@ type Deps = {
   fetchPicture?: (url: string) => Promise<Picture | null>;
 };
 type FileData = {
-  settings: Record<string, MealSettings>; plans: Record<string, MealPlan>; states: Record<string, MealState>; notices: Record<string, string | null>; lastAuto: string | null;
+  settings: Record<string, MealSettings>; plans: Record<string, MealPlan>; states: Record<string, MealState>; notices: Record<string, string | null>;
+  /** The last day (YYYY-MM-DD) Bo has planned. The coach fills the days after it, up to today + FILL_DAYS. */
+  plannedUntil: string | null;
   /** The chat with the coach, per person, oldest first. */
   chats: Record<string, MealChat[]>;
 };
@@ -85,6 +86,9 @@ export type MealsView = {
   recipes: { collection: number; unlock: number } | null;
 };
 
+const isDayKey = (x: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(x) && !Number.isNaN(new Date(`${x}T12:00:00`).getTime());
+/** A date key as a day of its week. */
+const refOfKey = (key: string): DayRef => { const [y, m, d] = key.split('-').map(Number); return dayRefOf(new Date(y!, m! - 1, d!, 12).getTime()); };
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const tags = (x: unknown): string[] => (Array.isArray(x) ? [...new Set(x.filter((t): t is string => typeof t === 'string').map((t) => t.trim().replace(/\s+/g, ' ').slice(0, TAG_MAX)).filter(Boolean))].slice(0, MAX_TAGS) : []);
 
@@ -105,8 +109,8 @@ export function usualTrainingDays(startsMs: number[], nowMs: number): number[] {
 }
 
 /**
- * The household's meal plan: one per Mac, for every profile that turned it on. Plans on Saturday morning for the coming
- * week, with the AI when it is there and from the own recipe list otherwise. Never with a ride open. A profile with the
+ * The household's meal plan: one per Mac, for every profile that turned it on. Keeps the days through today + 7 planned
+ * (usually one new day per day), with the AI when it is there and from the own recipe list otherwise. Never with a ride open. A profile with the
  * plan off is not read, not asked about and not synced.
  */
 export class MealCoach {
@@ -121,7 +125,10 @@ export class MealCoach {
     if (this.data) return this.data;
     let d: Partial<FileData> = {};
     try { const parsed = JSON.parse(fs.readFileSync(this.file(), 'utf8')) as unknown; if (isObj(parsed)) d = parsed as Partial<FileData>; } catch { /* no file yet */ }
-    this.data = { settings: isObj(d.settings) ? d.settings : {}, plans: isObj(d.plans) ? d.plans : {}, states: isObj(d.states) ? d.states : {}, notices: isObj(d.notices) ? d.notices : {}, lastAuto: typeof d.lastAuto === 'string' ? d.lastAuto : null, chats: isObj(d.chats) ? d.chats : {} };
+    this.data = { settings: isObj(d.settings) ? d.settings : {}, plans: isObj(d.plans) ? d.plans : {}, states: isObj(d.states) ? d.states : {}, notices: isObj(d.notices) ? d.notices : {}, plannedUntil: null, chats: isObj(d.chats) ? d.chats : {} };
+    // An old file has no bookkeeping: it counts as planned through the Sunday of its newest plan week.
+    const newest = Object.keys(this.data.plans).filter(isWeekKey).sort().pop();
+    this.data.plannedUntil = typeof d.plannedUntil === 'string' && isDayKey(d.plannedUntil) ? d.plannedUntil : newest ? dayKeyOf({ week: newest, day: 6 }) : null;
     return this.data;
   }
   private save(): void {
@@ -302,6 +309,37 @@ export class MealCoach {
     return any;
   }
 
+  /**
+   * "Neu planen" requests from phones. Any number of open ones are answered by one replan, once no ride is open and no planning run is going.
+   * Also in quiet hours: a person asked for it.
+   */
+  private async answerReplans(): Promise<boolean> {
+    const { store } = this.deps;
+    if (!store || this.planning || !this.deps.noOpenRide()) return false;
+    const open: { profile: string; r: TrackedRecord; atMs: number }[] = [];
+    try {
+      for (const p of this.deps.profiles()) {
+        if (!this.synced(p.id)) continue;
+        for (const r of store.all(p.id, 'mealplan')) {
+          if (r.deleted || !isReplanRecordId(r.id)) continue;
+          const req = readReplanRequest(r.id, r.body);
+          if (req && req.answeredMs === null) open.push({ profile: p.id, r, atMs: req.atMs });
+        }
+      }
+      if (open.length === 0) return false;
+      await this.replan([...open].sort((a, b) => b.atMs - a.atMs)[0]!.profile);
+      const now = this.deps.nowMs();
+      const touched = new Set<string>();
+      for (const { profile, r } of open) {
+        store.putMany(profile, [{ ...r, updatedMs: Math.max(now, r.updatedMs + 1), body: { ...(isObj(r.body) ? r.body : {}), answeredMs: now } }]);
+        touched.add(profile);
+      }
+      this.exportAll();
+      try { this.deps.onExport?.([...touched]); } catch { /* a listener never matters here */ }
+      return true;
+    } catch { return false; }
+  }
+
   /** A person deleted a recipe from their list (the record has a tombstone): the recipe goes too. */
   private removeDeletedRecipes(owner: string, have: TrackedRecord[]): void {
     const store = this.recipes();
@@ -355,7 +393,7 @@ export class MealCoach {
 
   /**
    * From the scan loop. Never throws into it, never plans with a ride open, and does nothing at all with no one in.
-   * `plan: false` keeps the scheduled weekly plan back (quiet hours on the server) but still answers a person's waiting messages.
+   * `plan: false` keeps the scheduled planning back (quiet hours on the server) but still answers a person's waiting messages.
    */
   async tick(opts: { plan?: boolean } = {}): Promise<string[]> {
     try {
@@ -367,38 +405,68 @@ export class MealCoach {
       this.importStates();
       await this.answerLinks();
       this.answerPlacements();
+      await this.answerReplans();
       let touched = this.exportAll();
       // Messages from phones, and those typed here during a ride, once no ride is open.
       if (await this.answerPending()) touched = [...new Set([...touched, ...this.exportAll()])];
-      const now = this.deps.nowMs();
-      const day = dayIndex(now);
-      const due = (day === PLAN_DAY && new Date(now).getHours() >= PLAN_HOUR) || day === PLAN_DAY + 1;
-      const target = addWeeks(weekOf(now), 1);
-      const d = this.load();
-      if (opts.plan !== false && due && !d.plans[target] && d.lastAuto !== target && this.deps.noOpenRide() && !this.planning) {
-        d.lastAuto = target;
-        this.save();
-        await this.planWeek(target, 0);
-        return [...new Set([...touched, ...this.exportAll()])];
-      }
+      if (opts.plan !== false && this.deps.noOpenRide() && !this.planning && await this.fillGap()) return [...new Set([...touched, ...this.exportAll()])];
       return touched;
     } catch { return []; }
   }
 
-  /** "Neu planen": the shown week, from today on for the current one. */
-  async replan(id: string, week: string): Promise<void> {
-    const now = this.deps.nowMs();
-    const current = weekOf(now);
-    if (!this.enabled(id) || !this.deps.noOpenRide() || this.planning || (week !== current && week !== addWeeks(current, 1))) return;
-    await this.planWeek(week, week === current ? dayIndex(now) : 0);
+  /** The plans of the weeks held, with their states, for the list and stock arithmetic. */
+  private planWeeks(): PlanWeek[] {
+    const d = this.load();
+    return Object.keys(d.plans).sort().map((w) => ({ plan: d.plans[w]!, state: d.states[w] ?? EMPTY_STATE }));
+  }
+
+  /**
+   * "Neu planen": from tomorrow through today + FILL_DAYS. Today never changes. What is bought and not eaten goes to the planner as
+   * `vorrat` and moves onto the new dishes afterwards.
+   */
+  async replan(id: string): Promise<void> {
+    if (!this.enabled(id) || !this.deps.noOpenRide() || this.planning) return;
+    this.importStates();
+    const today = dayRefOf(this.deps.nowMs());
+    const from = addDays(today, 1);
+    const to = addDays(today, FILL_DAYS);
+    const stock = stockOf(this.planWeeks(), from);
+    for (const part of splitByWeek(from, to)) await this.planDays(part.week, part.fromDay, part.toDay, { keepExisting: false, stock });
+    this.importStates();
+    const d = this.load();
+    d.plannedUntil = dayKeyOf(to);
+    const tied = retieStock(this.planWeeks(), from, stock, this.deps.nowMs());
+    for (const [week, state] of Object.entries(tied)) d.states[week] = mergeStates(d.states[week] ?? EMPTY_STATE, state);
+    this.save();
     this.exportAll();
+  }
+
+  /** Plans the days after `plannedUntil` up to today + FILL_DAYS. Usually one new day. Meals already there stay. True when it planned. */
+  private async fillGap(): Promise<boolean> {
+    if (this.members().length === 0) return false;
+    const d = this.load();
+    const today = dayRefOf(this.deps.nowMs());
+    const target = addDays(today, FILL_DAYS);
+    const after = d.plannedUntil && isDayKey(d.plannedUntil) ? addDays(refOfKey(d.plannedUntil), 1) : today;
+    const from = cmpRef(after, today) > 0 ? after : today;
+    const parts = splitByWeek(from, target);
+    if (parts.length === 0) return false;
+    // Set first, like a started run: a planning that fails is not repeated at every tick.
+    d.plannedUntil = dayKeyOf(target);
+    this.save();
+    for (const part of parts) await this.planDays(part.week, part.fromDay, part.toDay, { keepExisting: true, stock: [] });
+    return true;
   }
 
   private training(): number[] {
     return [...new Set(this.members().flatMap((m) => { try { return this.deps.trainingDays?.(m.id) ?? []; } catch { return []; } }))].sort();
   }
 
-  private async planWeek(week: string, fromDay: number): Promise<void> {
+  /**
+   * Plans the days `fromDay` to `toDay - 1` of one week. Meals outside stay. With `keepExisting` the meals inside stay too, and only
+   * the slots without a meal are planned (a meal put "In den Plan" on a gap day survives).
+   */
+  private async planDays(week: string, fromDay: number, toDay: number, o: { keepExisting: boolean; stock: StockItem[] }): Promise<void> {
     const members = this.members();
     if (members.length === 0) return;
     this.planning = week;
@@ -406,22 +474,29 @@ export class MealCoach {
       const d = this.load();
       const trainingDays = this.training();
       const random = this.deps.random ?? seeded(`${week}-${fromDay}-${this.deps.nowMs()}`);
-      const lastIds = new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).flatMap((m) => (m.dish.recipeId ? [m.dish.recipeId] : [])));
-      // What stays in this week (a replan from today keeps the days before) is not planned again.
-      for (const m of d.plans[week]?.meals ?? []) if (m.day < fromDay && m.dish.recipeId) lastIds.add(m.dish.recipeId);
-      const lastWeek = [...new Set((d.plans[addWeeks(week, -1)]?.meals ?? []).map((m) => m.dish.title))];
+      const before = d.plans[addWeeks(week, -1)]?.meals ?? [];
+      const after = d.plans[addWeeks(week, 1)]?.meals ?? [];
+      const inRange = (m: Meal) => m.day >= fromDay && m.day < toDay;
+      let kept = (d.plans[week]?.meals ?? []).filter((m) => !inRange(m) || o.keepExisting);
+      // A rest after the range whose source is planned anew keeps its dish, but no longer points at the source.
+      const replanned = new Set((d.plans[week]?.meals ?? []).filter((m) => inRange(m) && !o.keepExisting).map((m) => mealKey(m.day, m.slot)));
+      kept = kept.map((m) => (m.reuseOf && replanned.has(m.reuseOf) ? { ...m, reuseOf: null } : m));
+      const keptKeys = new Set(kept.map((m) => mealKey(m.day, m.slot)));
+      const lastIds = new Set([...before, ...kept, ...after].flatMap((m) => (m.dish.recipeId ? [m.dish.recipeId] : [])));
+      const lastWeek = [...new Set([...before, ...after].map((m) => m.dish.title))];
       // Real recipes first: the household's link recipes always, the collection once it is big enough. None at all: exactly the plan of before.
-      const treatsInWeek = (d.plans[week]?.meals ?? []).filter((m) => m.day < fromDay && !m.reuseOf && m.dish.recipeId && this.recipes()?.getMany([m.dish.recipeId])[0]?.ausgewogen === 'wenig').length;
-      const real = await this.realMeals({ members, fromDay, trainingDays, random, lastIds, lastWeek, week, treatsInWeek });
+      const treatsInWeek = kept.filter((m) => !m.reuseOf && m.dish.recipeId && this.recipes()?.getMany([m.dish.recipeId])[0]?.ausgewogen === 'wenig').length;
+      const unkept = (s: Slotted): Slotted => (s.reuseOf && keptKeys.has(s.reuseOf) ? { ...s, reuseOf: null } : s);
+      const real = await this.realMeals({ members, fromDay, toDay, keptKeys, trainingDays, random, lastIds, lastWeek, week, treatsInWeek, stock: o.stock });
       const realKeys = new Set(real.map((m) => mealKey(m.day, m.slot)));
-      const aiSlots = skeleton(members, fromDay, false).filter((s) => !realKeys.has(mealKey(s.day, s.slot)));
+      const aiSlots = skeleton(members, fromDay, false, toDay).filter((s) => !keptKeys.has(mealKey(s.day, s.slot)) && !realKeys.has(mealKey(s.day, s.slot)));
       let fromAi: Meal[] = [];
       let notice: string | null = null;
       if (aiSlots.length === 0) {
-        // Every meal came from a real recipe: nothing to invent.
+        // Every meal came from a real recipe (or stays): nothing to invent.
       } else if (this.deps.ask) {
         try {
-          const raw = await this.deps.ask({ prompt: buildMealPrompt({ members, slots: aiSlots, trainingDays, lastWeek }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: PLAN_TIMEOUT_MS });
+          const raw = await this.deps.ask({ prompt: buildMealPrompt({ members, slots: aiSlots, trainingDays, lastWeek, stock: stockNames(o.stock) }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: PLAN_TIMEOUT_MS });
           fromAi = mealsFromAnswer(raw, members, aiSlots);
           const replaced = aiSlots.length - fromAi.length;
           if (!mealAnswerSchema.safeParse(raw).success) notice = NOTICE_NO_AI;
@@ -430,14 +505,13 @@ export class MealCoach {
       } else notice = NOTICE_NO_AI;
       // Whatever the AI left open comes from the list, with the rule's cook-once-eat-twice where both halves are open.
       const have = new Set([...fromAi, ...real].map((m) => mealKey(m.day, m.slot)));
-      const open = skeleton(members, fromDay, true).filter((s) => !have.has(mealKey(s.day, s.slot))).map((s) => (s.reuseOf && have.has(s.reuseOf) ? { ...s, reuseOf: null } : s));
+      const open = skeleton(members, fromDay, true, toDay).filter((s) => !keptKeys.has(mealKey(s.day, s.slot)) && !have.has(mealKey(s.day, s.slot))).map((s) => unkept(s.reuseOf && have.has(s.reuseOf) ? { ...s, reuseOf: null } : s));
       for (const m of real) if (m.dish.recipeId) lastIds.add(m.dish.recipeId);
-      const fromList = ruleMeals(members, open, trainingDays, random, lastIds);
-      const kept = (d.plans[week]?.meals ?? []).filter((m) => m.day < fromDay);
+      const fromList = ruleMeals(members, open, trainingDays, random, lastIds, stockSet(stockNames(o.stock)));
       const meals = [...kept, ...real, ...fromAi, ...fromList].sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
       const source = fromAi.length === 0 ? 'liste' : fromList.length + real.length === 0 ? 'coach' : 'gemischt';
       d.plans[week] = { week, createdMs: this.deps.nowMs(), source, people: this.people(), meals, trainingDays };
-      d.notices[week] = notice;
+      d.notices[week] = notice ?? d.notices[week] ?? null;
       this.save();
     } finally { this.planning = null; }
   }
@@ -446,7 +520,7 @@ export class MealCoach {
    * Meals from real recipes for the open slots of a week. Below the unlock only the household's link recipes are candidates, for at most
    * a third of the meals; from it the collection joins, for every meal, and the AI chooses from the shortlists. Empty without recipes.
    */
-  private async realMeals(i: { members: Member[]; fromDay: number; trainingDays: number[]; random: () => number; lastIds: Set<string>; lastWeek: string[]; week: string; treatsInWeek: number }): Promise<Meal[]> {
+  private async realMeals(i: { members: Member[]; fromDay: number; toDay: number; keptKeys: Set<string>; stock: StockItem[]; trainingDays: number[]; random: () => number; lastIds: Set<string>; lastWeek: string[]; week: string; treatsInWeek: number }): Promise<Meal[]> {
     try {
       const store = this.recipes();
       if (!store) return [];
@@ -458,13 +532,13 @@ export class MealCoach {
       const favourites: Favourites = new Map(i.members.map((m) => [m.id, this.favourites(m.id)] as const));
       if (!unlocked) { const have = new Set(pool.map((r) => r.id)); pool.push(...store.getMany([...new Set([...favourites.values()].flatMap((f) => [...f]))]).filter((r) => !have.has(r.id))); }
       if (pool.length === 0) return [];
-      const slots = skeleton(i.members, i.fromDay, unlocked);
+      const slots = skeleton(i.members, i.fromDay, unlocked, i.toDay).filter((s) => !i.keptKeys.has(mealKey(s.day, s.slot))).map((s) => (s.reuseOf && i.keptKeys.has(s.reuseOf) ? { ...s, reuseOf: null } : s));
       const cap = unlocked ? undefined : Math.max(1, Math.floor(slots.length / 3));
       // Below the unlock the slots are looked at in a random order, so the links do not always land on the same days.
       const order = unlocked ? slots : [...slots].sort(() => i.random() - 0.5);
       const meals = await planFromRecipes({
         members: i.members, slots: order, trainingDays: i.trainingDays, pool, lastIds: i.lastIds, random: i.random, lastWeek: i.lastWeek,
-        ...(cap !== undefined ? { cap } : {}), treatsInWeek: i.treatsInWeek, favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
+        ...(cap !== undefined ? { cap } : {}), treatsInWeek: i.treatsInWeek, stock: stockNames(i.stock), favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
       });
       return meals;
     } catch { return []; }
@@ -598,11 +672,11 @@ export class MealCoach {
     this.putState(week, (s) => withEater(s, key, person, on, atMs ?? this.deps.nowMs()), atMs);
   }
 
-  setItem(id: string, week: string, item: string, state: ItemState, atMs?: number): void {
+  setItem(id: string, week: string, item: string, state: ItemState, atMs?: number, cover?: Record<string, number>): void {
     const d = this.load();
     if (!this.enabled(id) || !d.plans[week] || typeof item !== 'string' || item.length > 120 || !['offen', 'gekauft', 'da'].includes(state)) return;
     this.importStates();
-    this.putState(week, (s) => withItem(s, item, state, atMs ?? this.deps.nowMs()), atMs);
+    this.putState(week, (s) => withItem(s, item, state, atMs ?? this.deps.nowMs(), cover), atMs);
   }
 
   /** A change made now replaces its entry; one made at an earlier `atMs` is merged, so a newer entry stays. */
@@ -673,6 +747,8 @@ export class MealCoach {
   exportAll(): string[] {
     const { store } = this.deps;
     if (!store) return [];
+    // Phones' ticks first: one made while Bo planned (minutes with the AI) is not overwritten by the plan going out.
+    this.importStates();
     const touched: string[] = [];
     const now = this.deps.nowMs();
     const d = this.load();
@@ -690,6 +766,9 @@ export class MealCoach {
         const recipes = this.synced(p.id) ? this.recipes() : null;
         if (recipes) this.keepRecipeRecords(p.id, have, recipes, wanted, keep);
         if (this.synced(p.id)) {
+          // The newest replan requests stay, like link requests; older ones are tombstoned.
+          const replans = have.flatMap((r) => { const q = !r.deleted && isReplanRecordId(r.id) ? readReplanRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
+          for (const q of replans.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
           for (const w of weeks) {
             wanted.set(planRecordId(w), { ...d.plans[w], you: p.id });
             wanted.set(stateRecordId(w), d.states[w] ?? EMPTY_STATE);

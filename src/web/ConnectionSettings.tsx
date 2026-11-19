@@ -125,7 +125,7 @@ function CoachGroups({ link, plan, hasBike }: { link: CoachLink; plan: ReactNode
     <>
       <ProfileGroup title={PLAN}>
         {plan}
-        <Switch icon="essen" label="Essensplan" hint="Ein Wochenplan mit Einkaufsliste." checked={meals.on} onChange={(on) => send({ type: 'meals-settings', settings: { ...meals, on } })} />
+        <Switch icon="essen" label="Essensplan" hint="Bo plant immer die nächsten sieben Tage, mit Einkaufsliste." checked={meals.on} onChange={(on) => send({ type: 'meals-settings', settings: { ...meals, on } })} />
         {meals.on && <RowList><Row icon="blatt" title="Essen anpassen" hint="Vorlieben, Abneigungen und Unverträglichkeiten." onClick={() => setSheet('meals')} /></RowList>}
         {!v.gymOn && <Switch icon="kraft" label="Krafttraining planen" hint="Auch ohne Hevy." checked={false} onChange={() => send({ type: 'gym-start' })} />}
         <RowList><Row icon="ausdauer" title={planLine(v.gymOn, hasBike)} /></RowList>

@@ -1,9 +1,10 @@
 process.env.TZ = 'Europe/Berlin'; // the clock-change test must cross a real change on any machine
 import { describe, expect, it } from 'vitest';
+import { windowShoppingList } from '../../src/shared/meal-list';
 import { addWeeks, type Dish, type Meal, type Slot } from '../../src/shared/meals';
 import {
-  askedSentence, eatersLine, favSentence, headSentence, lastWeekRows, mealSentence, nextMeal, nextWeekRows, openSentence, pastDaysRows, placeButton, placeDefault, placedSentence,
-  mealKicker, recipeSentence, restOfWeek, rowSentence, shoppingSentence, shoppingWeek, slotKicker, todayMeals, type Week,
+  askedSentence, comingDays, NO_PLAN, eatersLine, favSentence, headSentence, lastWeekRows, mealSentence, nextMeal, openCount, openSentence, pastDaysRows, placeButton, placeDefault, placedSentence,
+  mealKicker, recipeSentence, rowSentence, shoppingSentence, slotKicker, todayMeals, type Week,
 } from '../../src/web/essen/meals-view';
 
 const MO = 0, MI = 2, SA = 5, SO = 6;
@@ -64,8 +65,8 @@ describe('Essen in words', () => {
   it('says the day in one sentence, also late and without a plan for tomorrow', () => {
     expect(headSentence(todayMeals(weeks, at(MO, 11, 0)), nextMeal(weeks, at(MO, 11, 0)))).toBe('Das Frühstück liegt hinter dir. Als Nächstes gibt es um 13 Uhr Skyr mit Nüssen.');
     expect(headSentence(todayMeals(weeks, at(MO, 15, 30)), nextMeal(weeks, at(MO, 15, 30)))).toBe('Das Frühstück und das Mittagessen liegen hinter dir. Als Nächstes gibt es um 19 Uhr Suppe.');
-    expect(headSentence(todayMeals([thisWeek], at(SO, 22, 0)), nextMeal([thisWeek], at(SO, 22, 0)))).toBe('Für heute steht nichts mehr an. Der nächste Plan kommt am Samstagmorgen.');
-    expect(headSentence([], null)).toBe('Heute ist nichts geplant. Der nächste Plan kommt am Samstagmorgen.');
+    expect(headSentence(todayMeals([thisWeek], at(SO, 22, 0)), nextMeal([thisWeek], at(SO, 22, 0)))).toBe('Für heute steht nichts mehr an. Bo plant die nächsten Tage bald.');
+    expect(headSentence([], null)).toBe('Heute ist nichts geplant. Bo plant die nächsten Tage bald.');
   });
   it('says a meal in words: minutes, take along, what it is enough for, how long it keeps, who wished it', () => {
     expect(mealSentence(thisWeek, skyr)).toBe('In 5 Minuten fertig und gut zum Mitnehmen.');
@@ -78,13 +79,17 @@ describe('Essen in words', () => {
     expect(eatersLine(['Max', 'Lena'])).toBe('Max und Lena essen mit');
     expect(slotKicker('fruehstueck')).toBe('Frühstück · 8 Uhr');
   });
-  it('the rest of the week starts after today, the next week only with its plan', () => {
-    expect(restOfWeek(weeks, at(MO, 12, 0)).map((r) => r.lead)).toEqual(['Di 10.', 'Mi 11.', 'Do 12.', 'Fr 13.', 'Sa 14.', 'So 15.']);
-    expect(restOfWeek(weeks, at(MO, 12, 0))[0]!.dateLong).toBe('Dienstag, 10. November');
-    expect(restOfWeek(weeks, at(MO, 12, 0))[1]!.meal!.slot).toBe('abend');
-    expect(restOfWeek(weeks, at(SO, 12, 0))).toEqual([]);
-    expect(nextWeekRows([thisWeek], at(SA, 12, 0))).toEqual([]);
-    expect(nextWeekRows(weeks, at(SA, 12, 0))).toHaveLength(7);
+  it('the next days run from tomorrow across the week edge, only with a plan, cut after the last day with a meal', () => {
+    expect(comingDays(weeks, at(MO, 12, 0)).map((r) => r.lead)).toEqual(['Di 10.', 'Mi 11.', 'Do 12.', 'Fr 13.', 'Sa 14.', 'So 15.', 'Mo 16.']);
+    expect(comingDays(weeks, at(MO, 12, 0))[0]!.dateLong).toBe('Dienstag, 10. November');
+    expect(comingDays(weeks, at(MO, 12, 0))[1]!.meal!.slot).toBe('abend');
+    expect(comingDays(weeks, at(SO, 12, 0)).map((r) => r.lead)).toEqual(['Mo 16.', 'Di 17.']);
+    expect(comingDays([thisWeek], at(SO, 12, 0))).toEqual([]);
+  });
+  it('without a plan the head says that Bo plans soon', () => {
+    expect(NO_PLAN).toBe('Noch gibt es keinen Essensplan. Bo plant die nächsten Tage bald.');
+  });
+  it('looks back at the past days', () => {
     expect(lastWeekRows(null)).toEqual([]);
     expect(pastDaysRows(weeks, at(MO, 12, 0))).toEqual([]);
     expect(pastDaysRows(weeks, at(SA, 12, 0)).map((r) => r.lead)).toEqual(['Mo 9.', 'Di 10.', 'Mi 11.', 'Do 12.', 'Fr 13.']);
@@ -104,10 +109,26 @@ describe('Essen in words', () => {
   });
   it('the tiles and the list count calmly', () => {
     expect([favSentence(0), favSentence(1), favSentence(2), openSentence(11), openSentence(1), openSentence(0)]).toEqual(['Alle Rezepte durchsuchen', '1 Favorit', '2 Favoriten', '11 Dinge offen', '1 Ding offen', 'Alles ist erledigt']);
-    expect([shoppingSentence(2), shoppingSentence(1)]).toEqual(['Die Liste reicht für die ganze Woche und für zwei Personen.', 'Die Liste reicht für die ganze Woche und für eine Person.']);
-    expect(shoppingWeek(weeks, at(SA, 9, 0))!.plan.week).toBe(NEXT);
-    expect(shoppingWeek(weeks, at(MI, 9, 0))!.plan.week).toBe(THIS);
     expect(recipeSentence({ minutes: 30, proteinG: 25, keepsDays: 2 })).toBe('In 30 Minuten fertig, mit viel Eiweiß, und es hält sich zwei Tage.');
     expect(recipeSentence({ minutes: 10, proteinG: 8, keepsDays: 0 })).toBe('In 10 Minuten fertig, am besten frisch.');
+  });
+});
+
+describe('the shopping list over the next days', () => {
+  const tofu = (title: string) => dish(title, { ingredients: [{ name: 'Tofu natur', amount: 100, unit: 'g', section: 'Kühlregal' }] });
+  const m = (day: number, slot: Slot, title: string, eaters = ['pa', 'pb']): Meal => ({ ...meal(day, slot, title), dish: tofu(title), eaters });
+  const A = '2026-11-16', B = '2026-11-23';
+  const ws = [week(A, [m(4, 'abend', 'Pfanne')]), week(B, [m(0, 'abend', 'Pfanne'), m(3, 'abend', 'Pfanne')])];
+  const d19 = (h: number) => new Date(2026, 10, 19, h).getTime(); // a Thursday
+  it('says when the list ends and for whom; in the evening it starts tomorrow', () => {
+    expect(shoppingSentence(windowShoppingList(ws, d19(9)), d19(9))).toBe('Die Liste reicht bis Montag und ist für zwei Personen.');
+    expect(shoppingSentence(windowShoppingList(ws, d19(21)), d19(21))).toBe('Die Liste beginnt morgen, reicht bis Donnerstag und ist für zwei Personen.');
+    expect(shoppingSentence(windowShoppingList([week(A, [m(4, 'abend', 'Pfanne')])], d19(9)), d19(9))).toBe('Die Liste reicht bis Freitag und ist für zwei Personen.');
+    expect(shoppingSentence(windowShoppingList([{ ...ws[0]!, plan: { ...ws[0]!.plan, people: [ws[0]!.plan.people[0]!] } }], d19(9)), d19(9))).toBe('Die Liste reicht bis Freitag und ist für eine Person.');
+    expect(shoppingSentence(windowShoppingList([week(A, [])], d19(9)), d19(9))).toBe('');
+  });
+  it('counts the open rows of both weeks', () => {
+    expect(openCount(ws, d19(9))).toBe(1);
+    expect(openCount([], d19(9))).toBe(0);
   });
 });

@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { nextUpdatedMs } from '../tracking/ui/run-view';
 import type { TrackedRecord } from '../shared/records';
 import {
-  favouriteIds, favRecordId, newPlaceId, CHAT_MAX_CHARS, isLinkRecordId, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, isChatRecordId, newChatId, readMealChat, DAY_SHORT, mealKey, readMealState,
+  favouriteIds, favRecordId, newPlaceId, newReplanId, isReplanRecordId, readReplanRequest, CHAT_MAX_CHARS, isLinkRecordId, LINK_URL_MAX, linkAnswer, newLinkId, readLinkRequest, safeLink, isChatRecordId, newChatId, readMealChat, DAY_SHORT, mealKey, readMealState,
   SLOT_LABEL, SLOTS, stateRecordId,
   type LinkRequest, type Meal, type MealChat, type MealState,
 } from '../shared/meals';
@@ -10,7 +10,7 @@ import type { WebPort } from './webPort';
 import { usePortRecords } from '../tracking/ui/hooks';
 import { RowCard, Sheet } from '../tracking/ui/kit';
 import { MealImage } from './essen/MealImage';
-import { lastMealWeek, mealDayOf, mealWeeks, shoppingWeek, WISH_SENT, type MealAt, type Week } from './essen/meals-view';
+import { lastMealWeek, mealDayOf, mealWeeks, firstWeek, WISH_SENT, type MealAt, type Week } from './essen/meals-view';
 import { KeptPage } from './essen/EssenPage';
 import { EssenStart } from './essen/EssenStart';
 import { MealPage } from './essen/MealPage';
@@ -120,6 +120,17 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
     const at = now();
     await port.put({ kind: 'mealplan', id: newPlaceId(at), updatedMs: at, deleted: false, body: { week: w, meal, recipeId, atMs: at, result: null, answeredMs: null } }).catch(() => { /* nothing was sent; try again */ });
   };
+  /** "Neu planen": a request record the coach answers once, like a link. */
+  const replan = async () => {
+    const at = now();
+    await port.put({ kind: 'mealplan', id: newReplanId(at), updatedMs: at, deleted: false, body: { atMs: at, answeredMs: null } }).catch(() => { /* nothing was sent; try again */ });
+  };
+  /** The newest request is not answered yet: Bo is planning or waits for the ride to end. */
+  const replanPending = useMemo(() => {
+    const newest = (records ?? []).flatMap((r) => { const q = !r.deleted && isReplanRecordId(r.id) ? readReplanRequest(r.id, r.body) : null; return q ? [q] : []; }).sort((a, b) => b.atMs - a.atMs)[0];
+    // A request nobody answered for half a day (the Mac is off) stops showing the line.
+    return newest !== undefined && newest.answeredMs === null && t - newest.atMs < 12 * 3_600_000;
+  }, [records, t]);
   /** Deleting the record deletes the recipe: the coach sees the tombstone. */
   const deleteRecipe = async (recipeId: string) => {
     const id = `recipe-${recipeId}`;
@@ -128,7 +139,7 @@ export function useMealData(port: WebPort, now: () => number, fetchFn: typeof fe
     await port.put({ ...have, updatedMs: nextUpdatedMs(now(), have), deleted: true }).catch(() => { /* still there; try again */ });
   };
   const recipeCtx: RecipeCtx = { fetchFn, now, favs, toggleFav, weeks, place, placements: placed, deleteOwn: (id) => void deleteRecipe(id) };
-  return { records, weeks, last, change, favs, recipeCtx };
+  return { records, weeks, last, change, favs, recipeCtx, replan, replanPending };
 }
 
 /** The meals of today on Heute, calm: a row card per slot, a quiet line for what is cooked today for later. A tap opens the meal page in Essen. Reads only; writes go through useMealData. */
@@ -169,7 +180,7 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
   const [page, setPage] = useState<Page>(() => (entry ? { name: 'meal', at: entry, from: 'heute' } : { name: 'start' }));
   useEffect(() => { if (entry) onEntryDone?.(); }, [entry, onEntryDone]);
   const t = now();
-  const first = shoppingWeek(weeks, t); // the week Einkauf shows first, also the one "Plan ändern" writes for
+  const first = firstWeek(weeks, t); // the week of the first day the list shows, also the one "Plan ändern" writes for
   const [chatOpen, setChatOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const chat = useMemo(() => mealChats(records), [records]);
@@ -179,7 +190,7 @@ export function MealsScreen({ port, now, fetchFn, account, entry, onEntryDone, o
     const at = now();
     await port.put({ kind: 'mealplan', id: newLinkId(at), updatedMs: at, deleted: false, body: { url, atMs: at, result: null, answeredMs: null } }).catch(() => { /* the field is empty again; nothing else is lost */ });
   };
-  /** A new record of its own: only the Mac writes it again, with the reply. The week is the one Einkauf shows first. */
+  /** A new record of its own: only the Mac writes it again, with the reply. The week is the one of the first day the list shows. */
   const say = async (text: string) => {
     const at = now();
     await port.put({ kind: 'mealplan', id: newChatId(at), updatedMs: at, deleted: false, body: { week: first?.plan.week, text, atMs: at, reply: null, answeredMs: null, changed: [] } }).catch(() => { /* the field stays empty; nothing else is lost */ });
