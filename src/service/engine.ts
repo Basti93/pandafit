@@ -136,11 +136,12 @@ export class RideEngine {
 
   isDone(): boolean { return this.rampEnded || this.sessionS() >= this.totalS(); }
 
-  /** Counts every tick, also while the engine is auto-paused at 0 W. A pause in the app stops the ticks, so it never counts. */
+  /** Counts every tick with measured low power, also while the engine is auto-paused at 0 W. A pause in the app stops the ticks, so it never counts. */
   private checkRampEnd(now: number, targetW: number, events: RideEvent[]): void {
     if (this.opts.session.id !== RAMP_ID || this.rampEnded || this.sessionS() < RAMP_MIN_S) return;
     const { powerW } = this.latest;
-    this.rampLowS = powerW === null || powerW < targetW * RAMP_LOW_FRACTION ? this.rampLowS + 1 : 0;
+    // A missing reading is a dropout, not a rider who cannot hold on: the test result would be wrong.
+    this.rampLowS = powerW !== null && powerW < targetW * RAMP_LOW_FRACTION ? this.rampLowS + 1 : 0;
     if (this.rampLowS < RAMP_LOW_S) return;
     this.rampEnded = true;
     events.push({ wallClockMs: now, type: 'ramp-end' });

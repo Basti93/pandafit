@@ -23,4 +23,4 @@ Fitness and fatigue are exponential averages of TSS over 42 and 7 days, form is 
 
 ## Ende des Rampentests
 
-The ramp test ends by itself when you cannot keep up. Own settings: from minute 8 of the ride (5 minutes of warmup plus 3 minutes of ramp), 15 seconds in a row below 80% of the target power, or without a power signal, end the test. The ride is saved as finished. Your FTP comes from the best minute as before. A pause you set in the app never counts, because the ride does not tick then.
+The ramp test ends by itself when you cannot keep up. Own settings: from minute 8 of the ride (5 minutes of warmup plus 3 minutes of ramp), 15 seconds in a row of measured power below 80% of the target end the test. Seconds without a power signal do not count, a dropout must not end the test with a wrong FTP. The ride is saved as finished. Your FTP comes from the best minute as before. A pause you set in the app never counts, because the ride does not tick then.

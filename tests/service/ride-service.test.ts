@@ -252,14 +252,26 @@ test('skip without a ride or on the last step does nothing and never throws', ()
 
 const rampSession = rampTest(200);
 test('a failing ramp test ends as finished and keeps its samples', () => {
+  const ble = new FakeBlePort();
+  const svc = new RideService({ dir, ble, nowMs: () => t, retryMs: 5 });
+  svc.handle({ type: 'start', profileId: 'A', session: rampSession, ftpW: 200 });
+  return new Promise<void>((resolve) => setTimeout(() => {
+    // 100 W keeps up until the ramp passes 125 W, after minute 8.
+    for (let i = 0; i < 600; i++) { ble.emit('trainer', Buffer.from([0x41, 0x00, 0x64, 0x00])); ticks(svc, 1); }
+    const r = readRide(dir, onlyRide());
+    expect(r.meta.status).toBe('finished');
+    expect(r.samples.length).toBeGreaterThanOrEqual(480);
+    expect(r.samples.length).toBeLessThan(600);
+    expect(r.events.filter((e) => e.type === 'ramp-end')).toHaveLength(1);
+    svc.close();
+    resolve();
+  }, 20));
+});
+test('a ramp test without power data does not end by itself', () => {
   const svc = make();
   svc.handle({ type: 'start', profileId: 'A', session: rampSession, ftpW: 200 });
   ticks(svc, 600);
-  const r = readRide(dir, onlyRide());
-  expect(r.meta.status).toBe('finished');
-  expect(r.samples.length).toBeGreaterThanOrEqual(480);
-  expect(r.samples.length).toBeLessThan(600);
-  expect(r.events.filter((e) => e.type === 'ramp-end')).toHaveLength(1);
+  expect(readRide(dir, onlyRide()).meta.status).toBe('open');
 });
 test('a paused ride does not end the ramp test', () => {
   const first = make();

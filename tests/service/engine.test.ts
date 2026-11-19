@@ -385,6 +385,14 @@ describe('ramp test end', () => {
     lowPower(e, c, 14);
     expect(e.isDone()).toBe(false);
   });
+  test('missing power readings (a dropout) do not end the ramp test', () => {
+    const c = clock(); const e = mk(c);
+    onTarget(e, c, 600);
+    for (let i = 0; i < 30; i++) { c.step(); e.tick({}); }
+    expect(e.isDone()).toBe(false);
+    lowPower(e, c, 15);
+    expect(e.isDone()).toBe(true);
+  });
   test('a normal session never ends early from low power', () => {
     const long: Session = { id: 's', name: 'x', steps: [{ kind: 'erg', durationS: 3600, ftpFraction: 0.5, label: 'A' }] };
     const c = clock(); const e = mk(c, long);
