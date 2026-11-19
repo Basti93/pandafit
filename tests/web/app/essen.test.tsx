@@ -7,7 +7,7 @@ import { openIdb } from '../../../src/web/idbStore';
 import { addWeeks, DAY_LONG, dayIndex, itemKey, weekOf } from '../../../src/shared/meals';
 import type { LiveSocket } from '../../../src/web/live';
 import { ShoppingPage } from '../../../src/web/essen/ShoppingPage';
-import { NOW, DAY, json, boot, openMeal, pill } from './helpers';
+import { NOW, json, boot, openMeal, pill } from './helpers';
 
 afterEach(cleanup);
 

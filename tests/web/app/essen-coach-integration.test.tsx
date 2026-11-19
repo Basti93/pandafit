@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { cleanup, fireEvent, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openIdb } from '../../../src/web/idbStore';
-import { dayIndex, weekOf } from '../../../src/shared/meals';
+import { dayIndex } from '../../../src/shared/meals';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,7 +14,6 @@ import { NOW, boot } from './helpers';
 
 afterEach(cleanup);
 
-const week = weekOf(NOW);
 const today = dayIndex(NOW);
 
 describe('Essen on the phone with the coach on the Mac', () => {
