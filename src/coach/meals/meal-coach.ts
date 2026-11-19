@@ -16,10 +16,10 @@ import { pickSide, planFromRecipes, recipeDish, type Favourites } from './recipe
 import { RecipeStore, shownLink } from './recipe-store';
 import { ruleValues } from '../../shared/training-policy';
 import { buildMealPrompt, buildSwapPrompt, dishFrom, MEAL_SYSTEM_PROMPT, mealAnswerJsonSchema, mealAnswerSchema, mealsFromAnswer } from './prompt';
-import { constraintsFor, ruleMeals, seeded, skeleton, type Member, type Slotted } from './rules';
+import { constraintsFor, ruleMeals, seeded, skeleton, stockSet, type Member, type Slotted } from './rules';
 import { applyChat, buildChatPrompt, CHAT_SYSTEM_PROMPT, chatAnswerJsonSchema, chatAnswerSchema, listDish, putDish, REPLY_NO_AI, REPLY_NO_PLAN, replySwapped, ruleTarget, type ChatResult } from './chat';
-import type { StockItem } from '../../shared/meal-list';
-import { addDays, cmpRef, dayKeyOf, dayRefOf, FILL_DAYS, splitByWeek, type DayRef } from '../../shared/meal-window';
+import { retieStock, stockNames, stockOf, type StockItem } from '../../shared/meal-list';
+import { addDays, cmpRef, dayKeyOf, dayRefOf, FILL_DAYS, splitByWeek, type DayRef, type PlanWeek } from '../../shared/meal-window';
 import { writeJsonAtomic } from '../../shared/node/atomic-write';
 
 const HOUR = 3_600_000;
@@ -382,15 +382,28 @@ export class MealCoach {
     } catch { return []; }
   }
 
-  /** "Neu planen": from tomorrow through today + FILL_DAYS. Today never changes. */
+  /** The plans of the weeks held, with their states, for the list and stock arithmetic. */
+  private planWeeks(): PlanWeek[] {
+    const d = this.load();
+    return Object.keys(d.plans).sort().map((w) => ({ plan: d.plans[w]!, state: d.states[w] ?? EMPTY_STATE }));
+  }
+
+  /**
+   * "Neu planen": from tomorrow through today + FILL_DAYS. Today never changes. What is bought and not eaten goes to the planner as
+   * `vorrat` and moves onto the new dishes afterwards.
+   */
   async replan(id: string): Promise<void> {
     if (!this.enabled(id) || !this.deps.noOpenRide() || this.planning) return;
     this.importStates();
     const today = dayRefOf(this.deps.nowMs());
     const from = addDays(today, 1);
     const to = addDays(today, FILL_DAYS);
-    for (const part of splitByWeek(from, to)) await this.planDays(part.week, part.fromDay, part.toDay, { keepExisting: false, stock: [] });
-    this.load().plannedUntil = dayKeyOf(to);
+    const stock = stockOf(this.planWeeks(), from);
+    for (const part of splitByWeek(from, to)) await this.planDays(part.week, part.fromDay, part.toDay, { keepExisting: false, stock });
+    const d = this.load();
+    d.plannedUntil = dayKeyOf(to);
+    const tied = retieStock(this.planWeeks(), from, stock, this.deps.nowMs());
+    for (const [week, state] of Object.entries(tied)) d.states[week] = mergeStates(d.states[week] ?? EMPTY_STATE, state);
     this.save();
     this.exportAll();
   }
@@ -450,7 +463,7 @@ export class MealCoach {
         // Every meal came from a real recipe (or stays): nothing to invent.
       } else if (this.deps.ask) {
         try {
-          const raw = await this.deps.ask({ prompt: buildMealPrompt({ members, slots: aiSlots, trainingDays, lastWeek }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: PLAN_TIMEOUT_MS });
+          const raw = await this.deps.ask({ prompt: buildMealPrompt({ members, slots: aiSlots, trainingDays, lastWeek, stock: stockNames(o.stock) }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: PLAN_TIMEOUT_MS });
           fromAi = mealsFromAnswer(raw, members, aiSlots);
           const replaced = aiSlots.length - fromAi.length;
           if (!mealAnswerSchema.safeParse(raw).success) notice = NOTICE_NO_AI;
@@ -461,7 +474,7 @@ export class MealCoach {
       const have = new Set([...fromAi, ...real].map((m) => mealKey(m.day, m.slot)));
       const open = skeleton(members, fromDay, true, toDay).filter((s) => !keptKeys.has(mealKey(s.day, s.slot)) && !have.has(mealKey(s.day, s.slot))).map((s) => unkept(s.reuseOf && have.has(s.reuseOf) ? { ...s, reuseOf: null } : s));
       for (const m of real) if (m.dish.recipeId) lastIds.add(m.dish.recipeId);
-      const fromList = ruleMeals(members, open, trainingDays, random, lastIds);
+      const fromList = ruleMeals(members, open, trainingDays, random, lastIds, stockSet(stockNames(o.stock)));
       const meals = [...kept, ...real, ...fromAi, ...fromList].sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
       const source = fromAi.length === 0 ? 'liste' : fromList.length + real.length === 0 ? 'coach' : 'gemischt';
       d.plans[week] = { week, createdMs: this.deps.nowMs(), source, people: this.people(), meals, trainingDays };
@@ -492,7 +505,7 @@ export class MealCoach {
       const order = unlocked ? slots : [...slots].sort(() => i.random() - 0.5);
       const meals = await planFromRecipes({
         members: i.members, slots: order, trainingDays: i.trainingDays, pool, lastIds: i.lastIds, random: i.random, lastWeek: i.lastWeek,
-        ...(cap !== undefined ? { cap } : {}), treatsInWeek: i.treatsInWeek, favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
+        ...(cap !== undefined ? { cap } : {}), treatsInWeek: i.treatsInWeek, stock: stockNames(i.stock), favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
       });
       return meals;
     } catch { return []; }
@@ -626,11 +639,11 @@ export class MealCoach {
     this.putState(week, (s) => withEater(s, key, person, on, atMs ?? this.deps.nowMs()), atMs);
   }
 
-  setItem(id: string, week: string, item: string, state: ItemState, atMs?: number): void {
+  setItem(id: string, week: string, item: string, state: ItemState, atMs?: number, cover?: Record<string, number>): void {
     const d = this.load();
     if (!this.enabled(id) || !d.plans[week] || typeof item !== 'string' || item.length > 120 || !['offen', 'gekauft', 'da'].includes(state)) return;
     this.importStates();
-    this.putState(week, (s) => withItem(s, item, state, atMs ?? this.deps.nowMs()), atMs);
+    this.putState(week, (s) => withItem(s, item, state, atMs ?? this.deps.nowMs(), cover), atMs);
   }
 
   /** A change made now replaces its entry; one made at an earlier `atMs` is merged, so a newer entry stays. */

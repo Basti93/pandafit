@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { MealCoach, NOTICE_NO_AI, usualTrainingDays } from '../../../src/coach/meals/meal-coach';
 import { RecordStore } from '../../../src/coach/tracking/store';
+import { tickWrites, windowShoppingList } from '../../../src/shared/meal-list';
 import { cookPortions, EMPTY_STATE, itemKey, mealKey, readMealPlan, shoppingList, SLOTS, type MealSettings } from '../../../src/shared/meals';
 import type { MealAnswer } from '../../../src/coach/meals/prompt';
 
@@ -396,5 +397,60 @@ describe('usual training days', () => {
     const now = at(7, 12);
     const mon = (weeksAgo: number) => at(2 - 7 * weeksAgo, 18);
     expect(usualTrainingDays([mon(0), mon(1), at(4, 18), at(25 - 31, 9)], now)).toEqual([0]);
+  });
+});
+
+describe('Neu planen', () => {
+  const dayTitles = (w: { plan: { meals: { day: number; slot: string; dish: { title: string } }[] } }, day: number) => w.plan.meals.filter((m) => m.day === day).map((m) => `${m.slot}:${m.dish.title}`);
+  const days = (w: { plan: { meals: { day: number }[] } }) => [...new Set(w.plan.meals.map((m) => m.day))];
+
+  it('replans from tomorrow through the seventh day after; today stays', async () => {
+    const { coach, clock } = setup({ now: at(19, 9) });
+    coach.setSettings('max', ON());
+    await coach.tick();
+    const [a0, b0] = coach.view('max').weeks;
+    const today = dayTitles(a0!, 3);
+    const created = b0!.plan.createdMs;
+    clock.now += 60_000;
+    await coach.replan('max');
+    const [a, b] = coach.view('max').weeks;
+    expect(dayTitles(a!, 3)).toEqual(today);
+    expect(b!.plan.createdMs).not.toBe(created);
+    expect(days(a!)).toEqual([3, 4, 5, 6]);
+    expect(days(b!)).toEqual([0, 1, 2, 3]);
+  });
+
+  it('on a Sunday it replans only next week', async () => {
+    const { coach, clock } = setup({ now: at(22, 9) });
+    coach.setSettings('max', ON());
+    await coach.tick();
+    const [a0, b0] = coach.view('max').weeks;
+    clock.now += 60_000;
+    await coach.replan('max');
+    const [a, b] = coach.view('max').weeks;
+    expect(a!.plan.week).toBe('2026-11-16');
+    expect(a!.plan.createdMs).toBe(a0!.plan.createdMs);
+    expect(b!.plan.createdMs).not.toBe(b0!.plan.createdMs);
+    expect(days(b!)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it('bought, not yet eaten ingredients go to Bo as vorrat and stay ticked on the new dishes', async () => {
+    const prompts: string[] = [];
+    const { coach, clock } = setup({ now: at(19, 9), ask: async (i) => { prompts.push(i.prompt); return answer(() => ({})); } });
+    coach.setSettings('max', ON());
+    await coach.tick();
+    const key = itemKey('Tofu natur', 'g');
+    const now = clock.now;
+    const weeks = () => coach.view('max').weeks.map(({ plan, state }) => ({ plan, state }));
+    for (const w of tickWrites(weeks(), now, key, 'gekauft')) coach.setItem('max', w.week, key, 'gekauft', undefined, w.cover);
+    clock.now += 60_000;
+    prompts.length = 0;
+    await coach.replan('max');
+    const last = prompts.filter((p) => p.includes('mahlzeiten-nur-daten')).pop()!;
+    expect(last).toContain('vorrat-nur-daten');
+    expect(last).toContain('Tofu natur');
+    const l = windowShoppingList(weeks(), clock.now);
+    const row = [...l.sections.flatMap((x) => x.items), ...l.have].find((x) => x.key === key)!;
+    expect(row.state).toBe('gekauft');
   });
 });

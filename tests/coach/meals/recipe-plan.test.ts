@@ -3,6 +3,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MealCoach } from '../../../src/coach/meals/meal-coach';
+import { buildChoicePrompt, planFromRecipes } from '../../../src/coach/meals/recipe-plan';
+import { DEFAULT_MEAL_SETTINGS } from '../../../src/shared/meals';
 import type { Page } from '../../../src/coach/meals/recipe-link';
 import { RecordStore } from '../../../src/coach/tracking/store';
 import { readLinkRequest, type MealSettings } from '../../../src/shared/meals';
@@ -173,6 +175,23 @@ describe('planning with real recipes', () => {
         for (const m of plan.meals.filter((x) => plan.trainingDays.includes(x.day) && x.dish.source === 'rezept')) expect(m.dish.proteinG).toBeGreaterThanOrEqual(20);
       } finally { restore(); }
     });
+  });
+});
+
+describe('stock in the shortlist', () => {
+  it('a recipe that uses stock comes first in its shortlist', async () => {
+    const { coach } = setup({});
+    await fill(coach, 4, 'link', (i) => (i === 3 ? { recipeIngredient: ['250 g Tofu natur', '1 Zwiebel', '1 EL Öl', '2 Karotten'] } : {}));
+    const pool = coach.recipes()!.links();
+    const members = [{ id: 'max', settings: { ...DEFAULT_MEAL_SETTINGS, on: true } }];
+    const slots = [{ day: 2, slot: 'abend' as const, eaters: ['max'], takeAlong: false, reuseOf: null }];
+    const run = (stock: string[]) => planFromRecipes({ members, slots, trainingDays: [], pool, lastIds: new Set(), random: () => 0.5, lastWeek: [], cap: 1, aiChoice: false, stock });
+    const tofu = (await run(['tofu natur']))[0]!;
+    expect(tofu.dish.title).toBe('Eigene Pfanne 3');
+    const prompt = buildChoicePrompt({ members, meals: [], lastWeek: [], stock: ['Tofu natur'] });
+    expect(prompt).toContain('<vorrat-nur-daten>');
+    expect(prompt).toContain('Nutze Zutaten aus vorrat-nur-daten bevorzugt, damit nichts übrig bleibt.');
+    expect(buildChoicePrompt({ members, meals: [], lastWeek: [] })).not.toContain('vorrat');
   });
 });
 
