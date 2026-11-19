@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { ALIAS_SYSTEM_PROMPT } from '../../../src/coach/meals/aliases';
 import { MealCoach } from '../../../src/coach/meals/meal-coach';
 import { REPLY_NO_AI, ruleTarget, type ChatAnswer } from '../../../src/coach/meals/chat';
 import { MEAL_SYSTEM_PROMPT, type MealAnswer } from '../../../src/coach/meals/prompt';
@@ -43,7 +44,7 @@ const setup = async (o: Opts = {}) => {
   });
   let r = 0;
   const coach = new MealCoach({
-    dir: path.join(dir, 'meals'), nowMs: () => clock.now, profiles: () => PEOPLE, noOpenRide: () => !ride.open, ask,
+    dir: path.join(dir, 'meals'), nowMs: () => clock.now, profiles: () => PEOPLE, noOpenRide: () => !ride.open, ask: (i) => (i.systemPrompt === ALIAS_SYSTEM_PROMPT ? Promise.resolve({ paare: [] }) : ask(i)),
     store, linked: (id) => (o.linked ?? []).includes(id), trainingDays: () => [], random: () => ((r = (r * 9301 + 49297) % 233280) / 233280),
   });
   coach.setSettings('max', ON());

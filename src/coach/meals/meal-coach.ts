@@ -1,13 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  addWeeks, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
-  isFavRecordId, isLinkRecordId, isPlaceRecordId, isReplanRecordId, parseMealKey, readPlaceRequest, readReplanRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readMealChat, readMealState, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
+  addWeeks, ALIASES_RECORD_ID, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
+  isFavRecordId, isLinkRecordId, isPlaceRecordId, isReplanRecordId, parseMealKey, readPlaceRequest, readReplanRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readAliases, readMealChat, readMealState, type Aliases, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
   type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
 import type { RecordStore } from '../tracking/store';
 import { fitsEveryone } from './check';
+import { ASKED_MAX, learnAliases } from './aliases';
 import { sanitizeUrl, type StoredRecipe } from './recipe-import';
 import { fetchPicture, imageUrlOf, type Picture } from './recipe-image';
 import { extractRecipe, fetchPage, type Page } from './recipe-link';
@@ -27,6 +28,7 @@ const DAY = 24 * HOUR;
 const PLAN_TIMEOUT_MS = 300_000;
 const SWAP_TIMEOUT_MS = 120_000;
 const CHAT_TIMEOUT_MS = 120_000;
+const ALIAS_TIMEOUT_MS = 120_000;
 /** Messages kept per person, the newest. */
 const CHAT_KEEP = 10;
 /** Link requests kept per person, the newest. */
@@ -68,6 +70,10 @@ type FileData = {
   plannedUntil: string | null;
   /** The chat with the coach, per person, oldest first. */
   chats: Record<string, MealChat[]>;
+  /** What the coach learned about names: canonical name (by rules) to the canonical name of the same product. Synced to the web. */
+  aliases: Aliases;
+  /** Lower-case names the coach has looked at, so none is asked about twice. */
+  aliasAsked: string[];
 };
 
 export type MealWeek = { plan: MealPlan; state: MealState; notice: string | null };
@@ -125,7 +131,7 @@ export class MealCoach {
     if (this.data) return this.data;
     let d: Partial<FileData> = {};
     try { const parsed = JSON.parse(fs.readFileSync(this.file(), 'utf8')) as unknown; if (isObj(parsed)) d = parsed as Partial<FileData>; } catch { /* no file yet */ }
-    this.data = { settings: isObj(d.settings) ? d.settings : {}, plans: isObj(d.plans) ? d.plans : {}, states: isObj(d.states) ? d.states : {}, notices: isObj(d.notices) ? d.notices : {}, plannedUntil: null, chats: isObj(d.chats) ? d.chats : {} };
+    this.data = { settings: isObj(d.settings) ? d.settings : {}, plans: isObj(d.plans) ? d.plans : {}, states: isObj(d.states) ? d.states : {}, notices: isObj(d.notices) ? d.notices : {}, plannedUntil: null, chats: isObj(d.chats) ? d.chats : {}, aliases: readAliases({ map: d.aliases }), aliasAsked: Array.isArray(d.aliasAsked) ? d.aliasAsked.filter((x): x is string => typeof x === 'string').slice(-ASKED_MAX) : [] };
     // An old file has no bookkeeping: it counts as planned through the Sunday of its newest plan week.
     const newest = Object.keys(this.data.plans).filter(isWeekKey).sort().pop();
     this.data.plannedUntil = typeof d.plannedUntil === 'string' && isDayKey(d.plannedUntil) ? d.plannedUntil : newest ? dayKeyOf({ week: newest, day: 6 }) : null;
@@ -417,7 +423,8 @@ export class MealCoach {
   /** The plans of the weeks held, with their states, for the list and stock arithmetic. */
   private planWeeks(): PlanWeek[] {
     const d = this.load();
-    return Object.keys(d.plans).sort().map((w) => ({ plan: d.plans[w]!, state: d.states[w] ?? EMPTY_STATE }));
+    const aliases = Object.keys(d.aliases).length > 0 ? { aliases: d.aliases } : {};
+    return Object.keys(d.plans).sort().map((w) => ({ plan: d.plans[w]!, state: d.states[w] ?? EMPTY_STATE, ...aliases }));
   }
 
   /**
@@ -438,7 +445,24 @@ export class MealCoach {
     const tied = retieStock(this.planWeeks(), from, stock, this.deps.nowMs());
     for (const [week, state] of Object.entries(tied)) d.states[week] = mergeStates(d.states[week] ?? EMPTY_STATE, state);
     this.save();
+    await this.learnAliases();
     this.exportAll();
+  }
+
+  /**
+   * After a planning run: asks the AI once which new ingredient names are the same product as one already on the lists, and keeps the
+   * answer. The shopping list only reads the stored map and never asks. Without an AI, or when it fails, nothing changes.
+   */
+  private async learnAliases(): Promise<void> {
+    try {
+      if (!this.deps.ask) return;
+      const d = this.load();
+      const next = await learnAliases(Object.keys(d.plans).sort().map((w) => d.plans[w]!), { aliases: d.aliases, asked: d.aliasAsked }, this.deps.ask, ALIAS_TIMEOUT_MS);
+      if (!next) return;
+      d.aliases = next.aliases;
+      d.aliasAsked = next.asked;
+      this.save();
+    } catch { /* the next run asks again */ }
   }
 
   /** Plans the days after `plannedUntil` up to today + FILL_DAYS. Usually one new day. Meals already there stay. True when it planned. */
@@ -455,6 +479,7 @@ export class MealCoach {
     d.plannedUntil = dayKeyOf(target);
     this.save();
     for (const part of parts) await this.planDays(part.week, part.fromDay, part.toDay, { keepExisting: true, stock: [] });
+    await this.learnAliases();
     return true;
   }
 
@@ -769,6 +794,7 @@ export class MealCoach {
           // The newest replan requests stay, like link requests; older ones are tombstoned.
           const replans = have.flatMap((r) => { const q = !r.deleted && isReplanRecordId(r.id) ? readReplanRequest(r.id, r.body) : null; return q ? [{ id: r.id, atMs: q.atMs }] : []; });
           for (const q of replans.sort((a, b) => b.atMs - a.atMs).slice(0, LINK_KEEP)) keep.add(q.id);
+          if (Object.keys(d.aliases).length > 0 || have.some((r) => r.id === ALIASES_RECORD_ID && !r.deleted)) wanted.set(ALIASES_RECORD_ID, { map: d.aliases });
           for (const w of weeks) {
             wanted.set(planRecordId(w), { ...d.plans[w], you: p.id });
             wanted.set(stateRecordId(w), d.states[w] ?? EMPTY_STATE);

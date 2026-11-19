@@ -1,10 +1,11 @@
 process.env.TZ = 'Europe/Berlin'; // the clock-change test must cross a real change on any machine
 import { describe, expect, it } from 'vitest';
+import type { TrackedRecord } from '../../src/shared/records';
 import { windowShoppingList } from '../../src/shared/meal-list';
-import { addWeeks, type Dish, type Meal, type Slot } from '../../src/shared/meals';
+import { addWeeks, canonName, type Dish, type Meal, type Slot } from '../../src/shared/meals';
 import {
   askedSentence, comingDays, NO_PLAN, eatersLine, favSentence, headSentence, lastWeekRows, mealSentence, nextMeal, openCount, openSentence, pastDaysRows, placeButton, placeDefault, placedSentence,
-  mealKicker, recipeSentence, rowSentence, shoppingSentence, slotKicker, todayMeals, type Week,
+  mealKicker, mealWeeks, recipeSentence, rowSentence, shoppingSentence, slotKicker, todayMeals, type Week,
 } from '../../src/web/essen/meals-view';
 
 const MO = 0, MI = 2, SA = 5, SO = 6;
@@ -130,5 +131,21 @@ describe('the shopping list over the next days', () => {
   it('counts the open rows of both weeks', () => {
     expect(openCount(ws, d19(9))).toBe(1);
     expect(openCount([], d19(9))).toBe(0);
+  });
+});
+
+describe('the list reads the household aliases from the records', () => {
+  it('a record "aliases" is attached to the weeks and merges two spellings', () => {
+    const ing = (name: string) => ({ name, amount: 100, unit: 'g' as const, section: 'Kühlregal' as const });
+    const w = week(THIS, [meal(MO, 'mittag', 'A', {}, { ingredients: [ing('Hüttenkäse')] }), meal(MI, 'mittag', 'B', {}, { ingredients: [ing('Körniger Frischkäse')] })]);
+    const records: TrackedRecord[] = [
+      { kind: 'mealplan' as const, id: `week-${THIS}`, updatedMs: 1, deleted: false, body: w.plan },
+      { kind: 'mealplan' as const, id: `state-${THIS}`, updatedMs: 1, deleted: false, body: w.state },
+    ];
+    const now = at(MO, 8);
+    const count = (rs: TrackedRecord[]) => { const l = windowShoppingList(mealWeeks(rs, now), now); return l.sections.flatMap((s) => s.items).length; };
+    expect(count(records)).toBe(2);
+    const withAliases = [...records, { kind: 'mealplan' as const, id: 'aliases', updatedMs: 1, deleted: false, body: { map: { [canonName('Hüttenkäse')]: canonName('Körniger Frischkäse') } } }];
+    expect(count(withAliases)).toBe(1);
   });
 });
