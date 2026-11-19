@@ -2,6 +2,7 @@
  * The household's weekly meal plan: types, week arithmetic, portions and the shopping list. Pure code, shared by the coach,
  * the Mac app and the phone. No calories, no weight: protein is one rough number per portion.
  */
+import { canonName } from './ingredient-key';
 
 export const SLOTS = ['fruehstueck', 'mittag', 'abend'] as const;
 export type Slot = (typeof SLOTS)[number];
@@ -159,7 +160,7 @@ const lower = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 const PANTRY_UNITS: readonly Unit[] = ['EL', 'TL', 'Prise'];
 type Family = 'g' | 'ml' | 'Stk' | 'Bund' | 'Dose' | 'Zehe' | 'Scheibe' | 'etwas';
 const familyOf = (u: Unit): Family => (PANTRY_UNITS.includes(u) ? 'etwas' : (u as Family));
-export const itemKey = (name: string, unit: Unit): string => `${lower(name)}|${familyOf(unit)}`;
+export const itemKey = (name: string, unit: Unit): string => `${canonName(name)}|${familyOf(unit)}`;
 
 /** Common pack sizes, so the list says what to take from the shelf. */
 const PLURAL: Record<string, string> = { Packung: 'Packungen', Becher: 'Becher', Beutel: 'Beutel' };
@@ -174,6 +175,7 @@ const PACKS: Record<string, { size: number; label: string }> = {
   'tk-erbsen': { size: 450, label: 'Beutel' }, babyspinat: { size: 125, label: 'Beutel' }, kartoffeln: { size: 1000, label: 'Beutel' },
   sojaschnetzel: { size: 150, label: 'Packung' }, hummus: { size: 200, label: 'Becher' }, 'tk-brokkoli': { size: 450, label: 'Beutel' },
 };
+const PACKS_BY_CANON = new Map(Object.entries(PACKS).map(([k, v]) => [canonName(k), v]));
 const SLICES_PER_LOAF = 10;
 const CLOVES_PER_BULB = 10;
 
@@ -187,7 +189,7 @@ const roundMass = (n: number, unit: 'g' | 'ml'): string => {
 /** The amount to buy, rounded to what a shop sells. */
 export function shopAmount(name: string, unit: Unit, amount: number): string {
   const fam = familyOf(unit);
-  const pack = PACKS[lower(name)];
+  const pack = PACKS_BY_CANON.get(canonName(name));
   if (fam === 'etwas') return 'aus dem Vorrat';
   if ((fam === 'g' || fam === 'ml') && pack) {
     const n = Math.max(1, Math.ceil(amount / pack.size - 1e-9));

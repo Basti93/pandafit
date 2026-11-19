@@ -176,3 +176,49 @@ describe('replan requests', () => {
     expect(readReplanRequest('replan-abcd1234', 'x')).toBeNull();
   });
 });
+
+describe('canonical ingredient key', () => {
+  const same = (a: string, b: string) => expect(itemKey(a, 'g'), `${a} = ${b}`).toBe(itemKey(b, 'g'));
+  const apart = (a: string, b: string) => expect(itemKey(a, 'g'), `${a} != ${b}`).not.toBe(itemKey(b, 'g'));
+
+  it('merges spelling, word order, plural, filler words and synonyms', () => {
+    same('Basmati-Reis', 'Basmatireis');
+    same('Ei', 'Eier');
+    same('Feta', 'Feta Käse');
+    same('Möhre', 'Karotte');
+    same('Möhren', 'Karotten');
+    same('Kirschtomaten', 'Cherrytomaten');
+    same('Tofu', 'Naturtofu');
+    same('Tofu natur', 'Tofu');
+    same('Sojasauce', 'Sojasoße');
+    same('Paprika, rot', 'Rote Paprika');
+    same('Paprika, gelb', 'Gelbe Paprika');
+    same('Zwiebel', 'Speisezwiebel');
+    same('Zwiebeln', 'Zwiebel');
+    same('Milch', 'Vollmilch');
+    same('Skyr', 'Skyr natur');
+    same('Oregano', 'Oregano, getrocknet');
+    same('Paprikapulver', 'Paprikapulver edelsüß');
+    same('Champignons', 'Braune Champignons');
+    same('Kürbiskerne', 'Kürbiskern');
+    same('KARTOFFELN', 'kartoffel');
+  });
+
+  it('keeps different things apart', () => {
+    apart('Räuchertofu', 'Tofu');
+    apart('Rote Linsen', 'Grüne Linsen');
+    apart('Rote Paprika', 'Gelbe Paprika');
+    apart('Vegetarischer Hartkäse', 'Parmesan');
+    apart('Kichererbsen', 'Kichererbsen (Dose, abgetropft)');
+    apart('Tomate getrocknet', 'Tomate');
+    apart('Brauner Reis', 'Reis');
+    apart('Linsen', 'Rote Linsen');
+  });
+
+  it('is stable: a canonical key maps to itself', () => {
+    for (const n of ['Rote Paprika', 'Eier', 'Kirschtomaten', 'Basmati-Reis', 'Champignons', 'Walnüsse']) {
+      const [name, fam] = itemKey(n, 'g').split('|');
+      expect(itemKey(name!, fam as 'g')).toBe(itemKey(n, 'g'));
+    }
+  });
+});
