@@ -152,3 +152,29 @@ test('a click that offers only one of its possible services still connects and r
   await port.connect('clicker');
   expect(port.deviceName('clicker')).toBe('Zwift Click');
 });
+
+test('a hanging disconnectAsync and stopScanningAsync do not block the next connect', async () => {
+  const n = fakeNoble();
+  const port = new NobleBlePort(dir(), n, { connectTimeoutMs: 20, cleanupTimeoutMs: 20 });
+  const orig = n.startScanningAsync;
+  n.startScanningAsync = async () => {
+    const p = peripheral('1826');
+    p.connectAsync = () => new Promise(() => {});
+    p.disconnectAsync = () => new Promise(() => {});
+    setTimeout(() => n.emit('discover', p), 1);
+  };
+  n.stopScanningAsync = () => new Promise(() => {});
+  await expect(port.connect('trainer')).rejects.toThrow();
+  n.startScanningAsync = orig;
+  n.stopScanningAsync = async () => { n.scans--; };
+  await expect(port.connect('hr')).resolves.toBeUndefined();
+});
+test('an attempt that never returns is cut off and frees the queue', async () => {
+  const n = fakeNoble();
+  const port = new NobleBlePort(dir(), n, { attemptTimeoutMs: 30 });
+  n.waitForPoweredOnAsync = () => new Promise(() => {});
+  await expect(port.connect('hr')).rejects.toThrow(/Zeitüberschreitung/);
+  n.waitForPoweredOnAsync = async () => {};
+  await expect(port.connect('hr')).resolves.toBeUndefined();
+});
+

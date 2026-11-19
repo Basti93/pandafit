@@ -25,6 +25,17 @@ const isClickV1 = (p: any): boolean => {
 const PRIORITY: Record<DeviceKind, number> = { trainer: 0, hr: 1, clicker: 2 };
 const SCAN_TIMEOUT_MS = 10_000;
 const CONNECT_TIMEOUT_MS = 15_000;
+// Cleanup calls (disconnect, stop scan) can hang in noble: never wait for them longer than this.
+const CLEANUP_TIMEOUT_MS = 3000;
+// Upper bound for one whole attempt, so that `busy` is always released.
+const ATTEMPT_TIMEOUT_MS = 60_000;
+
+/** Resolves with the result, or rejects with `message` after `ms`. The late result is ignored. */
+const limit = <T>(work: () => Promise<T> | T, ms: number, message: string): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    Promise.resolve().then(work).then(resolve, reject).finally(() => clearTimeout(timer));
+  });
 // The Click is usually asleep: search briefly so that it does not hold up trainer and strap.
 const CLICKER_SCAN_MS = 4000;
 
@@ -45,8 +56,12 @@ export class NobleBlePort implements BlePort {
   private waiting: { kind: DeviceKind; run: () => void }[] = [];
   private busy = false;
   private clickerScanMs: number;
+  private cleanupTimeoutMs: number;
+  private attemptTimeoutMs: number;
 
-  constructor(dataDir: string, nobleImpl?: unknown, opts: { connectTimeoutMs?: number; clickerScanMs?: number } = {}) {
+  constructor(dataDir: string, nobleImpl?: unknown, opts: { connectTimeoutMs?: number; clickerScanMs?: number; cleanupTimeoutMs?: number; attemptTimeoutMs?: number } = {}) {
+    this.cleanupTimeoutMs = opts.cleanupTimeoutMs ?? CLEANUP_TIMEOUT_MS;
+    this.attemptTimeoutMs = opts.attemptTimeoutMs ?? ATTEMPT_TIMEOUT_MS;
     this.clickerScanMs = opts.clickerScanMs ?? CLICKER_SCAN_MS;
     this.connectTimeoutMs = opts.connectTimeoutMs ?? CONNECT_TIMEOUT_MS;
     this.noble = nobleImpl;
@@ -60,7 +75,7 @@ export class NobleBlePort implements BlePort {
    */
   connect(kind: DeviceKind): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.waiting.push({ kind, run: () => { this.connectNow(kind).then(resolve, reject).finally(() => { this.busy = false; this.next(); }); } });
+      this.waiting.push({ kind, run: () => { limit(() => this.connectNow(kind), this.attemptTimeoutMs, `${kind}: Zeitüberschreitung beim Verbindungsversuch`).then(resolve, reject).finally(() => { this.busy = false; this.next(); }); } });
       this.next();
     });
   }
@@ -97,7 +112,7 @@ export class NobleBlePort implements BlePort {
     } catch (e) {
       // Always disconnect: otherwise a half-open connection blocks the device for the next attempt.
       this.writers.delete(kind);
-      await Promise.resolve(peripheral.disconnectAsync?.()).catch(() => {});
+      await limit(() => peripheral.disconnectAsync?.(), this.cleanupTimeoutMs, 'disconnect').catch(() => {});
       throw e;
     } finally {
       clearTimeout(timer);
@@ -170,7 +185,7 @@ export class NobleBlePort implements BlePort {
         this.noble.on('discover', onDiscover);
       });
     } finally {
-      await this.noble.stopScanningAsync();
+      await limit(() => this.noble.stopScanningAsync(), this.cleanupTimeoutMs, 'stopScanning').catch(() => {});
     }
   }
 }
