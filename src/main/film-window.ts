@@ -7,7 +7,7 @@ let film: BrowserWindow | null = null;
 export const openFilmWindow = (url: string, appUrl: string, showMain: () => void): BrowserWindow | null => {
   if (!sameApp(url, appUrl)) return null;
   if (film && !film.isDestroyed()) { film.focus(); return film; }
-  const win = new BrowserWindow({ width: 320, height: 200, alwaysOnTop: true, resizable: true, title: 'Pandafit Film-Modus', webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false } });
+  const win = new BrowserWindow({ width: 320, height: 200, alwaysOnTop: true, resizable: true, title: 'Pandafit Film-Modus', webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, backgroundThrottling: false } });
   win.webContents.on('will-navigate', (e, u) => { if (!sameApp(u, appUrl)) e.preventDefault(); });
   win.setAlwaysOnTop(true, 'floating');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });

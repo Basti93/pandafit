@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CoachClientMessage } from '../../coach/protocol';
 import type { Pass } from '../../shared/passes';
 import { beep, soundEnabled } from '../countdown';
-import { heightAt, nextPosition, topOf } from './riding';
+import { advance, heightAt, topOf } from './riding';
 
 const SAVE_EVERY_MS = 30_000;
 const TICK_MS = 1000;
@@ -49,7 +49,7 @@ export const PassView = ({ pass, profileId, startM, powerW, paused, send }: Prop
     const timer = setInterval(() => {
       if (state.current.arrived) return;
       const now = performance.now();
-      const next = nextPosition(pass, state.current.distanceM, power.current, Math.min(5, (now - last) / 1000));
+      const next = advance(pass, state.current.distanceM, power.current, (now - last) / 1000);
       last = now;
       state.current = next;
       setPosition(next);

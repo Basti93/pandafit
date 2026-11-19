@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { PASSES, passById, type Pass } from '../../src/shared/passes';
 import { PassCard } from '../../src/ui/pass/PassCard';
 import { PassView } from '../../src/ui/pass/PassView';
-import { gradeAt, heightAt, nextPosition, speedMps } from '../../src/ui/pass/riding';
+import { advance, gradeAt, heightAt, nextPosition, speedMps } from '../../src/ui/pass/riding';
 
 const climb: Pass = { id: 'c', name: 'Testberg', country: 'x', lengthM: 1000, gainM: 80, stepM: 500, heights: [100, 180, 180] };
 afterEach(() => { cleanup(); vi.useRealTimers(); });
@@ -79,5 +79,22 @@ describe('choosing', () => {
     render(<PassCard profileId="A" send={vi.fn()} pass={{ selectedId: 'brocken', distanceM: { brocken: 4000 }, summits: [{ passId: 'alpe-dhuez', atMs: 1 }] }} />);
     expect(screen.getByTestId('pass-card').textContent).toContain('Du bist auf');
     expect(screen.getByRole('option', { name: /Alpe d’Huez.*1× oben/ })).toBeTruthy();
+  });
+});
+
+describe('advance after a late tick', () => {
+  const steady = { ...climb, lengthM: 100_000, heights: Array.from({ length: 201 }, (_, i) => 100 + i * 2), stepM: 500 };
+  test('a gap of two minutes counts as much riding as two minutes of one-second ticks', () => {
+    let ticks = { distanceM: 0, arrived: false };
+    for (let i = 0; i < 120; i++) ticks = nextPosition(steady, ticks.distanceM, 200, 1);
+    const gap = advance(steady, 0, 200, 120);
+    expect(gap.distanceM).toBeGreaterThan(ticks.distanceM * 0.97);
+    expect(gap.distanceM).toBeLessThan(ticks.distanceM * 1.03);
+    expect(gap.distanceM).toBeGreaterThan(5 * nextPosition(steady, 0, 200, 1).distanceM * 10);
+  });
+  test('stops at the summit and does nothing without power or time', () => {
+    expect(advance(climb, 0, 300, 3600)).toEqual({ distanceM: 1000, arrived: true });
+    expect(advance(climb, 500, null, 120)).toEqual({ distanceM: 500, arrived: false });
+    expect(advance(climb, 500, 300, 0)).toEqual({ distanceM: 500, arrived: false });
   });
 });

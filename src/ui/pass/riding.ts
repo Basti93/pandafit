@@ -41,3 +41,15 @@ export const nextPosition = (p: Pass, distanceM: number, powerW: number | null |
   const moved = distanceM + speedMps(powerW, gradeAt(p, distanceM)) * seconds;
   return moved >= p.lengthM ? { distanceM: p.lengthM, arrived: true } : { distanceM: moved, arrived: false };
 };
+
+const SUB_STEP_S = 2;
+
+/**
+ * Moves over a longer gap in small steps, so that grade changes count. Needed because a hidden window
+ * delivers its timer late: the full time since the last tick must count. Power stays at the last known value.
+ */
+export const advance = (p: Pass, distanceM: number, powerW: number | null | undefined, seconds: number): { distanceM: number; arrived: boolean } => {
+  let pos = { distanceM, arrived: false };
+  for (let left = Math.max(0, seconds); left > 0 && !pos.arrived; left -= SUB_STEP_S) pos = nextPosition(p, pos.distanceM, powerW, Math.min(SUB_STEP_S, left));
+  return pos;
+};

@@ -25,6 +25,17 @@ const isClickV1 = (p: any): boolean => {
 const PRIORITY: Record<DeviceKind, number> = { trainer: 0, hr: 1, clicker: 2 };
 const SCAN_TIMEOUT_MS = 10_000;
 const CONNECT_TIMEOUT_MS = 15_000;
+// Cleanup calls (disconnect, stop scan) can hang in noble: never wait for them longer than this.
+const CLEANUP_TIMEOUT_MS = 3000;
+// Upper bound for one whole attempt, so that `busy` is always released.
+const ATTEMPT_TIMEOUT_MS = 60_000;
+
+/** Resolves with the result, or rejects with `message` after `ms`. The late result is ignored. */
+const limit = <T>(work: () => Promise<T> | T, ms: number, message: string): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    Promise.resolve().then(work).then(resolve, reject).finally(() => clearTimeout(timer));
+  });
 // The Click is usually asleep: search briefly so that it does not hold up trainer and strap.
 const CLICKER_SCAN_MS = 4000;
 
@@ -45,13 +56,29 @@ export class NobleBlePort implements BlePort {
   private waiting: { kind: DeviceKind; run: () => void }[] = [];
   private busy = false;
   private clickerScanMs: number;
+  private scanTimeoutMs: number;
+  private names: Partial<Record<DeviceKind, string>> = {};
+  private cleanupTimeoutMs: number;
+  private attemptTimeoutMs: number;
 
-  constructor(dataDir: string, nobleImpl?: unknown, opts: { connectTimeoutMs?: number; clickerScanMs?: number } = {}) {
+  constructor(dataDir: string, nobleImpl?: unknown, opts: { connectTimeoutMs?: number; clickerScanMs?: number; scanTimeoutMs?: number; cleanupTimeoutMs?: number; attemptTimeoutMs?: number } = {}) {
+    this.scanTimeoutMs = opts.scanTimeoutMs ?? SCAN_TIMEOUT_MS;
+    this.cleanupTimeoutMs = opts.cleanupTimeoutMs ?? CLEANUP_TIMEOUT_MS;
+    this.attemptTimeoutMs = opts.attemptTimeoutMs ?? ATTEMPT_TIMEOUT_MS;
     this.clickerScanMs = opts.clickerScanMs ?? CLICKER_SCAN_MS;
     this.connectTimeoutMs = opts.connectTimeoutMs ?? CONNECT_TIMEOUT_MS;
     this.noble = nobleImpl;
     this.knownFile = path.join(dataDir, 'devices.json');
-    try { this.known = JSON.parse(fs.readFileSync(this.knownFile, 'utf8')); } catch { /* first start */ }
+    try {
+      // Old files hold a plain id string; newer ones { id, name }.
+      const raw = JSON.parse(fs.readFileSync(this.knownFile, 'utf8')) as Record<string, string | { id?: string; name?: string }>;
+      for (const [k, v] of Object.entries(raw)) {
+        const id = typeof v === 'string' ? v : v?.id;
+        if (typeof id !== 'string') continue;
+        this.known[k as DeviceKind] = id;
+        if (typeof v === 'object' && typeof v.name === 'string') this.names[k as DeviceKind] = v.name;
+      }
+    } catch { /* first start */ }
   }
 
   /**
@@ -60,7 +87,7 @@ export class NobleBlePort implements BlePort {
    */
   connect(kind: DeviceKind): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.waiting.push({ kind, run: () => { this.connectNow(kind).then(resolve, reject).finally(() => { this.busy = false; this.next(); }); } });
+      this.waiting.push({ kind, run: () => { limit(() => this.connectNow(kind), this.attemptTimeoutMs, `${kind}: Zeitüberschreitung beim Verbindungsversuch`).then(resolve, reject).finally(() => { this.busy = false; this.next(); }); } });
       this.next();
     });
   }
@@ -97,14 +124,18 @@ export class NobleBlePort implements BlePort {
     } catch (e) {
       // Always disconnect: otherwise a half-open connection blocks the device for the next attempt.
       this.writers.delete(kind);
-      await Promise.resolve(peripheral.disconnectAsync?.()).catch(() => {});
+      await limit(() => peripheral.disconnectAsync?.(), this.cleanupTimeoutMs, 'disconnect').catch(() => {});
       throw e;
     } finally {
       clearTimeout(timer);
     }
     this.known[kind] = peripheral.id;
+    const name = peripheral.advertisement?.localName;
+    if (typeof name === 'string' && name) this.names[kind] = name;
+    const out: Record<string, string | { id: string; name: string }> = {};
+    for (const [k, id] of Object.entries(this.known) as [DeviceKind, string][]) out[k] = this.names[k] ? { id, name: this.names[k]! } : id;
     // A failed save must not drop the connected device.
-    try { writeJsonAtomic(this.knownFile, this.known); } catch (e) { console.error('devices.json could not be written', e); }
+    try { writeJsonAtomic(this.knownFile, out); } catch (e) { console.error('devices.json could not be written', e); }
     ready = true;
     this.peripherals.set(kind, peripheral);
   }
@@ -156,21 +187,36 @@ export class NobleBlePort implements BlePort {
     await this.noble.startScanningAsync(clicker ? [] : services, false);
     try {
       return await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          this.noble.removeListener('discover', onDiscover);
-          reject(new Error(`${kind} nicht gefunden`));
-        }, clicker ? this.clickerScanMs : SCAN_TIMEOUT_MS);
-        const onDiscover = (p: any) => {
-          if (this.known[kind] && p.id !== this.known[kind]) return;
-          if (clicker && !isClickV1(p)) return;
-          clearTimeout(timer);
+        const scanMs = clicker ? this.clickerScanMs : this.scanTimeoutMs;
+        const knownName = this.names[kind];
+        let byName: any;
+        let nameTimer: ReturnType<typeof setTimeout> | undefined;
+        const done = (p: any) => {
+          clearTimeout(timer); clearTimeout(nameTimer);
           this.noble.removeListener('discover', onDiscover);
           resolve(p);
+        };
+        const timer = setTimeout(() => {
+          clearTimeout(nameTimer);
+          this.noble.removeListener('discover', onDiscover);
+          reject(new Error(`${kind} nicht gefunden`));
+        }, scanMs);
+        const onDiscover = (p: any) => {
+          if (clicker && !isClickV1(p)) return;
+          if (this.known[kind] && p.id !== this.known[kind]) {
+            // macOS can hand out a new id for the same device: accept the same name, but give the known id a short head start.
+            if (knownName && !byName && p.advertisement?.localName === knownName) {
+              byName = p;
+              nameTimer = setTimeout(() => done(byName), scanMs / 2);
+            }
+            return;
+          }
+          done(p);
         };
         this.noble.on('discover', onDiscover);
       });
     } finally {
-      await this.noble.stopScanningAsync();
+      await limit(() => this.noble.stopScanningAsync(), this.cleanupTimeoutMs, 'stopScanning').catch(() => {});
     }
   }
 }

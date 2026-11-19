@@ -42,6 +42,8 @@ Own settings that only real rides and weeks can confirm or change:
 
 ## Mountain stops moving while the main window is hidden (seen live, 2026-11-12)
 
+Status: vorbereitet in fix/after-ride (full gap integrated in sub-steps, `backgroundThrottling: false` on both windows).
+
 `PassView` moves the rider with a 1 s `setInterval` and caps each step at 5 s (`Math.min(5, …)`). When the film window covers the main window, Chromium throttles the hidden window's timers (after a few minutes to about once per minute). Each late tick then adds only 5 s of riding, so most of the distance is lost and the mountain looks frozen.
 
 - Drive the position from the ride itself, not from a UI timer: the service already has every second's power, so it (or the UI from `engine.rideElapsedS`) can integrate the distance without gaps.
@@ -49,6 +51,8 @@ Own settings that only real rides and weeks can confirm or change:
 - Needs `src/main/**` or `src/service/**`, so it goes with the next restart, not during a ride.
 
 ## BLE-Verbindung hängt nach Zeitüberschreitung (19.11.2026)
+
+Status: vorbereitet in fix/after-ride (Zeitgrenzen und Namens-Abgleich bei neuer ID).
 
 - Symptom: Nach `connect-try` für hr um 20:08:08 kam kein Ergebnis mehr. Danach gab es keine Verbindungsversuche mehr für hr und clicker, bis die App neu startete.
 - Vermutete Ursache: `src/service/ble/noble-adapter.ts` wartet im catch auf `peripheral.disconnectAsync()` oder in `find()` auf `stopScanningAsync()`, ohne Zeitgrenze. Wenn das nicht zurückkommt, bleibt `busy` true und die Warteschlange steht.
