@@ -2,10 +2,11 @@
  * The rolling window of days over the per-week plan records. Pure day arithmetic, by date keys and never by "+ 24 h",
  * so a week edge or a night with a clock change cannot skip or repeat a day. Shared by the coach and the web app.
  */
-import { addWeeks, dateKey, dateOf, dayIndex, SLOT_TIME, SLOTS, weekOf, type Meal, type MealPlan, type MealState, type Slot } from './meals';
+import { addWeeks, dateKey, dateOf, dayIndex, SLOT_TIME, SLOTS, weekOf, type Meal, type MealPlan, type MealState, type Slot, type Aliases } from './meals';
 
 export type DayRef = { week: string; day: number };
-export type PlanWeek = { plan: MealPlan; state: MealState };
+/** `aliases`: what the coach learned about names (see shared/meals), the same on every week of a list. */
+export type PlanWeek = { plan: MealPlan; state: MealState; aliases?: Aliases };
 
 /** Bo keeps the days through `today + FILL_DAYS` planned. */
 export const FILL_DAYS = 7;

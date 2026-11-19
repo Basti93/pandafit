@@ -2,7 +2,8 @@
  * The household's weekly meal plan: types, week arithmetic, portions and the shopping list. Pure code, shared by the coach,
  * the Mac app and the phone. No calories, no weight: protein is one rough number per portion.
  */
-import { canonName, gramsPer } from './ingredient-key';
+import { canonName, gramsPer, type Aliases } from './ingredient-key';
+export { canonName, type Aliases };
 
 export const SLOTS = ['fruehstueck', 'mittag', 'abend'] as const;
 export type Slot = (typeof SLOTS)[number];
@@ -164,23 +165,31 @@ const familyOf = (u: Unit): Family => (PANTRY_UNITS.includes(u) ? 'etwas' : (u a
 export const legacyItemKey = (name: string, unit: Unit): string => `${lower(name)}|${familyOf(unit)}`;
 
 /** An ingredient line in the shape of the list: the canonical key, the amount in the merged unit (g where a typical weight is known). */
-export type Norm = { key: string; legacy: string; canon: string; srcUnit: Unit; unit: Unit; amount: number; factor: number };
-export function normIngredient(i: { name: string; unit: Unit; amount: number }): Norm {
-  const canon = canonName(i.name);
-  const f = i.unit === 'g' ? undefined : gramsPer(canon, i.unit);
-  const unit: Unit = f === undefined ? i.unit : 'g';
-  return { key: `${canon}|${familyOf(unit)}`, legacy: legacyItemKey(i.name, i.unit), canon, srcUnit: i.unit, unit, amount: i.amount * (f ?? 1), factor: f ?? 1 };
+export type Norm = { key: string; /** Keys this item had before: the old plain one, and the one the rules alone give. */ legacy: string[]; canon: string; srcUnit: Unit; unit: Unit; amount: number; factor: number };
+const keyOf = (canon: string, unit: Unit): { key: string; unit: Unit; f: number } => {
+  const f = unit === 'g' ? undefined : gramsPer(canon, unit);
+  const merged: Unit = f === undefined ? unit : 'g';
+  return { key: `${canon}|${familyOf(merged)}`, unit: merged, f: f ?? 1 };
+};
+export function normIngredient(i: { name: string; unit: Unit; amount: number }, aliases?: Aliases): Norm {
+  const canon = canonName(i.name, aliases);
+  const { key, unit, f } = keyOf(canon, i.unit);
+  const rules = canonName(i.name);
+  const legacy = [legacyItemKey(i.name, i.unit)];
+  if (rules !== canon) legacy.push(keyOf(rules, i.unit).key);
+  return { key, legacy, canon, srcUnit: i.unit, unit, amount: i.amount * f, factor: f };
 }
-/** An item key stored before the merge, as the current key plus how many new units one old unit is. Never throws. */
-export function migrateKey(old: string): { key: string; factor: number } {
+
+/** An item key stored before the merge or before an alias, as the current key plus how many new units one old unit is. Never throws. */
+export function migrateKey(old: string, aliases?: Aliases): { key: string; factor: number } {
   const at = old.lastIndexOf('|');
   if (at < 0) return { key: old, factor: 1 };
-  const canon = canonName(old.slice(0, at));
+  const canon = canonName(old.slice(0, at), aliases);
   const fam = old.slice(at + 1);
   const f = fam === 'etwas' ? gramsPer(canon, 'EL') ?? gramsPer(canon, 'TL') : fam === 'g' ? undefined : gramsPer(canon, fam);
   return f === undefined ? { key: `${canon}|${fam}`, factor: 1 } : { key: `${canon}|g`, factor: f };
 }
-export const itemKey = (name: string, unit: Unit): string => normIngredient({ name, unit, amount: 1 }).key;
+export const itemKey = (name: string, unit: Unit, aliases?: Aliases): string => normIngredient({ name, unit, amount: 1 }, aliases).key;
 
 /** One row of the list while it is summed up: every spelling seen, and every unit the recipes used. */
 export type Row = { canon: string; names: Map<string, number>; srcUnits: Set<Unit>; unit: Unit; section: Section; legacy: Set<string>; dishes: Set<string> };
@@ -191,7 +200,7 @@ export function addToRow(row: Row, i: { name: string }, n: Norm, dish: string): 
   const name = i.name.trim();
   row.names.set(name, (row.names.get(name) ?? 0) + 1);
   row.srcUnits.add(n.srcUnit);
-  row.legacy.add(n.legacy);
+  for (const k of n.legacy) row.legacy.add(k);
   row.dishes.add(dish);
 }
 /** The most common spelling; the first one wins a tie. */
@@ -279,14 +288,14 @@ export type ShopList = {
 };
 
 /** Every ingredient of the week, summed over the portions really eaten, grouped by supermarket section. */
-export function shoppingList(plan: MealPlan, state: MealState): ShopList {
+export function shoppingList(plan: MealPlan, state: MealState, aliases?: Aliases): ShopList {
   const acc = new Map<string, { row: Row; amount: number }>();
   for (const m of plan.meals) {
     if (m.reuseOf) continue;
     const portions = cookPortions(plan, state, mealKey(m.day, m.slot)).total;
     if (portions === 0) continue;
     for (const i of m.dish.side ? [...m.dish.ingredients, sideIngredient(m.dish.side)] : m.dish.ingredients) {
-      const n = normIngredient(i);
+      const n = normIngredient(i, aliases);
       const have = acc.get(n.key) ?? { row: newRow(i, n), amount: 0 };
       addToRow(have.row, i, n, m.dish.title);
       have.amount += n.amount * portions;
@@ -485,3 +494,32 @@ export const placeAnswer = (r: PlaceState | null): string => {
 };
 
 export const initialOf = (p: Person): string => p.avatar || (p.name.trim()[0] ?? '?').toUpperCase();
+
+// ---- Aliases the coach learned ----
+
+/** The household's alias map, one `mealplan` record. */
+export const ALIASES_RECORD_ID = 'aliases';
+const ALIASES_MAX = 2000;
+/** Reads the stored map: text to text only, no self-maps, no chains. Anything else is dropped, never thrown. */
+export function readAliases(body: unknown): Aliases {
+  const map = isObj(body) && isObj(body.map) ? body.map : {};
+  const pairs = Object.entries(map).filter((e): e is [string, string] => str(e[1]) && e[0] !== '' && e[1] !== '' && e[0] !== e[1]).slice(0, ALIASES_MAX);
+  const sources = new Set(pairs.map(([k]) => k));
+  return Object.fromEntries(pairs.filter(([, v]) => !sources.has(v)));
+}
+
+/**
+ * Takes the pairs an AI answered ("this name is the same product as that key") into the map. Only a candidate asked about may be a
+ * source, only an existing key a target; a pair that would make a chain or change an alias already there is dropped.
+ * `candidates`: asked name to its canonical name; `existing`: canonical names the plans already hold.
+ */
+export function acceptAliases(current: Aliases, existing: ReadonlySet<string>, candidates: ReadonlyMap<string, string>, answers: readonly { from: string; to: string }[]): Aliases {
+  const out: Aliases = { ...current };
+  for (const { from, to } of answers) {
+    const src = candidates.get(from);
+    if (!src || !existing.has(to) || src === to || Object.hasOwn(out, src)) continue;
+    if (Object.hasOwn(out, to) || Object.values(out).includes(src)) continue;
+    out[src] = to;
+  }
+  return out;
+}

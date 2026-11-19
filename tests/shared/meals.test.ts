@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addWeeks, cookPortions, dayIndex, eatersOf, EMPTY_STATE, itemKey, mergeStates, readMealPlan, readReplanRequest, readMealState, shopAmount, shoppingList,
+  addWeeks, cookPortions, dayIndex, eatersOf, EMPTY_STATE, itemKey, mergeStates, readMealPlan, readAliases, acceptAliases, canonName, readReplanRequest, readMealState, shopAmount, shoppingList,
   weekOf, withEater, withItem, withOwn, changeOwn, type Dish, type MealPlan,
 } from '../../src/shared/meals';
 
@@ -271,5 +271,47 @@ describe('one row for the same ingredient', () => {
     expect(rows(p, withItem(EMPTY_STATE, 'tomate|Stk', 'gekauft', 1))[0]!.state).toBe('gekauft');
     expect(rows(p, withItem(EMPTY_STATE, 'tomaten|g', 'da', 1))[0]!.state).toBe('da');
     expect(rows(p, withItem(withItem(EMPTY_STATE, 'tomaten|g', 'da', 1), itemKey('Tomate', 'g'), 'offen', 2))[0]!.state).toBe('offen');
+  });
+});
+
+describe('learned aliases (second layer behind the rules)', () => {
+  const ing = (name: string, amount: number, unit: Dish['ingredients'][number]['unit']) => ({ name, amount, unit, section: 'Kühlregal' as const });
+  const solo = (dishes: Dish[]): MealPlan => ({
+    week: '2026-11-09', createdMs: 1, source: 'liste', trainingDays: [], people: [{ id: 'max', name: 'Max' }],
+    meals: dishes.map((d, i) => ({ day: i, slot: 'mittag' as const, dish: d, reuseOf: null, eaters: ['max'], takeAlong: false })),
+  });
+  const aliases = { [canonName('Hüttenkäse')]: canonName('Körniger Frischkäse') };
+
+  it('an alias maps a canonical name onto another; spelling variants of the source follow', () => {
+    expect(itemKey('Hüttenkäse', 'g', aliases)).toBe(itemKey('Körniger Frischkäse', 'g'));
+    expect(itemKey('Hüttenkäse', 'g')).not.toBe(itemKey('Körniger Frischkäse', 'g'));
+    const p = solo([dish('A', [ing('Hüttenkäse', 100, 'g')]), dish('B', [ing('Körniger Frischkäse', 100, 'g')])]);
+    expect(shoppingList(p, EMPTY_STATE).sections.flatMap((s) => s.items)).toHaveLength(2);
+    expect(shoppingList(p, EMPTY_STATE, aliases).sections.flatMap((s) => s.items)).toHaveLength(1);
+  });
+
+  it('a tick under the key from before the alias still counts', () => {
+    const p = solo([dish('A', [ing('Hüttenkäse', 100, 'g')]), dish('B', [ing('Körniger Frischkäse', 100, 'g')])]);
+    const s = withItem(EMPTY_STATE, itemKey('Hüttenkäse', 'g'), 'gekauft', 1);
+    expect(shoppingList(p, s, aliases).sections.flatMap((x) => x.items)[0]!.state).toBe('gekauft');
+  });
+
+  it('reads stored aliases and drops what is wrong: not text, self, chains', () => {
+    expect(readAliases({ map: { a: 'b', c: 'c', d: 5, e: 'f', f: 'g', '': 'x' } })).toEqual({ a: 'b', f: 'g' });
+    expect(readAliases(null)).toEqual({});
+    expect(readAliases({ map: [] })).toEqual({});
+  });
+
+  it('accepts an answer only for a known candidate and an existing key, never as a chain', () => {
+    const existing = new Set(['frischkäse körnig', 'tofu', 'skyr']);
+    const candidates = new Map([['Hüttenkäse', 'hüttenkäse'], ['Seidentofu', 'seidentofu'], ['Quark', 'quark']]);
+    const got = acceptAliases({}, existing, candidates, [
+      { from: 'Hüttenkäse', to: 'frischkäse körnig' }, // fine
+      { from: 'Seidentofu', to: 'nicht da' },           // unknown key
+      { from: 'Unbekannt', to: 'tofu' },                // not a candidate
+      { from: 'Quark', to: 'hüttenkäse' },              // target is a source: chain
+    ]);
+    expect(got).toEqual({ hüttenkäse: 'frischkäse körnig' });
+    expect(acceptAliases(got, existing, candidates, [{ from: 'Hüttenkäse', to: 'skyr' }])).toEqual(got);
   });
 });

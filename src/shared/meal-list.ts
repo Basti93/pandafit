@@ -28,16 +28,18 @@ function collectNeeds(meals: Placed[]): Map<string, Acc> {
     const portions = cookPortions(week.plan, week.state, key).total;
     if (portions === 0) continue;
     for (const i of meal.dish.side ? [...meal.dish.ingredients, sideIngredient(meal.dish.side)] : meal.dish.ingredients) {
-      const n = normIngredient(i);
+      const n = normIngredient(i, week.aliases);
       const a = acc.get(n.key) ?? { row: newRow(i, n), needs: [] };
       addToRow(a.row, i, n, meal.dish.title);
       const amount = n.amount * portions;
       const have = a.needs.find((x) => x.week === week.plan.week && x.key === key);
-      if (have) {
-        have.amount += amount;
-        const part = have.parts.find((p) => p.legacy === n.legacy);
-        if (part) part.amount += amount; else have.parts.push({ legacy: n.legacy, factor: n.factor, amount });
-      } else a.needs.push({ week: week.plan.week, key, at, amount, parts: [{ legacy: n.legacy, factor: n.factor, amount }] });
+      const need = have ?? { week: week.plan.week, key, at, amount: 0, parts: [] };
+      if (!have) a.needs.push(need);
+      need.amount += amount;
+      for (const legacy of n.legacy) {
+        const part = need.parts.find((p) => p.legacy === legacy);
+        if (part) part.amount += amount; else need.parts.push({ legacy, factor: n.factor, amount });
+      }
       acc.set(n.key, a);
     }
   }
@@ -157,6 +159,7 @@ const placedFrom = (weeks: PlanWeek[], from: DayRef): Placed[] =>
 
 /** Per item the cover on meals at or after `from`, in any week. */
 export function stockOf(weeks: PlanWeek[], from: DayRef): StockItem[] {
+  const aliases = weeks.find((w) => w.aliases)?.aliases;
   const acc = collectNeeds(placedFrom(weeks, from));
   const names = collectNeeds(weeks.flatMap((week) => week.plan.meals.map((meal) => ({ week, meal, at: { week: week.plan.week, day: meal.day } }))));
   const found = new Map<string, { amount: number; state: 'gekauft' | 'da'; atMs: number }>();
@@ -166,7 +169,7 @@ export function stockOf(weeks: PlanWeek[], from: DayRef): StockItem[] {
     found.set(key, { amount: (have?.amount ?? 0) + amount, state: !have || e.atMs >= have.atMs ? e.state : have.state, atMs: Math.max(have?.atMs ?? 0, e.atMs) });
   };
   for (const w of weeks) {
-    const moved = Object.entries(w.state.items).map(([old, e]) => ({ old, e, ...migrateKey(old) }));
+    const moved = Object.entries(w.state.items).map(([old, e]) => ({ old, e, ...migrateKey(old, aliases) }));
     for (const { old, e, key, factor } of moved) {
       if (e.state === 'offen') continue;
       const canon = w.state.items[key];

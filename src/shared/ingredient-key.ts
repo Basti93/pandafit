@@ -47,8 +47,19 @@ const word = (raw: string): string => {
   return SYNONYMS[w] ?? w;
 };
 
-/** The canonical name: lower case, no spelling variants, words in a fixed order. */
-export function canonName(name: string): string {
+/**
+ * What the coach learned on top of the rules: the canonical name (by rules) of a product, onto the canonical name of the same
+ * product that other recipes spell differently. One step only, never a chain.
+ */
+export type Aliases = Record<string, string>;
+
+/** The canonical name: lower case, no spelling variants, words in a fixed order; an alias, when there is one, last. */
+export function canonName(name: string, aliases?: Aliases): string {
+  const c = ruleName(name);
+  return aliases && Object.hasOwn(aliases, c) ? aliases[c]! : c;
+}
+
+function ruleName(name: string): string {
   const joined = name.toLowerCase().replace(/(\p{L})-(\p{L})/gu, '$1$2');
   const keep = (s: string) => /[a-zäöüß0-9]/.test(s);
   let words = joined.split(/[\s,;/]+/).filter(keep).map(word).filter((w) => w !== '');
