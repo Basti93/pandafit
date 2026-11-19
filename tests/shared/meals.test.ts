@@ -158,3 +158,11 @@ describe('own shopping items', () => {
     expect(readMealState(JSON.parse(JSON.stringify(read)))).toEqual(read);
   });
 });
+
+describe('cover in item entries', () => {
+  it('reads only valid cover keys and drops a cover that is no object', () => {
+    expect(readMealState({ items: { k: { state: 'gekauft', atMs: 1, cover: { '4-abend': 200, '9-x': 1, '1-mittag': -1, '2-abend': 'x' } } } }).items.k)
+      .toEqual({ state: 'gekauft', atMs: 1, cover: { '4-abend': 200 } });
+    expect(readMealState({ items: { k: { state: 'gekauft', atMs: 1, cover: 5 } } }).items.k).toEqual({ state: 'gekauft', atMs: 1 });
+  });
+});

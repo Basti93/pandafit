@@ -47,10 +47,15 @@ export type Meal = { day: number; slot: Slot; dish: Dish; reuseOf: string | null
 export type Person = { id: string; name: string; avatar?: string };
 export type MealPlan = { week: string; createdMs: number; source: 'coach' | 'liste' | 'gemischt'; people: Person[]; meals: Meal[]; trainingDays: number[] };
 export type ItemState = 'offen' | 'gekauft' | 'da';
+/**
+ * A tick on an item. `cover` is the amount per meal (`mealKey`) that the tick covered. An entry without `cover` (old records,
+ * old clients) covers its whole week.
+ */
+export type ItemEntry = { state: ItemState; atMs: number; cover?: Record<string, number> };
 /** Changes on top of the plan, each with its own time, so two devices merge entry by entry. */
 export type MealState = {
   eaters: Record<string, Record<string, { on: boolean; atMs: number }>>;
-  items: Record<string, { state: ItemState; atMs: number }>;
+  items: Record<string, ItemEntry>;
   /** The person's own shopping items ("Kaffee"), added on the phone. They live here, not in the plan, so a new plan for the week never touches them. */
   own?: Record<string, OwnItem>;
 };
@@ -113,8 +118,8 @@ export function cookPortions(plan: MealPlan, state: MealState, key: string): { t
 
 export const withEater = (state: MealState, key: string, person: string, on: boolean, atMs: number): MealState =>
   ({ ...state, eaters: { ...state.eaters, [key]: { ...(state.eaters[key] ?? {}), [person]: { on, atMs } } } });
-export const withItem = (state: MealState, item: string, s: ItemState, atMs: number): MealState =>
-  ({ ...state, items: { ...state.items, [item]: { state: s, atMs } } });
+export const withItem = (state: MealState, item: string, s: ItemState, atMs: number, cover?: Record<string, number>): MealState =>
+  ({ ...state, items: { ...state.items, [item]: { state: s, atMs, ...(s !== 'offen' && cover ? { cover } : {}) } } });
 /** Adds an own item (blank names are ignored); `change` ticks or removes one that is there. */
 export function withOwn(state: MealState, key: string, name: string, amount: string, atMs: number): MealState {
   const n = name.trim().replace(/\s+/g, ' ').slice(0, OWN_NAME_MAX);
@@ -211,7 +216,8 @@ export function recipeAmount(i: Ingredient, portions: number): string {
   return `${t} ${i.unit}`;
 }
 
-export type ShopItem = { key: string; name: string; amount: string; state: ItemState; dishes: string[] };
+/** `week`: for the person's own items, the week whose state holds them. */
+export type ShopItem = { key: string; name: string; amount: string; state: ItemState; dishes: string[]; week?: string };
 /** `pantry`: spoonfuls and pinches, usually at home already: only a reminder to check. */
 export type ShopList = {
   sections: { section: Section; items: ShopItem[] }[]; pantry: ShopItem[]; have: ShopItem[]; open: number; total: number;
@@ -285,7 +291,11 @@ export function readMealState(body: unknown): MealState {
     }
   }
   if (isObj(body.items)) {
-    for (const [k, v] of Object.entries(body.items)) if (isObj(v) && (v.state === 'offen' || v.state === 'gekauft' || v.state === 'da') && num(v.atMs)) out.items[k] = { state: v.state, atMs: v.atMs };
+    for (const [k, v] of Object.entries(body.items)) {
+      if (!isObj(v) || !(v.state === 'offen' || v.state === 'gekauft' || v.state === 'da') || !num(v.atMs)) continue;
+      const cover = isObj(v.cover) ? Object.fromEntries(Object.entries(v.cover).filter((e): e is [string, number] => parseMealKey(e[0]) !== null && num(e[1]) && e[1] >= 0)) : null;
+      out.items[k] = { state: v.state, atMs: v.atMs, ...(cover ? { cover } : {}) };
+    }
   }
   if (isObj(body.own)) {
     const own: Record<string, OwnItem> = {};
