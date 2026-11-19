@@ -510,3 +510,82 @@ test('notes are capped at 50 per profile and 500 characters each', () => {
   expect(notes[0]!.text.startsWith('n10 ')).toBe(true);
   expect(notes[49]!.text).toHaveLength(500);
 });
+
+test('an answer without change adds no change note', async () => {
+  const c = make(async () => answer({ change: undefined })); afterRamp(c);
+  const before = c.state('pa').changes.length;
+  await c.refresh('pa');
+  expect(c.state('pa').next.source).toBe('claude');
+  expect(c.state('pa').changes.length).toBe(before);
+});
+test('an answer with a blank change adds no change note', async () => {
+  const c = make(async () => answer({ change: '   ' })); afterRamp(c);
+  const before = c.state('pa').changes.length;
+  await c.refresh('pa');
+  expect(c.state('pa').next.source).toBe('claude');
+  expect(c.state('pa').changes.length).toBe(before);
+});
+test('the prompt asks to leave change out when nothing changes', () => {
+  expect(SYSTEM_PROMPT).toContain('Lass change weg, wenn sich an der Einheit nichts ändert.');
+});
+test('the prompts explain the cadence value', async () => {
+  expect(SYSTEM_PROMPT).toContain('avgCadenceRpm');
+  expect((await import('../../src/coach/debrief')).DEBRIEF_SYSTEM_PROMPT).toContain('avgCadenceRpm');
+});
+test('a coach session with a fitting hold keeps it, an unfitting hold is dropped', async () => {
+  const held: Session = { id: 'ki', name: 'KI', steps: [
+    good.steps[0],
+    { kind: 'erg', durationS: 1200, ftpFraction: 0.6, label: 'Locker', hrZone: 2, hrHold: true },
+    { kind: 'erg', durationS: 300, ftpFraction: 0.6, label: 'Kurz', hrZone: 2, hrHold: true },
+  ] };
+  const c = make(async () => answer({ session: held })); afterRamp(c);
+  await c.refresh('pa');
+  const next = c.state('pa').next;
+  expect(next.source).toBe('claude');
+  const steps = next.session.steps;
+  expect(steps[1]).toMatchObject({ hrZone: 2, hrHold: true });
+  expect('hrHold' in steps[2]).toBe(false);
+});
+test('the prompt tells the coach how to plan a heart rate hold', () => {
+  expect(SYSTEM_PROMPT).toContain('hrHold: true');
+});
+test('the coach puts at most two short tips on the session and the alternatives', async () => {
+  const long = 'x'.repeat(200);
+  const alt = { session: { id: 'alt', name: 'Alt', steps: good.steps }, why: 'Anders.' };
+  const c = make(async () => answer({ rideTips: [long, 'b', 'c'], alternatives: [alt] })); afterRamp(c);
+  await c.refresh('pa');
+  const s = c.state('pa');
+  expect(s.next.source).toBe('claude');
+  expect(s.next.session.tips).toEqual(['x'.repeat(120), 'b']);
+  expect(s.alternatives?.[0].session.tips).toEqual(['x'.repeat(120), 'b']);
+});
+test('without tips from the coach the session has no tips', async () => {
+  const c = make(); afterRamp(c);
+  await c.refresh('pa');
+  expect(c.state('pa').next.session.tips).toBeUndefined();
+});
+test('blank tips are dropped', async () => {
+  const c = make(async () => answer({ rideTips: ['  ', 'ok'] })); afterRamp(c);
+  await c.refresh('pa');
+  expect(c.state('pa').next.session.tips).toEqual(['ok']);
+});
+test('the prompt tells the coach about rideTips', () => {
+  expect(SYSTEM_PROMPT).toContain('rideTips');
+});
+test('tips with invented watt values are dropped', async () => {
+  const c = make(async () => answer({ rideTips: ['Halte heute 999 W.', 'ok'] })); afterRamp(c);
+  await c.refresh('pa');
+  expect(c.state('pa').next.session.tips).toEqual(['ok']);
+});
+test('in easy mode a hold that could lift the power above 75 % FTP is dropped', async () => {
+  const held: Session = { id: 'ki', name: 'KI', steps: [
+    good.steps[0],
+    { kind: 'erg', durationS: 1200, ftpFraction: 0.7, label: 'Locker', hrZone: 2, hrHold: true },
+  ] };
+  const c = make(async () => answer({ session: held })); afterRamp(c);
+  await c.refresh('pa');
+  const next = c.state('pa').next;
+  expect(next.source).toBe('claude');
+  expect(next.session.steps[1]).toMatchObject({ ftpFraction: 0.7, hrZone: 2 });
+  expect('hrHold' in next.session.steps[1]).toBe(false);
+});

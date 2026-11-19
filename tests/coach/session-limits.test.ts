@@ -1,4 +1,4 @@
-import { checkSession, tssCap, type CoachContext } from '../../src/coach/session-limits';
+import { checkSession, holdFits, tssCap, type CoachContext } from '../../src/coach/session-limits';
 import type { RideSummary } from '../../src/coach/metrics';
 import type { Session, Step } from '../../src/shared/session';
 
@@ -66,3 +66,13 @@ test('climbs count as hard work, weekly load and 48 hours are enforced', () => {
   expect(tssCap({ ...regular, summaries: [ride(24, { tss: 290, intensityFactor: 0.6 })] })).toBe(25);
 });
 
+
+test('hrHold only stays on easy long erg sections', () => {
+  const base = { kind: 'erg', durationS: 1200, ftpFraction: 0.6, label: 'x', hrZone: 2, hrHold: true } as const;
+  expect(holdFits(base)).toBe(true);
+  expect(holdFits({ ...base, durationS: 300 })).toBe(false);
+  expect(holdFits({ ...base, ftpFraction: 0.9 })).toBe(false);
+  expect(holdFits({ ...base, hrZone: 4 })).toBe(false);
+  expect(holdFits({ kind: 'erg', durationS: 1200, ftpFraction: 0.6, label: 'x', hrHold: true })).toBe(false);
+  expect(holdFits({ kind: 'grade', durationS: 1200, gradePct: 1, scale: 1, label: 'x', hrZone: 2 })).toBe(false);
+});

@@ -6,6 +6,7 @@ import { readRide } from '../../src/ride-format/read';
 import { RideService } from '../../src/service/ride-service';
 import type { ServerMessage } from '../../src/shared/protocol';
 import type { Session } from '../../src/shared/session';
+import { rampTest } from '../../src/shared/ramp';
 
 const session: Session = { id: 's', name: 'Test', steps: [{ kind: 'erg', durationS: 100, ftpFraction: 0.5, label: 'A' }] };
 let dir: string; let t: number; let out: ServerMessage[];
@@ -247,4 +248,39 @@ test('skip without a ride or on the last step does nothing and never throws', ()
   start(svc); ticks(svc, 3);
   svc.handle({ type: 'skip' });
   expect(readRide(dir, onlyRide()).events.some((e) => e.type === 'skip')).toBe(false);
+});
+
+const rampSession = rampTest(200);
+test('a failing ramp test ends as finished and keeps its samples', () => {
+  const ble = new FakeBlePort();
+  const svc = new RideService({ dir, ble, nowMs: () => t, retryMs: 5 });
+  svc.handle({ type: 'start', profileId: 'A', session: rampSession, ftpW: 200 });
+  return new Promise<void>((resolve) => setTimeout(() => {
+    // 100 W keeps up until the ramp passes 125 W, after minute 8.
+    for (let i = 0; i < 600; i++) { ble.emit('trainer', Buffer.from([0x41, 0x00, 0x64, 0x00])); ticks(svc, 1); }
+    const r = readRide(dir, onlyRide());
+    expect(r.meta.status).toBe('finished');
+    expect(r.samples.length).toBeGreaterThanOrEqual(480);
+    expect(r.samples.length).toBeLessThan(600);
+    expect(r.events.filter((e) => e.type === 'ramp-end')).toHaveLength(1);
+    svc.close();
+    resolve();
+  }, 20));
+});
+test('a ramp test without power data does not end by itself', () => {
+  const svc = make();
+  svc.handle({ type: 'start', profileId: 'A', session: rampSession, ftpW: 200 });
+  ticks(svc, 600);
+  expect(readRide(dir, onlyRide()).meta.status).toBe('open');
+});
+test('a paused ride does not end the ramp test', () => {
+  const first = make();
+  first.handle({ type: 'start', profileId: 'A', session: rampSession, ftpW: 200 });
+  ticks(first, 485);
+  t += 10 * 60_000;
+  const svc = make();
+  const before = readRide(dir, onlyRide()).samples.length;
+  ticks(svc, 60);
+  expect(readRide(dir, onlyRide()).meta.status).toBe('open');
+  expect(readRide(dir, onlyRide()).samples.length).toBe(before);
 });

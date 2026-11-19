@@ -18,7 +18,7 @@ const speak = (text: string): void => {
 };
 
 /** Vocabulary in calm phases: hear Dutch, see German, answer by click or the J/N key. */
-export const WordCard = ({ calm, state, send, click }: { calm: boolean; state: CoachState; send: (m: CoachClientMessage) => void; click: { dir: 'up' | 'down'; n: number } | null }) => {
+export const WordCard = ({ calm, state, send, click, clicker }: { calm: boolean; clicker?: boolean; state: CoachState; send: (m: CoachClientMessage) => void; click: { dir: 'up' | 'down'; n: number } | null }) => {
   const [phase, setPhase] = useState<Phase>('ask');
   const [word, setWord] = useState<Word | null>(() => nextWord(DUTCH_WORDS, state.wordProgress ?? {}, Date.now()));
   const [sound, setSound] = useState(true);
@@ -80,6 +80,7 @@ export const WordCard = ({ calm, state, send, click }: { calm: boolean; state: C
       <div className="word-text">
         <b lang="nl">{word.nl}</b>
         <span className={phase === 'reveal' ? 'word-de' : 'word-de covered'}>{phase === 'reveal' ? word.de : 'Was heißt das?'}</span>
+        {phase === 'ask' && <span className="muted">Gleich kannst du antworten.</span>}
         {phase === 'reveal' && <span className="word-example"><span lang="nl">{word.example}</span> <span className="muted">{word.exampleDe}</span></span>}
       </div>
       {phase === 'reveal' && (
@@ -88,6 +89,7 @@ export const WordCard = ({ calm, state, send, click }: { calm: boolean; state: C
           <button className="secondary" onClick={() => answer(false)}>Nochmal</button>
         </div>
       )}
+      {phase === 'reveal' && clicker && <p className="muted">Mit Plus sagst du „Wusste ich“, mit Minus „Nochmal“.</p>}
       <div className="word-tools">
         <button className="ghost" onClick={() => setSound(!sound)}>{sound ? 'Ton aus' : 'Ton an'}</button>
         <button className="ghost" onClick={() => setHidden(true)}>Ausblenden</button>

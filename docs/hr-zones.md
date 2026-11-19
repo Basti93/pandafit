@@ -28,4 +28,4 @@ Only in sections marked for it (`hrHold`), currently the session "Puls halten". 
 - Once the personal heart rate limit has lowered the target, the power no longer rises in this section.
 - Without a heart rate signal or a known maximum heart rate the power stays where it is.
 
-In every other section heart rate only lowers the target, it never raises it. The coach cannot plan such sections yet.
+In every other section heart rate only lowers the target, it never raises it. The coach can plan such sections for easy rides (`hrHold`), but only on erg sections of at least 10 minutes, at most 70% of FTP and zones 1 to 3 (own settings, `HOLD` in `src/coach/session-limits.ts`). A hold that does not fit is dropped and the section runs by power. Without a heart rate belt the app rides by power. In easy mode (after a hard ride, with an open complaint, after a long break or without history) a hold is also dropped when it could lift the power above 75% of FTP, the easy limit.

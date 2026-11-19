@@ -1,7 +1,7 @@
 import { clampTargetW } from '../shared/target-power';
 import type { RideEvent, Sample } from '../shared/sample';
 import { RAMP_ID, stepFtpFraction, type Session, type Step } from '../shared/session';
-import { zoneBounds } from '../shared/hr-zones';
+import { HOLD_CEILING_FRACTION, HOLD_MAX_UP_PCT, zoneBounds } from '../shared/hr-zones';
 import type { Reading } from './ble/device-manager';
 
 /** A silence longer than this counts as a gap in the ride (also used to spot a crash gap on recovery). */
@@ -19,9 +19,11 @@ const CLIMB_ENTRY_S = 25;
 const HOLD_EVERY_S = 30;
 const HOLD_UP_PCT = 2;
 const HOLD_DOWN_PCT = 3;
-const HOLD_MAX_UP_PCT = 15;
 const HOLD_MAX_DOWN_PCT = 40;
-const HOLD_CEILING_FRACTION = 0.8;
+// Own setting: the ramp test ends by itself after 15 s below 80 % of the target, not before minute 8 (5 min warmup plus 3 min ramp). See docs/progress.md.
+const RAMP_MIN_S = 480;
+const RAMP_LOW_FRACTION = 0.8;
+const RAMP_LOW_S = 15;
 // Like Auuki: pause after 4 s at 0 W, resume above 40 W.
 const PAUSE_AFTER_S = 4;
 const RESUME_ABOVE_W = 40;
@@ -53,6 +55,8 @@ export class RideEngine {
   private cadenceLowS = 0;
   private paused = false;
   private zeroPowerS = 0;
+  private rampLowS = 0;
+  private rampEnded = false;
   private lastMs: number | null = null;
   private lastSent: string | null = null;
   private latest: Required<{ [K in keyof Reading]: number | null }> = { powerW: null, cadenceRpm: null, speedKph: null, hrBpm: null };
@@ -89,6 +93,7 @@ export class RideEngine {
       seq: this.seq++, wallClockMs: now, rideElapsedS: this.elapsedS, ...this.latest,
       targetW: targets, gradePct: null, gear: null,
     };
+    this.checkRampEnd(now, targets, events);
     const command: TrainerCommand = { targetW: targets };
     const key = JSON.stringify(command);
     const changed = key !== this.lastSent;
@@ -127,7 +132,18 @@ export class RideEngine {
     };
   }
 
-  isDone(): boolean { return this.sessionS() >= this.totalS(); }
+  isDone(): boolean { return this.rampEnded || this.sessionS() >= this.totalS(); }
+
+  /** Counts every tick with measured low power, also while the engine is auto-paused at 0 W. A pause in the app stops the ticks, so it never counts. */
+  private checkRampEnd(now: number, targetW: number, events: RideEvent[]): void {
+    if (this.opts.session.id !== RAMP_ID || this.rampEnded || this.sessionS() < RAMP_MIN_S) return;
+    const { powerW } = this.latest;
+    // A missing reading is a dropout, not a rider who cannot hold on: the test result would be wrong.
+    this.rampLowS = powerW !== null && powerW < targetW * RAMP_LOW_FRACTION ? this.rampLowS + 1 : 0;
+    if (this.rampLowS < RAMP_LOW_S) return;
+    this.rampEnded = true;
+    events.push({ wallClockMs: now, type: 'ramp-end' });
+  }
 
   private sessionS(): number { return this.elapsedS + this.skippedS; }
 

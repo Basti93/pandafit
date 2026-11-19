@@ -204,3 +204,8 @@ test('prepares for a harder section ahead', () => {
   const session = { ...tipSession!, steps: [tipSession!.steps[0], { kind: 'erg' as const, ftpFraction: 0.9, durationS: 240, label: 'Block' }] };
   expect(pickTip(ctx({ session, engine: { ...tipEngine(100), stepRemainingS: 60 } }), new Set())?.id).toBe('prepare-0');
 });
+
+test('during the ramp test one sentence says that the test ends by itself', () => {
+  view({ session: { id: 'ramp-test', name: 'Rampentest', steps: [{ kind: 'erg', durationS: 300, ftpFraction: 0.45, label: 'Warmup' }] } });
+  expect(screen.getByText('Fahr, so lange du kannst. Wenn du nicht mehr mithältst, endet der Test von selbst.')).toBeTruthy();
+});

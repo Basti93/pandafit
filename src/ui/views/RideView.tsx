@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { ClientMessage, StateMessage } from '../../shared/protocol';
 import { stepTargetZone, zoneBounds, zoneOf } from '../../shared/hr-zones';
 import { clampTargetW } from '../../shared/target-power';
-import { stepFtpFraction, type Step } from '../../shared/session';
+import { RAMP_ID, stepFtpFraction, type Step } from '../../shared/session';
 import { beep, beepsAt, saveSoundEnabled, soundEnabled } from '../countdown';
 import { hrZoneColor, ZoneChip } from '../hr-zone-style';
 import { useRideTip } from '../ride-tips';
@@ -72,6 +72,7 @@ export const RideView = ({ state, send, compact = false, extra, tools, hrMaxBpm,
       {state.storageError && <div className="banner danger" role="alert">Speichern schlägt gerade fehl. Die Fahrt läuft weiter, bitte Speicherplatz prüfen.</div>}
       {warn && <div className="banner warn" role="alert">In {engine.secondsToNext} s: {engine.nextLabel}{sudden ? ', plötzlicher Anstieg' : ''}</div>}
       {tip && <div className="banner tip" role="status" data-testid="ride-tip"><b>{BO.name}:</b> {tip}</div>}
+      {session?.id === RAMP_ID && !engine.paused && <div className="banner info" role="status">Fahr, so lange du kannst. Wenn du nicht mehr mithältst, endet der Test von selbst.</div>}
       {engine.paused && <div className="banner info" role="status">Pause. Tritt an, dann geht es weiter.</div>}
     </>
   );

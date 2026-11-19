@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { TrackedRecord } from './records';
 import { titleHash } from './exercise-links';
-import { ruleNumber, ruleNumbers, ruleValues } from './training-policy';
+import { ruleNumbers, ruleValues } from './training-policy';
 import { resolveStudio, studioKey, type Renames } from './studio';
 
 /** Weight steps learned per exercise and studio, reachable weights and barbell plates. Pure, shared by app and coach. Product values: see the `load.*` rules. */
