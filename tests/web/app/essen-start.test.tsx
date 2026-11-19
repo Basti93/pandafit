@@ -4,7 +4,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { afterEach, describe, expect, it } from 'vitest';
 import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
-import { addWeeks, dayIndex, weekOf } from '../../../src/shared/meals';
+import { addWeeks, dayIndex, isReplanRecordId, weekOf } from '../../../src/shared/meals';
 import { boot } from './helpers';
 
 afterEach(cleanup);
@@ -41,7 +41,7 @@ describe('Essen start page', () => {
     expect(main.querySelector('svg.tk-meal.big, img.tk-meal.big')).toBeTruthy();
     expect(within(main).getByRole('button', { name: 'Rezept ansehen' }).className).toBe('primary');
     expect(screen.getByRole('button', { name: /Frühstück · 8 Uhr/ }).textContent).toContain('War heute früh dran.');
-    expect(screen.getByRole('region', { name: 'Der Rest der Woche' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Die nächsten Tage' })).toBeTruthy();
     expect(screen.getByRole('button', { name: /^Rezepte/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /^Einkauf/ }).textContent).toMatch(/Dinge? offen|Alles ist erledigt/);
     expect(document.querySelector('.tk-bo')!.textContent).toContain('Schmeckt dir etwas nicht');
@@ -68,7 +68,7 @@ describe('Essen start page', () => {
     await goEssen();
     const head = await screen.findByRole('region', { name: 'Essen' });
     expect(screen.queryByRole('region', { name: 'Nächste Mahlzeit' })).toBeNull();
-    expect(head.textContent).toContain('Für heute steht nichts mehr an. Der nächste Plan kommt am Samstagmorgen.');
+    expect(head.textContent).toContain('Für heute steht nichts mehr an. Bo plant die nächsten Tage bald.');
   });
 
   it('a day of the week opens its three meals; a meal there opens its page', async () => {
@@ -82,14 +82,14 @@ describe('Essen start page', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('with only next week’s plan there is no rest of the week, but Nächste Woche', async () => {
+  it('with only next week’s plan the next days start with its first meal', async () => {
     const sat = at(16, 10);
     await boot({ account: 'anna', seed: [planFor(at(18, 10), [meal(0, 'abend', 'Tomatensuppe')])], now: sat });
     await goEssen();
-    const next = await screen.findByRole('region', { name: 'Nächste Woche' });
+    const next = await screen.findByRole('region', { name: 'Die nächsten Tage' });
     expect(screen.queryByRole('region', { name: 'Der Rest der Woche' })).toBeNull();
-    expect(next.querySelectorAll('.tk-rowcard')).toHaveLength(7);
-    expect(next.textContent).toContain('Nichts geplant');
+    expect(screen.queryByRole('region', { name: 'Nächste Woche' })).toBeNull();
+    expect(next.querySelectorAll('.tk-rowcard')).toHaveLength(1);
     expect(screen.getByRole('region', { name: 'Essen' }).textContent).toContain('Am Montag gibt es um 19 Uhr Tomatensuppe.');
     expect(screen.getByRole('region', { name: 'Nächste Mahlzeit' }).textContent).toContain('Tomatensuppe');
   });
@@ -120,6 +120,40 @@ describe('Essen start page', () => {
       s.close();
       expect((rec?.body as { week: string }).week).toBe(nextWeek);
     });
+  });
+
+  it('Neu planen asks first, then writes one replan record and shows that Bo is planning', async () => {
+    const a = await boot({ account: 'anna', seed: [weekWith3MealsToday], now: wed });
+    await goEssen();
+    fireEvent.click(await screen.findByRole('button', { name: 'Neu planen' }));
+    expect(screen.getByText('Ab morgen alles neu planen?')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ja' }));
+    expect(await screen.findByText('Bo plant ab morgen neu. Gleich steht der neue Plan hier.')).toBeTruthy();
+    const s = await openIdb('anna', a.factory);
+    const recs = (await s.list('mealplan')).filter((r) => isReplanRecordId(r.id));
+    s.close();
+    expect(recs).toHaveLength(1);
+    expect(recs[0]!.body).toMatchObject({ answeredMs: null });
+  });
+
+  it('Abbrechen writes nothing', async () => {
+    const a = await boot({ account: 'anna', seed: [weekWith3MealsToday], now: wed });
+    await goEssen();
+    fireEvent.click(await screen.findByRole('button', { name: 'Neu planen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.queryByText('Bo plant ab morgen neu. Gleich steht der neue Plan hier.')).toBeNull();
+    const s = await openIdb('anna', a.factory);
+    const recs = (await s.list('mealplan')).filter((r) => isReplanRecordId(r.id));
+    s.close();
+    expect(recs).toHaveLength(0);
+  });
+
+  it('an answered request shows no status line', async () => {
+    const answered: TrackedRecord = { kind: 'mealplan', id: 'replan-abcd1234', updatedMs: wed - 1000, deleted: false, body: { atMs: wed - 2000, answeredMs: wed - 1000 } };
+    await boot({ account: 'anna', seed: [weekWith3MealsToday, answered], now: wed });
+    await goEssen();
+    await screen.findByRole('button', { name: 'Neu planen' });
+    expect(screen.queryByText('Bo plant ab morgen neu. Gleich steht der neue Plan hier.')).toBeNull();
   });
 
   it('Plan ändern on a Wednesday writes for the current week', async () => {

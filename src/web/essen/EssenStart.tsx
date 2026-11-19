@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { dayIndex, mealKey, SLOTS, weekOf, withEater, type Meal } from '../../shared/meals';
 import { BO_LINES } from '../../tracking/ui/bo';
-import { BoBubble, Card, HeadCard, Kicker, MainCard, RowCard, Sheet } from '../../tracking/ui/kit';
+import { BoBubble, Card, ConfirmLink, HeadCard, Kicker, MainCard, RowCard, Sheet } from '../../tracking/ui/kit';
 import type { MealData } from '../MealsScreen';
 import { MealImage } from './MealImage';
 import {
-  favSentence, headKicker, headSentence, lastWeekRows, mealKicker, mealSentence, NO_PLAN, nextMeal, nextWeekRows, openCount, openSentence, pastDaysRows, pastSentence,
-  restOfWeek, rowSentence, slotKicker, todayMeals, type DayRow, type MealAt,
+  comingDays, favSentence, headKicker, headSentence, lastWeekRows, mealKicker, mealSentence, NO_PLAN, nextMeal, openCount, openSentence, pastDaysRows, pastSentence,
+  rowSentence, slotKicker, todayMeals, type DayRow, type MealAt,
 } from './meals-view';
 import { EatersButton } from './RecipeParts';
 
@@ -84,13 +84,16 @@ export function EssenStart({ data, nowMs, me, onMeal, onShopping, onRecipes, onC
           ))}
         </div>
       )}
-      <DaysCard label="Der Rest der Woche" rows={restOfWeek(weeks, nowMs)} onDay={setDay} />
-      <DaysCard label="Nächste Woche" rows={nextWeekRows(weeks, nowMs)} onDay={setDay} />
+      <DaysCard label="Die nächsten Tage" rows={comingDays(weeks, nowMs)} onDay={setDay} />
       <div className="tk-tiles">
         {recipes}
         <RowCard icon="einkauf" title="Einkauf" sub={openSentence(openCount(weeks, nowMs))} onClick={onShopping} />
       </div>
-      <BoBubble portrait="mini" actions={<button type="button" className="secondary" onClick={onChat}>Plan ändern</button>}>{BO_LINES.mealsChange}</BoBubble>
+      <BoBubble portrait="mini" actions={<>
+        <button type="button" className="secondary" onClick={onChat}>Plan ändern</button>
+        <ConfirmLink label="Neu planen" question="Ab morgen alles neu planen?" onConfirm={() => void data.replan()} />
+      </>}>{BO_LINES.mealsChange}</BoBubble>
+      {data.replanPending && <p className="muted" role="status">Bo plant ab morgen neu. Gleich steht der neue Plan hier.</p>}
       {lastWeek}
     </div>
   );

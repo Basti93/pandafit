@@ -9,7 +9,7 @@ import {
   type Meal, type MealPlan, type MealState, type Slot,
 } from '../../shared/meals';
 import { windowShoppingList, type WindowList } from '../../shared/meal-list';
-import { cmpRef, dayRefOf, listStart, MEAL_OVER_MS, mealOver } from '../../shared/meal-window';
+import { addDays, cmpRef, dayRefOf, FILL_DAYS, listStart, MEAL_OVER_MS, mealOver } from '../../shared/meal-window';
 import { localDayKey } from '../../shared/dates';
 import { longDateLabel, longDayOfKey } from '../../tracking/ui/labels';
 import { cap, numberWord } from '../../tracking/ui/week-path';
@@ -90,7 +90,7 @@ export const SLOT_WHEN: Record<Slot, string> = { fruehstueck: 'früh', mittag: '
 
 // ---- The head of Essen ----
 
-export const NEXT_PLAN = 'Der nächste Plan kommt am Samstagmorgen.';
+export const NEXT_PLAN = 'Bo plant die nächsten Tage bald.';
 
 export const NO_PLAN = `Noch gibt es keinen Essensplan. ${NEXT_PLAN}`;
 
@@ -176,15 +176,17 @@ function dayRow(week: Week, day: number): DayRow {
   return { week, day, lead: `${DAY_SHORT[day]} ${date.getDate()}.`, dateLong: longDayOfKey(localDayKey(date.getTime())), meal };
 }
 
-export function restOfWeek(weeks: Week[], nowMs: number): DayRow[] {
-  const week = weeks.find((w) => w.plan.week === weekOf(nowMs));
-  if (!week) return [];
-  return Array.from({ length: 6 - dayIndex(nowMs) }, (_, i) => dayRow(week, dayIndex(nowMs) + 1 + i));
-}
-
-export function nextWeekRows(weeks: Week[], nowMs: number): DayRow[] {
-  const week = weeks.find((w) => w.plan.week === addWeeks(weekOf(nowMs), 1));
-  return week ? Array.from({ length: 7 }, (_, i) => dayRow(week, i)) : [];
+/** Tomorrow through the last planned day (at most today + FILL_DAYS); days without a plan are left out, trailing days without a meal are cut. */
+export function comingDays(weeks: Week[], nowMs: number): DayRow[] {
+  const today = dayRefOf(nowMs);
+  const rows: DayRow[] = [];
+  for (let n = 1; n <= FILL_DAYS; n++) {
+    const ref = addDays(today, n);
+    const week = weeks.find((w) => w.plan.week === ref.week);
+    if (week) rows.push(dayRow(week, ref.day));
+  }
+  while (rows.length > 0 && !rows[rows.length - 1]!.meal) rows.pop();
+  return rows;
 }
 
 /** The days of this week before today, to look back at what was planned. */

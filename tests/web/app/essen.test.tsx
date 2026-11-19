@@ -81,7 +81,7 @@ describe('Essen on the phone', () => {
     // The last value seen counts from the start, before the coach is asked again; the page says when the first plan comes.
     await boot({ account: 'anna', seed: [], flags: { 'pandafit.essensplan.anna': 'on' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Essen' }));
-    expect(await screen.findByText('Noch gibt es keinen Essensplan. Der nächste Plan kommt am Samstagmorgen.')).toBeTruthy();
+    expect(await screen.findByText('Noch gibt es keinen Essensplan. Bo plant die nächsten Tage bald.')).toBeTruthy();
   });
 
   describe('on Heute', () => {
