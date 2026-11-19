@@ -60,3 +60,21 @@ export function canonName(name: string): string {
   words = rest.length > 0 ? rest : words;
   return [...new Set(words)].sort().join(' ');
 }
+
+/** Typical weight in g of one unit, where the unit means a known amount of this ingredient. Key: the canonical name (colours may be left out). */
+const GRAMS: Record<string, Partial<Record<'Stk' | 'Bund' | 'EL' | 'TL', number>>> = {
+  tomate: { Stk: 100 }, gurke: { Stk: 400 }, karotte: { Stk: 80 }, zwiebel: { Stk: 80 }, paprika: { Stk: 170 }, zucchini: { Stk: 300 },
+  aubergine: { Stk: 300 }, kartoffel: { Stk: 100 }, avocado: { Stk: 150 }, apfel: { Stk: 150 }, banane: { Stk: 120 }, zitrone: { Stk: 100 },
+  limette: { Stk: 70 }, brokkoli: { Stk: 400 }, süsskartoffel: { Stk: 250 },
+  basilikum: { Bund: 20 }, minze: { Bund: 20 }, petersilie: { Bund: 20 }, schnittlauch: { Bund: 20 }, koriander: { Bund: 20 }, dill: { Bund: 20 },
+  kürbiskern: { EL: 10 }, sonnenblumenkern: { EL: 10 }, sesam: { EL: 10 }, leinsamen: { EL: 10 }, chiasamen: { EL: 12 }, haferflocke: { EL: 8 },
+  tomatenmark: { EL: 15, TL: 5 },
+};
+
+/** Grams in one `unit` of the ingredient, or undefined when no typical weight is known. */
+export function gramsPer(canon: string, unit: string): number | undefined {
+  if (unit === 'g') return 1;
+  if (unit !== 'Stk' && unit !== 'Bund' && unit !== 'EL' && unit !== 'TL') return undefined;
+  const bare = canon.split(' ').filter((w) => !COLOURS.includes(w)).join(' ');
+  return GRAMS[canon]?.[unit] ?? GRAMS[bare]?.[unit];
+}

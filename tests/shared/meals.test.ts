@@ -222,3 +222,54 @@ describe('canonical ingredient key', () => {
     }
   });
 });
+
+describe('one row for the same ingredient', () => {
+  const ing = (name: string, amount: number, unit: Dish['ingredients'][number]['unit'], section: Dish['ingredients'][number]['section'] = 'Obst und Gemüse') => ({ name, amount, unit, section });
+  const solo = (dishes: Dish[]): MealPlan => ({
+    week: '2026-11-09', createdMs: 1, source: 'liste', trainingDays: [], people: [{ id: 'max', name: 'Max' }],
+    meals: dishes.map((d, i) => ({ day: i, slot: 'mittag' as const, dish: d, reuseOf: null, eaters: ['max'], takeAlong: false })),
+  });
+  const rows = (p: MealPlan, s = EMPTY_STATE) => { const l = shoppingList(p, s); return [...l.sections.flatMap((x) => x.items), ...l.pantry, ...l.have]; };
+
+  it('names that differ in spelling become one row with the most common spelling and all dishes', () => {
+    const p = solo([dish('A', [ing('Paprika, rot', 1, 'Stk')]), dish('B', [ing('Rote Paprika', 1, 'Stk')]), dish('C', [ing('Rote Paprika', 1, 'Stk')])]);
+    const r = rows(p);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ name: 'Rote Paprika', amount: '3 Stück', dishes: ['A', 'B', 'C'] });
+  });
+
+  it('Stk and g of a known ingredient sum in grams; a lone unit stays as written', () => {
+    const p = solo([dish('A', [ing('Tomate', 2, 'Stk')]), dish('B', [ing('Tomaten', 300, 'g')])]);
+    expect(rows(p)).toHaveLength(1);
+    expect(rows(p)[0]!.amount).toBe('500 g');
+    expect(rows(solo([dish('A', [ing('Tomate', 2, 'Stk')])]))[0]!.amount).toBe('2 Stück');
+  });
+
+  it('Bund, EL and g merge where a typical weight is known', () => {
+    const herbs = solo([dish('A', [ing('Basilikum', 1, 'Bund')]), dish('B', [ing('Basilikum', 30, 'g')])]);
+    expect(rows(herbs)).toHaveLength(1);
+    expect(rows(herbs)[0]!.amount).toBe('50 g');
+    const seeds = solo([dish('A', [ing('Kürbiskerne', 2, 'EL', 'Vorrat')]), dish('B', [ing('Kürbiskerne', 30, 'g', 'Vorrat')])]);
+    expect(rows(seeds)).toHaveLength(1);
+    expect(rows(seeds)[0]!.amount).toBe('50 g');
+    const paste = solo([dish('A', [ing('Tomatenmark', 2, 'EL', 'Vorrat')]), dish('B', [ing('Tomatenmark', 40, 'g', 'Vorrat')])]);
+    expect(rows(paste)).toHaveLength(1);
+  });
+
+  it('a pantry-only item stays a reminder', () => {
+    const p = solo([dish('A', [ing('Kürbiskerne', 2, 'EL', 'Vorrat')])]);
+    expect(shoppingList(p, EMPTY_STATE).pantry.map((i) => i.amount)).toEqual(['aus dem Vorrat']);
+  });
+
+  it('without a known weight the units stay separate rows', () => {
+    const p = solo([dish('A', [ing('Brot', 2, 'Scheibe', 'Vorrat')]), dish('B', [ing('Brot', 100, 'g', 'Vorrat')])]);
+    expect(rows(p)).toHaveLength(2);
+  });
+
+  it('a tick stored under an old key still counts', () => {
+    const p = solo([dish('A', [ing('Tomate', 2, 'Stk')]), dish('B', [ing('Tomaten', 300, 'g')])]);
+    expect(rows(p, withItem(EMPTY_STATE, 'tomate|Stk', 'gekauft', 1))[0]!.state).toBe('gekauft');
+    expect(rows(p, withItem(EMPTY_STATE, 'tomaten|g', 'da', 1))[0]!.state).toBe('da');
+    expect(rows(p, withItem(withItem(EMPTY_STATE, 'tomaten|g', 'da', 1), itemKey('Tomate', 'g'), 'offen', 2))[0]!.state).toBe('offen');
+  });
+});

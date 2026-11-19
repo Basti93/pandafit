@@ -2,7 +2,7 @@
  * The household's weekly meal plan: types, week arithmetic, portions and the shopping list. Pure code, shared by the coach,
  * the Mac app and the phone. No calories, no weight: protein is one rough number per portion.
  */
-import { canonName } from './ingredient-key';
+import { canonName, gramsPer } from './ingredient-key';
 
 export const SLOTS = ['fruehstueck', 'mittag', 'abend'] as const;
 export type Slot = (typeof SLOTS)[number];
@@ -160,7 +160,49 @@ const lower = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 const PANTRY_UNITS: readonly Unit[] = ['EL', 'TL', 'Prise'];
 type Family = 'g' | 'ml' | 'Stk' | 'Bund' | 'Dose' | 'Zehe' | 'Scheibe' | 'etwas';
 const familyOf = (u: Unit): Family => (PANTRY_UNITS.includes(u) ? 'etwas' : (u as Family));
-export const itemKey = (name: string, unit: Unit): string => `${canonName(name)}|${familyOf(unit)}`;
+/** The key an item had before names and units were merged; ticks stored under it still count. */
+export const legacyItemKey = (name: string, unit: Unit): string => `${lower(name)}|${familyOf(unit)}`;
+
+/** An ingredient line in the shape of the list: the canonical key, the amount in the merged unit (g where a typical weight is known). */
+export type Norm = { key: string; legacy: string; canon: string; srcUnit: Unit; unit: Unit; amount: number };
+export function normIngredient(i: { name: string; unit: Unit; amount: number }): Norm {
+  const canon = canonName(i.name);
+  const f = i.unit === 'g' ? undefined : gramsPer(canon, i.unit);
+  const unit: Unit = f === undefined ? i.unit : 'g';
+  return { key: `${canon}|${familyOf(unit)}`, legacy: legacyItemKey(i.name, i.unit), canon, srcUnit: i.unit, unit, amount: i.amount * (f ?? 1) };
+}
+export const itemKey = (name: string, unit: Unit): string => normIngredient({ name, unit, amount: 1 }).key;
+
+/** One row of the list while it is summed up: every spelling seen, and every unit the recipes used. */
+export type Row = { canon: string; names: Map<string, number>; srcUnits: Set<Unit>; unit: Unit; section: Section; legacy: Set<string>; dishes: Set<string> };
+export function newRow(i: { name: string; section: Section }, n: Norm): Row {
+  return { canon: n.canon, names: new Map(), srcUnits: new Set(), unit: n.unit, section: i.section, legacy: new Set(), dishes: new Set() };
+}
+export function addToRow(row: Row, i: { name: string }, n: Norm, dish: string): void {
+  const name = i.name.trim();
+  row.names.set(name, (row.names.get(name) ?? 0) + 1);
+  row.srcUnits.add(n.srcUnit);
+  row.legacy.add(n.legacy);
+  row.dishes.add(dish);
+}
+/** The most common spelling; the first one wins a tie. */
+export const rowName = (row: Row): string => [...row.names.entries()].reduce((best, e) => (e[1] > best[1] ? e : best))[0];
+export const rowIsPantry = (row: Row): boolean => [...row.srcUnits].every((u) => PANTRY_UNITS.includes(u));
+/** `total` is in the merged unit; a lone source unit shows as written. */
+export function rowAmount(row: Row, total: number): string {
+  const only = row.srcUnits.size === 1 ? [...row.srcUnits][0]! : null;
+  if (only && only !== row.unit) return shopAmount(rowName(row), only, total / (gramsPer(row.canon, only) ?? 1));
+  return shopAmount(rowName(row), row.unit, total);
+}
+/** The entry of a row: the one under the new key, unless an old key holds a newer one. Never throws. */
+export function pickEntry(items: Record<string, ItemEntry>, key: string, legacy: Iterable<string>): ItemEntry | undefined {
+  let best = items[key];
+  for (const k of legacy) {
+    const e = items[k];
+    if (k !== key && e && e.state !== 'offen' && (!best || e.atMs > best.atMs)) best = e;
+  }
+  return best;
+}
 
 /** Common pack sizes, so the list says what to take from the shelf. */
 const PLURAL: Record<string, string> = { Packung: 'Packungen', Becher: 'Becher', Beutel: 'Beutel' };
@@ -229,18 +271,20 @@ export type ShopList = {
 
 /** Every ingredient of the week, summed over the portions really eaten, grouped by supermarket section. */
 export function shoppingList(plan: MealPlan, state: MealState): ShopList {
-  const acc = new Map<string, { name: string; unit: Unit; amount: number; section: Section; dishes: Set<string> }>();
+  const acc = new Map<string, { row: Row; amount: number }>();
   for (const m of plan.meals) {
     if (m.reuseOf) continue;
     const portions = cookPortions(plan, state, mealKey(m.day, m.slot)).total;
     if (portions === 0) continue;
     for (const i of m.dish.side ? [...m.dish.ingredients, sideIngredient(m.dish.side)] : m.dish.ingredients) {
-      const key = itemKey(i.name, i.unit);
-      const have = acc.get(key);
-      if (have) { have.amount += i.amount * portions; have.dishes.add(m.dish.title); } else acc.set(key, { name: i.name.trim(), unit: i.unit, amount: i.amount * portions, section: i.section, dishes: new Set([m.dish.title]) });
+      const n = normIngredient(i);
+      const have = acc.get(n.key) ?? { row: newRow(i, n), amount: 0 };
+      addToRow(have.row, i, n, m.dish.title);
+      have.amount += n.amount * portions;
+      acc.set(n.key, have);
     }
   }
-  const all = [...acc.entries()].map(([key, a]) => ({ section: a.section, pantry: familyOf(a.unit) === 'etwas', item: { key, name: a.name, amount: shopAmount(a.name, a.unit, a.amount), state: state.items[key]?.state ?? 'offen', dishes: [...a.dishes] } as ShopItem }));
+  const all = [...acc.entries()].map(([key, { row, amount }]) => ({ section: row.section, pantry: rowIsPantry(row), item: { key, name: rowName(row), amount: rowAmount(row, amount), state: pickEntry(state.items, key, row.legacy)?.state ?? 'offen', dishes: [...row.dishes] } as ShopItem }));
   const byName = (x: ShopItem, y: ShopItem) => x.name.localeCompare(y.name, 'de');
   const sections = SECTIONS.map((section) => ({ section, items: all.filter((x) => x.section === section && !x.pantry && x.item.state !== 'da').map((x) => x.item).sort(byName) })).filter((s) => s.items.length > 0);
   const pantry = all.filter((x) => x.pantry && x.item.state !== 'da').map((x) => x.item).sort(byName);
