@@ -20,3 +20,7 @@ Share of the ridden seconds within 10% of your own target. Pauses, lost power si
 ## Training load
 
 Fitness and fatigue are exponential averages of TSS over 42 and 7 days, form is the difference. TSS is computed from your FTP, so an inaccurate FTP shifts all three.
+
+## Ende des Rampentests
+
+The ramp test ends by itself when you cannot keep up. Own settings: from minute 8 of the ride (5 minutes of warmup plus 3 minutes of ramp), 15 seconds in a row below 80% of the target power, or without a power signal, end the test. The ride is saved as finished. Your FTP comes from the best minute as before. A pause you set in the app never counts, because the ride does not tick then.

@@ -1,5 +1,6 @@
 import { RideEngine } from '../../src/service/engine';
 import type { Session } from '../../src/shared/session';
+import { rampTest } from '../../src/shared/ramp';
 
 const session: Session = { id: 's', name: 'x', steps: [
   { kind: 'erg', durationS: 60, ftpFraction: 0.5, label: 'A' },
@@ -352,4 +353,43 @@ test('skipStep is ignored while paused', () => {
   expect(e.state().paused).toBe(true);
   expect(e.skipStep()).toBeNull();
   expect(e.state().stepIndex).toBe(0);
+});
+
+describe('ramp test end', () => {
+  const ramp = rampTest(200);
+  const mk = (c: ReturnType<typeof clock>, s: Session = ramp) => new RideEngine({ session: s, ftpW: 200, nowMs: c.now });
+  const onTarget = (e: RideEngine, c: ReturnType<typeof clock>, n: number) => { const ev: string[] = []; for (let i = 0; i < n; i++) { c.step(); ev.push(...e.tick({ powerW: e.state().targetW ?? undefined }).events.map((x) => x.type)); } return ev; };
+  const lowPower = (e: RideEngine, c: ReturnType<typeof clock>, n: number) => { const ev: string[] = []; for (let i = 0; i < n; i++) { c.step(); ev.push(...e.tick({ powerW: 0 }).events.map((x) => x.type)); } return ev; };
+
+  test('ramp test ends after 15 s below 80 % of the target', () => {
+    const c = clock(); const e = mk(c);
+    onTarget(e, c, 600);
+    expect(e.isDone()).toBe(false);
+    const ev = lowPower(e, c, 15);
+    expect(e.isDone()).toBe(true);
+    expect(ev.filter((x) => x === 'ramp-end')).toHaveLength(1);
+  });
+  test('ramp test does not end before 8 minutes', () => {
+    const c = clock(); const e = mk(c);
+    onTarget(e, c, 300);
+    const ev = lowPower(e, c, 20);
+    onTarget(e, c, 1);
+    expect(e.isDone()).toBe(false);
+    expect(ev).not.toContain('ramp-end');
+  });
+  test('14 s below the target do not end the ramp test', () => {
+    const c = clock(); const e = mk(c);
+    onTarget(e, c, 600);
+    lowPower(e, c, 14);
+    onTarget(e, c, 1);
+    lowPower(e, c, 14);
+    expect(e.isDone()).toBe(false);
+  });
+  test('a normal session never ends early from low power', () => {
+    const long: Session = { id: 's', name: 'x', steps: [{ kind: 'erg', durationS: 3600, ftpFraction: 0.5, label: 'A' }] };
+    const c = clock(); const e = mk(c, long);
+    onTarget(e, c, 600);
+    lowPower(e, c, 60);
+    expect(e.isDone()).toBe(false);
+  });
 });
