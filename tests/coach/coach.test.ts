@@ -572,3 +572,8 @@ test('blank tips are dropped', async () => {
 test('the prompt tells the coach about rideTips', () => {
   expect(SYSTEM_PROMPT).toContain('rideTips');
 });
+test('tips with invented watt values are dropped', async () => {
+  const c = make(async () => answer({ rideTips: ['Halte heute 999 W.', 'ok'] })); afterRamp(c);
+  await c.refresh('pa');
+  expect(c.state('pa').next.session.tips).toEqual(['ok']);
+});

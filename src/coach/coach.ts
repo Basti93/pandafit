@@ -501,7 +501,10 @@ export class Coach {
     if (a.noteReply && note && !note.reply) note.reply = a.noteReply.slice(0, TEXT_MAX);
     this.applyFtpChange(s, a.ftpChangeW);
     const checked = checkSession(stripSession(a.session), this.context(s));
-    const tips = (a.rideTips ?? []).map((t) => t.trim().slice(0, TIP_MAX)).filter(Boolean).slice(0, 2);
+    // Same check as the reason: a tip with a watt value that is not in the data is dropped.
+    const tipSession = checked.ok ? checked.session : s.next.session;
+    const tips = (a.rideTips ?? []).map((t) => t.trim()).filter((t) => t && this.honestReason(s, t, tipSession) !== NEUTRAL_REASON)
+      .map((t) => t.slice(0, TIP_MAX)).slice(0, 2);
     const withTips = (x: Session): Session => (tips.length ? { ...x, tips } : x);
     s.alternatives = (a.alternatives ?? []).slice(0, 3).flatMap((alt, i) => {
       const c = checkSession(stripSession({ ...alt.session, id: `coach-alt-${i}` }), this.context(s));
