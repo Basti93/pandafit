@@ -432,6 +432,7 @@ export class MealCoach {
     const to = addDays(today, FILL_DAYS);
     const stock = stockOf(this.planWeeks(), from);
     for (const part of splitByWeek(from, to)) await this.planDays(part.week, part.fromDay, part.toDay, { keepExisting: false, stock });
+    this.importStates();
     const d = this.load();
     d.plannedUntil = dayKeyOf(to);
     const tied = retieStock(this.planWeeks(), from, stock, this.deps.nowMs());
@@ -746,6 +747,8 @@ export class MealCoach {
   exportAll(): string[] {
     const { store } = this.deps;
     if (!store) return [];
+    // Phones' ticks first: one made while Bo planned (minutes with the AI) is not overwritten by the plan going out.
+    this.importStates();
     const touched: string[] = [];
     const now = this.deps.nowMs();
     const d = this.load();

@@ -455,6 +455,30 @@ describe('Neu planen', () => {
   });
 });
 
+describe('a tick from the phone while Bo plans', () => {
+  it('is not overwritten by the new plan going out (Neu planen and the daily fill)', async () => {
+    const key = itemKey('Tofu natur', 'g');
+    let phone: (() => void) | null = null;
+    const { coach, clock, store } = setup({ now: at(19, 9), linked: ['max'], ask: async () => { phone?.(); phone = null; return answer(() => ({})); } });
+    coach.setSettings('max', ON());
+    await coach.tick();
+    const write = (week: string) => () => {
+      const st = store.all('max', 'mealplan').find((r) => r.id === `state-${week}`)!;
+      clock.now += 1000;
+      store.putMany('max', [{ ...st, updatedMs: clock.now, body: { ...(st.body as object), items: { [key]: { state: 'da', atMs: clock.now } } } }], 'remote');
+    };
+    const body = (week: string) => store.all('max', 'mealplan').find((r) => r.id === `state-${week}`)!.body as { items: Record<string, { state: string }> };
+    clock.now += 60_000;
+    phone = write('2026-11-16');
+    await coach.replan('max');
+    expect(body('2026-11-16').items[key]?.state).toBe('da');
+    clock.now = at(20, 9);
+    phone = write('2026-11-23');
+    await coach.tick();
+    expect(body('2026-11-23').items[key]?.state).toBe('da');
+  });
+});
+
 describe('Neu planen vom Handy', () => {
   const rec = (id: string, atMs: number, answeredMs: number | null = null) => ({ kind: 'mealplan', id, updatedMs: atMs, deleted: false, body: { atMs, answeredMs } }) as const;
   const answered = (store: RecordStore, id: string) => readReplanRequest(id, store.all('max', 'mealplan').find((r) => r.id === id)?.body)?.answeredMs;
