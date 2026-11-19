@@ -577,3 +577,15 @@ test('tips with invented watt values are dropped', async () => {
   await c.refresh('pa');
   expect(c.state('pa').next.session.tips).toEqual(['ok']);
 });
+test('in easy mode a hold that could lift the power above 75 % FTP is dropped', async () => {
+  const held: Session = { id: 'ki', name: 'KI', steps: [
+    good.steps[0],
+    { kind: 'erg', durationS: 1200, ftpFraction: 0.7, label: 'Locker', hrZone: 2, hrHold: true },
+  ] };
+  const c = make(async () => answer({ session: held })); afterRamp(c);
+  await c.refresh('pa');
+  const next = c.state('pa').next;
+  expect(next.source).toBe('claude');
+  expect(next.session.steps[1]).toMatchObject({ ftpFraction: 0.7, hrZone: 2 });
+  expect('hrHold' in next.session.steps[1]).toBe(false);
+});

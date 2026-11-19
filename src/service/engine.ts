@@ -1,7 +1,7 @@
 import { clampTargetW } from '../shared/target-power';
 import type { RideEvent, Sample } from '../shared/sample';
 import { RAMP_ID, stepFtpFraction, type Session, type Step } from '../shared/session';
-import { zoneBounds } from '../shared/hr-zones';
+import { HOLD_CEILING_FRACTION, HOLD_MAX_UP_PCT, zoneBounds } from '../shared/hr-zones';
 import type { Reading } from './ble/device-manager';
 
 /** A silence longer than this counts as a gap in the ride (also used to spot a crash gap on recovery). */
@@ -19,9 +19,7 @@ const CLIMB_ENTRY_S = 25;
 const HOLD_EVERY_S = 30;
 const HOLD_UP_PCT = 2;
 const HOLD_DOWN_PCT = 3;
-const HOLD_MAX_UP_PCT = 15;
 const HOLD_MAX_DOWN_PCT = 40;
-const HOLD_CEILING_FRACTION = 0.8;
 // Own setting: the ramp test ends by itself after 15 s below 80 % of the target, not before minute 8 (5 min warmup plus 3 min ramp). See docs/progress.md.
 const RAMP_MIN_S = 480;
 const RAMP_LOW_FRACTION = 0.8;

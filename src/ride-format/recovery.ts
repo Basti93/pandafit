@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { RideEvent, Sample } from '../shared/sample';
 import { writeJsonAtomic } from '../shared/node/atomic-write';
 import { stepFtpFraction, type Session } from '../shared/session';
+import { HOLD_CEILING_FRACTION, HOLD_MAX_UP_PCT } from '../shared/hr-zones';
 import type { RideMeta } from './read';
 
 /** A rebuilt ride counts as open only if its last sample is younger than this; older ones are kept as aborted. */
@@ -107,9 +108,7 @@ const AUTO_STEP_PCT = 5;
 const AUTO_MAX_PCT = 20;
 const HOLD_UP_PCT = 2;
 const HOLD_DOWN_PCT = 3;
-const HOLD_MAX_UP_PCT = 15;
 const HOLD_MAX_DOWN_PCT = 40;
-const HOLD_CEILING_FRACTION = 0.8;
 
 const stepIndexAt = (session: Session, atS: number): number => {
   let end = 0;

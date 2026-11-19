@@ -4,6 +4,12 @@ import type { Step } from './session';
 const YEAR_MS = 365.25 * 86_400_000;
 export const ZONES = [1, 2, 3, 4, 5] as const;
 
+/** Heart rate hold: at most this much above the planned power, and never above this share of the FTP. Own settings, see docs/hr-zones.md. */
+export const HOLD_MAX_UP_PCT = 15;
+export const HOLD_CEILING_FRACTION = 0.8;
+/** The highest share of the FTP a hold can lift a section with this planned share to. */
+export const holdTopFraction = (ftpFraction: number): number => Math.max(ftpFraction, Math.min(ftpFraction * (1 + HOLD_MAX_UP_PCT / 100), HOLD_CEILING_FRACTION));
+
 export type HrMax = { bpm: number; estimated: boolean };
 
 /** Your own value applies. Otherwise Tanaka (208 − 0.7 × age), error around ±10 beats, hence marked as an estimate. */

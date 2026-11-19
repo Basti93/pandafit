@@ -1,4 +1,5 @@
 import { estimateTss, parseSession, RAMP_ID, stepFtpFraction, type Session, type Step } from '../shared/session';
+import { holdTopFraction } from '../shared/hr-zones';
 import { loadModel, type RideSummary } from './metrics';
 
 export type CoachContext = { ftpW: number; summaries: RideSummary[]; nowMs: number; careful?: boolean; complaint?: boolean };
@@ -78,5 +79,15 @@ export const checkSession = (session: unknown, ctx: CoachContext): { ok: true; s
     return { ok: false, reason: 'Die Einheit hat kein gültiges Format.' };
   }
   const reason = violation(parsed, ctx);
-  return reason ? { ok: false, reason } : { ok: true, session: parsed };
+  return reason ? { ok: false, reason } : { ok: true, session: withinEasyHold(parsed, ctx) };
+};
+
+/** In easy mode a hold must not lift the power above the easy limit. Such a hold is dropped, the section keeps its power. */
+const withinEasyHold = (session: Session, ctx: CoachContext): Session => {
+  if (!mustBeEasy(ctx) || !session.steps.some((s) => s.kind === 'erg' && s.hrHold && holdTopFraction(s.ftpFraction) > LIMITS.easyFraction)) return session;
+  return { ...session, steps: session.steps.map((s) => {
+    if (s.kind !== 'erg' || !s.hrHold || holdTopFraction(s.ftpFraction) <= LIMITS.easyFraction) return s;
+    const { hrHold: _dropped, ...rest } = s;
+    return rest;
+  }) };
 };
