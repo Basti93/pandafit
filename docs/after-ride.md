@@ -98,3 +98,4 @@ The film window floats over a fullscreen video on every Space, but the main wind
 - Symptom: Nach `connect-try` für hr um 20:08:08 kam kein Ergebnis mehr. Danach gab es keine Verbindungsversuche mehr für hr und clicker, bis die App neu startete.
 - Vermutete Ursache: `src/service/ble/noble-adapter.ts` wartet im catch auf `peripheral.disconnectAsync()` oder in `find()` auf `stopScanningAsync()`, ohne Zeitgrenze. Wenn das nicht zurückkommt, bleibt `busy` true und die Warteschlange steht.
 - Fix: Zeitgrenze für disconnectAsync und stopScanningAsync. Test: hängendes disconnectAsync blockiert die nächsten Versuche nicht.
+- Zweites Problem am selben Abend: macOS gab dem Polar H10 eine neue Peripheral-ID. `find()` ignoriert jedes Gerät mit anderer ID als in `devices.json`, also blieb der Gurt „nicht gefunden“. Fix: Wenn das bekannte Gerät eine Zeit lang fehlt, auch ein Gerät mit gleichem Namen annehmen und die ID neu speichern.
