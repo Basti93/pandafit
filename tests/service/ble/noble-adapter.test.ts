@@ -178,3 +178,43 @@ test('an attempt that never returns is cut off and frees the queue', async () =>
   await expect(port.connect('hr')).resolves.toBeUndefined();
 });
 
+
+const named = (service: string, id: string, localName: string, extra: any = {}) => {
+  const p = peripheral(service);
+  p.id = id; p.advertisement = { serviceUuids: [service], localName, ...extra };
+  return p;
+};
+const scanFinds = (n: any, list: any[]) => { n.startScanningAsync = async () => { list.forEach((p, i) => setTimeout(() => n.emit('discover', p), 1 + i)); }; };
+test('a strap with a new peripheral id is found by its name and the new id is saved', async () => {
+  const d = dir();
+  fs.writeFileSync(path.join(d, 'devices.json'), JSON.stringify({ hr: { id: 'old', name: 'Polar H10 1234' } }));
+  const n = fakeNoble();
+  scanFinds(n, [named('180d', 'other', 'Polar H10 9999'), named('180d', 'new', 'Polar H10 1234')]);
+  const port = new NobleBlePort(d, n, { scanTimeoutMs: 200 });
+  await port.connect('hr');
+  expect(port.deviceName('hr')).toBe('Polar H10 1234');
+  expect(JSON.parse(fs.readFileSync(path.join(d, 'devices.json'), 'utf8')).hr).toEqual({ id: 'new', name: 'Polar H10 1234' });
+});
+test('a different name with a different id is still ignored, and old plain id files still read', async () => {
+  const d = dir();
+  fs.writeFileSync(path.join(d, 'devices.json'), JSON.stringify({ hr: 'old' }));
+  const n = fakeNoble();
+  scanFinds(n, [named('180d', 'other', 'Polar H10 9999')]);
+  const port = new NobleBlePort(d, n, { scanTimeoutMs: 40 });
+  await expect(port.connect('hr')).rejects.toThrow(/nicht gefunden/);
+  scanFinds(n, [named('180d', 'old', 'Polar H10 1234')]);
+  await port.connect('hr');
+  expect(JSON.parse(fs.readFileSync(path.join(d, 'devices.json'), 'utf8')).hr).toEqual({ id: 'old', name: 'Polar H10 1234' });
+});
+test('the known id wins over a name match, and the clicker rules still apply', async () => {
+  const d = dir();
+  fs.writeFileSync(path.join(d, 'devices.json'), JSON.stringify({ hr: { id: 'old', name: 'A' }, clicker: { id: 'c-old', name: 'Zwift Click' } }));
+  const n = fakeNoble();
+  scanFinds(n, [named('180d', 'twin', 'A'), named('180d', 'old', 'A')]);
+  const port = new NobleBlePort(d, n, { scanTimeoutMs: 200 });
+  await port.connect('hr');
+  expect(JSON.parse(fs.readFileSync(path.join(d, 'devices.json'), 'utf8')).hr.id).toBe('old');
+  // Same name but not a Click v1: ignored.
+  scanFinds(n, [named('x', 'c-new', 'Zwift Click', { manufacturerData: Buffer.from([0x4a, 0x09, 0x0a]) })]);
+  await expect(new NobleBlePort(d, n, { clickerScanMs: 40 }).connect('clicker')).rejects.toThrow();
+});

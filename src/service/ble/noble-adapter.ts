@@ -56,17 +56,29 @@ export class NobleBlePort implements BlePort {
   private waiting: { kind: DeviceKind; run: () => void }[] = [];
   private busy = false;
   private clickerScanMs: number;
+  private scanTimeoutMs: number;
+  private names: Partial<Record<DeviceKind, string>> = {};
   private cleanupTimeoutMs: number;
   private attemptTimeoutMs: number;
 
-  constructor(dataDir: string, nobleImpl?: unknown, opts: { connectTimeoutMs?: number; clickerScanMs?: number; cleanupTimeoutMs?: number; attemptTimeoutMs?: number } = {}) {
+  constructor(dataDir: string, nobleImpl?: unknown, opts: { connectTimeoutMs?: number; clickerScanMs?: number; scanTimeoutMs?: number; cleanupTimeoutMs?: number; attemptTimeoutMs?: number } = {}) {
+    this.scanTimeoutMs = opts.scanTimeoutMs ?? SCAN_TIMEOUT_MS;
     this.cleanupTimeoutMs = opts.cleanupTimeoutMs ?? CLEANUP_TIMEOUT_MS;
     this.attemptTimeoutMs = opts.attemptTimeoutMs ?? ATTEMPT_TIMEOUT_MS;
     this.clickerScanMs = opts.clickerScanMs ?? CLICKER_SCAN_MS;
     this.connectTimeoutMs = opts.connectTimeoutMs ?? CONNECT_TIMEOUT_MS;
     this.noble = nobleImpl;
     this.knownFile = path.join(dataDir, 'devices.json');
-    try { this.known = JSON.parse(fs.readFileSync(this.knownFile, 'utf8')); } catch { /* first start */ }
+    try {
+      // Old files hold a plain id string; newer ones { id, name }.
+      const raw = JSON.parse(fs.readFileSync(this.knownFile, 'utf8')) as Record<string, string | { id?: string; name?: string }>;
+      for (const [k, v] of Object.entries(raw)) {
+        const id = typeof v === 'string' ? v : v?.id;
+        if (typeof id !== 'string') continue;
+        this.known[k as DeviceKind] = id;
+        if (typeof v === 'object' && typeof v.name === 'string') this.names[k as DeviceKind] = v.name;
+      }
+    } catch { /* first start */ }
   }
 
   /**
@@ -118,8 +130,12 @@ export class NobleBlePort implements BlePort {
       clearTimeout(timer);
     }
     this.known[kind] = peripheral.id;
+    const name = peripheral.advertisement?.localName;
+    if (typeof name === 'string' && name) this.names[kind] = name;
+    const out: Record<string, string | { id: string; name: string }> = {};
+    for (const [k, id] of Object.entries(this.known) as [DeviceKind, string][]) out[k] = this.names[k] ? { id, name: this.names[k]! } : id;
     // A failed save must not drop the connected device.
-    try { writeJsonAtomic(this.knownFile, this.known); } catch (e) { console.error('devices.json could not be written', e); }
+    try { writeJsonAtomic(this.knownFile, out); } catch (e) { console.error('devices.json could not be written', e); }
     ready = true;
     this.peripherals.set(kind, peripheral);
   }
@@ -171,16 +187,31 @@ export class NobleBlePort implements BlePort {
     await this.noble.startScanningAsync(clicker ? [] : services, false);
     try {
       return await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-          this.noble.removeListener('discover', onDiscover);
-          reject(new Error(`${kind} nicht gefunden`));
-        }, clicker ? this.clickerScanMs : SCAN_TIMEOUT_MS);
-        const onDiscover = (p: any) => {
-          if (this.known[kind] && p.id !== this.known[kind]) return;
-          if (clicker && !isClickV1(p)) return;
-          clearTimeout(timer);
+        const scanMs = clicker ? this.clickerScanMs : this.scanTimeoutMs;
+        const knownName = this.names[kind];
+        let byName: any;
+        let nameTimer: ReturnType<typeof setTimeout> | undefined;
+        const done = (p: any) => {
+          clearTimeout(timer); clearTimeout(nameTimer);
           this.noble.removeListener('discover', onDiscover);
           resolve(p);
+        };
+        const timer = setTimeout(() => {
+          clearTimeout(nameTimer);
+          this.noble.removeListener('discover', onDiscover);
+          reject(new Error(`${kind} nicht gefunden`));
+        }, scanMs);
+        const onDiscover = (p: any) => {
+          if (clicker && !isClickV1(p)) return;
+          if (this.known[kind] && p.id !== this.known[kind]) {
+            // macOS can hand out a new id for the same device: accept the same name, but give the known id a short head start.
+            if (knownName && !byName && p.advertisement?.localName === knownName) {
+              byName = p;
+              nameTimer = setTimeout(() => done(byName), scanMs / 2);
+            }
+            return;
+          }
+          done(p);
         };
         this.noble.on('discover', onDiscover);
       });
