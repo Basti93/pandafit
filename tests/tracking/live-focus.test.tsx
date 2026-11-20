@@ -145,6 +145,7 @@ describe('the focus card', () => {
     render(<WorkoutScreen port={port} {...ids} />);
     await resume();
     fireEvent.click(screen.getByRole('button', { name: /Rudern/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Jetzt diese Übung machen' }));
     expect(focusOf('Rudern').getByText('Nächster Satz · 2 von 2')).toBeTruthy();
     doneNow();
     await waitFor(() => expect(sets(map, 1)[1]!.doneMs).toBe(100_000));
@@ -276,16 +277,48 @@ describe('the focus card', () => {
     expect(await screen.findByLabelText('Suchen')).toBeTruthy();
   });
 
-  it('tapping a row under Danach makes it the focus', async () => {
-    const { port } = fakePort([rec(open2())]);
+  it('tapping a row under Danach only expands it; the focus and the order stay', async () => {
+    const { port, map } = fakePort([rec(open2())]);
     render(<WorkoutScreen port={port} {...ids} />);
     await resume();
     const row = screen.getByRole('button', { name: /Rudern/ });
     expect(row.textContent).toContain('3 Sätze');
+    expect(row.getAttribute('aria-expanded')).toBe('false');
     fireEvent.click(row);
+    expect(screen.getByRole('button', { name: /Rudern/ }).getAttribute('aria-expanded')).toBe('true');
+    expect(focusOf('Bankdrücken').getByText('Nächster Satz · 1 von 2')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Rudern' })).toBeNull();
+    expect(screen.getByRole('button', { name: /Rudern/ }).closest('li')!.textContent).toContain('Satz 3');
+    // looking is not logging: only the focus exercise has Satz geschafft
+    expect(screen.getAllByRole('button', { name: 'Satz geschafft' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /Rudern/ }));
+    expect(screen.getByRole('button', { name: /Rudern/ }).getAttribute('aria-expanded')).toBe('false');
+    expect(bodyOf(map, 'workout:open1').exercises.map((e) => e.title)).toEqual(['Bankdrücken', 'Rudern']);
+  });
+
+  it('at most one other exercise is expanded at a time', async () => {
+    const third = { exerciseId: 'pf-squat', title: 'Kniebeuge', supersetId: null, notes: '', sets: [set(50, 5, null)] };
+    const w = open2();
+    const { port } = fakePort([rec({ ...w, exercises: [...w.exercises, third] })]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    fireEvent.click(screen.getByRole('button', { name: /Rudern/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Kniebeuge/ }));
+    expect(screen.getByRole('button', { name: /Rudern/ }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: /Kniebeuge/ }).getAttribute('aria-expanded')).toBe('true');
+    expect(focusOf('Bankdrücken').getByText('Nächster Satz · 1 von 2')).toBeTruthy();
+  });
+
+  it('"Jetzt diese Übung machen" makes the expanded exercise the active one and moves it to the current place', async () => {
+    const { port, map } = fakePort([rec(open2())]);
+    render(<WorkoutScreen port={port} {...ids} />);
+    await resume();
+    fireEvent.click(screen.getByRole('button', { name: /Rudern/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Jetzt diese Übung machen' }));
     expect(focusOf('Rudern').getByText('Nächster Satz · 1 von 3')).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Bankdrücken' })).toBeNull();
     expect(screen.getByRole('button', { name: /Bankdrücken/ }).textContent).toContain('2 Sätze');
+    await waitFor(() => expect(bodyOf(map, 'workout:open1').exercises.map((e) => e.title)).toEqual(['Rudern', 'Bankdrücken']));
   });
 
   it('the effort question is its own card after the last set and thanks once', async () => {
