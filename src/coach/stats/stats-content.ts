@@ -1,7 +1,7 @@
 import type { GarminActivity } from '../../shared/garmin';
 import type { TrackedRecord } from '../../shared/records';
 import { RUN_TYPES } from '../../shared/run';
-import { SPORTS, type StatsBody } from '../../shared/stats';
+import { SPORTS, type Sport, type StatsBody, type StatsDay } from '../../shared/stats';
 import { CYCLING, overlapsByHalf, STRENGTH } from '../all-training';
 import { dateKey, type DayRating } from '../day-load';
 import { muscleOf } from '../mobility/mobility';
@@ -31,10 +31,11 @@ export type StatsContentInput = {
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
-/** What the stats record of a profile says; null when there is nothing in the nine weeks. */
-export function statsContent(i: StatsContentInput): Omit<StatsBody, 'atMs'> | null {
-  const dates = lastDates(i.nowMs);
-  const inDates = new Set(dates);
+/**
+ * Minutes per sport per date, the same overlap rules as allTraining: a ride of this app or a strength workout recorded here
+ * counts once. Runs come from the run coach. Cycling recorded only on the watch is still cycling.
+ */
+function daysFor(i: StatsContentInput, dates: string[], ratings: Record<string, DayRating>): StatsDay[] {
   const mobility = i.mobility.flatMap((r) => {
     if (r.deleted || !isObj(r.body)) return [];
     const { doneMs, minutes } = r.body;
@@ -42,19 +43,24 @@ export function statsContent(i: StatsContentInput): Omit<StatsBody, 'atMs'> | nu
     const ok = typeof minutes === 'number' && Number.isFinite(minutes) && minutes >= 0;
     return [{ doneMs, minutes: ok ? minutes : MOBILITY_MINUTES }];
   });
-  // The same overlap rules as allTraining: a ride of this app or a strength workout recorded here counts once. Runs come from the run coach.
-  // Cycling recorded only on the watch is still cycling.
   const garmin = i.activities.filter((a) => !a.fromBikeCoach && !(RUN_TYPES as readonly string[]).includes(a.sport));
   const ownRide = (a: (typeof garmin)[number]) => i.rides.some((r) => overlapsByHalf({ startMs: r.startedAtMs, durationS: r.durationS }, a));
   const cycling = garmin.filter((a) => CYCLING.test(a.sport));
   const watchRides = cycling.filter((a) => !ownRide(a)).map((a) => ({ startedAtMs: a.startMs, durationS: a.durationS }));
   const other = garmin.filter((a) => !CYCLING.test(a.sport) && !(STRENGTH.test(a.sport) && i.history.some((w) => overlapsByHalf(w, a))))
     .map((a) => ({ startMs: a.startMs, durationS: a.durationS, sport: a.sport }));
-  const days = statsDays({
+  return statsDays({
     rides: [...i.rides.map((r) => ({ startedAtMs: r.startedAtMs, durationS: r.durationS })), ...watchRides],
     strength: i.history.map((w) => ({ startMs: w.startMs, durationS: w.durationS })),
-    runs: i.runs.map((r) => ({ startMs: r.startMs, durationS: r.durationS })), mobility, other, ratings: i.ratings(dates),
+    runs: i.runs.map((r) => ({ startMs: r.startMs, durationS: r.durationS })), mobility, other, ratings,
   }, dates);
+}
+
+/** What the stats record of a profile says; null when there is nothing in the nine weeks. */
+export function statsContent(i: StatsContentInput): Omit<StatsBody, 'atMs'> | null {
+  const dates = lastDates(i.nowMs);
+  const inDates = new Set(dates);
+  const days = daysFor(i, dates, i.ratings(dates));
   const found = new Map<string, string>();
   for (const w of i.history) {
     if (!inDates.has(dateKey(w.startMs))) continue;
@@ -68,4 +74,26 @@ export function statsContent(i: StatsContentInput): Omit<StatsBody, 'atMs'> | nu
   if (empty && found.size === 0) return null;
   const ftp = (i.ftp ?? []).filter((h) => i.nowMs - h.atMs <= 183 * 86_400_000).slice(-30).map((h) => ({ atMs: h.atMs, ftpW: h.ftpW }));
   return { type: 'stats', goal: i.goal, days, muscles, ...(ftp.length ? { ftp } : {}), ...(i.weightKg ? { weightKg: i.weightKg } : {}) };
+}
+
+/** Real cardio besides running and cycling; walking, hiking, yoga and unknown activities are not training time for the sport chart. */
+const CARDIO = /swim|rowing|elliptical|cardio/i;
+
+/** The input for the sport chart: a strength session only the watch knows counts as strength, and activities that are no training for it are dropped. */
+function countable(i: StatsContentInput): StatsContentInput {
+  const watchStrength = i.activities.filter((a) => !a.fromBikeCoach && STRENGTH.test(a.sport) && !i.history.some((w) => overlapsByHalf(w, a)));
+  return {
+    ...i,
+    history: [...i.history, ...watchStrength.map((a) => ({ startMs: a.startMs, durationS: a.durationS, exercises: [] }))],
+    activities: i.activities.filter((a) => CYCLING.test(a.sport) || CARDIO.test(a.sport)),
+  };
+}
+
+/** Minutes per sport over the local days from `fromMs` to `toMs`, doubles removed like in the stats record (for the sport chart). */
+export function sportMinutes(i: StatsContentInput, fromMs: number, toMs: number): Record<Sport, number> {
+  const dates: string[] = [];
+  for (let d = new Date(new Date(fromMs).getFullYear(), new Date(fromMs).getMonth(), new Date(fromMs).getDate()); d.getTime() <= toMs; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(dateKey(d.getTime()));
+  const total = Object.fromEntries(SPORTS.map((s) => [s, 0])) as Record<Sport, number>;
+  for (const day of daysFor(countable(i), dates, {})) for (const s of SPORTS) total[s] += day.minutes[s];
+  return total;
 }

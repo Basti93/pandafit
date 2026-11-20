@@ -1,4 +1,4 @@
-import { readCoachPrefs, latestReview, chatThread, proposalAnswer, readChat, waitingMessage } from '../../src/shared/chat';
+import { readCoachPrefs, latestReview, chatThread, proposalAnswer, readChat, waitingMessage, chartsOf, cardFields } from '../../src/shared/chat';
 import type { TrackedRecord } from '../../src/shared/records';
 
 const rec = (id: string, body: object, deleted = false): TrackedRecord => ({ kind: 'chat', id, updatedMs: 1, deleted, body });
@@ -80,5 +80,32 @@ describe('Muskel-Diagramm an einer Nachricht', () => {
     const m = readChat({ role: 'coach', text: 'x', atMs: 1, chart: { kind: 'herz', fromMs: 1, toMs: 2 } });
     expect(m).not.toBeNull();
     expect(m).not.toHaveProperty('chart');
+  });
+});
+
+describe('Mehrere Diagramme an einer Nachricht', () => {
+  const muscles = { kind: 'muskeln', fromMs: 1, toMs: 2, axes: [{ group: 'chest', sets: 3, min: 1, max: 2 }, { group: 'back', sets: 0, min: 1, max: 2 }, { group: 'abs', sets: 1, min: 0, max: 2 }] };
+  const sport = { kind: 'sport', fromMs: 1, toMs: 2, parts: [{ sport: 'gym', minutes: 60, target: 0.5 }, { sport: 'bike', minutes: 60, target: 0.5 }] };
+  it('liest das Sport-Diagramm als einzelnes Diagramm', () => {
+    const m = readChat({ role: 'coach', text: 'x', atMs: 1, chart: sport })!;
+    expect(m.chart).toEqual(sport);
+    expect(chartsOf(m)).toEqual([sport]);
+  });
+  it('liest eine Liste und überspringt unbekannte Arten darin', () => {
+    const m = readChat({ role: 'coach', text: 'x', atMs: 1, chart: muscles, charts: [muscles, { kind: 'herz' }, sport] })!;
+    expect(chartsOf(m)).toEqual([muscles, sport]);
+  });
+  it('alte Nachrichten mit einem chart und ohne charts geben eine Liste mit einem Eintrag', () => {
+    expect(chartsOf(readChat({ role: 'coach', text: 'x', atMs: 1, chart: muscles })!)).toEqual([muscles]);
+    expect(chartsOf(readChat({ role: 'coach', text: 'x', atMs: 1 })!)).toEqual([]);
+  });
+  it('schreibt das erste Diagramm auch als chart, damit ältere Geräte es noch zeigen, die Liste nur bei mehreren', () => {
+    expect(cardFields([])).toEqual({});
+    expect(cardFields([muscles as never])).toEqual({ chart: muscles });
+    expect(cardFields([muscles as never, sport as never])).toEqual({ chart: muscles, charts: [muscles, sport] });
+  });
+  it('eine Liste ohne lesbaren Eintrag lässt die Nachricht ohne Diagramm', () => {
+    const m = readChat({ role: 'coach', text: 'x', atMs: 1, charts: [{ kind: 'herz' }], chart: { kind: 'herz' } })!;
+    expect(chartsOf(m)).toEqual([]);
   });
 });
