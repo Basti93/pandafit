@@ -3,10 +3,11 @@ import path from 'node:path';
 import {
   addWeeks, ALIASES_RECORD_ID, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
   isFavRecordId, isLinkRecordId, isPlaceRecordId, isReplanRecordId, parseMealKey, readPlaceRequest, readReplanRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readAliases, readMealChat, readMealState, type Aliases, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
-  type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
+  STORES, householdStore, type Store, type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
 import type { RecordStore } from '../tracking/store';
+import { monthOf, type Availability } from '../../shared/availability';
 import { fitsEveryone } from './check';
 import { ASKED_MAX, learnAliases } from './aliases';
 import { sanitizeUrl, type StoredRecipe } from './recipe-import';
@@ -104,7 +105,7 @@ export function cleanSettings(x: unknown): MealSettings {
   if (!isObj(x)) return { ...d, habits: { ...d.habits } };
   const h = isObj(x.habits) ? x.habits : {};
   const habits = Object.fromEntries(SLOTS.map((s) => [s, HABITS.includes(h[s] as Habit) ? h[s] : d.habits[s]])) as Record<Slot, Habit>;
-  return { on: x.on === true, diet: DIETS.includes(x.diet as Diet) ? x.diet as Diet : d.diet, dislikes: tags(x.dislikes), intolerances: tags(x.intolerances), habits };
+  return { on: x.on === true, diet: DIETS.includes(x.diet as Diet) ? x.diet as Diet : d.diet, dislikes: tags(x.dislikes), intolerances: tags(x.intolerances), habits, store: STORES.includes(x.store as Store) ? x.store as Store : 'supermarkt' };
 }
 
 /** Weekdays with at least two sessions in the last four weeks. */
@@ -357,6 +358,9 @@ export class MealCoach {
   enabled(id: string): boolean { return this.settings(id).on; }
   isPlanning(): boolean { return this.planning !== null; }
 
+  /** The month and the shop the plan is made for. */
+  private avail(members: Member[]): Availability { return { month: monthOf(this.deps.nowMs()), store: householdStore(members.map((m) => m.settings)) }; }
+
   private members(): Member[] {
     return this.deps.profiles().filter((p) => this.enabled(p.id)).map((p) => ({ id: p.id, settings: this.settings(p.id) }));
   }
@@ -368,7 +372,9 @@ export class MealCoach {
     const next = cleanSettings(raw);
     const was = this.settings(id).on;
     d.settings[id] = next;
+    const store = householdStore(this.members().map((m) => m.settings));
     for (const plan of Object.values(d.plans)) {
+      plan.store = store;
       const inPlan = plan.people.some((p) => p.id === id);
       // Off: out of every plan, so portions and the shopping list shrink. On: in the plan, eating once switched on.
       if (!next.on && inPlan) { plan.people = plan.people.filter((p) => p.id !== id); for (const m of plan.meals) m.eaters = m.eaters.filter((e) => e !== id); }
@@ -521,7 +527,7 @@ export class MealCoach {
         // Every meal came from a real recipe (or stays): nothing to invent.
       } else if (this.deps.ask) {
         try {
-          const raw = await this.deps.ask({ prompt: buildMealPrompt({ members, slots: aiSlots, trainingDays, lastWeek, stock: stockNames(o.stock) }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: PLAN_TIMEOUT_MS });
+          const raw = await this.deps.ask({ prompt: buildMealPrompt({ members, slots: aiSlots, trainingDays, lastWeek, stock: stockNames(o.stock), avail: this.avail(members) }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: PLAN_TIMEOUT_MS });
           fromAi = mealsFromAnswer(raw, members, aiSlots);
           const replaced = aiSlots.length - fromAi.length;
           if (!mealAnswerSchema.safeParse(raw).success) notice = NOTICE_NO_AI;
@@ -532,10 +538,10 @@ export class MealCoach {
       const have = new Set([...fromAi, ...real].map((m) => mealKey(m.day, m.slot)));
       const open = skeleton(members, fromDay, true, toDay).filter((s) => !keptKeys.has(mealKey(s.day, s.slot)) && !have.has(mealKey(s.day, s.slot))).map((s) => unkept(s.reuseOf && have.has(s.reuseOf) ? { ...s, reuseOf: null } : s));
       for (const m of real) if (m.dish.recipeId) lastIds.add(m.dish.recipeId);
-      const fromList = ruleMeals(members, open, trainingDays, random, lastIds, stockSet(stockNames(o.stock)));
+      const fromList = ruleMeals(members, open, trainingDays, random, lastIds, stockSet(stockNames(o.stock)), this.avail(members));
       const meals = [...kept, ...real, ...fromAi, ...fromList].sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
       const source = fromAi.length === 0 ? 'liste' : fromList.length + real.length === 0 ? 'coach' : 'gemischt';
-      d.plans[week] = { week, createdMs: this.deps.nowMs(), source, people: this.people(), meals, trainingDays };
+      d.plans[week] = { week, createdMs: this.deps.nowMs(), source, people: this.people(), meals, trainingDays, store: householdStore(members.map((m) => m.settings)) };
       d.notices[week] = notice ?? d.notices[week] ?? null;
       this.save();
     } finally { this.planning = null; }
@@ -563,7 +569,7 @@ export class MealCoach {
       const order = unlocked ? slots : [...slots].sort(() => i.random() - 0.5);
       const meals = await planFromRecipes({
         members: i.members, slots: order, trainingDays: i.trainingDays, pool, lastIds: i.lastIds, random: i.random, lastWeek: i.lastWeek,
-        ...(cap !== undefined ? { cap } : {}), treatsInWeek: i.treatsInWeek, stock: stockNames(i.stock), favourites, aiChoice: unlocked, ...(this.deps.ask ? { ask: this.deps.ask } : {}),
+        ...(cap !== undefined ? { cap } : {}), treatsInWeek: i.treatsInWeek, stock: stockNames(i.stock), favourites, aiChoice: unlocked, avail: this.avail(i.members), ...(this.deps.ask ? { ask: this.deps.ask } : {}),
       });
       return meals;
     } catch { return []; }
@@ -588,14 +594,14 @@ export class MealCoach {
       this.planning = key;
       try {
         const avoid = [...new Set(plan.meals.map((m) => m.dish.title))];
-        const raw = await this.deps.ask({ prompt: buildSwapPrompt({ members, slot, training: plan.trainingDays.includes(meal.day), avoid }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: SWAP_TIMEOUT_MS });
+        const raw = await this.deps.ask({ prompt: buildSwapPrompt({ members, slot, training: plan.trainingDays.includes(meal.day), avoid, avail: this.avail(members) }), systemPrompt: MEAL_SYSTEM_PROMPT, schema: mealAnswerJsonSchema, timeoutMs: SWAP_TIMEOUT_MS });
         const parsed = mealAnswerSchema.safeParse(raw);
         const a = parsed.success ? parsed.data.mahlzeiten[0] : undefined;
         const got = a ? dishFrom(a) : null;
         if (got && !avoid.includes(got.title) && fitsEveryone(got, who.map((m) => m.settings))) dish = got;
       } catch { /* the list takes over */ } finally { this.planning = null; }
     }
-    dish ??= listDish(plan, state, members, key, random);
+    dish ??= listDish(plan, state, members, key, random, this.avail(members));
     if (!dish) return;
     // Re-read: the plan may have changed while the AI thought.
     const fresh = this.load().plans[week];
@@ -678,7 +684,7 @@ export class MealCoach {
     const key = ruleTarget(msg.text, msg.week === current ? dayIndex(now) : null);
     const plan = d.plans[msg.week]!;
     const meal = key ? plan.meals.find((m) => mealKey(m.day, m.slot) === key) : undefined;
-    const dish = meal && meal.day >= fromDay ? listDish(plan, d.states[msg.week] ?? EMPTY_STATE, this.members(), key!, random) : null;
+    const dish = meal && meal.day >= fromDay ? listDish(plan, d.states[msg.week] ?? EMPTY_STATE, this.members(), key!, random, this.avail(this.members())) : null;
     if (!meal || !dish) { done(REPLY_NO_AI); return; }
     putDish(plan, d.states[msg.week] ?? EMPTY_STATE, this.members(), key!, dish, random);
     meal.askedBy = id;

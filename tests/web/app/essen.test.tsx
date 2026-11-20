@@ -6,6 +6,8 @@ import type { TrackedRecord } from '../../../src/shared/records';
 import { openIdb } from '../../../src/web/idbStore';
 import { addWeeks, DAY_LONG, dayIndex, itemKey, weekOf } from '../../../src/shared/meals';
 import type { LiveSocket } from '../../../src/web/live';
+import { monthOf, outOfSeasonNames } from '../../../src/shared/availability';
+import { EMPTY_STATE, type MealPlan } from '../../../src/shared/meals';
 import { ShoppingPage } from '../../../src/web/essen/ShoppingPage';
 import { NOW, json, boot, openMeal, pill } from './helpers';
 
@@ -243,6 +245,20 @@ describe('Essen on the phone', () => {
     expect(screen.getByText(`Die Liste reicht bis ${DAY_LONG[(today + 1) % 7]} und ist für zwei Personen.`)).toBeTruthy();
     fireEvent.click(pill('Essen'));
     expect(await screen.findByRole('region', { name: 'Essen' })).toBeTruthy();
+  });
+
+  it('Einkauf shows a calm hint for a rare ingredient at the discounter and for one out of season', () => {
+    const off = outOfSeasonNames(monthOf(NOW))[0]!;
+    const ing = (name: string, section: 'Obst und Gemüse' | 'Kühlregal') => ({ name, amount: 100, unit: 'g' as const, section });
+    const plan = (store?: 'discounter'): MealPlan => ({ week, createdMs: NOW - 1000, source: 'liste', trainingDays: [], people: [{ id: 'pa', name: 'Max' }], ...(store ? { store } : {}),
+      meals: [{ day: today, slot: 'abend', dish: { ...dish('Pilzpfanne'), source: 'liste' as const, ingredients: [ing('Austernpilze', 'Obst und Gemüse'), ing(off, 'Obst und Gemüse'), ing('Skyr', 'Kühlregal')] }, reuseOf: null, eaters: ['pa'], takeAlong: false }] });
+    const { unmount } = render(<ShoppingPage weeks={[{ plan: plan('discounter'), state: EMPTY_STATE }]} nowMs={NOW} change={async () => {}} onBack={() => {}} />);
+    expect(screen.getByText('Gibt es beim Discounter selten. Ersatz: braune Champignons.')).toBeTruthy();
+    expect(screen.getByText('Hat gerade keine Saison.')).toBeTruthy();
+    unmount();
+    render(<ShoppingPage weeks={[{ plan: plan(), state: EMPTY_STATE }]} nowMs={NOW} change={async () => {}} onBack={() => {}} />);
+    expect(screen.queryByText(/Discounter/)).toBeNull();
+    expect(screen.getByText('Hat gerade keine Saison.')).toBeTruthy();
   });
 
   it('Einkauf without any plan says so instead of showing a list', () => {

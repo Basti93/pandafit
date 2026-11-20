@@ -1,4 +1,5 @@
 import { itemKey, mealKey, type Dish, type Meal, type MealSettings, type Slot, type Unit, SLOTS } from '../../shared/meals';
+import { preferAvailable, type Availability } from '../../shared/availability';
 import { fitsEveryone } from './check';
 import { RECIPES, type Recipe } from './recipes';
 
@@ -59,14 +60,17 @@ export type PickInput = {
   /** Names of bought, not yet eaten items: a recipe that uses one is preferred. */
   stock?: ReadonlySet<string>;
   random: () => number;
+  /** Month and shop: a recipe with an ingredient out of season or out of range is not taken while another fits. */
+  avail?: Availability;
 };
 
 /** The best recipe for one meal, or null when none in the list fits everyone eating it. */
 export function pickRecipe(p: PickInput): Recipe | null {
   const fits = RECIPES.filter((r) => r.slots.includes(p.slot) && r.id !== p.not && r.keepsDays >= p.keepDays && (!p.takeAlong || r.keepsDays >= 1) && fitsEveryone(r, p.eaters.map((e) => e.settings)));
   if (fits.length === 0) return null;
-  const fresh = fits.filter((r) => !p.used.has(r.id));
-  const pool = fresh.length ? fresh : fits;
+  const usable = preferAvailable(fits, (r) => r.ingredients, p.avail);
+  const fresh = usable.filter((r) => !p.used.has(r.id));
+  const pool = fresh.length ? fresh : usable;
   // More protein on training days: the richer half of the list gets a head start.
   const score = (r: Recipe) => p.random() + (p.training && r.proteinG >= 24 ? 0.6 : 0) + (p.stock && stockHits(r.ingredients, p.stock) > 0 ? 0.5 : 0);
   return pool.map((r) => ({ r, s: score(r) })).sort((a, b) => b.s - a.s)[0]!.r;
@@ -79,7 +83,7 @@ export const constraintsFor = (members: Member[], eaters: string[]): Member[] =>
 };
 
 /** The rule plan for the meals given: a varied week from the list, rests where the dish keeps long enough. */
-export function ruleMeals(members: Member[], slots: Slotted[], trainingDays: number[], random: () => number, used = new Set<string>(), stock?: ReadonlySet<string>): Meal[] {
+export function ruleMeals(members: Member[], slots: Slotted[], trainingDays: number[], random: () => number, used = new Set<string>(), stock?: ReadonlySet<string>, avail?: Availability): Meal[] {
   const out: Meal[] = [];
   const byKey = new Map<string, Meal>();
   for (const s of slots) {
@@ -93,8 +97,8 @@ export function ruleMeals(members: Member[], slots: Slotted[], trainingDays: num
     const reuses = slots.filter((x) => x.reuseOf === key);
     const keepDays = Math.max(0, ...reuses.map((x) => x.day - s.day));
     const eaters = constraintsFor(members, [...new Set([...s.eaters, ...reuses.flatMap((x) => x.eaters)])]);
-    const r = pickRecipe({ slot: s.slot, eaters, takeAlong: s.takeAlong, training: trainingDays.includes(s.day), keepDays, used, random, ...(stock ? { stock } : {}) })
-      ?? pickRecipe({ slot: s.slot, eaters: constraintsFor(members, s.eaters), takeAlong: s.takeAlong, training: trainingDays.includes(s.day), keepDays: 0, used, random, ...(stock ? { stock } : {}) });
+    const r = pickRecipe({ slot: s.slot, eaters, takeAlong: s.takeAlong, training: trainingDays.includes(s.day), keepDays, used, random, ...(stock ? { stock } : {}), ...(avail ? { avail } : {}) })
+      ?? pickRecipe({ slot: s.slot, eaters: constraintsFor(members, s.eaters), takeAlong: s.takeAlong, training: trainingDays.includes(s.day), keepDays: 0, used, random, ...(stock ? { stock } : {}), ...(avail ? { avail } : {}) });
     if (!r) continue;
     used.add(r.id);
     const meal = { ...s, reuseOf: null, dish: dishOf(r) };
