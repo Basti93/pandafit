@@ -587,17 +587,14 @@
 .tk-radar-shape { fill: var(--accent); fill-opacity: .28; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
 .tk-radar-label { fill: var(--muted); font-size: var(--text-s); }
 .tk-radar-note { margin: 0; font-size: var(--text-s); color: var(--muted); }
-/* "Ausdauer und Kraft" im Chat: gestapelter Balken "So war es", dünnerer "Dein Ziel"; Sportfarben von der Statistikseite. */
-.tk-sportbalance { margin: var(--space-2) 0 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.tk-sportbars { display: flex; flex-direction: column; gap: var(--space-2); }
-.tk-sportbar { display: flex; flex-direction: column; gap: var(--space-1); }
-.tk-sportbar-label { font-size: var(--text-s); color: var(--muted); }
-.tk-sportbar-track { display: flex; width: 100%; height: 1.25rem; gap: 2px; border-radius: var(--radius-s); overflow: hidden; background: color-mix(in srgb, var(--muted) 14%, var(--card)); }
-.tk-sportbar.thin .tk-sportbar-track { height: .6rem; }
-.tk-sportbar-seg { display: block; height: 100%; min-width: 3px; }
-.tk-sportlegend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: var(--text-s); color: var(--muted); }
-.tk-sportlegend li { display: inline-flex; align-items: center; gap: var(--space-1); }
-.tk-sportlegend-dot { width: .7rem; height: .7rem; border-radius: var(--radius-round); display: inline-block; }
+/* "Training und Intensität" im Chat: je Zeile der Wochenschnitt als Balken vor einem hellen Zielbereich, nur Tokens. */
+.tk-intensity { margin: var(--space-2) 0 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-intensity-rows { display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-intensity-row { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); align-items: center; gap: var(--space-2); }
+.tk-intensity-label { font-size: var(--text-s); color: var(--muted); }
+.tk-intensity-track { position: relative; display: block; height: 1.25rem; border-radius: var(--radius-s); overflow: hidden; background: color-mix(in srgb, var(--muted) 10%, var(--card)); }
+.tk-intensity-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 22%, transparent); border-inline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); box-sizing: border-box; }
+.tk-intensity-bar { position: absolute; left: 0; top: .3rem; bottom: .3rem; min-width: 3px; border-radius: 0 var(--radius-s) var(--radius-s) 0; background: var(--accent); }
 .tk-weekpath { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-weekpath-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
 .tk-weekpath-count { font-size: var(--text-s); color: var(--muted); }

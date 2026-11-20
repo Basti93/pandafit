@@ -631,40 +631,44 @@ describe('Muskel-Spinnennetz im Chat', () => {
   });
 });
 
-describe('Sportanteil im Chat', () => {
-  const sport = { kind: 'sport' as const, fromMs: 1, toMs: 2, parts: [{ sport: 'gym' as const, minutes: 60, target: 0.5 }, { sport: 'bike' as const, minutes: 60, target: 0.5 }] };
-  const run = async (answer: object, sportChart?: (id: string, from: number, to: number) => unknown, text = 'Passt mein Training zu meinem Ziel?') => {
+describe('Intensitätsansicht im Chat', () => {
+  const sport = { kind: 'intensity' as const, fromMs: 1, toMs: 2, weeks: 1, strength: { perWeek: 2, min: 2, max: 3 }, endurance: { perWeek: 200, min: 150, max: 300 }, hard: { perWeek: 1, min: 1, max: 1 } };
+  const run = async (answer: object, intensityChart?: (id: string, from: number, to: number) => unknown, text = 'Passt mein Training zu meinem Ziel?') => {
     const s = store([rider('r1', text)]);
-    const c = new ChatCoach({ store: s as never, ask: (async () => ({ text: 'Schau mal.', proposal: null, riderAskedForMore: false, ...answer })) as never, nowMs: () => NOW, newId: () => `c${++n}`, ...(sportChart ? { sportChart: sportChart as never } : {}) });
+    const c = new ChatCoach({ store: s as never, ask: (async () => ({ text: 'Schau mal.', proposal: null, riderAskedForMore: false, ...answer })) as never, nowMs: () => NOW, newId: () => `c${++n}`, ...(intensityChart ? { intensityChart: intensityChart as never } : {}) });
     await c.tick('p');
     return replies(s)[0]!;
   };
   it('bietet Bo beide Arten mit denselben Zeiträumen an und sagt im Prompt, wann', () => {
     const props = ((answerSchema as { properties: Record<string, unknown> }).properties.chart) as { anyOf: { properties?: { kind: { enum: string[] }; period: { enum: string[] } } }[] };
     const obj = props.anyOf.find((x) => x.properties)!.properties!;
-    expect(obj.kind.enum).toEqual(['muskeln', 'sport']);
+    expect(obj.kind.enum).toEqual(['muskeln', 'intensitaet']);
     expect(obj.period.enum).toEqual(['month', 'weeks4', 'months3']);
-    expect(CHAT_SYSTEM_PROMPT).toMatch(/kind sport/);
+    expect(CHAT_SYSTEM_PROMPT).toMatch(/kind intensitaet/);
     expect(CHAT_SYSTEM_PROMPT).toMatch(/passt das Training zum Ziel|zu ihrem Ziel passt/);
   });
-  it('hängt das vom Code berechnete Sport-Diagramm an, mit dem Zeitraum aus dem Register', async () => {
+  it('hängt das vom Code berechnete Intensitäts-Diagramm an, mit dem Zeitraum aus dem Register', async () => {
     const seen: number[][] = [];
-    const m = await run({ chart: { kind: 'sport', period: 'months3' } }, (_id, from, to) => { seen.push([from, to]); return sport; });
+    const m = await run({ chart: { kind: 'intensitaet', period: 'months3' } }, (_id, from, to) => { seen.push([from, to]); return sport; });
     expect(m.chart).toEqual(sport);
     expect(seen).toEqual([[NOW - 91 * 86_400_000, NOW]]);
   });
+  it('nimmt den alten Namen sport weiter als Intensitäts-Diagramm', async () => {
+    const m = await run({ chart: { kind: 'sport', period: 'month' } }, () => sport);
+    expect(m.chart).toEqual(sport);
+  });
   it('lässt es ohne Daten, ohne Quelle, bei Fehler oder unbekanntem Zeitraum weg', async () => {
-    expect((await run({ chart: { kind: 'sport', period: 'month' } }, () => null)).chart).toBeUndefined();
-    expect((await run({ chart: { kind: 'sport', period: 'month' } })).chart).toBeUndefined();
-    const m = await run({ chart: { kind: 'sport', period: 'month' } }, () => { throw new Error('x'); });
+    expect((await run({ chart: { kind: 'intensitaet', period: 'month' } }, () => null)).chart).toBeUndefined();
+    expect((await run({ chart: { kind: 'intensitaet', period: 'month' } })).chart).toBeUndefined();
+    const m = await run({ chart: { kind: 'intensitaet', period: 'month' } }, () => { throw new Error('x'); });
     expect(m).toMatchObject({ text: 'Schau mal.' });
     expect(m.chart).toBeUndefined();
-    expect((await run({ chart: { kind: 'sport', period: 'jahr' } }, () => sport)).chart).toBeUndefined();
+    expect((await run({ chart: { kind: 'intensitaet', period: 'jahr' } }, () => sport)).chart).toBeUndefined();
   });
   it('das Muskel-Diagramm kommt weiter von seiner eigenen Quelle', async () => {
     const calls: string[] = [];
     const s = store([rider('r1', 'Wie verteilt?')]);
-    const c = new ChatCoach({ store: s as never, ask: (async () => ({ text: 'x', proposal: null, riderAskedForMore: false, chart: { kind: 'muskeln', period: 'month' } })) as never, nowMs: () => NOW, newId: () => `c${++n}`, sportChart: (() => { calls.push('sport'); return sport; }) as never, muscleChart: (() => { calls.push('muskeln'); return null; }) as never });
+    const c = new ChatCoach({ store: s as never, ask: (async () => ({ text: 'x', proposal: null, riderAskedForMore: false, chart: { kind: 'muskeln', period: 'month' } })) as never, nowMs: () => NOW, newId: () => `c${++n}`, intensityChart: (() => { calls.push('intensitaet'); return sport; }) as never, muscleChart: (() => { calls.push('muskeln'); return null; }) as never });
     await c.tick('p');
     expect(calls).toEqual(['muskeln']);
   });

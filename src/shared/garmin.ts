@@ -7,6 +7,10 @@ export type GarminDay = {
 export type GarminActivity = {
   id: string; startMs: number; sport: string; name: string | null; durationS: number; distanceM: number | null; avgHr: number | null; maxHr: number | null;
   avgPowerW: number | null; normPowerW: number | null; trainingLoad: number | null; aerobicEffect: number | null; fromBikeCoach: boolean;
+  /** Seconds in heart rate zone 1 to 5 as the watch counted them (raw `hrTimeInZone_1` to `_5`). Only when the record has them; old data and some sports have none. */
+  hrZoneS?: number[];
+  /** The watch's own intensity minutes of this activity (raw `moderateIntensityMinutes`, `vigorousIntensityMinutes`). Only when the record has them. */
+  moderateMin?: number; vigorousMin?: number;
 };
 export type GarminBody = { birthDate: string | null; sex: 'male' | 'female' | 'unknown'; heightCm: number | null; weightKg: number | null; ftpW: number | null; ftpStale: boolean; maxHrSeen: number | null };
 export type GarminProgress = { activities: number; activitiesComplete: boolean; daysDone: number; daysTotal: number; filesDone: number; filesTotal: number };

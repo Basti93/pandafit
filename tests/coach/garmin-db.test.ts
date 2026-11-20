@@ -68,6 +68,15 @@ test('activities are normalized and filtered by time', () => {
     avgPowerW: 119, normPowerW: 136, trainingLoad: 82.5, aerobicEffect: 3.2, fromBikeCoach: false,
   }]);
 });
+test('time in heart rate zone and the intensity minutes of an activity are read when the record has them, and left out otherwise', () => {
+  const { file, act } = make();
+  act({ activityId: 7, startTimeGMT: '2026-11-02 08:00:00', beginTimestamp: 5, activityType: { typeKey: 'running' }, duration: 3000, hrTimeInZone_1: 60.5, hrTimeInZone_2: 900, hrTimeInZone_3: 1200, hrTimeInZone_4: 800, hrTimeInZone_5: 39.5, moderateIntensityMinutes: 35, vigorousIntensityMinutes: 14 });
+  act({ activityId: 8, startTimeGMT: '2026-11-03 08:00:00', beginTimestamp: 6, activityType: { typeKey: 'running' }, duration: 3000, hrTimeInZone_1: 0, hrTimeInZone_2: 0, moderateIntensityMinutes: -1 });
+  const [a, b] = new GarminDb(file).activities(0);
+  expect(a).toMatchObject({ hrZoneS: [60.5, 900, 1200, 800, 39.5], moderateMin: 35, vigorousMin: 14 });
+  expect(b).not.toHaveProperty('hrZoneS');
+  expect(b).not.toHaveProperty('moderateMin');
+});
 test('an activity without power or heart rate has nulls, and our own uploads are marked', () => {
   const { file, act } = make();
   act({ activityId: 3, startTimeGMT: '2026-01-01 08:00:00', beginTimestamp: 1, activityType: { typeKey: 'hiking' }, duration: 10, manufacturer: 'DEVELOPMENT' });

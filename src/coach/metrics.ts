@@ -2,6 +2,7 @@ import type { RideMeta } from '../ride-format/read';
 import type { Sample } from '../shared/sample';
 import { stepFtpFraction, type Session, type Step } from '../shared/session';
 import { stepTargetZone, zoneOf } from '../shared/hr-zones';
+import { classifyRide } from '../shared/intensity';
 
 import type { RideSummary } from '../shared/ride-summary';
 export type { RideSummary };
@@ -179,6 +180,7 @@ export const summarizeRide = (input: { meta: RideMeta; samples: Sample[]; ftpW: 
     ...heartRateFacts(samples, session, input.hrMaxBpm),
     ...(cad === null ? {} : { avgCadenceRpm: cad }),
     powerCurve: powerCurveOf(powers),
+    intensity: classifyRide(samples, ftpW, input.hrMaxBpm ?? null),
     ...(onTarget === undefined ? {} : { onTargetPct: onTarget }),
   };
 };

@@ -13,7 +13,7 @@ import { DriftCard } from './DriftCard';
 import { PushCard } from './PushCard';
 import { ExperienceCard } from './ExperienceCard';
 import { MuscleRadar } from './MuscleRadar';
-import { SportBalance } from './SportBalance';
+import { IntensityBalance } from './IntensityBalance';
 import { useOpenProposals, useProposalActions, type WeekEntry } from './proposals';
 import { ChatBubble, ChatNote } from './ChatBubble';
 import { driftAnswer, storedWeek, weekAnswer } from './chat-open';
@@ -148,7 +148,7 @@ export function CoachChat({ port, now, newId, onClose, ask }: { port: TrackingPo
           <Fragment key={m.id}>
             {(i === 0 || localDayKey(list[i - 1]!.atMs) !== localDayKey(m.atMs)) && <p className="tk-daypill" role="separator">{dayHeading(m.atMs, now())}</p>}
             <ChatBubble m={m}>
-              {chartsOf(m).map((c, k) => (c.kind === 'muskeln' ? <MuscleRadar key={k} chart={c} /> : <SportBalance key={k} chart={c} />))}
+              {chartsOf(m).map((c, k) => (c.kind === 'muskeln' ? <MuscleRadar key={k} chart={c} /> : <IntensityBalance key={k} chart={c} />))}
               {m.id === first?.id ? <ProposalCard port={port} now={now} newId={newId} m={m} /> : (
                 <>
                   {m.nextChange && <NextChangeCard history port={port} changeId={m.nextChange} records={changeRecs} now={now} />}

@@ -2,12 +2,12 @@ import { POLICY_VERSION, RULES, SCENARIOS, SOURCES, policyRule, ruleNamedRange, 
 
 describe('training policy register', () => {
   it('has a version and unique ids', () => {
-    expect(POLICY_VERSION).toBe('2026-11-14.2');
+    expect(POLICY_VERSION).toBe('2026-11-20.1');
     for (const list of [SOURCES, RULES, SCENARIOS]) expect(new Set(list.map((x) => x.id)).size).toBe(list.length);
   });
 
   it('registers the 26 sources of the foundation and the health sources with population, endpoint and limits', () => {
-    expect(SOURCES.map((s) => s.id)).toEqual(Array.from({ length: 43 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`));
+    expect(SOURCES.map((s) => s.id)).toEqual(Array.from({ length: 53 }, (_, i) => `S${String(i + 1).padStart(2, '0')}`));
     for (const s of SOURCES) for (const k of ['citation', 'url', 'population', 'endpoint', 'limits'] as const) expect(s[k].length).toBeGreaterThan(0);
   });
 
@@ -73,6 +73,20 @@ describe('training policy register', () => {
     expect(() => policyRule('nope')).toThrow('unknown policy rule: nope');
     expect(() => ruleNumber('muscle.target.chest')).toThrow();
     expect(() => ruleRange('gym.max-sets')).toThrow();
+  });
+});
+
+describe('intensity rules', () => {
+  it('holds the weekly bands and class thresholds of the research note', () => {
+    expect(ruleNamedRange('week.strength-sessions', 'focus')).toEqual({ min: 3, max: 4 });
+    expect(ruleNamedRange('week.endurance-minutes', 'focus')).toEqual({ min: 300, max: 450 });
+    expect(ruleNamedRange('week.hard-sessions', 'keep')).toEqual({ min: 0, max: 1 });
+    expect(policyRule('intensity.classes').values).toEqual({ ftpModerate: 0.45, ftpVigorous: 0.75, hrModerateZone: 2, hrVigorousZone: 4 });
+    expect(policyRule('intensity.hard-session').values).toEqual({ vigorousMin: 20, peakMin: 5, peakZone: 5, peakFtp: 1.05 });
+    expect(policyRule('week.hard-sessions').values).toEqual({ max: 2, newToIntensityMax: 1 });
+    expect(ruleNumber('concurrent.explosive-gap-h')).toBe(3);
+    expect(ruleRange('health.strength-minutes')).toEqual({ min: 30, max: 60 });
+    expect(policyRule('intensity.no-data').enforcement).toBe('checked');
   });
 });
 

@@ -27,7 +27,7 @@ A run fetches profile, FTP and devices, then the activities, then the last 3 day
 | Table | Contents |
 |---|---|
 | `daily(date, endpoint, json, fetched_at)` | Daily values. Endpoints: `stats`, `sleep`, `hrv`, `max_metrics`, `training_status`, `training_readiness` |
-| `activities(activity_id, start_time, sport, json, fetched_at)` | Activities, `start_time` in GMT |
+| `activities(activity_id, start_time, sport, json, fetched_at)` | Activities, `start_time` in GMT. The JSON of the list holds, when the watch recorded them, `hrTimeInZone_1` to `_5` (seconds per heart rate zone) and `moderateIntensityMinutes` / `vigorousIntensityMinutes`; the intensity view reads them (`GarminActivity.hrZoneS`, `moderateMin`, `vigorousMin`). Without them it falls back to the average heart rate against the person's zones (`src/shared/hr-zones.ts`), and without heart rate to the whole duration as moderate. |
 | `activity_files(activity_id, format, data, fetched_at)` | Original file as a ZIP containing the FIT file |
 | `singletons(name, json, fetched_at)` | Current state of `profile`, `ftp`, `devices` |
 | `sync_state(stream, cursor, complete, updated_at)` | State per stream, `pause` holds the end of a block |

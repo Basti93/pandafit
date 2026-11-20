@@ -18,6 +18,7 @@ import { uploadSettings, withUploadMode, type RideUpload, type UploadMode } from
 import type { StrengthWorkout } from './hevy';
 import { strengthPromptData } from './strength';
 import { garminPromptData, readinessFrom, type GarminCoachData } from './readiness';
+import { classifyRide } from '../shared/intensity';
 import { cleanSamples, loadModel, onTargetPctOf, powerCurveOf, summarizeRide, type RideSummary } from './metrics';
 import { complaintFromNote, type ComplaintStatus } from './motivation';
 import { adjustSession, ftpFromRamp, ruleBasedSession } from './rules';
@@ -210,7 +211,7 @@ export class Coach {
   private debriefPrompt(s: CoachState, ride: RideSummary): string {
     const { rideId: _id, ...fahrt } = ride;
     const now = this.deps.nowMs();
-    const fruehere = s.summaries.filter((r) => r.rideId !== ride.rideId && now - r.startedAtMs < PROMPT_WINDOW_MS).map(({ rideId: _r, powerCurve: _p, ...r }) => r);
+    const fruehere = s.summaries.filter((r) => r.rideId !== ride.rideId && now - r.startedAtMs < PROMPT_WINDOW_MS).map(({ rideId: _r, powerCurve: _p, intensity: _i, ...r }) => r);
     const garmin = this.garminData(s.profileId);
     const complaints = (s.complaints ?? []).filter((c) => c.status !== 'over').map((c) => c.text);
     const data = { fahrt, bewertung: s.feedback[ride.rideId] ?? null, ftpW: s.ftpW, ftpVerlauf: s.ftpHistory.slice(-6).map((h) => ({ tag: new Date(h.atMs).toISOString().slice(0, 10), ftpW: h.ftpW, quelle: h.source })), belastung: loadModel(s.summaries, now), aktuellePhase: s.phase, fruehereFahrten: fruehere, naechsteEinheit: s.next.session.name, ...(garmin ? { garmin: garminPromptData(garmin, s.summaries, now) } : {}) };
@@ -244,17 +245,20 @@ export class Coach {
     for (const s of this.states.values()) this.backfillInsights(s);
   }
 
-  /** Rides from before the power curve existed get their values once. An unreadable ride stays as it is. */
+  /** Rides from before the power curve or the intensity classes existed get their values once. An unreadable ride stays as it is. */
   private backfillInsights(s: CoachState): void {
     let changed = false;
     for (const r of s.summaries) {
-      if (r.powerCurve) continue;
+      if (r.powerCurve && r.intensity) continue;
       try {
         const { samples } = cleanSamples(readRide(this.deps.ridesDir, r.rideId).samples);
-        const { session } = JSON.parse(fs.readFileSync(path.join(this.deps.ridesDir, r.rideId, 'session.json'), 'utf8')) as { session: Session };
-        r.powerCurve = powerCurveOf(samples.flatMap((x) => (x.powerW === null ? [] : [x.powerW])));
-        const onTarget = onTargetPctOf(samples, session);
-        if (onTarget !== undefined) r.onTargetPct = onTarget;
+        const { session, ftpW, hrMaxBpm } = JSON.parse(fs.readFileSync(path.join(this.deps.ridesDir, r.rideId, 'session.json'), 'utf8')) as { session: Session; ftpW?: number; hrMaxBpm?: number };
+        if (!r.powerCurve) {
+          r.powerCurve = powerCurveOf(samples.flatMap((x) => (x.powerW === null ? [] : [x.powerW])));
+          const onTarget = onTargetPctOf(samples, session);
+          if (onTarget !== undefined) r.onTargetPct = onTarget;
+        }
+        if (!r.intensity) r.intensity = classifyRide(samples, ftpW ?? r.ftpW, hrMaxBpm ?? null);
         changed = true;
       } catch { /* try again on the next run */ }
     }
