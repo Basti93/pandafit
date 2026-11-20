@@ -68,11 +68,11 @@ const gapOf = (a: MuscleChartAxis) => (a.min > 0 && a.sets < a.min ? 1 - a.sets 
 const excessOf = (a: MuscleChartAxis) => (a.max > 0 && a.sets > a.max ? a.sets / a.max - 1 : 0);
 const biggest = (axes: MuscleChartAxis[], f: (a: MuscleChartAxis) => number) => axes.reduce<{ a: MuscleChartAxis; v: number } | null>((best, a) => (f(a) > (best?.v ?? 0) ? { a, v: f(a) } : best), null);
 
-/** One calm sentence in words: the clearest gap or excess, or that all is in range. No numbers. */
+/** Up to two short sentences, no recommendation: where the person stands (clearest gap or excess, or all in range) and what studies show. No numbers. */
 export function chartSentence(c: MuscleChart): string {
   const gap = biggest(c.axes, gapOf), excess = biggest(c.axes, excessOf);
-  if (gap && (!excess || gap.v >= excess.v)) { const s = subject(gap.a); return `${s.np} ${s.plural ? 'kamen' : 'kam'} bei dir zuletzt am wenigsten dran, da ist noch Platz.`; }
-  if (excess) { const s = subject(excess.a); return `${s.np} ${s.plural ? 'standen' : 'stand'} bei dir zuletzt im Vordergrund, du darfst gern etwas ausgleichen.`; }
+  if (gap && (!excess || gap.v >= excess.v)) { const s = subject(gap.a); return `${s.np} ${s.plural ? 'kamen' : 'kam'} bei dir zuletzt am wenigsten dran. Studien zeigen, dass mehr Wochensätze pro Muskel eher mehr Wachstum bringen, mit abnehmendem Ertrag.`; }
+  if (excess) { const s = subject(excess.a); return `${s.np} ${s.plural ? 'standen' : 'stand'} bei dir zuletzt im Vordergrund. Studien zeigen, dass der Ertrag mit mehr Sätzen pro Muskel abnimmt; eine feste Obergrenze ist nicht belegt.`; }
   return 'Dein Training ist gut verteilt, alle Muskelgruppen liegen im Zielbereich.';
 }
 

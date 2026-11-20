@@ -80,14 +80,18 @@ export function rowGap(c: IntensityChart, k: RowKey): { verdict: RowVerdict; gap
 
 const WORD = ['kein', 'ein', 'zwei', 'drei', 'vier', 'fünf'];
 const count = (n: number) => WORD[Math.min(Math.round(n), 5)] ?? 'mehrere';
-/** Time in words: "etwas", "eine Stunde", "zwei Stunden", "mehrere Stunden". */
-const timeWords = (min: number) => {
-  if (min < 45) return 'etwas';
+/** Weekly endurance time in words. */
+const enduranceWords = (min: number) => {
+  if (min < 45) return 'weniger als eine Stunde';
   const h = Math.round(min / 60);
-  return h <= 1 ? 'eine Stunde' : h <= 5 ? `${count(h)} Stunden` : 'mehrere Stunden';
+  return h <= 1 ? 'etwa eine Stunde' : h <= 5 ? `etwa ${count(h)} Stunden` : 'mehrere Stunden';
 };
+const sessions = (n: number, one: string, many: string) => (Math.round(n) === 1 ? `etwa ${one}` : `etwa ${count(n)} ${many}`);
 
-/** One calm sentence in words: the clearest mismatch, or that it fits. No numbers. */
+/**
+ * Up to two short sentences, no recommendation: where the person stands in the row that differs most from its band, and what
+ * studies show with the strength of the evidence (`docs/research/2026-11-20-kraft-ausdauer-hiit.md`). The person decides.
+ */
 export function intensityChartSentence(c: IntensityChart): string {
   let worst: { k: RowKey; verdict: RowVerdict; gap: number; rel: number } | null = null;
   for (const k of ROW_KEYS) {
@@ -96,21 +100,24 @@ export function intensityChartSentence(c: IntensityChart): string {
     const rel = gap / Math.max(SCALE[k], k === 'endurance' ? c[k].min : 0);
     if (!worst || rel > worst.rel + 1e-9 || (Math.abs(rel - worst.rel) <= 1e-9 && verdict === 'darunter')) worst = { k, verdict, gap, rel };
   }
-  if (!worst) return 'Kraft, Ausdauer und harte Einheiten passen gut zu deinem Ziel.';
-  const less = worst.verdict === 'darunter', n = Math.max(1, Math.round(worst.gap));
+  if (!worst) return 'Kraft, Ausdauer und harte Einheiten liegen in den Bereichen, die zu deinem Ziel gehören.';
+  const less = worst.verdict === 'darunter';
   if (worst.k === 'strength') {
-    const days = `${count(n)} ${n === 1 ? 'Tag' : 'Tage'}`;
-    return less ? `Zu deinem Ziel ${n === 1 ? 'würde' : 'würden'} ${days} mehr Kraft pro Woche passen.` : `Für dein Ziel würde ${days} weniger Kraft pro Woche reichen.`;
+    const n = c.strength.perWeek;
+    const stand = n < 0.5 ? 'Im letzten Zeitraum gab es kaum Krafttraining.' : `Im Schnitt waren es zuletzt ${sessions(n, 'eine Krafteinheit', 'Krafteinheiten')} pro Woche.`;
+    return less
+      ? `${stand} Die WHO nennt mindestens zwei Tage Krafttraining pro Woche; Beobachtungsstudien sehen den größten Rückgang des Sterberisikos bei etwa einer halben bis einer Stunde pro Woche.`
+      : `${stand} Für Muskelaufbau bringt mehr Volumen laut Studien eher mehr Wachstum, mit abnehmendem Ertrag; einen Schaden durch mehr Training zeigen Beobachtungsstudien nicht.`;
   }
   if (worst.k === 'endurance') {
-    const t = timeWords(worst.gap);
-    if (!less) return `Bei der Ausdauer liegst du über deinem Ziel, pro Woche ${t === 'etwas' || t === 'eine Stunde' ? 'würde' : 'würden'} ${t === 'etwas' ? t : `etwa ${t}`} weniger reichen.`;
-    const calm = c.endurance.perWeek < 150 && c.endurance.min >= 150 ? ', aber auch weniger ist schon sinnvoll' : '';
-    return `Bei der Ausdauer wäre pro Woche ${t === 'etwas' ? t : `etwa ${t}`} mehr gut für dein Ziel${calm}.`;
+    const stand = `Bei der Ausdauer waren es zuletzt ${enduranceWords(c.endurance.perWeek)} pro Woche.`;
+    return less
+      ? `${stand} Die WHO nennt als Spanne zweieinhalb bis fünf Stunden moderat pro Woche und betont, dass auch weniger schon nützt.`
+      : `${stand} Laut WHO bringen mehr als fünf Stunden moderat pro Woche zusätzlichen Nutzen.`;
   }
-  const hard = n === 1 ? 'eine harte Einheit' : `${count(n)} harte Einheiten`;
-  const first = hard.charAt(0).toUpperCase() + hard.slice(1);
-  return less ? `${first} mehr pro Woche ${n === 1 ? 'würde' : 'würden'} zu deinem Ziel passen.` : `Du trainierst öfter hart, als dein Ziel vorsieht: ${hard} weniger pro Woche ${n === 1 ? 'würde' : 'würden'} reichen.`;
+  const n = c.hard.perWeek;
+  const stand = n < 0.5 ? 'Im letzten Zeitraum gab es kaum harte Einheiten.' : `Im Schnitt waren es zuletzt ${sessions(n, 'eine harte Einheit', 'harte Einheiten')} pro Woche.`;
+  return `${stand} Studien zeigen für HIIT einen kleinen Vorteil bei der Ausdauerleistung; eine ideale Anzahl pro Woche ist nicht belegt.`;
 }
 
 /** The text for screen readers: each row against its target band, in words. */

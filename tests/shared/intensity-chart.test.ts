@@ -1,5 +1,6 @@
 import { buildIntensityChart, intensityBands, intensityChartSentence, intensityChartSummary, readIntensityChart, type IntensityChart } from '../../src/shared/intensity-chart';
 
+const RECOMMENDING = /solltest|würde reichen|würden reichen|wäre gut|wäre pro|darfst|\bmach|trainiere|würde zu|würden zu|passen gut/i;
 const WEEK = 7 * 86_400_000;
 const totals = (strengthSessions: number, enduranceMin: number, hardSessions: number) => ({ strengthSessions, enduranceMin, hardSessions });
 const chart = (strength: number, endurance: number, hard: number, goal: Parameters<typeof intensityBands>[0] = { strength: 'muscle', sports: { gym: 'equal', bike: 'equal' } }, weeks = 4, newToIntensity = false): IntensityChart =>
@@ -47,30 +48,45 @@ describe('buildIntensityChart', () => {
 });
 
 describe('intensityChartSentence', () => {
+  const FIT = 'Kraft, Ausdauer und harte Einheiten liegen in den Bereichen, die zu deinem Ziel gehören.';
   it('says it fits', () => {
-    expect(intensityChartSentence(chart(2.5, 200, 1))).toBe('Kraft, Ausdauer und harte Einheiten passen gut zu deinem Ziel.');
+    expect(intensityChartSentence(chart(2.5, 200, 1))).toBe(FIT);
   });
-  it('names the clearest gap in words', () => {
-    expect(intensityChartSentence(chart(1, 200, 1))).toBe('Zu deinem Ziel würde ein Tag mehr Kraft pro Woche passen.');
-    expect(intensityChartSentence(chart(0, 200, 1, { strength: 'muscle', sports: { gym: 'focus', bike: 'equal' } }))).toBe('Zu deinem Ziel würden drei Tage mehr Kraft pro Woche passen.');
-    expect(intensityChartSentence(chart(2.5, 200, 0))).toBe('Eine harte Einheit mehr pro Woche würde zu deinem Ziel passen.');
+  it('states where the person stands, then what studies show (strength)', () => {
+    expect(intensityChartSentence(chart(1, 200, 1))).toBe('Im Schnitt waren es zuletzt etwa eine Krafteinheit pro Woche. Die WHO nennt mindestens zwei Tage Krafttraining pro Woche; Beobachtungsstudien sehen den größten Rückgang des Sterberisikos bei etwa einer halben bis einer Stunde pro Woche.');
+    expect(intensityChartSentence(chart(0, 200, 1, { strength: 'muscle', sports: { gym: 'focus', bike: 'equal' } }))).toMatch(/^Im letzten Zeitraum gab es kaum Krafttraining\. Die WHO/);
+  });
+  it('states hard sessions with the honest state of the evidence', () => {
+    expect(intensityChartSentence(chart(2.5, 200, 3))).toBe('Im Schnitt waren es zuletzt etwa drei harte Einheiten pro Woche. Studien zeigen für HIIT einen kleinen Vorteil bei der Ausdauerleistung; eine ideale Anzahl pro Woche ist nicht belegt.');
+    expect(intensityChartSentence(chart(2.5, 200, 0))).toMatch(/^Im letzten Zeitraum gab es kaum harte Einheiten\. Studien zeigen für HIIT/);
   });
   it('picks the largest gap relative to its band', () => {
     expect(intensityChartSentence(chart(2, 60, 1))).toMatch(/^Bei der Ausdauer/);
   });
-  it('is calm below the WHO floor', () => {
-    expect(intensityChartSentence(chart(2.5, 100, 1))).toBe('Bei der Ausdauer wäre pro Woche etwa eine Stunde mehr gut für dein Ziel, aber auch weniger ist schon sinnvoll.');
+  it('names the WHO range for endurance below it, and that less also helps', () => {
+    expect(intensityChartSentence(chart(2.5, 100, 1))).toBe('Bei der Ausdauer waren es zuletzt etwa zwei Stunden pro Woche. Die WHO nennt als Spanne zweieinhalb bis fünf Stunden moderat pro Woche und betont, dass auch weniger schon nützt.');
   });
-  it('names an excess', () => {
-    expect(intensityChartSentence(chart(2.5, 420, 1))).toBe('Bei der Ausdauer liegst du über deinem Ziel, pro Woche würden etwa zwei Stunden weniger reichen.');
-    expect(intensityChartSentence(chart(4, 200, 1))).toBe('Für dein Ziel würde ein Tag weniger Kraft pro Woche reichen.');
-    expect(intensityChartSentence(chart(2.5, 200, 2.5))).toBe('Du trainierst öfter hart, als dein Ziel vorsieht: zwei harte Einheiten weniger pro Woche würden reichen.');
+  it('describes an excess without telling what to do', () => {
+    expect(intensityChartSentence(chart(2.5, 420, 1))).toBe('Bei der Ausdauer waren es zuletzt mehrere Stunden pro Woche. Laut WHO bringen mehr als fünf Stunden moderat pro Woche zusätzlichen Nutzen.');
+    expect(intensityChartSentence(chart(4, 200, 1))).toMatch(/^Im Schnitt waren es zuletzt etwa vier Krafteinheiten pro Woche\. Für Muskelaufbau/);
   });
   it('does not call training beyond a sport the goal does not name an excess', () => {
-    expect(intensityChartSentence(chart(5, 200, 1, { strength: 'muscle', sports: { bike: 'equal' } }))).toBe('Kraft, Ausdauer und harte Einheiten passen gut zu deinem Ziel.');
+    expect(intensityChartSentence(chart(5, 200, 1, { strength: 'muscle', sports: { bike: 'equal' } }))).toBe(FIT);
   });
-  it('has no digits', () => {
-    for (const c of [chart(1, 200, 1), chart(2.5, 100, 1), chart(5, 420, 3)]) expect(intensityChartSentence(c)).not.toMatch(/\d/);
+  it('has no digits and at most two sentences', () => {
+    for (const c of [chart(1, 200, 1), chart(2.5, 100, 1), chart(5, 420, 3)]) {
+      const s = intensityChartSentence(c);
+      expect(s).not.toMatch(/\d/);
+      expect(s.split(/(?<=\.)\s/).length).toBeLessThanOrEqual(2);
+    }
+  });
+  it('never recommends', () => {
+    const goals = [undefined, { strength: 'muscle' as const, sports: { gym: 'focus' as const, bike: 'equal' as const } }];
+    for (const g of goals) for (const s of [0, 1, 2.5, 4, 6]) for (const e of [0, 60, 100, 200, 420, 700]) for (const h of [0, 1, 2.5, 4]) {
+      if (s + e + h === 0) continue;
+      expect(intensityChartSentence(chart(s, e, h, g))).not.toMatch(RECOMMENDING);
+      expect(intensityChartSummary(chart(s, e, h, g))).not.toMatch(RECOMMENDING);
+    }
   });
 });
 

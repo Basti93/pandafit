@@ -7,6 +7,8 @@ const item = (exercise: BalanceItem['exercise'], sets: number): BalanceItem => (
 const range = { fromMs: 0, toMs: 28 * DAY };
 const axis = (c: MuscleChart, g: string) => c.axes.find((a) => a.group === g)!;
 
+const GAP = 'Studien zeigen, dass mehr Wochensätze pro Muskel eher mehr Wachstum bringen, mit abnehmendem Ertrag.';
+const OVER = 'Studien zeigen, dass der Ertrag mit mehr Sätzen pro Muskel abnimmt; eine feste Obergrenze ist nicht belegt.';
 describe('buildMuscleChart', () => {
   it('zählt direkte Sätze 1 und Mitspieler 0,5, nicht-Mitspieler gar nicht', () => {
     const c = buildMuscleChart([item(bench, 10)], { ...range, goal: 'muscle', focus: [] })!;
@@ -37,7 +39,7 @@ describe('buildMuscleChart', () => {
   it('für Anfänger gibt es keine Untergrenze, damit nichts als Lücke gilt', () => {
     const c = buildMuscleChart([item(bench, 2)], { ...range, goal: 'muscle', focus: [], experience: 'neu' })!;
     expect(c.axes.every((a) => a.min === 0)).toBe(true);
-    expect(chartSentence(c)).not.toMatch(/wenig|fehlt|Platz/);
+    expect(chartSentence(c)).not.toMatch(/fehlt|am wenigsten/);
   });
   it('rundet auf eine Nachkommastelle', () => {
     const c = buildMuscleChart([item({ primaryMuscle: 'chest', secondaryMuscles: ['triceps'] }, 3)], { ...range, goal: 'muscle', focus: [] })!;
@@ -78,16 +80,25 @@ describe('chartSentence', () => {
   it('spricht den Menschen mit du an', () => {
     expect(chartSentence(mk([['back', 1, 32, 40]]))).toMatch(/\b(du|dir|dein|deine|deinem)\b/i);
   });
+  it('empfiehlt nie etwas und fasst höchstens in zwei Sätzen zusammen', () => {
+    const bad = /solltest|würde reichen|wäre gut|darfst|\bmach|trainiere/i;
+    const charts = [mk([['calves', 1, 32, 40]]), mk([['back', 99, 32, 40]]), mk([['chest', 60, 48, 72], ['back', 36, 32, 40]]), mk([['chest', 60, 48, 72], ['back', 10, 32, 40], ['biceps', 90, 40, 56]])];
+    for (const c of charts) {
+      expect(chartSentence(c)).not.toMatch(bad);
+      expect(chartSummary(c)).not.toMatch(bad);
+      expect(chartSentence(c).split(/(?<=\.)\s/).length).toBeLessThanOrEqual(2);
+    }
+  });
   it('baut ganze Sätze mit Artikel und passender Verbform', () => {
     const gap = (g: string) => chartSentence(mk([[g, 1, 32, 40]]));
     const over = (g: string) => chartSentence(mk([[g, 99, 32, 40]]));
-    expect(gap('calves')).toBe('Die Waden kamen bei dir zuletzt am wenigsten dran, da ist noch Platz.');
-    expect(gap('biceps')).toBe('Der Bizeps kam bei dir zuletzt am wenigsten dran, da ist noch Platz.');
-    expect(gap('abs')).toBe('Der Bauch kam bei dir zuletzt am wenigsten dran, da ist noch Platz.');
-    expect(gap('glutes')).toBe('Das Gesäß kam bei dir zuletzt am wenigsten dran, da ist noch Platz.');
-    expect(gap('chest')).toBe('Die Brust kam bei dir zuletzt am wenigsten dran, da ist noch Platz.');
-    expect(over('calves')).toBe('Die Waden standen bei dir zuletzt im Vordergrund, du darfst gern etwas ausgleichen.');
-    expect(over('back')).toBe('Der Rücken stand bei dir zuletzt im Vordergrund, du darfst gern etwas ausgleichen.');
+    expect(gap('calves')).toBe('Die Waden kamen bei dir zuletzt am wenigsten dran. '+GAP);
+    expect(gap('biceps')).toBe('Der Bizeps kam bei dir zuletzt am wenigsten dran. '+GAP);
+    expect(gap('abs')).toBe('Der Bauch kam bei dir zuletzt am wenigsten dran. '+GAP);
+    expect(gap('glutes')).toBe('Das Gesäß kam bei dir zuletzt am wenigsten dran. '+GAP);
+    expect(gap('chest')).toBe('Die Brust kam bei dir zuletzt am wenigsten dran. '+GAP);
+    expect(over('calves')).toBe('Die Waden standen bei dir zuletzt im Vordergrund. '+OVER);
+    expect(over('back')).toBe('Der Rücken stand bei dir zuletzt im Vordergrund. '+OVER);
   });
   it('fasst für Screenreader in Worten zusammen', () => {
     const t = chartSummary(mk([['chest', 60, 48, 72], ['back', 10, 32, 40], ['biceps', 90, 40, 56]]));
