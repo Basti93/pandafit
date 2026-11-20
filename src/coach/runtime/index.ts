@@ -34,7 +34,8 @@ import { allTraining } from '../all-training';
 import { activitiesHint, allActivities, ActivitySeen, doneByDate } from '../activity-feed';
 import { manualRuns } from '../run/runs';
 import { CoachTasks, type GivenTask, type TaskFrom } from '../coach-tasks';
-import { statsContent } from '../stats/stats-content';
+import { sportMinutes, statsContent, type StatsContentInput } from '../stats/stats-content';
+import { buildSportChart, type SportChart } from '../../shared/sport-chart';
 import { radForChat } from '../tracking/bike-export';
 import { ChatCoach } from '../chat/chat-coach';
 import { planHint, type TodayContext } from '../chat/plan-hint';
@@ -197,18 +198,24 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       return { ...todayAdvice({ ...ctx, date, planDay: planFor(records.all(id, 'weekplan'), date) }), date, mode: ctx.frame.mode };
     } catch { return null; }
   };
+  /** What the stats and the sport chart count: the recorded training of a profile from all sources. */
+  const statsInputOf = (id: string): StatsContentInput => ({
+    nowMs: nowMs(), rides: coach.state(id).summaries, history: gym.history(id), runs: run.runsFor(id),
+    mobility: records.all(id, 'mobility'), activities: garminData(id)?.activities ?? [],
+    ratings: (dates) => ratingsOf(id, dates, 'done'), goal: goalOfProfile(records, id, dateKey(nowMs())).strength,
+    templateMuscle: (templateId) => gym.templateMuscle(id, templateId),
+    ftp: coach.state(id).ftpHistory, weightKg: profiles().find((p) => p.id === id)?.weightKg ?? null,
+  });
+  /** The sport chart of a period: the minutes per sport against the goal's sports (with a temporary focus); null without training in it. */
+  const sportChartOf = (id: string, fromMs: number, toMs: number): SportChart | null => {
+    const m = sportMinutes(statsInputOf(id), fromMs, toMs);
+    return buildSportChart({ fromMs, toMs, minutes: m, sports: goalOfProfile(records, id, dateKey(toMs)).sports });
+  };
   /** What the stats record of a profile says; null when there is nothing in the nine weeks. */
   const statsOf = (id: string): Omit<StatsBody, 'atMs'> | null => {
     // After a start the gym coach has not listed the templates yet: list them once (cache first), then make the stats again.
     if (!gym.knowsTemplates(id)) void gym.templateList(id).then(() => { statsMade.delete(id); }, () => {});
-    const runs = run.runsFor(id);
-    const content = statsContent({
-      nowMs: nowMs(), rides: coach.state(id).summaries, history: gym.history(id), runs,
-      mobility: records.all(id, 'mobility'), activities: garminData(id)?.activities ?? [],
-      ratings: (dates) => ratingsOf(id, dates, 'done'), goal: goalOfProfile(records, id, dateKey(nowMs())).strength,
-      templateMuscle: (templateId) => gym.templateMuscle(id, templateId),
-      ftp: coach.state(id).ftpHistory, weightKg: profiles().find((p) => p.id === id)?.weightKg ?? null,
-    });
+    const content = statsContent(statsInputOf(id));
     // The advice with the bike rides in it, for the devices that cannot see them.
     const advice = content ? adviceOf(id) : null;
     // What the next gym workout will bring for each exercise of the last one, and why. Left out when there is none.
@@ -231,6 +238,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     giveTask: (id, t) => giveTask(id, 'chat', t),
     strengthFacts: (id) => gym.reviewFacts(id),
     muscleChart: (id, fromMs, toMs) => gym.muscleChart(id, fromMs, toMs),
+    sportChart: sportChartOf,
   });
   /** What the three coaches have planned next, short, for the week chat. */
   const sessionsOf = (id: string): object => {

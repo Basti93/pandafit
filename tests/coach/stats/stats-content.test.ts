@@ -1,5 +1,5 @@
 import type { TrackedRecord } from '../../../src/shared/records';
-import { statsContent, type StatsContentInput } from '../../../src/coach/stats/stats-content';
+import { statsContent, sportMinutes, type StatsContentInput } from '../../../src/coach/stats/stats-content';
 
 // Wednesday 16 June 2027, local time; the nine weeks start on Monday 19 April.
 const NOW = new Date(2027, 5, 16, 15).getTime();
@@ -85,4 +85,22 @@ test('muscles come from the known templates first, the guess by title only after
     templateMuscle: (id) => ({ 'CUSTOM-1': 'shoulders', 'HEVY-2': 'chest' } as Record<string, string>)[id] ?? null,
   }));
   expect(c?.muscles).toEqual({ 'CUSTOM-1': 'shoulders', 'HEVY-2': 'chest', 'HEVY-3': 'biceps' });
+});
+
+describe('sportMinutes (Sportanteil)', () => {
+  const from = at(1, 0, 4), to = NOW;
+  it('summiert die Minuten je Sportart im Zeitraum mit denselben Dublettenregeln wie die Statistik', () => {
+    const m = sportMinutes(base({
+      rides: [{ startedAtMs: at(14), durationS: 3600 }],
+      history: [{ startMs: at(15), durationS: 1800, exercises: [] }],
+      runs: [{ startMs: at(16), durationS: 1200 }],
+      activities: [act(at(14), 3600, 'cycling', true), act(at(14), 3600, 'road_biking'), act(at(15), 1800, 'strength_training'), act(at(13), 2700, 'cycling'), act(at(16, 18), 600, 'hiking')],
+    }), from, to);
+    expect(m).toMatchObject({ bike: 105, strength: 30, run: 20, other: 10 });
+  });
+  it('zählt nur Tage im Zeitraum, auch weiter zurück als die neun Wochen der Statistik', () => {
+    const m = sportMinutes(base({ rides: [{ startedAtMs: at(1, 10, 2), durationS: 3600 }, { startedAtMs: at(14), durationS: 1800 }] }), at(1, 0, 2), to);
+    expect(m.bike).toBe(90);
+    expect(sportMinutes(base({ rides: [{ startedAtMs: at(1, 10, 2), durationS: 3600 }] }), at(1, 0, 4), to).bike).toBe(0);
+  });
 });
