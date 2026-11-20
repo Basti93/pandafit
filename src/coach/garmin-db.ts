@@ -45,6 +45,12 @@ const toDay = (date: string, r: Record<string, unknown>): GarminDay => {
   };
 };
 
+/** Time in heart rate zone 1 to 5 in seconds; undefined unless the record carries at least one zone with time. */
+const zoneSeconds = (a: Raw): number[] | undefined => {
+  const z = [1, 2, 3, 4, 5].map((n) => notNegative(a[`hrTimeInZone_${n}`]) ?? 0);
+  return z.some((s) => s > 0) ? z : undefined;
+};
+
 const toActivity = (id: string, sport: string, a: Raw): GarminActivity => ({
   id, sport,
   startMs: num(a.beginTimestamp) ?? 0,
@@ -58,6 +64,9 @@ const toActivity = (id: string, sport: string, a: Raw): GarminActivity => ({
   trainingLoad: notNegative(a.activityTrainingLoad),
   aerobicEffect: notNegative(a.aerobicTrainingEffect),
   fromBikeCoach: OWN_MANUFACTURER.test(text(a.manufacturer) ?? ''),
+  ...(zoneSeconds(a) ? { hrZoneS: zoneSeconds(a)! } : {}),
+  ...(notNegative(a.moderateIntensityMinutes) !== null ? { moderateMin: notNegative(a.moderateIntensityMinutes)! } : {}),
+  ...(notNegative(a.vigorousIntensityMinutes) !== null ? { vigorousMin: notNegative(a.vigorousIntensityMinutes)! } : {}),
 });
 
 export type GarminRun = {
