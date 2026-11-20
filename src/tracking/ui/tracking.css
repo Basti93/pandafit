@@ -134,7 +134,7 @@
 .tk-set.tk-done { background: color-mix(in srgb, var(--good) 22%, transparent); border-radius: .7rem; }
 .tk-done .tk-num { opacity: 1; text-decoration: none; color: var(--text); border-color: var(--good); }
 /* The statistics page. Sport colours come from the palette (accent and muted tones), told apart by the legend and by position. */
-.tk-screen { --tk-sport-bike: var(--accent); --tk-sport-strength: var(--muted); --tk-sport-run: color-mix(in srgb, var(--accent) 45%, var(--muted)); --tk-sport-mobility: color-mix(in srgb, var(--muted) 55%, var(--card)); --tk-sport-other: color-mix(in srgb, var(--text) 40%, var(--card)); }
+.tk-screen, .tk-sportbalance { --tk-sport-bike: var(--accent); --tk-sport-strength: var(--muted); --tk-sport-run: color-mix(in srgb, var(--accent) 45%, var(--muted)); --tk-sport-mobility: color-mix(in srgb, var(--muted) 55%, var(--card)); --tk-sport-other: color-mix(in srgb, var(--text) 40%, var(--card)); }
 .tk-stats { display: flex; flex-direction: column; gap: .6rem; }
 .tk-stats h3 { font-size: var(--text-m); margin: .4rem 0 0; }
 .tk-sport-bike { background: var(--tk-sport-bike); }
@@ -580,6 +580,17 @@
 .tk-radar-shape { fill: var(--accent); fill-opacity: .28; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
 .tk-radar-label { fill: var(--muted); font-size: var(--text-s); }
 .tk-radar-note { margin: 0; font-size: var(--text-s); color: var(--muted); }
+/* "Ausdauer und Kraft" im Chat: gestapelter Balken "So war es", dünnerer "Dein Ziel"; Sportfarben von der Statistikseite. */
+.tk-sportbalance { margin: var(--space-2) 0 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-sportbars { display: flex; flex-direction: column; gap: var(--space-2); }
+.tk-sportbar { display: flex; flex-direction: column; gap: var(--space-1); }
+.tk-sportbar-label { font-size: var(--text-s); color: var(--muted); }
+.tk-sportbar-track { display: flex; width: 100%; height: 1.25rem; gap: 2px; border-radius: var(--radius-s); overflow: hidden; background: color-mix(in srgb, var(--muted) 14%, var(--card)); }
+.tk-sportbar.thin .tk-sportbar-track { height: .6rem; }
+.tk-sportbar-seg { display: block; height: 100%; min-width: 3px; }
+.tk-sportlegend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: var(--text-s); color: var(--muted); }
+.tk-sportlegend li { display: inline-flex; align-items: center; gap: var(--space-1); }
+.tk-sportlegend-dot { width: .7rem; height: .7rem; border-radius: var(--radius-round); display: inline-block; }
 .tk-weekpath { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-weekpath-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
 .tk-weekpath-count { font-size: var(--text-s); color: var(--muted); }
