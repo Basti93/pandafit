@@ -430,7 +430,7 @@ describe('renamed studios in the app', () => {
     expect(hereKey({ studio: 'Alpha' }, history, studios)).toBe('Neu');
     expect(lastValues('pf-squat', history, undefined, 'Neu', studios)[0].weightKg).toBe(60);
     expect(lastValues('pf-squat', history, undefined, 'Neu')[0].weightKg).toBe(40);
-    const ladder = (renames: typeof studios.renames) => stepHere('pf-squat', 'machine', [past('a', 10, 'Alpha', 60), past('c', 15, 'Alpha', 62.5), past('b', 20, 'Beta', 40)], 'Neu', new Map(), renames);
+    const ladder = (renames: typeof studios.renames) => stepHere('pf-squat', 'kettlebell', [past('a', 10, 'Alpha', 60), past('c', 15, 'Alpha', 62.5), past('b', 20, 'Beta', 40)], 'Neu', new Map(), renames);
     expect(ladder(studios.renames).stepKg).toBe(2.5);
     expect(ladder(new Map()).stepKg).not.toBe(2.5);
   });
