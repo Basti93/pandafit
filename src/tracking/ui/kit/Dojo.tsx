@@ -91,10 +91,16 @@ export function AskBoButton({ onClick }: { onClick: () => void }) {
  * The one slim timer card (the rest between sets): the text is plain text, two `secondary` buttons beside it (`more` and `end`).
  * On a narrow phone the buttons wrap into a second row. `label` names the timer. Where it sits (sticky) is the screen's layout.
  */
-export function TimerCard({ label, more, end, children }: { label: string; more: Action; end: Action; children: ReactNode }) {
+export function TimerCard({ label, text, time, progress, ending = false, more, end }: { label: string; text: string; time: string; /** 0..1 of the rest that is left; draws the thin bar. */ progress?: number; /** The last seconds: calm colour and label change, no blinking. */ ending?: boolean; more: Action; end: Action }) {
   return (
-    <div role="timer" aria-label={label} className="tk-timercard">
-      <span className="tk-rest-main">{children}</span>
+    <div role="timer" aria-label={label} className="tk-timercard" data-ending={ending ? 'true' : undefined}>
+      <span className="tk-rest-main">
+        <span className="tk-rest-label">{text}</span>{' '}
+        <b className="tk-rest-time">{time}</b>
+      </span>
+      {progress !== undefined && (
+        <span className="tk-rest-bar" aria-hidden="true"><span style={{ width: `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%` }} /></span>
+      )}
       <div className="tk-timer-actions">
         <button type="button" className="secondary" onClick={more.onClick}>{more.label}</button>
         <button type="button" className="secondary" onClick={end.onClick}>{end.label}</button>

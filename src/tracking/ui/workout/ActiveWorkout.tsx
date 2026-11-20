@@ -28,6 +28,9 @@ function LiveSince({ startMs, now }: { startMs: number; now: () => number }) {
   return <p role="timer" aria-label="Trainingsdauer" className="muted">Läuft seit {sinceLabel(t - startMs)}</p>;
 }
 
+/** From this many seconds left the card shows the calm "nearly over" state. */
+const REST_ENDING_S = 10;
+
 /** The rest bar: the only part that re-renders each second, and only during a rest. Gone at zero. */
 function RestBar({ w, now, act }: { w: TrackedWorkout; now: () => number; act: (f: (x: TrackedWorkout) => TrackedWorkout) => void }) {
   const t = useNow(1000, !!w.rest, now);
@@ -40,11 +43,11 @@ function RestBar({ w, now, act }: { w: TrackedWorkout; now: () => number; act: (
     if (second !== null) playRestBeep(second);
   }, [remaining, w.rest]);
   if (!w.rest || remaining <= 0) return null;
+  const ending = remaining <= REST_ENDING_S;
   return (
     <div className="tk-livepause">
-      <TimerCard label="Satzpause" more={{ label: '30 s mehr', onClick: () => act((x) => extendRest(x)) }} end={{ label: 'Pause beenden', onClick: () => act((x) => ({ ...x, rest: null })) }}>
-        Pause, noch <b>{clock(remaining)}</b>
-      </TimerCard>
+      <TimerCard label="Satzpause" text={ending ? 'Gleich geht’s weiter, noch' : 'Pause, noch'} time={clock(remaining)} progress={remaining / Math.max(1, w.rest.durationS)} ending={ending} more={{ label: '30 s mehr', onClick: () => act((x) => extendRest(x)) }} end={{ label: 'Pause beenden', onClick: () => act((x) => ({ ...x, rest: null })) }}
+      />
     </div>
   );
 }
