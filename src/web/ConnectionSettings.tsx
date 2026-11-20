@@ -1,11 +1,12 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { DEFAULT_MEAL_SETTINGS, SLOT_LABEL, SLOTS, type Diet, type Habit, type MealSettings } from '../shared/meals';
+import { DEFAULT_MEAL_SETTINGS, SLOT_LABEL, SLOTS, type Diet, type Habit, type MealSettings, type Store } from '../shared/meals';
 import type { GarminSyncInfo, HevyStatus } from '../coach/protocol';
 import { Card, ChoiceRow, ConfirmLink, Kicker, Row, RowList, Sheet, Switch } from '../tracking/ui/kit';
 import type { CoachLink, CoachSettingsView } from './coachLink';
 
 const DIETS: { value: Diet; label: string }[] = [{ value: 'vegetarisch', label: 'Vegetarisch' }, { value: 'vegan', label: 'Vegan' }, { value: 'alles', label: 'Alles' }];
 const HABITS: { value: Habit; label: string }[] = [{ value: 'zuhause', label: 'zu Hause' }, { value: 'mitnehmen', label: 'zum Mitnehmen' }, { value: 'auswaerts', label: 'auswärts' }];
+const STORE_OPTIONS: { value: Store; label: string }[] = [{ value: 'discounter', label: 'Discounter (z. B. Aldi, Lidl)' }, { value: 'supermarkt', label: 'Supermarkt' }, { value: 'bioladen', label: 'Bioladen' }];
 const HEVY_PROBLEM = { invalid: 'Der Schlüssel funktioniert nicht. Ist er vollständig und Hevy Pro aktiv?', expired: 'Der Schlüssel gilt nicht mehr. Bitte trag einen neuen ein.', failed: 'Hevy ist gerade nicht erreichbar.' } as const;
 const GARMIN_PROBLEM: Record<string, string> = { credentials: 'E-Mail oder Passwort wurde abgelehnt.', 'rate-limit': 'Garmin blockt gerade zu viele Versuche. Versuch es bitte später nochmal.', setup: 'Das Garmin-Hilfsprogramm fehlt auf dem Server.', failed: 'Das hat nicht geklappt. Versuch es bitte später nochmal.' };
 const SENT_NO = 'Gerade gibt es keine Verbindung zu Bo.';
@@ -89,6 +90,7 @@ function MealsSheet({ settings, recipes, save, onClose }: { settings: MealSettin
     <Sheet title="Essen anpassen" onClose={onClose} actions={<button type="button" className="primary" onClick={() => { save({ ...s, dislikes: tags(dislikes), intolerances: tags(intolerances) }); onClose(); }}>Speichern</button>}>
       <ChoiceRow label="Ernährungsform" value={s.diet} options={DIETS} onChange={(diet) => setS({ ...s, diet })} />
       {SLOTS.map((slot) => <ChoiceRow key={slot} label={`${SLOT_LABEL[slot]} werktags`} value={s.habits[slot]} options={HABITS} onChange={(h) => setS({ ...s, habits: { ...s.habits, [slot]: h } })} />)}
+      <ChoiceRow label="Wo kauft ihr meistens ein?" value={s.store ?? 'supermarkt'} options={STORE_OPTIONS} onChange={(store) => setS({ ...s, store })} />
       <label className="tk-field">Abneigungen<input value={dislikes} placeholder="zum Beispiel Pilze, Oliven" onChange={(e) => setDislikes(e.target.value)} /></label>
       <label className="tk-field">Unverträglichkeiten<input value={intolerances} placeholder="zum Beispiel Laktose" onChange={(e) => setIntolerances(e.target.value)} /></label>
       <p className="muted">Bitte prüf die Zutaten bei Unverträglichkeiten trotzdem selbst.</p>

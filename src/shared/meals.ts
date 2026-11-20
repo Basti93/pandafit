@@ -17,8 +17,14 @@ export const DIETS: readonly Diet[] = ['vegetarisch', 'vegan', 'alles'];
 /** Where a person usually has a meal on a workday. At the weekend every meal is at home. */
 export type Habit = 'zuhause' | 'mitnehmen' | 'auswaerts';
 export const HABITS: readonly Habit[] = ['zuhause', 'mitnehmen', 'auswaerts'];
-export type MealSettings = { on: boolean; diet: Diet; dislikes: string[]; intolerances: string[]; habits: Record<Slot, Habit> };
-export const DEFAULT_MEAL_SETTINGS: MealSettings = { on: false, diet: 'vegetarisch', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' } };
+/** Where the household mostly shops. Old data has none: it reads as the supermarket. */
+export type Store = 'discounter' | 'supermarkt' | 'bioladen';
+export const STORES: readonly Store[] = ['discounter', 'supermarkt', 'bioladen'];
+export type MealSettings = { on: boolean; diet: Diet; dislikes: string[]; intolerances: string[]; habits: Record<Slot, Habit>; store?: Store };
+/** The shop for the whole household: the discounter as soon as one person chooses it (the most limited range), else the bio shop, else the supermarket. */
+export const householdStore = (all: readonly Pick<MealSettings, 'store'>[]): Store =>
+  all.some((s) => s.store === 'discounter') ? 'discounter' : all.some((s) => s.store === 'bioladen') ? 'bioladen' : 'supermarkt';
+export const DEFAULT_MEAL_SETTINGS: MealSettings = { on: false, diet: 'vegetarisch', store: 'supermarkt', dislikes: [], intolerances: [], habits: { fruehstueck: 'zuhause', mittag: 'mitnehmen', abend: 'zuhause' } };
 
 export const SECTIONS = ['Obst und Gemüse', 'Kühlregal', 'Brot und Backwaren', 'Vorrat', 'Tiefkühl', 'Sonstiges'] as const;
 export type Section = (typeof SECTIONS)[number];
@@ -47,7 +53,7 @@ export const safeLink = (x: unknown): string | null => {
 /** `reuseOf` names the meal this one is the rest of (cook once, eat twice): it has nothing of its own to shop or cook. */
 export type Meal = { day: number; slot: Slot; dish: Dish; reuseOf: string | null; eaters: string[]; takeAlong: boolean; /** Changed in the chat with the coach at this person's wish. */ askedBy?: string };
 export type Person = { id: string; name: string; avatar?: string };
-export type MealPlan = { week: string; createdMs: number; source: 'coach' | 'liste' | 'gemischt'; people: Person[]; meals: Meal[]; trainingDays: number[] };
+export type MealPlan = { week: string; createdMs: number; source: 'coach' | 'liste' | 'gemischt'; people: Person[]; meals: Meal[]; trainingDays: number[]; /** The household's shop when the plan was made or last changed; none reads as the supermarket. */ store?: Store };
 export type ItemState = 'offen' | 'gekauft' | 'da';
 /**
  * A tick on an item. `cover` is the amount per meal (`mealKey`) that the tick covered. An entry without `cover` (old records,
@@ -342,7 +348,7 @@ export function readMealPlan(body: unknown): MealPlan | null {
   });
   const trainingDays = Array.isArray(body.trainingDays) ? body.trainingDays.filter((d): d is number => num(d) && d >= 0 && d <= 6) : [];
   const source = body.source === 'coach' || body.source === 'gemischt' ? body.source : 'liste';
-  return { week: body.week, createdMs: num(body.createdMs) ? body.createdMs : 0, source, people, meals, trainingDays };
+  return { week: body.week, createdMs: num(body.createdMs) ? body.createdMs : 0, source, people, meals, trainingDays, ...(STORES.includes(body.store as Store) ? { store: body.store as Store } : {}) };
 }
 
 export function readMealState(body: unknown): MealState {

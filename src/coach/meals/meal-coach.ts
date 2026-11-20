@@ -3,7 +3,7 @@ import path from 'node:path';
 import {
   addWeeks, ALIASES_RECORD_ID, CHAT_MAX_CHARS, dayIndex, eatersOf, DEFAULT_MEAL_SETTINGS, DIETS, EMPTY_STATE, HABITS, isChatRecordId, isWeekKey, mealKey, mergeStates,
   isFavRecordId, isLinkRecordId, isPlaceRecordId, isReplanRecordId, parseMealKey, readPlaceRequest, readReplanRequest, type PlaceState, isRecipeRecordId, favouriteIds, type RecipeDetail, type RecipePage, newChatId, planRecordId, readLinkRequest, readAliases, readMealChat, readMealState, type Aliases, SLOTS, stateRecordId, weekOf, weekOfRecordId, withEater, withItem, type Diet,
-  type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
+  STORES, householdStore, type Store, type Habit, type ItemState, type LinkResult, type Meal, type MealChat, type MealPlan, type MealSettings, type MealState, type Person, type Slot,
 } from '../../shared/meals';
 import type { TrackedRecord } from '../../shared/records';
 import type { RecordStore } from '../tracking/store';
@@ -104,7 +104,7 @@ export function cleanSettings(x: unknown): MealSettings {
   if (!isObj(x)) return { ...d, habits: { ...d.habits } };
   const h = isObj(x.habits) ? x.habits : {};
   const habits = Object.fromEntries(SLOTS.map((s) => [s, HABITS.includes(h[s] as Habit) ? h[s] : d.habits[s]])) as Record<Slot, Habit>;
-  return { on: x.on === true, diet: DIETS.includes(x.diet as Diet) ? x.diet as Diet : d.diet, dislikes: tags(x.dislikes), intolerances: tags(x.intolerances), habits };
+  return { on: x.on === true, diet: DIETS.includes(x.diet as Diet) ? x.diet as Diet : d.diet, dislikes: tags(x.dislikes), intolerances: tags(x.intolerances), habits, store: STORES.includes(x.store as Store) ? x.store as Store : 'supermarkt' };
 }
 
 /** Weekdays with at least two sessions in the last four weeks. */
@@ -368,7 +368,9 @@ export class MealCoach {
     const next = cleanSettings(raw);
     const was = this.settings(id).on;
     d.settings[id] = next;
+    const store = householdStore(this.members().map((m) => m.settings));
     for (const plan of Object.values(d.plans)) {
+      plan.store = store;
       const inPlan = plan.people.some((p) => p.id === id);
       // Off: out of every plan, so portions and the shopping list shrink. On: in the plan, eating once switched on.
       if (!next.on && inPlan) { plan.people = plan.people.filter((p) => p.id !== id); for (const m of plan.meals) m.eaters = m.eaters.filter((e) => e !== id); }
@@ -535,7 +537,7 @@ export class MealCoach {
       const fromList = ruleMeals(members, open, trainingDays, random, lastIds, stockSet(stockNames(o.stock)));
       const meals = [...kept, ...real, ...fromAi, ...fromList].sort((a, b) => a.day - b.day || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot));
       const source = fromAi.length === 0 ? 'liste' : fromList.length + real.length === 0 ? 'coach' : 'gemischt';
-      d.plans[week] = { week, createdMs: this.deps.nowMs(), source, people: this.people(), meals, trainingDays };
+      d.plans[week] = { week, createdMs: this.deps.nowMs(), source, people: this.people(), meals, trainingDays, store: householdStore(members.map((m) => m.settings)) };
       d.notices[week] = notice ?? d.notices[week] ?? null;
       this.save();
     } finally { this.planning = null; }
