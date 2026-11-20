@@ -13,10 +13,12 @@ const wk = (daysAgo: number, sets: S[], templateId = 'sq', title = 'Squat'): Str
   exercises: [{ title, templateId, sets: sets.length, reps: 0, volumeKg: 0, workSets: sets.map(([weightKg, reps, type]) => ({ type: type ?? 'normal', weightKg, reps })) }],
 });
 
-// Invented catalog entries: chest (range 6-12) on plates in 2.5-kg steps, a machine in 5-kg steps, a side-delt isolation lift (range 12-25).
+// Invented catalog entries: chest (range 6-12) on plates in 2.5-kg steps, a machine (2.5-kg default; BIG gives it 5-kg steps), a side-delt isolation lift (range 12-25).
 const PLATES = { type: 'weight_reps', equipment: 'barbell', primaryMuscle: 'chest' };
 const MACHINE = { type: 'weight_reps', equipment: 'machine', primaryMuscle: 'chest' };
 const RAISE = { type: 'weight_reps', equipment: 'dumbbell', primaryMuscle: 'side_delts' };
+/** A person's own 5 kg step for `sq` in the given studios. */
+const BIG = (...studios: string[]) => ({ overrides: new Map(studios.map((st) => [`sq|${st}`, 5] as const)) });
 const suggest = (id: string, ws: StrengthWorkout[], now: number, ex: Parameters<typeof suggestNext>[3] = PLATES, plan?: Parameters<typeof suggestNext>[4]) => { const { reason: _r, ...rest } = suggestNext(id, ws, now, ex, plan); return rest; };
 const reasonOf = (ws: StrengthWorkout[], now = NOW) => suggestNext('sq', ws, now, PLATES).reason;
 
@@ -119,9 +121,10 @@ describe('recentLegWork', () => {
 
 describe('progression per exercise', () => {
   const at = (days: number, kg: number, reps: number) => wk(days, [[kg, reps], [kg, reps]]);
-  it('the range max reached on a 5-kg machine goes up by 5, with the reps at the range min', () => {
+  it('the range max reached on a machine with a 5-kg step goes up by 5, with the reps at the range min', () => {
     const ws = [at(21, 35, 12), at(14, 40, 11), at(7, 40, 12)];
-    expect(suggest('sq', ws, NOW, MACHINE)).toEqual({ weightKg: 45, reps: 6, why: 'progress' });
+    expect(suggest('sq', ws, NOW, MACHINE, BIG(''))).toEqual({ weightKg: 45, reps: 6, why: 'progress' });
+    expect(suggest('sq', ws, NOW, MACHINE)).toEqual({ weightKg: 42.5, reps: 6, why: 'progress' });
   });
   it('a lateral raise uses the range of its group, not 6-12', () => {
     expect(suggest('sq', [at(14, 8, 12), at(7, 8, 13)], NOW, RAISE)).toEqual({ weightKg: 8, reps: 14, why: 'progress' });
@@ -135,6 +138,10 @@ describe('progression per exercise', () => {
     expect(r.weightKg! % 5).toBe(0);
     expect(r.weightKg!).toBeLessThan(50);
   });
+  it('on a machine with 2.5-kg steps two drops from 25 kg step back to 22.5 kg', () => {
+    const ws = [at(28, 20, 10), at(21, 25, 10), at(14, 25, 9), at(7, 25, 7)];
+    expect(suggest('sq', ws, NOW, MACHINE)).toEqual({ weightKg: 22.5, reps: 7, why: 'step-back' });
+  });
   it('one drop alone only keeps', () => {
     expect(suggest('sq', [at(21, 40, 8), at(14, 40, 10), at(7, 40, 8)], NOW, MACHINE).why).toBe('keep');
   });
@@ -144,7 +151,7 @@ describe('progression per exercise', () => {
   it('history in another studio is not used', () => {
     const own = (w: StrengthWorkout, studio: string): StrengthWorkout => ({ ...w, studio });
     const ws = [own(at(21, 40, 12), 'Alpha'), own(at(14, 40, 12), 'Alpha'), own(at(7, 20, 8), 'Beta')];
-    expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Alpha' })).toEqual({ weightKg: 45, reps: 6, why: 'progress' });
+    expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Alpha', ...BIG('Alpha') })).toEqual({ weightKg: 45, reps: 6, why: 'progress' });
     expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Beta' })).toEqual({ weightKg: 20, reps: 8, why: 'keep' });
     expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Gamma' }).why).toBe('none');
   });
@@ -152,13 +159,13 @@ describe('progression per exercise', () => {
     const own = (w: StrengthWorkout, studio: string): StrengthWorkout => ({ ...w, studio });
     const ws = [own(at(21, 40, 12), 'Alpha'), own(at(14, 40, 12), 'Alpha'), own(at(7, 20, 8), 'Beta')];
     const renames = new Map([['alpha', 'Neu']]);
-    expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Neu', renames })).toEqual({ weightKg: 45, reps: 6, why: 'progress' });
-    expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Alpha', renames })).toEqual({ weightKg: 45, reps: 6, why: 'progress' });
+    expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Neu', renames, ...BIG('Neu') })).toEqual({ weightKg: 45, reps: 6, why: 'progress' });
+    expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Alpha', renames, ...BIG('Neu') })).toEqual({ weightKg: 45, reps: 6, why: 'progress' });
     expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Neu' }).why).toBe('none');
   });
   it('workouts without a studio count for the main one', () => {
     const ws = [at(21, 40, 12), { ...at(14, 40, 12), studio: 'Alpha' }];
-    expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Alpha' }).weightKg).toBe(45);
+    expect(suggest('sq', ws, NOW, MACHINE, { studio: 'Alpha', ...BIG('Alpha') }).weightKg).toBe(45);
   });
   it('several occurrences in one workout are one session', () => {
     const w = at(7, 40, 8);
@@ -237,7 +244,7 @@ describe('drops and ladder from work sets', () => {
   });
   it('warmup and dropset weights do not shrink the step', () => {
     const ws = [wk(14, [[22.5, 5, 'warmup'], [40, 8], [30, 8, 'dropset'], [50, 8]]), wk(7, [[27.5, 5, 'warmup'], [55, 8]])];
-    expect(ladderFor('sq', MACHINE, ws, NOW).stepKg).toBe(5);
+    expect(ladderFor('sq', { ...MACHINE, equipment: 'kettlebell' }, ws, NOW).stepKg).toBe(5); // 4-kg default: the 5 is learned from the work sets, 2.5 would show a warm-up or drop set
   });
 });
 

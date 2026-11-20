@@ -25,6 +25,9 @@ const two = (id: string, kg: number | null, reps = 8): StrengthWorkout[] => [wk(
 // suggestNext: sq 60 kg reps 8 keep? 8 reps both sessions -> progress 9 reps at 60. cp 40 kg, bp 80 kg, pu bodyweight.
 const CTX: GymContext = { workouts: [...two('sq', 60), ...two('bp', 80), ...two('cp', 40), ...two('pu', null, 12)], templates: TEMPLATES, nowMs: NOW };
 
+/** Steps of 5 kg for `cp` (machines default to 2.5 kg), keyed by exercise and studio. */
+const FIVE = (studio = ''): Pick<GymContext, 'overrides'> => ({ overrides: new Map([[`cp|${studio}`, 5]]) });
+
 const set = (weightKg: number | null, reps: number | null, type = 'normal') => ({ type, weightKg, reps });
 const ex = (templateId: unknown, sets: unknown[], extra: Record<string, unknown> = {}) => ({ templateId, title: 'x', restS: 90, supersetId: null, notes: '', sets, ...extra });
 const wo = (exercises: unknown) => ({ name: 'Test', exercises });
@@ -70,9 +73,12 @@ describe('checkWorkout', () => {
     for (const e of plan.exercises) expect(e.sets.filter((s) => s.type !== 'warmup')).toHaveLength(3);
   });
   it('a weight above suggestNext plus one reachable step is refused', () => {
-    passes(wo([ex('cp', [set(40, 9)])]));
-    passes(wo([ex('cp', [set(45, 8)])]));
-    refused(wo([ex('cp', [set(50, 8)])]));
+    const big = { ...CTX, ...FIVE() };
+    passes(wo([ex('cp', [set(40, 9)])]), big);
+    passes(wo([ex('cp', [set(45, 8)])]), big);
+    refused(wo([ex('cp', [set(50, 8)])]), big);
+    passes(wo([ex('cp', [set(42.5, 8)])]));
+    refused(wo([ex('cp', [set(45, 8)])]));
     passes(wo([ex('bp', [set(82.5, 8)])]));
     refused(wo([ex('bp', [set(85, 8)])]));
   });
@@ -84,7 +90,7 @@ describe('checkWorkout', () => {
   });
   it('only the planned studio\'s history counts for the ladder and the suggestion', () => {
     const other = { ...wk(3, 'cp', [[100, 8]]), studio: 'Beta' };
-    const ctx = { ...CTX, workouts: [...CTX.workouts.map((w) => ({ ...w, studio: 'Alpha' })), other], studio: 'Alpha' };
+    const ctx = { ...CTX, workouts: [...CTX.workouts.map((w) => ({ ...w, studio: 'Alpha' })), other], studio: 'Alpha', ...FIVE('Alpha') };
     passes(wo([ex('cp', [set(45, 8)])]), ctx);
     refused(wo([ex('cp', [set(100, 8)])]), ctx);
   });
@@ -99,7 +105,7 @@ describe('checkWorkout', () => {
     expect(sets[0]).toEqual({ type: 'normal', weightKg: 30, reps: 8, estimated: true });
     expect(sets[1].estimated).toBeUndefined();
     // below the first step: the lightest reachable weight, never 0
-    expect(passes(wo([ex('lp', [set(2, 8)])])).exercises[0].sets[0]).toMatchObject({ weightKg: 5, estimated: true });
+    expect(passes(wo([ex('lp', [set(2, 8)])])).exercises[0].sets[0]).toMatchObject({ weightKg: 2.5, estimated: true });
   });
   it('a weight without a suggestion is refused for an exercise with history or a bodyweight exercise', () => {
     refused(wo([ex('pu', [set(10, 8)])]));
@@ -550,8 +556,8 @@ describe('limits by experience', () => {
 });
 
 describe('reps around a large step', () => {
-  // cp on a machine: 20 kg x 12 twice, the next step 25 kg is large.
-  const LS: GymContext = { ...CTX, workouts: two('cp', 20, 12) };
+  // cp on a machine with a 5 kg step override: 20 kg x 12 twice, the next step 25 kg is large.
+  const LS: GymContext = { ...CTX, workouts: two('cp', 20, 12), ...FIVE() };
   it('a person who starts stays at the weight with reps above the range; a heavier set keeps the plain range', () => {
     const neu: GymContext = { ...LS, experience: 'neu' };
     passes(wo([ex('cp', [set(20, 13)])]), neu);

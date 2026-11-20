@@ -7,8 +7,8 @@ import { loadStepsOf } from '../../src/coach/tracking/load-steps';
 import { policyRule, ruleNumber } from '../../src/shared/training-policy';
 
 describe('learnLadder', () => {
-  test('40/45/50 on a machine is step 5', () => {
-    expect(learnLadder([40, 45, 50], 'machine', 20)).toEqual({ stepKg: 5, anchorKg: 40, learned: true });
+  test('40/45/50 on a machine is step 2.5 (a multiple of the default reads as the default)', () => {
+    expect(learnLadder([40, 45, 50], 'machine', 20)).toEqual({ stepKg: 2.5, anchorKg: 40, learned: true });
   });
   test('7/14/21 is step 7 and 14 goes up to 21', () => {
     const l = learnLadder([7, 14, 21], 'machine', 20);
@@ -20,7 +20,7 @@ describe('learnLadder', () => {
   });
   test('a single weight gives the equipment default, not learned', () => {
     expect(learnLadder([30], 'dumbbell', 20)).toMatchObject({ stepKg: 2, learned: false });
-    expect(learnLadder([30, 30], 'machine', 20)).toMatchObject({ stepKg: 5, learned: false });
+    expect(learnLadder([30, 30], 'machine', 20)).toMatchObject({ stepKg: 2.5, learned: false });
     expect(learnLadder([30], 'unheard-of', 20).stepKg).toBe(2.5);
   });
   test('a multiple of the default falls back to the default (few data points overestimate)', () => {
@@ -81,10 +81,10 @@ describe('step override', () => {
     expect(loadStepOverrides([bad]).size).toBe(0);
   });
   test('the coach side reads them per profile', () => {
-    const store = { all: (p: string, k?: string) => (p === 'p1' && k === 'loadstep' ? [rec('e', 'A', 2.5)] : []) };
+    const store = { all: (p: string, k?: string) => (p === 'p1' && k === 'loadstep' ? [rec('e', 'A', 5)] : []) };
     const key = { exerciseId: 'e', studio: 'A' };
-    expect(withOverride(learnLadder([], 'machine', 20), loadStepsOf(store, 'p1'), key).stepKg).toBe(2.5);
-    expect(withOverride(learnLadder([], 'machine', 20), loadStepsOf(store, 'p2'), key).stepKg).toBe(5);
+    expect(withOverride(learnLadder([], 'machine', 20), loadStepsOf(store, 'p1'), key).stepKg).toBe(5);
+    expect(withOverride(learnLadder([], 'machine', 20), loadStepsOf(store, 'p2'), key).stepKg).toBe(2.5);
   });
 });
 
@@ -109,7 +109,7 @@ describe('load rules', () => {
     for (const id of ['load.default-step', 'load.step-choices', 'load.bar-kg', 'load.plates'])
       expect(policyRule(id)).toMatchObject({ class: 'product', status: { state: 'active' }, where: ['src/shared/loads.ts'] });
     expect(ruleNumber('load.bar-kg')).toBe(20);
-    expect(policyRule('load.default-step').values).toEqual({ barbell: 2.5, dumbbell: 2, machine: 5, kettlebell: 4, none: 2.5, other: 2.5 });
+    expect(policyRule('load.default-step').values).toEqual({ barbell: 2.5, dumbbell: 2, machine: 2.5, kettlebell: 4, none: 2.5, other: 2.5 });
     expect(policyRule('load.step-choices').numbers).toEqual([0.5, 1, 1.25, 2, 2.5, 4, 5, 7, 10]);
     expect(policyRule('load.plates').numbers).toEqual([25, 20, 15, 10, 5, 2.5, 1.25]);
   });
@@ -147,7 +147,7 @@ describe('one ladder for app and coach', () => {
       const coach = ladderFor('sq', { equipment: 'machine' }, strength, 10_000, { studio: studio || undefined }).stepKg;
       expect(coach).toBe(app);
     }
-    expect(stepHere('sq', 'machine', own, '', none).stepKg).toBe(5);
+    expect(stepHere('sq', 'machine', own, '', none).stepKg).toBe(2.5);
   });
 
   test('an off-grid anchor (22.68 from lb) keeps its exact value and steps from there', () => {

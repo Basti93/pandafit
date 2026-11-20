@@ -15,7 +15,9 @@ const wk = (daysAgo: number, sets: [number, number, number?][], effort?: 'plenty
 const PLATES = { type: 'weight_reps', equipment: 'barbell', primaryMuscle: 'chest' };
 const MACHINE = { type: 'weight_reps', equipment: 'machine', primaryMuscle: 'chest' };
 const next = (ws: StrengthWorkout[], experience?: 'neu' | 'einige' | 'erfahren', ex = PLATES) => {
-  const { reason: _r, ...rest } = suggestNext('cp', ws, NOW, ex, experience ? { experience } : undefined);
+  // A machine defaults to 2.5 kg; the large-step cases give it the person's own 5 kg step.
+  const overrides = ex === MACHINE ? new Map([['cp|', 5]]) : undefined;
+  const { reason: _r, ...rest } = suggestNext('cp', ws, NOW, ex, { ...(experience ? { experience } : {}), ...(overrides ? { overrides } : {}) });
   return rest;
 };
 
