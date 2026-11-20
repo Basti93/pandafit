@@ -19,7 +19,7 @@ export function classifyRide(samples: readonly { powerW: number | null; hrBpm: n
   const out = { ...NONE };
   let known = 0;
   for (const s of samples) {
-    let level: 0 | 1 | 2 = 0, peak = false;
+    let level: 0 | 1 | 2, peak: boolean;
     if (s.powerW !== null && ftpW > 0) {
       const f = s.powerW / ftpW;
       level = f > c.ftpVigorous! ? 2 : f >= c.ftpModerate! ? 1 : 0;
