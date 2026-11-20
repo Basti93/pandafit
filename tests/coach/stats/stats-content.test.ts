@@ -1,5 +1,5 @@
 import type { TrackedRecord } from '../../../src/shared/records';
-import { statsContent, sportMinutes, type StatsContentInput } from '../../../src/coach/stats/stats-content';
+import { statsContent, weekIntensity, type StatsContentInput } from '../../../src/coach/stats/stats-content';
 
 // Wednesday 16 June 2027, local time; the nine weeks start on Monday 19 April.
 const NOW = new Date(2027, 5, 16, 15).getTime();
@@ -87,28 +87,53 @@ test('muscles come from the known templates first, the guess by title only after
   expect(c?.muscles).toEqual({ 'CUSTOM-1': 'shoulders', 'HEVY-2': 'chest', 'HEVY-3': 'biceps' });
 });
 
-describe('sportMinutes (Sportanteil)', () => {
+describe('weekIntensity (Intensitätsansicht)', () => {
   const from = at(1, 0, 4), to = NOW;
-  it('summiert die Minuten je Sportart im Zeitraum mit denselben Dublettenregeln wie die Statistik', () => {
-    const m = sportMinutes(base({
-      rides: [{ startedAtMs: at(14), durationS: 3600 }],
-      history: [{ startMs: at(15), durationS: 1800, exercises: [] }],
-      runs: [{ startMs: at(16), durationS: 1200 }],
-      activities: [act(at(14), 3600, 'cycling', true), act(at(14), 3600, 'road_biking'), act(at(15), 1800, 'strength_training'), act(at(13), 2700, 'cycling'), act(at(16, 18), 600, 'hiking')],
+  const ride = (day: number, durationS: number, intensity?: { moderateS: number; vigorousS: number; peakS: number }) => ({ startedAtMs: at(day), durationS, ...(intensity ? { intensity } : {}) });
+  it('zählt Krafteinheiten, Moderat-Äquivalent (intensiv doppelt) und harte Einheiten', () => {
+    const w = weekIntensity(base({
+      rides: [ride(14, 3600, { moderateS: 1800, vigorousS: 1800, peakS: 0 }), ride(15, 3600, { moderateS: 3000, vigorousS: 0, peakS: 0 })],
+      history: [{ startMs: at(16), durationS: 3600, exercises: [] }, { startMs: at(13), durationS: 3600, exercises: [] }],
     }), from, to);
-    expect(m).toMatchObject({ bike: 105, strength: 30, run: 20, other: 0 });
+    expect(w).toEqual({ strengthSessions: 2, enduranceMin: 30 + 60 + 50, hardSessions: 1 });
   });
-  it('zählt nur Tage im Zeitraum, auch weiter zurück als die neun Wochen der Statistik', () => {
-    const m = sportMinutes(base({ rides: [{ startedAtMs: at(1, 10, 2), durationS: 3600 }, { startedAtMs: at(14), durationS: 1800 }] }), at(1, 0, 2), to);
-    expect(m.bike).toBe(90);
-    expect(sportMinutes(base({ rides: [{ startedAtMs: at(1, 10, 2), durationS: 3600 }] }), at(1, 0, 4), to).bike).toBe(0);
+  it('zählt die Kopie einer eigenen Fahrt auf der Uhr nicht noch einmal, ebenso Kraft aus Hevy', () => {
+    const w = weekIntensity(base({
+      rides: [ride(14, 3600, { moderateS: 3600, vigorousS: 0, peakS: 0 })],
+      history: [{ startMs: at(15), durationS: 1800, exercises: [] }],
+      activities: [act(at(14), 3600, 'cycling', true), act(at(14), 3600, 'road_biking'), act(at(15), 1800, 'strength_training'), act(at(15, 18), 1200, 'strength_training')],
+    }), from, to);
+    expect(w).toEqual({ strengthSessions: 2, enduranceMin: 60, hardSessions: 0 });
   });
-  it('zählt Gehen, Wandern, Yoga und Unbekanntes nicht, Schwimmen, Rudern, Crosstrainer und Cardio schon', () => {
-    const m = sportMinutes(base({ activities: [act(at(14), 3600, 'walking'), act(at(14, 12), 3600, 'hiking'), act(at(14, 15), 600, 'yoga'), act(at(15), 600, 'mystery'), act(at(15, 12), 1800, 'lap_swimming'), act(at(16), 1200, 'indoor_rowing'), act(at(16, 12), 600, 'elliptical'), act(at(16, 15), 600, 'indoor_cardio')] }), from, to);
-    expect(m.other).toBe(30 + 20 + 10 + 10);
+  it('nimmt bei Garmin die Zeit je Pulszone, sonst die Intensitätsminuten, sonst den Durchschnittspuls, sonst moderat', () => {
+    const w = weekIntensity(base({
+      hrMaxBpm: 200,
+      activities: [
+        { ...act(at(14), 3000, 'running'), hrZoneS: [0, 600, 600, 1200, 600] }, // 20 min moderate, 30 min vigorous with 10 min peak: hard
+        { ...act(at(15), 3600, 'cycling'), moderateMin: 30, vigorousMin: 10 }, // 30 + 20
+        { ...act(at(16), 1800, 'lap_swimming'), avgHr: 150 }, // 30 moderate
+        { ...act(at(12), 1800, 'indoor_rowing'), avgHr: 175 }, // 30 vigorous = 60
+        act(at(13), 1200, 'elliptical'), // no data: 20 moderate
+      ],
+    }), from, to);
+    expect(w).toEqual({ strengthSessions: 0, enduranceMin: 20 + 60 + 50 + 30 + 60 + 20, hardSessions: 2 });
   });
-  it('zählt Kraft und Rad von der Uhr weiter, auch neben nicht gezählten Aktivitäten', () => {
-    const m = sportMinutes(base({ activities: [act(at(14), 1800, 'strength_training'), act(at(15), 1800, 'cycling'), act(at(16), 1800, 'walking')] }), from, to);
-    expect(m).toMatchObject({ strength: 30, bike: 30, other: 0 });
+  it('zählt einen Lauf ohne Garmin-Datensatz moderat und nie hart, und einen Garmin-Lauf nicht doppelt', () => {
+    const w = weekIntensity(base({ hrMaxBpm: 200, runs: [{ startMs: at(14), durationS: 1800 }, { startMs: at(16), durationS: 3600 }], activities: [{ ...act(at(14), 1800, 'running'), avgHr: 190 }] }), from, to);
+    expect(w).toEqual({ strengthSessions: 0, enduranceMin: 60 + 60, hardSessions: 1 });
+  });
+  it('zählt nur Tage im Zeitraum', () => {
+    const rides = [{ startedAtMs: at(1, 10, 2), durationS: 3600 }, ride(14, 1800)];
+    expect(weekIntensity(base({ rides }), at(1, 0, 2), to).enduranceMin).toBe(90);
+    expect(weekIntensity(base({ rides }), at(1, 0, 4), to).enduranceMin).toBe(30);
+  });
+  it('zählt Gehen, Wandern, Yoga, Mobilität und Unbekanntes nicht, Schwimmen, Rudern, Crosstrainer und Cardio schon', () => {
+    const w = weekIntensity(base({ activities: [act(at(14), 3600, 'walking'), act(at(14, 12), 3600, 'hiking'), act(at(14, 15), 600, 'yoga'), act(at(15), 600, 'mystery'), act(at(15, 12), 1800, 'lap_swimming'), act(at(16), 1200, 'indoor_rowing'), act(at(16, 12), 600, 'elliptical'), act(at(16, 15), 600, 'indoor_cardio')] }), from, to);
+    expect(w.enduranceMin).toBe(30 + 20 + 10 + 10);
+  });
+  it('rechnet Fahrten ohne gespeicherte Klassen nach dem Durchschnittspuls, sonst moderat', () => {
+    const w = weekIntensity(base({ hrMaxBpm: 200, rides: [{ startedAtMs: at(14), durationS: 3600, avgHrBpm: 175 }, { startedAtMs: at(15), durationS: 1800 }] }), from, to);
+    expect(w.enduranceMin).toBe(120 + 30);
+    expect(w.hardSessions).toBe(1);
   });
 });

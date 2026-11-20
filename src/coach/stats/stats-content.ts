@@ -1,7 +1,8 @@
 import type { GarminActivity } from '../../shared/garmin';
+import { classifyByAvgHr, classifyByIntensityMinutes, classifyByZoneSeconds, equivalentMinutes, isHardSession, noData, type IntensityClass } from '../../shared/intensity';
 import type { TrackedRecord } from '../../shared/records';
 import { RUN_TYPES } from '../../shared/run';
-import { SPORTS, type Sport, type StatsBody, type StatsDay } from '../../shared/stats';
+import { SPORTS, type StatsBody, type StatsDay } from '../../shared/stats';
 import { CYCLING, overlapsByHalf, STRENGTH } from '../all-training';
 import { dateKey, type DayRating } from '../day-load';
 import { muscleOf } from '../mobility/mobility';
@@ -12,13 +13,15 @@ export const MOBILITY_MINUTES = 10;
 
 export type StatsContentInput = {
   nowMs: number;
-  rides: { startedAtMs: number; durationS: number }[];
+  rides: { startedAtMs: number; durationS: number; avgHrBpm?: number | null; intensity?: IntensityClass }[];
   /** Strength workouts recorded here or in Hevy, doubles already removed. */
   history: { startMs: number; durationS: number; exercises: { templateId: string; title: string }[] }[];
   runs: { startMs: number; durationS: number }[];
   /** The mobility records of the profile, as stored. */
   mobility: TrackedRecord[];
-  activities: Pick<GarminActivity, 'startMs' | 'durationS' | 'sport' | 'fromBikeCoach'>[];
+  activities: (Pick<GarminActivity, 'startMs' | 'durationS' | 'sport' | 'fromBikeCoach'> & Partial<Pick<GarminActivity, 'avgHr' | 'hrZoneS' | 'moderateMin' | 'vigorousMin'>>)[];
+  /** The person's maximum heart rate (own value or estimate) for activities without time in zone; null when unknown. */
+  hrMaxBpm?: number | null;
   /** How hard each date was, from what was done. */
   ratings: (dates: string[]) => Record<string, DayRating>;
   goal: string | null;
@@ -76,24 +79,55 @@ export function statsContent(i: StatsContentInput): Omit<StatsBody, 'atMs'> | nu
   return { type: 'stats', goal: i.goal, days, muscles, ...(ftp.length ? { ftp } : {}), ...(i.weightKg ? { weightKg: i.weightKg } : {}) };
 }
 
-/** Real cardio besides running and cycling; walking, hiking, yoga and unknown activities are not training time for the sport chart. */
-const CARDIO = /swim|rowing|elliptical|cardio/i;
+/** Real cardio besides running and cycling; walking, hiking, yoga and unknown activities are no endurance training for the intensity view. */
+const CARDIO = /swim|rowing|elliptical|cardio|hiit/i;
 
-/** The input for the sport chart: a strength session only the watch knows counts as strength, and activities that are no training for it are dropped. */
-function countable(i: StatsContentInput): StatsContentInput {
-  const watchStrength = i.activities.filter((a) => !a.fromBikeCoach && STRENGTH.test(a.sport) && !i.history.some((w) => overlapsByHalf(w, a)));
-  return {
-    ...i,
-    history: [...i.history, ...watchStrength.map((a) => ({ startMs: a.startMs, durationS: a.durationS, exercises: [] }))],
-    activities: i.activities.filter((a) => CYCLING.test(a.sport) || CARDIO.test(a.sport)),
-  };
+export type WeekIntensity = {
+  /** Strength sessions (recorded here, in Hevy, or only on the watch), doubles removed. */
+  strengthSessions: number;
+  /** Moderate-equivalent minutes of all endurance training: moderate plus vigorous counted twice. */
+  enduranceMin: number;
+  /** Endurance sessions with at least 20 vigorous minutes or 5 peak minutes. */
+  hardSessions: number;
+};
+
+/**
+ * The class of one Garmin activity: the watch's time in heart rate zone (zones 2-3 moderate, 4-5 vigorous) when the record has
+ * it, else the watch's own intensity minutes, else the average heart rate against the person's zones, else the whole duration
+ * as moderate. Policy: `intensity.*`.
+ */
+export function garminClass(a: StatsContentInput['activities'][number], hrMaxBpm: number | null): IntensityClass {
+  if (a.hrZoneS) return classifyByZoneSeconds(a.hrZoneS);
+  if (a.moderateMin !== undefined || a.vigorousMin !== undefined) return classifyByIntensityMinutes(a.moderateMin ?? 0, a.vigorousMin ?? 0);
+  return classifyByAvgHr(a.durationS, a.avgHr ?? null, hrMaxBpm);
 }
 
-/** Minutes per sport over the local days from `fromMs` to `toMs`, doubles removed like in the stats record (for the sport chart). */
-export function sportMinutes(i: StatsContentInput, fromMs: number, toMs: number): Record<Sport, number> {
-  const dates: string[] = [];
-  for (let d = new Date(new Date(fromMs).getFullYear(), new Date(fromMs).getMonth(), new Date(fromMs).getDate()); d.getTime() <= toMs; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(dateKey(d.getTime()));
-  const total = Object.fromEntries(SPORTS.map((s) => [s, 0])) as Record<Sport, number>;
-  for (const day of daysFor(countable(i), dates, {})) for (const s of SPORTS) total[s] += day.minutes[s];
-  return total;
+/**
+ * What the intensity view counts over the local days from `fromMs` to `toMs`, doubles removed like in the stats record: a ride of
+ * this app counts once (not again as its Garmin copy), a strength session recorded here or in Hevy not again from the watch.
+ * Runs come from Garmin with their heart rate, manual runs without data count moderate. Walking, hiking, yoga and mobility count
+ * for nothing.
+ */
+export function weekIntensity(i: StatsContentInput, fromMs: number, toMs: number): WeekIntensity {
+  const dates = new Set<string>();
+  for (let d = new Date(new Date(fromMs).getFullYear(), new Date(fromMs).getMonth(), new Date(fromMs).getDate()); d.getTime() <= toMs; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.add(dateKey(d.getTime()));
+  const inRange = (ms: number) => dates.has(dateKey(ms));
+  const hrMax = i.hrMaxBpm ?? null;
+  const watch = i.activities.filter((a) => !a.fromBikeCoach);
+  const sessions: IntensityClass[] = [];
+  for (const r of i.rides) if (inRange(r.startedAtMs)) sessions.push(r.intensity ?? classifyByAvgHr(r.durationS, r.avgHrBpm ?? null, hrMax));
+  const ownRide = (a: { startMs: number; durationS: number }) => i.rides.some((r) => overlapsByHalf({ startMs: r.startedAtMs, durationS: r.durationS }, a));
+  const garminRuns = watch.filter((a) => (RUN_TYPES as readonly string[]).includes(a.sport));
+  for (const a of watch) {
+    if (!inRange(a.startMs)) continue;
+    const run = (RUN_TYPES as readonly string[]).includes(a.sport);
+    if (run || CARDIO.test(a.sport) || (CYCLING.test(a.sport) && !ownRide(a))) sessions.push(garminClass(a, hrMax));
+  }
+  for (const r of i.runs) if (inRange(r.startMs) && !garminRuns.some((a) => overlapsByHalf(r, a))) sessions.push(noData(r.durationS));
+  const watchStrength = watch.filter((a) => inRange(a.startMs) && STRENGTH.test(a.sport) && !i.history.some((w) => overlapsByHalf(w, a)));
+  return {
+    strengthSessions: i.history.filter((w) => inRange(w.startMs)).length + watchStrength.length,
+    enduranceMin: sessions.reduce((a, c) => a + equivalentMinutes(c), 0),
+    hardSessions: sessions.filter(isHardSession).length,
+  };
 }

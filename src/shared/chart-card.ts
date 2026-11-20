@@ -1,12 +1,12 @@
 import { readMuscleChart, type MuscleChart } from './muscle-chart';
-import { readSportChart, type SportChart } from './sport-chart';
+import { readIntensityChart, type IntensityChart } from './intensity-chart';
 
-/** The chart cards a chat message can carry. A new kind is added here; a reader skips a kind it does not know. */
-export type ChartCard = MuscleChart | SportChart;
+/** The chart cards a chat message can carry. A new kind is added here; a reader skips a kind it does not know, so old `sport` cards (the share of time per sport, replaced by `intensity`) read as nothing. */
+export type ChartCard = MuscleChart | IntensityChart;
 
 /** Reads one stored card; an unknown kind or unusable data gives null. */
 export function readChartCard(x: unknown): ChartCard | null {
-  return readMuscleChart(x) ?? readSportChart(x);
+  return readMuscleChart(x) ?? readIntensityChart(x);
 }
 
 /** Reads a stored list of cards; entries that cannot be read are skipped. */

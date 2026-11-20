@@ -34,8 +34,9 @@ import { allTraining } from '../all-training';
 import { activitiesHint, allActivities, ActivitySeen, doneByDate } from '../activity-feed';
 import { manualRuns } from '../run/runs';
 import { CoachTasks, type GivenTask, type TaskFrom } from '../coach-tasks';
-import { sportMinutes, statsContent, type StatsContentInput } from '../stats/stats-content';
-import { buildSportChart, type SportChart } from '../../shared/sport-chart';
+import { statsContent, weekIntensity, type StatsContentInput } from '../stats/stats-content';
+import { buildIntensityChart, type IntensityChart } from '../../shared/intensity-chart';
+import { hrMaxFor } from '../../shared/hr-zones';
 import { radForChat } from '../tracking/bike-export';
 import { ChatCoach } from '../chat/chat-coach';
 import { planHint, type TodayContext } from '../chat/plan-hint';
@@ -198,18 +199,27 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
       return { ...todayAdvice({ ...ctx, date, planDay: planFor(records.all(id, 'weekplan'), date) }), date, mode: ctx.frame.mode };
     } catch { return null; }
   };
-  /** What the stats and the sport chart count: the recorded training of a profile from all sources. */
+  /** The person's maximum heart rate: the own value, else Tanaka from the birth date of the profile or the watch; null when unknown. */
+  const hrMaxOf = (id: string): number | null => {
+    const p = profiles().find((x) => x.id === id);
+    const birthDate = p?.birthDate ?? garminData(id)?.body?.birthDate ?? undefined;
+    return hrMaxFor({ ...(p?.hrMaxBpm ? { hrMaxBpm: p.hrMaxBpm } : {}), ...(birthDate ? { birthDate } : {}) }, nowMs())?.bpm ?? null;
+  };
+  /** What the stats and the intensity chart count: the recorded training of a profile from all sources. */
   const statsInputOf = (id: string): StatsContentInput => ({
     nowMs: nowMs(), rides: coach.state(id).summaries, history: gym.history(id), runs: run.runsFor(id),
     mobility: records.all(id, 'mobility'), activities: garminData(id)?.activities ?? [],
     ratings: (dates) => ratingsOf(id, dates, 'done'), goal: goalOfProfile(records, id, dateKey(nowMs())).strength,
     templateMuscle: (templateId) => gym.templateMuscle(id, templateId),
     ftp: coach.state(id).ftpHistory, weightKg: profiles().find((p) => p.id === id)?.weightKg ?? null,
+    hrMaxBpm: hrMaxOf(id),
   });
-  /** The sport chart of a period: the minutes per sport against the goal's sports (with a temporary focus); null without training in it. */
-  const sportChartOf = (id: string, fromMs: number, toMs: number): SportChart | null => {
-    const m = sportMinutes(statsInputOf(id), fromMs, toMs);
-    return buildSportChart({ fromMs, toMs, minutes: m, sports: goalOfProfile(records, id, dateKey(toMs)).sports });
+  /** The intensity chart of a period: strength sessions, moderate-equivalent minutes and hard sessions per week against the goal's bands (with a temporary focus); null without training in it. */
+  const intensityChartOf = (id: string, fromMs: number, toMs: number): IntensityChart | null => {
+    const input = statsInputOf(id), goal = goalOfProfile(records, id, dateKey(toMs));
+    // Without a hard session in the half year before the period, the person is new to hard sessions.
+    const before = weekIntensity(input, fromMs - 183 * 86_400_000, fromMs - 86_400_000);
+    return buildIntensityChart({ fromMs, toMs, totals: weekIntensity(input, fromMs, toMs), goal: { strength: goal.strength, sports: goal.sports }, newToIntensity: before.hardSessions === 0 });
   };
   /** What the stats record of a profile says; null when there is nothing in the nine weeks. */
   const statsOf = (id: string): Omit<StatsBody, 'atMs'> | null => {
@@ -238,7 +248,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     giveTask: (id, t) => giveTask(id, 'chat', t),
     strengthFacts: (id) => gym.reviewFacts(id),
     muscleChart: (id, fromMs, toMs) => gym.muscleChart(id, fromMs, toMs),
-    sportChart: sportChartOf,
+    intensityChart: intensityChartOf,
   });
   /** What the three coaches have planned next, short, for the week chat. */
   const sessionsOf = (id: string): object => {

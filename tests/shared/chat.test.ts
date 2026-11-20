@@ -85,11 +85,16 @@ describe('Muskel-Diagramm an einer Nachricht', () => {
 
 describe('Mehrere Diagramme an einer Nachricht', () => {
   const muscles = { kind: 'muskeln', fromMs: 1, toMs: 2, axes: [{ group: 'chest', sets: 3, min: 1, max: 2 }, { group: 'back', sets: 0, min: 1, max: 2 }, { group: 'abs', sets: 1, min: 0, max: 2 }] };
-  const sport = { kind: 'sport', fromMs: 1, toMs: 2, parts: [{ sport: 'gym', minutes: 60, target: 0.5 }, { sport: 'bike', minutes: 60, target: 0.5 }] };
-  it('liest das Sport-Diagramm als einzelnes Diagramm', () => {
+  const sport = { kind: 'intensity', fromMs: 1, toMs: 2, weeks: 1, strength: { perWeek: 2, min: 2, max: 3 }, endurance: { perWeek: 200, min: 150, max: 300 }, hard: { perWeek: 1, min: 1, max: 1 } };
+  const oldSport = { kind: 'sport', fromMs: 1, toMs: 2, parts: [{ sport: 'gym', minutes: 60, target: 0.5 }] };
+  it('liest das Intensitäts-Diagramm als einzelnes Diagramm', () => {
     const m = readChat({ role: 'coach', text: 'x', atMs: 1, chart: sport })!;
     expect(m.chart).toEqual(sport);
     expect(chartsOf(m)).toEqual([sport]);
+  });
+  it('überspringt eine alte Sportanteil-Karte still', () => {
+    expect(readChat({ role: 'coach', text: 'x', atMs: 1, chart: oldSport })!.chart).toBeUndefined();
+    expect(chartsOf(readChat({ role: 'coach', text: 'x', atMs: 1, chart: muscles, charts: [muscles, oldSport] })!)).toEqual([muscles]);
   });
   it('liest eine Liste und überspringt unbekannte Arten darin', () => {
     const m = readChat({ role: 'coach', text: 'x', atMs: 1, chart: muscles, charts: [muscles, { kind: 'herz' }, sport] })!;
