@@ -1,4 +1,4 @@
-import type { TrackedExercise, TrackedWorkout } from '../../session';
+import { exerciseBlocks, formatDecimal, moveExerciseTo, type TrackedExercise, type TrackedWorkout } from '../../session';
 import type { Mark } from '../kit';
 import { setLabels } from '../setGrid';
 import { cap, numberWord } from '../week-path';
@@ -104,4 +104,25 @@ export function effortAsk(w: TrackedWorkout, asks: (rid: string) => boolean): Tr
   let last: { e: TrackedExercise; at: number } | null = null;
   for (const e of w.exercises) for (const s of e.sets) if (s.doneMs !== null && (!last || s.doneMs >= last.at)) last = { e, at: s.doneMs };
   return last && asks(last.e.rid) ? last.e : null;
+}
+
+/** Moves the block of the exercise directly before the block of the current (first open) one, so it becomes the current one. Nothing to move: the workout as it is. */
+export function makeCurrent(w: TrackedWorkout, rid: string, currentRid: string | null): TrackedWorkout {
+  const blocks = exerciseBlocks(w);
+  const at = (r: string | null) => blocks.findIndex((b) => b.some((e) => e.rid === r));
+  const from = at(rid);
+  const to = at(currentRid);
+  if (from < 0 || to < 0 || from === to) return w;
+  return moveExerciseTo(w, rid, from < to ? to - 1 : to);
+}
+
+/** One set of an expanded exercise as a line to read: "Satz 1: 40 kg × 10, geschafft". */
+export function setLine(e: TrackedExercise, index: number): string {
+  const s = e.sets[index]!;
+  const label = setLabels(e.sets)[index] === 'Aufw.' ? 'Aufwärmsatz' : `Satz ${index + 1}`;
+  const kg = s.weightKg ?? s.plannedKg ?? s.prefillKg ?? null;
+  const reps = s.reps ?? s.plannedReps ?? null;
+  const parts = [kg !== null ? `${formatDecimal(kg)} kg` : null, reps !== null ? `${reps} Wdh.` : s.durationS !== null ? `${s.durationS} s` : null].filter(Boolean);
+  const what = parts.length > 0 ? `${label}: ${parts.join(' × ')}` : label;
+  return s.doneMs !== null ? `${what}, geschafft` : what;
 }

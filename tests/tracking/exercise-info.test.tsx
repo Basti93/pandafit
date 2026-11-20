@@ -27,9 +27,12 @@ async function running() {
   await screen.findByText('Kniebeuge');
 }
 
-/** Makes the exercise the focus (its row under "Danach") and opens its Anleitung sheet. */
+/** Makes the exercise the focus (its row under "Danach", then "Jetzt diese Übung machen") and opens its Anleitung sheet. */
 async function anleitung(title: string) {
-  if (!screen.queryByRole('region', { name: title })) fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent?.startsWith(title))!);
+  if (!screen.queryByRole('region', { name: title })) {
+    fireEvent.click(screen.getAllByRole('button').find((b) => b.textContent?.startsWith(title))!);
+    fireEvent.click(screen.getByRole('button', { name: 'Jetzt diese Übung machen' }));
+  }
   fireEvent.click(within(screen.getByRole('region', { name: title })).getByRole('button', { name: 'Anleitung' }));
   return screen.findByRole('dialog', { name: title });
 }

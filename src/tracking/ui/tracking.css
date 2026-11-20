@@ -670,3 +670,4 @@
 .tk-garmin-preview dt { color: var(--muted); }
 .tk-garmin-preview dd { margin: 0; }
 .tk-garmin-repo { display: block; margin: .5rem 0; }
+.tk-peek { margin: 0; padding: 0 0 0 var(--space-4); }
