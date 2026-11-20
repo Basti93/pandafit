@@ -36,7 +36,7 @@ describe('SportBalance', () => {
   it('hat eine Legende mit den Sportnamen und streut keine Zahlen', () => {
     const { container } = render(<SportBalance chart={chart} />);
     const legend = container.querySelector('.tk-sportlegend')!;
-    for (const n of ['Kraft', 'Rad', 'Laufen']) expect(within(legend as HTMLElement).getByText(n)).toBeTruthy();
+    for (const n of ['Kraft', 'Rad', 'Laufen und Ausdauer']) expect(within(legend as HTMLElement).getByText(n)).toBeTruthy();
     expect(container.textContent).not.toMatch(/\d/);
   });
   it('zeigt eine Sportart mit Zeit ohne Ziel in der Legende, ohne Zielsegment', () => {

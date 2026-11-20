@@ -96,11 +96,19 @@ describe('sportMinutes (Sportanteil)', () => {
       runs: [{ startMs: at(16), durationS: 1200 }],
       activities: [act(at(14), 3600, 'cycling', true), act(at(14), 3600, 'road_biking'), act(at(15), 1800, 'strength_training'), act(at(13), 2700, 'cycling'), act(at(16, 18), 600, 'hiking')],
     }), from, to);
-    expect(m).toMatchObject({ bike: 105, strength: 30, run: 20, other: 10 });
+    expect(m).toMatchObject({ bike: 105, strength: 30, run: 20, other: 0 });
   });
   it('zählt nur Tage im Zeitraum, auch weiter zurück als die neun Wochen der Statistik', () => {
     const m = sportMinutes(base({ rides: [{ startedAtMs: at(1, 10, 2), durationS: 3600 }, { startedAtMs: at(14), durationS: 1800 }] }), at(1, 0, 2), to);
     expect(m.bike).toBe(90);
     expect(sportMinutes(base({ rides: [{ startedAtMs: at(1, 10, 2), durationS: 3600 }] }), at(1, 0, 4), to).bike).toBe(0);
+  });
+  it('zählt Gehen, Wandern, Yoga und Unbekanntes nicht, Schwimmen, Rudern, Crosstrainer und Cardio schon', () => {
+    const m = sportMinutes(base({ activities: [act(at(14), 3600, 'walking'), act(at(14, 12), 3600, 'hiking'), act(at(14, 15), 600, 'yoga'), act(at(15), 600, 'mystery'), act(at(15, 12), 1800, 'lap_swimming'), act(at(16), 1200, 'indoor_rowing'), act(at(16, 12), 600, 'elliptical'), act(at(16, 15), 600, 'indoor_cardio')] }), from, to);
+    expect(m.other).toBe(30 + 20 + 10 + 10);
+  });
+  it('zählt Kraft und Rad von der Uhr weiter, auch neben nicht gezählten Aktivitäten', () => {
+    const m = sportMinutes(base({ activities: [act(at(14), 1800, 'strength_training'), act(at(15), 1800, 'cycling'), act(at(16), 1800, 'walking')] }), from, to);
+    expect(m).toMatchObject({ strength: 30, bike: 30, other: 0 });
   });
 });

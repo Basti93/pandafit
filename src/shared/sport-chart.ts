@@ -12,7 +12,7 @@ export type SportChart = { kind: 'sport'; fromMs: number; toMs: number; parts: S
 export type SportVerdict = 'passt' | 'zu wenig' | 'zu viel';
 
 const ORDER: SportKey[] = ['gym', 'bike', 'run'];
-/** Minutes per sport of the stats record; running and other endurance activities count as run, mobility not at all. */
+/** Minutes per sport of the stats record; running and real cardio (the stats record's other, filtered by `sportMinutes`) count as run, mobility not at all. */
 export type SportMinutes = Partial<Record<'strength' | 'bike' | 'run' | 'other' | 'mobility', number>>;
 
 const minutesOf = (m: SportMinutes): Record<SportKey, number> => ({ gym: m.strength ?? 0, bike: m.bike ?? 0, run: (m.run ?? 0) + (m.other ?? 0) });
@@ -62,9 +62,13 @@ export function sportVerdicts(c: SportChart): Partial<Record<SportKey, SportVerd
   }));
 }
 
-const NAME: Record<SportKey, string> = { gym: 'Kraft', bike: 'Rad', run: 'Laufen' };
-/** The sport as a noun after "fürs" and as a neuter subject ("Das ..."). */
-const NOUN: Record<SportKey, string> = { gym: 'Krafttraining', bike: 'Radfahren', run: 'Laufen' };
+const NAME: Record<SportKey, string> = { gym: 'Kraft', bike: 'Rad', run: 'Laufen und Ausdauer' };
+/** The sport in the two sentences: too little time ("Fürs ...") and too much time (subject and verb). */
+const PHRASE: Record<SportKey, { less: string; more: string }> = {
+  gym: { less: 'Fürs Krafttraining war', more: 'Das Krafttraining nahm' },
+  bike: { less: 'Fürs Radfahren war', more: 'Das Radfahren nahm' },
+  run: { less: 'Für Laufen und Ausdauer war', more: 'Laufen und Ausdauer nahmen' },
+};
 const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} und ${xs[xs.length - 1]}`);
 
 /** One calm sentence in words: the clearest mismatch, or that it fits. No numbers. */
@@ -79,7 +83,7 @@ export function sportChartSentence(c: SportChart): string {
     if (verdict && verdict !== 'passt' && (!worst || d > worst.d + 1e-9 || (Math.abs(d - worst.d) <= 1e-9 && verdict === 'zu wenig'))) worst = { sport: p.sport, v: verdict, d };
   }
   if (!worst) { const names = c.parts.map((p) => NAME[p.sport]); return `${list(names)} ${names.length > 1 ? 'passen' : 'passt'} gut zu deinem Ziel.`; }
-  return worst.v === 'zu wenig' ? `Fürs ${NOUN[worst.sport]} war zuletzt weniger Zeit, als dein Ziel vorsieht.` : `Das ${NOUN[worst.sport]} nahm zuletzt mehr Zeit ein, als dein Ziel vorsieht.`;
+  return worst.v === 'zu wenig' ? `${PHRASE[worst.sport].less} zuletzt weniger Zeit, als dein Ziel vorsieht.` : `${PHRASE[worst.sport].more} zuletzt mehr Zeit ein, als dein Ziel vorsieht.`;
 }
 
 /** The text for screen readers: which sports fit, which have too little and which too much time, in words. */

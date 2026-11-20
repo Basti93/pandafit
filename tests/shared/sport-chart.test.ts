@@ -44,14 +44,17 @@ describe('sportChartSentence', () => {
   it('sagt in Worten, was passt', () => {
     expect(sportChartSentence(mk([['gym', 50, 0.5], ['bike', 50, 0.5]]))).toBe('Kraft und Rad passen gut zu deinem Ziel.');
     expect(sportChartSentence(mk([['gym', 100, 1]]))).toBe('Kraft passt gut zu deinem Ziel.');
-    expect(sportChartSentence(mk([['gym', 40, 0.4], ['bike', 40, 0.4], ['run', 20, 0.2]]))).toBe('Kraft, Rad und Laufen passen gut zu deinem Ziel.');
+    expect(sportChartSentence(mk([['gym', 40, 0.4], ['bike', 40, 0.4], ['run', 20, 0.2]]))).toBe('Kraft, Rad und Laufen und Ausdauer passen gut zu deinem Ziel.');
   });
   it('nennt die größte Abweichung mit richtiger Grammatik je Sportart', () => {
-    expect(sportChartSentence(mk([['gym', 60, 0.4], ['bike', 40, 0.3], ['run', 0, 0.3]]))).toBe('Fürs Laufen war zuletzt weniger Zeit, als dein Ziel vorsieht.');
+    expect(sportChartSentence(mk([['gym', 60, 0.4], ['bike', 40, 0.3], ['run', 0, 0.3]]))).toBe('Für Laufen und Ausdauer war zuletzt weniger Zeit, als dein Ziel vorsieht.');
     expect(sportChartSentence(mk([['gym', 20, 0.5], ['bike', 80, 0.5]]))).toBe('Fürs Krafttraining war zuletzt weniger Zeit, als dein Ziel vorsieht.');
     expect(sportChartSentence(mk([['gym', 80, 0.4], ['bike', 10, 0.3], ['run', 10, 0.3]]))).toBe('Das Krafttraining nahm zuletzt mehr Zeit ein, als dein Ziel vorsieht.');
-    expect(sportChartSentence(mk([['bike', 90, 0.4], ['run', 10, 0.6]]))).toBe('Fürs Laufen war zuletzt weniger Zeit, als dein Ziel vorsieht.');
+    expect(sportChartSentence(mk([['bike', 90, 0.4], ['run', 10, 0.6]]))).toBe('Für Laufen und Ausdauer war zuletzt weniger Zeit, als dein Ziel vorsieht.');
     expect(sportChartSentence(mk([['bike', 80, 0.2], ['gym', 20, 0.8]]))).toBe('Fürs Krafttraining war zuletzt weniger Zeit, als dein Ziel vorsieht.');
+  });
+  it('nennt die Ausdauer-Sportart im Plural beim Zuviel', () => {
+    expect(sportChartSentence(mk([['gym', 10, 0.4], ['run', 90, 0.6 - 0.5]]))).toBe('Laufen und Ausdauer nahmen zuletzt mehr Zeit ein, als dein Ziel vorsieht.');
   });
   it('ohne Ziel sagt der Satz das und enthält keine Zahl', () => {
     const s = sportChartSentence(mk([['gym', 50, 0], ['bike', 50, 0]]));

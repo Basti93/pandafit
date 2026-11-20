@@ -76,11 +76,24 @@ export function statsContent(i: StatsContentInput): Omit<StatsBody, 'atMs'> | nu
   return { type: 'stats', goal: i.goal, days, muscles, ...(ftp.length ? { ftp } : {}), ...(i.weightKg ? { weightKg: i.weightKg } : {}) };
 }
 
+/** Real cardio besides running and cycling; walking, hiking, yoga and unknown activities are not training time for the sport chart. */
+const CARDIO = /swim|rowing|elliptical|cardio/i;
+
+/** The input for the sport chart: a strength session only the watch knows counts as strength, and activities that are no training for it are dropped. */
+function countable(i: StatsContentInput): StatsContentInput {
+  const watchStrength = i.activities.filter((a) => !a.fromBikeCoach && STRENGTH.test(a.sport) && !i.history.some((w) => overlapsByHalf(w, a)));
+  return {
+    ...i,
+    history: [...i.history, ...watchStrength.map((a) => ({ startMs: a.startMs, durationS: a.durationS, exercises: [] }))],
+    activities: i.activities.filter((a) => CYCLING.test(a.sport) || CARDIO.test(a.sport)),
+  };
+}
+
 /** Minutes per sport over the local days from `fromMs` to `toMs`, doubles removed like in the stats record (for the sport chart). */
 export function sportMinutes(i: StatsContentInput, fromMs: number, toMs: number): Record<Sport, number> {
   const dates: string[] = [];
   for (let d = new Date(new Date(fromMs).getFullYear(), new Date(fromMs).getMonth(), new Date(fromMs).getDate()); d.getTime() <= toMs; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(dateKey(d.getTime()));
   const total = Object.fromEntries(SPORTS.map((s) => [s, 0])) as Record<Sport, number>;
-  for (const day of daysFor(i, dates, {})) for (const s of SPORTS) total[s] += day.minutes[s];
+  for (const day of daysFor(countable(i), dates, {})) for (const s of SPORTS) total[s] += day.minutes[s];
   return total;
 }
