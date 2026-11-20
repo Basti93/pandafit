@@ -422,7 +422,7 @@
 .tk-chat-form textarea:focus-visible { outline: none; border-color: var(--accent); }
 
 /* Calmer strength screens (X4). */
-.tk-screen button.tk-rowbtn-main { font-weight: 800; color: var(--accent); }
+.tk-screen button.tk-rowbtn-main { font-weight: 700; color: var(--accent); }
 .tk-stepper { gap: var(--space-2); }
 .tk-sheet .tk-stepper button.tk-del-ex { margin-left: 1rem; }
 .tk-stepcount { min-width: 5rem; text-align: center; }
@@ -538,11 +538,18 @@
 }
 .tk-stand { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
 .tk-stand-marks { display: flex; gap: var(--space-2); flex: none; }
-/* The one slim timer card (kit TimerCard): the text is plain, two secondary buttons beside it; on a narrow phone they wrap into a second row. */
-.tk-timercard { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); border-radius: var(--radius-card); background: var(--card); border: 1px solid var(--line); box-shadow: 0 4px 14px var(--shadow-lift); }
-.tk-timer-actions { display: flex; gap: var(--space-2); flex: 1 1 auto; justify-content: flex-end; }
-.tk-timer-actions > button.secondary { flex: 1 1 auto; }
-.tk-screen .tk-rest-main { flex: 1 1 8rem; min-width: 0; display: flex; align-items: center; gap: 0.3em; min-height: 44px; padding: 0; color: inherit; font-weight: 400; font-size: var(--text-m); font-variant-numeric: tabular-nums; text-align: left; }
+/* The one timer card (kit TimerCard): accent panel, small label, big time, thin bar, two 44 px buttons in a row. */
+.tk-timercard { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: color-mix(in srgb, var(--accent) 22%, var(--card)); border: 2px solid var(--accent); box-shadow: 0 6px 18px var(--shadow-lift); }
+.tk-timercard[data-ending="true"] { background: color-mix(in srgb, var(--good) 24%, var(--card)); border-color: var(--good); }
+.tk-timer-actions { display: flex; gap: var(--space-2); flex: 1 1 100%; justify-content: stretch; }
+.tk-timer-actions > button.secondary { flex: 1 1 0; min-height: 44px; min-width: 44px; }
+.tk-screen .tk-rest-main { flex: 1 1 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 0; color: var(--text); text-align: center; font-variant-numeric: tabular-nums; }
+.tk-rest-label { font-size: var(--text-s); font-weight: 700; color: var(--muted); }
+.tk-rest-time { font-family: var(--font-data); font-size: 3rem /* display size: 3x body */; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--text); }
+.tk-timercard[data-ending="true"] .tk-rest-time { color: var(--good-text); }
+.tk-rest-bar { flex: 1 1 100%; display: block; height: .4rem; border-radius: var(--radius-pill); background: var(--card-soft); overflow: hidden; }
+.tk-rest-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.tk-timercard[data-ending="true"] .tk-rest-bar > span { background: var(--good); }
 /* The one part bar (kit Band): parts as wide as their share, filled in the accent. */
 .tk-band { display: flex; align-items: flex-end; gap: 3px; height: 1rem; }
 .tk-band > span { display: block; min-width: 4px; height: 6px; border-radius: 3px; background: var(--field-line); overflow: hidden; }

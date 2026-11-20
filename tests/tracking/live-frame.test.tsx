@@ -146,6 +146,20 @@ describe('the frame of the running workout', () => {
     await waitFor(() => expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull());
   });
 
+  it('die Pause ist groß, ein Timer ohne Ansage pro Sekunde', async () => {
+    const w = { ...open2(), rest: { startMs: 70_000, durationS: 90 } } as LoggedWorkout;
+    const { port } = fakePort([rec(w)]);
+    render(<WorkoutScreen port={port} newId={ids.newId} now={() => 100_000} />);
+    await resume();
+    const bar = screen.getByRole('timer', { name: 'Satzpause' });
+    expect(bar.className).toContain('tk-timercard');
+    expect(bar.getAttribute('aria-live')).toBeNull(); // role=timer: not announced every second
+    expect(bar.getAttribute('data-ending')).toBeNull();
+    expect(bar.querySelector('b.tk-rest-time')?.textContent).toBe('1:00');
+    expect(bar.querySelector('.tk-rest-bar')?.getAttribute('aria-hidden')).toBe('true');
+    expect(within(bar).getAllByRole('button')).toHaveLength(2);
+  });
+
   it('die Pause zählt herunter und verschwindet bei null', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     try {
@@ -158,7 +172,12 @@ describe('the frame of the running workout', () => {
       t += 10_000;
       act(() => { vi.advanceTimersByTime(1000); });
       expect(screen.getByRole('timer', { name: 'Satzpause' }).textContent).toContain('noch 0:50');
-      t += 60_000;
+      t += 45_000; // 5 s left: the calm "nearly over" state
+      act(() => { vi.advanceTimersByTime(1000); });
+      const ending = screen.getByRole('timer', { name: 'Satzpause' });
+      expect(ending.getAttribute('data-ending')).toBe('true');
+      expect(ending.textContent).toContain('Gleich geht’s weiter, noch 0:05');
+      t += 15_000;
       act(() => { vi.advanceTimersByTime(1000); });
       expect(screen.queryByRole('timer', { name: 'Satzpause' })).toBeNull();
     } finally { vi.useRealTimers(); }
