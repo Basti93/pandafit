@@ -361,6 +361,16 @@ export class ChatCoach {
     try { const { fromMs, toMs } = chartPeriodRange(raw.period, now); return (raw.kind === 'sport' ? this.deps.sportChart : this.deps.muscleChart)?.(id, fromMs, toMs) ?? null; } catch { return null; }
   }
 
+  /** The cards of the monthly review: the muscle chart, and the sport chart when more than one sport was trained or the goal names more than one. */
+  private reviewCards(id: string, now: number): ChartCard[] {
+    const cards: ChartCard[] = [];
+    const muscles = this.chartOf(id, { kind: 'muskeln', period: 'month' }, now);
+    if (muscles) cards.push(muscles);
+    const sport = this.chartOf(id, { kind: 'sport', period: 'month' }, now);
+    if (sport?.kind === 'sport' && (sport.parts.filter((p) => p.minutes > 0).length >= 2 || sport.parts.filter((p) => p.target > 0).length > 1)) cards.push(sport);
+    return cards;
+  }
+
   /** The rider's lasting wish for a coach, as a proposed wish rule (the rider confirms it in the rules). */
   private proposeWish(id: string, t: GivenTask, now: number): void {
     const text = t.text.replace(/\s+/g, ' ').trim().slice(0, RULE_TEXT_MAX);
@@ -589,8 +599,8 @@ export class ChatCoach {
       const ask = askPush && complaints.length === 0 && goalOfProfile(this.deps.store, id, dateKey(now)).push === undefined;
       const block = this.blockOf(id, raw.block, now);
       // One card per message: with a section proposed, the push question follows as its own message, so both stay open to answer.
-      const chart = this.chartOf(id, { kind: 'muskeln', period: 'month' }, now);
-      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...(chart ? { chart } : {}), ...(ask && !block ? { askPush: true as const } : {}) }, null, null, block);
+      const cards = this.reviewCards(id, now);
+      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...cardFields(cards), ...(ask && !block ? { askPush: true as const } : {}) }, null, null, block);
       if (ask && block) {
         // The review is written: a question that cannot be stored now does not make it count as failed; it is asked later.
         try { this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: now + 1, askPush: true }); } catch { return 'written'; }

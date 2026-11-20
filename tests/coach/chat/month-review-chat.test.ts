@@ -342,3 +342,40 @@ describe('Spinnennetz im Rückblick', () => {
     expect(messages(s)[0]!.chart).toBeUndefined();
   });
 });
+
+describe('Sport-Diagramm im Rückblick', () => {
+  const muscles = { kind: 'muskeln' as const, fromMs: 1, toMs: 2, axes: [{ group: 'chest' as const, sets: 3, min: 1, max: 2 }, { group: 'back' as const, sets: 0, min: 1, max: 2 }, { group: 'abs' as const, sets: 1, min: 0, max: 2 }] };
+  const sport = (parts: [string, number, number][]) => ({ kind: 'sport' as const, fromMs: 1, toMs: 2, parts: parts.map(([sport, minutes, target]) => ({ sport, minutes, target })) });
+  const open = async (sportChart: (id: string, from: number, to: number) => unknown, muscleChart: (id: string, from: number, to: number) => unknown = () => muscles) => {
+    const s = store();
+    const c = new ChatCoach({ store: s as never, ask: (async () => answer()) as never, nowMs: () => NOW, newId: () => `m${++n}`, strengthFacts: () => ({ wochen: [], uebungen: [], untenDauerhaft: [] }), muscleChart: muscleChart as never, sportChart: sportChart as never });
+    expect(await c.openReview('p', 'month')).toBe('written');
+    return messages(s)[0]!;
+  };
+  it('hängt es zusätzlich an, wenn in mindestens zwei Sportarten trainiert wurde', async () => {
+    const sc = sport([['gym', 60, 0], ['bike', 60, 0]]);
+    const seen: number[][] = [];
+    const m = await open((_id, from, to) => { seen.push([from, to]); return sc; });
+    expect(m.charts).toEqual([muscles, sc]);
+    expect(m.chart).toEqual(muscles);
+    expect(seen).toEqual([[new Date(2026, 10, 1).getTime(), NOW]]);
+  });
+  it('hängt es an, wenn das Ziel mehr als eine Sportart nennt, auch bei einer trainierten', async () => {
+    const sc = sport([['gym', 60, 0.5], ['bike', 0, 0.5]]);
+    expect((await open(() => sc)).charts).toEqual([muscles, sc]);
+  });
+  it('lässt es weg bei einer Sportart und einem Ziel für höchstens eine', async () => {
+    const m = await open(() => sport([['gym', 60, 1]]));
+    expect(m.charts).toBeUndefined();
+    expect(m.chart).toEqual(muscles);
+  });
+  it('steht allein, wenn es kein Krafttraining gab, und fehlt ohne Daten oder bei Fehler', async () => {
+    const sc = sport([['bike', 60, 0.5], ['run', 30, 0.5]]);
+    const only = await open(() => sc, () => null);
+    expect(only.chart).toEqual(sc);
+    expect(only.charts).toBeUndefined();
+    expect((await open(() => null)).chart).toEqual(muscles);
+    const m = await open(() => { throw new Error('x'); }, () => null);
+    expect(m.chart).toBeUndefined();
+  });
+});
