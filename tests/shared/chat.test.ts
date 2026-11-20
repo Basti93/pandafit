@@ -67,3 +67,18 @@ test('ein gespeicherter Rückblick wird auf 150 Zeichen je Text und Grund gekür
   const m = readChat({ role: 'coach', text: 'Rückblick', atMs: 1, review: { observations: [{ text: long, reason: long }] } });
   expect(m?.review?.observations[0]).toEqual({ text: 'x'.repeat(150), reason: 'x'.repeat(150) });
 });
+
+describe('Muskel-Diagramm an einer Nachricht', () => {
+  const chart = { kind: 'muskeln', fromMs: 1, toMs: 2, axes: [{ group: 'chest', sets: 3, min: 1, max: 2 }, { group: 'back', sets: 0, min: 1, max: 2 }, { group: 'abs', sets: 1, min: 0, max: 2 }] };
+  it('liest das Diagramm mit', () => {
+    expect(readChat({ role: 'coach', text: 'x', atMs: 1, chart })?.chart).toEqual(chart);
+  });
+  it('liest alte Nachrichten ohne Diagramm', () => {
+    expect(readChat({ role: 'coach', text: 'x', atMs: 1 })?.chart).toBeUndefined();
+  });
+  it('überspringt eine unbekannte Art, die Nachricht bleibt lesbar', () => {
+    const m = readChat({ role: 'coach', text: 'x', atMs: 1, chart: { kind: 'herz', fromMs: 1, toMs: 2 } });
+    expect(m).not.toBeNull();
+    expect(m).not.toHaveProperty('chart');
+  });
+});
