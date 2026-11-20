@@ -578,7 +578,7 @@
 .tk-radar-ring { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
 .tk-radar-spoke { stroke: var(--line); stroke-width: 1; opacity: .6; }
 .tk-radar-shape { fill: var(--accent); fill-opacity: .28; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
-.tk-radar-label { fill: var(--muted); font-size: 13px; }
+.tk-radar-label { fill: var(--muted); font-size: var(--text-s); }
 .tk-radar-note { margin: 0; font-size: var(--text-s); color: var(--muted); }
 .tk-weekpath { display: flex; flex-direction: column; gap: var(--space-2); }
 .tk-weekpath-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
