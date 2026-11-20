@@ -3,7 +3,9 @@ import { PUSHES, type Push } from './personal';
 import { isExperience, type Experience } from './experience';
 import { ruleNumber } from './training-policy';
 import { parseProposal, type WeekProposal } from './week-plan';
-import { readMuscleChart, type MuscleChart } from './muscle-chart';
+import { cardFields, readChartCard, readChartCards, type ChartCard } from './chart-card';
+
+export { cardFields };
 
 /**
  * One chat thread per profile, one `chat` record per message. The rider's messages are written by any of their devices,
@@ -41,8 +43,10 @@ export type ChatMessage = {
   nextChange?: string;
   /** The id of the `rule` record (a rule or goal change) this message proposes. */
   rule?: string;
-  /** A chart card: the training distribution per muscle group, counted by code from the recorded workouts (never by the model). */
-  chart?: MuscleChart;
+  /** A chart card, counted by code from the recorded training (never by the model): the first card of the message. */
+  chart?: ChartCard;
+  /** All chart cards when there are several (`chart` is then the first). Read both through `chartsOf`. */
+  charts?: ChartCard[];
   /** The id of the `block` record (a fixed section) the monthly review proposes. */
   block?: string;
   /** The monthly review: the observations Bo made, each with its reason (also in `text`). */
@@ -73,6 +77,9 @@ export const MAX_OBSERVATION_CHARS = 150;
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const strings = (x: unknown): x is string[] => Array.isArray(x) && x.every((s) => typeof s === 'string');
 
+/** The chart cards of a message in order: the list when there is one, else the single card, else none. */
+export const chartsOf = (m: Pick<ChatMessage, 'chart' | 'charts'>): ChartCard[] => m.charts ?? (m.chart ? [m.chart] : []);
+
 export function readChat(x: unknown): ChatMessage | null {
   if (!isObj(x) || (x.role !== 'rider' && x.role !== 'coach') || typeof x.text !== 'string' || typeof x.atMs !== 'number' || !Number.isFinite(x.atMs)) return null;
   const m: ChatMessage = { role: x.role, text: x.text.slice(0, MAX_CHAT_TEXT), atMs: x.atMs };
@@ -97,7 +104,8 @@ export function readChat(x: unknown): ChatMessage | null {
   if (x.warnings !== undefined) { if (!strings(x.warnings)) return null; m.warnings = x.warnings; }
   if (x.review !== undefined) { const r = readReview(x.review); if (!r) return null; m.review = r; }
   // A chart of an unknown kind (or unusable data) is left out; the message still reads.
-  if (x.chart !== undefined) { const c = readMuscleChart(x.chart); if (c) m.chart = c; }
+  if (x.chart !== undefined) { const c = readChartCard(x.chart); if (c) m.chart = c; }
+  if (x.charts !== undefined) { const l = readChartCards(x.charts); if (l.length > 0) { m.charts = l; m.chart = l[0]; } }
   return m;
 }
 
