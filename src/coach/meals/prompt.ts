@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DAY_LONG, mealKey, parseMealKey, SECTIONS, SLOT_LABEL, SLOT_TIME, SLOTS, UNITS, type Dish, type Ingredient, type Meal } from '../../shared/meals';
+import { outOfSeasonNames, type Availability } from '../../shared/availability';
 import { fitsEveryone } from './check';
 import { constraintsFor, type Member, type Slotted } from './rules';
 
@@ -35,10 +36,21 @@ export const dataBlock = (name: string, value: unknown): string => `<${name}-nur
 /** People appear as letters only. Names and ids stay on this Mac. */
 export const letters = (members: Member[]): Map<string, string> => new Map(members.map((m, i) => [m.id, String.fromCharCode(65 + i)]));
 
+const MONTH_NAME = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+/** The month and the produce without season, as the planning prompts tell it: a sentence for the end and the data block. */
+export function availabilityPrompt(av?: Availability): { blocks: string[]; sentence: string } {
+  if (!av) return { blocks: [], sentence: '' };
+  return {
+    blocks: [dataBlock('ausser-saison', outOfSeasonNames(av.month))],
+    sentence: ` Aktueller Monat: ${MONTH_NAME[av.month - 1]}. Nimm frisches Obst und Gemüse nur, wenn es jetzt im deutschen Freiland Saison hat oder gut lagert; meide die Zutaten aus ausser-saison-nur-daten.`,
+  };
+}
+
 export const STOCK_SENTENCE = 'Nutze Zutaten aus vorrat-nur-daten bevorzugt, damit nichts übrig bleibt.';
 
-export function buildMealPrompt(i: { members: Member[]; slots: Slotted[]; trainingDays: number[]; lastWeek: string[]; stock?: string[] }): string {
+export function buildMealPrompt(i: { members: Member[]; slots: Slotted[]; trainingDays: number[]; lastWeek: string[]; stock?: string[]; avail?: Availability }): string {
   const L = letters(i.members);
+  const a = availabilityPrompt(i.avail);
   const blocks = [
     dataBlock('personen', i.members.map((m) => ({ person: L.get(m.id), ernaehrung: m.settings.diet, abneigungen: m.settings.dislikes, unvertraeglichkeiten: m.settings.intolerances }))),
     dataBlock('mahlzeiten', i.slots.map((s) => ({
@@ -47,19 +59,22 @@ export function buildMealPrompt(i: { members: Member[]; slots: Slotted[]; traini
     }))),
     dataBlock('letzte-woche', i.lastWeek),
     ...(i.stock && i.stock.length > 0 ? [dataBlock('vorrat', i.stock)] : []),
+    ...a.blocks,
   ];
   const stock = i.stock && i.stock.length > 0 ? ` ${STOCK_SENTENCE}` : '';
-  return `${blocks.join('\n\n')}\n\nPlane für jede Mahlzeit im Block mahlzeiten-nur-daten genau ein Gericht, mit tag und slot wie dort. Wiederhole möglichst keine Gerichte aus letzte-woche-nur-daten.${stock}`;
+  return `${blocks.join('\n\n')}\n\nPlane für jede Mahlzeit im Block mahlzeiten-nur-daten genau ein Gericht, mit tag und slot wie dort. Wiederhole möglichst keine Gerichte aus letzte-woche-nur-daten.${stock}${a.sentence}`;
 }
 
-export function buildSwapPrompt(i: { members: Member[]; slot: Slotted; training: boolean; avoid: string[] }): string {
+export function buildSwapPrompt(i: { members: Member[]; slot: Slotted; training: boolean; avoid: string[]; avail?: Availability }): string {
   const L = letters(i.members);
+  const a = availabilityPrompt(i.avail);
   const who = constraintsFor(i.members, i.slot.eaters);
   return [
     dataBlock('personen', who.map((m) => ({ person: L.get(m.id), ernaehrung: m.settings.diet, abneigungen: m.settings.dislikes, unvertraeglichkeiten: m.settings.intolerances }))),
     dataBlock('mahlzeit', { tag: i.slot.day, wochentag: DAY_LONG[i.slot.day], slot: i.slot.slot, art: SLOT_LABEL[i.slot.slot], mitnehmen: i.slot.takeAlong, trainingstag: i.training }),
     dataBlock('nicht', i.avoid),
-  ].join('\n\n') + '\n\nSchlage genau ein neues Gericht für diese Mahlzeit vor, restVon ist null. Keines aus nicht-nur-daten.';
+    ...a.blocks,
+  ].join('\n\n') + `\n\nSchlage genau ein neues Gericht für diese Mahlzeit vor, restVon ist null. Keines aus nicht-nur-daten.${a.sentence}`;
 }
 
 const text = (s: string, max: number): string | null => { const t = s.trim().replace(/\s+/g, ' '); return t && t.length <= max ? t : null; };

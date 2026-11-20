@@ -6,6 +6,7 @@ import {
 } from '../../shared/meals';
 import { calmText, fitsEveryone } from './check';
 import { dataBlock, dishFrom, letters } from './prompt';
+import type { Availability } from '../../shared/availability';
 import { constraintsFor, dishOf, pickRecipe, type Member } from './rules';
 
 /**
@@ -203,15 +204,15 @@ export function ruleTarget(text: string, today: number | null): string | null {
 }
 
 /** Another fitting dish from the list for one meal, for everyone eating it and its rests. */
-export function listDish(plan: MealPlan, state: MealState, members: Member[], key: string, random: () => number): Dish | null {
+export function listDish(plan: MealPlan, state: MealState, members: Member[], key: string, random: () => number, avail?: Availability): Dish | null {
   const meal = plan.meals.find((m) => mealKey(m.day, m.slot) === key);
   if (!meal) return null;
   const reuses = plan.meals.filter((m) => m.reuseOf === key);
   const who = constraintsFor(members, [...new Set([key, ...reuses.map((r) => mealKey(r.day, r.slot))].flatMap((k) => eatersOf(plan, state, k)))]);
   const used = new Set(plan.meals.flatMap((m) => (m.dish.recipeId ? [m.dish.recipeId] : [])));
   const keepDays = Math.max(0, ...reuses.map((r) => r.day - meal.day));
-  const r = pickRecipe({ slot: meal.slot, eaters: who, takeAlong: meal.takeAlong, training: plan.trainingDays.includes(meal.day), keepDays, used, not: meal.dish.recipeId, random })
-    ?? pickRecipe({ slot: meal.slot, eaters: constraintsFor(members, eatersOf(plan, state, key)), takeAlong: meal.takeAlong, training: false, keepDays: 0, used, not: meal.dish.recipeId, random });
+  const r = pickRecipe({ slot: meal.slot, eaters: who, takeAlong: meal.takeAlong, training: plan.trainingDays.includes(meal.day), keepDays, used, not: meal.dish.recipeId, random, ...(avail ? { avail } : {}) })
+    ?? pickRecipe({ slot: meal.slot, eaters: constraintsFor(members, eatersOf(plan, state, key)), takeAlong: meal.takeAlong, training: false, keepDays: 0, used, not: meal.dish.recipeId, random, ...(avail ? { avail } : {}) });
   return r ? dishOf(r) : null;
 }
 

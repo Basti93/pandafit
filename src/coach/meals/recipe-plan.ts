@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { mealKey, SLOT_LABEL, SLOTS, type Dish, type Meal, type Side, type Slot } from '../../shared/meals';
 import { ruleNumber, ruleValues } from '../../shared/training-policy';
+import { problems, type Availability } from '../../shared/availability';
 import { fitsEveryone } from './check';
 import { planGutBoost } from './recipe-health';
 import { sideCandidates } from './recipe-side';
@@ -47,7 +48,7 @@ export function pickSide(r: StoredRecipe, slot: Slot, eaters: readonly Member[],
 const maxMinutes = (slot: Slot, day: number): number => (slot === 'fruehstueck' ? 20 : day >= 5 ? 90 : slot === 'mittag' ? 45 : 60);
 const minProtein = (slot: Slot): number => (slot === 'abend' ? 12 : 20);
 
-export type Need = { slot: Slot; day: number; eaters: Member[]; takeAlong: boolean; training: boolean; keepDays: number };
+export type Need = { slot: Slot; day: number; eaters: Member[]; takeAlong: boolean; training: boolean; keepDays: number; /** Month and shop: recipes with an ingredient out of season or range lose to ones without. */ avail?: Availability };
 
 /** The cheap part of fitting a meal: slot, time, keeping and protein. */
 function fitsCheap(r: StoredRecipe, n: Need): boolean {
@@ -73,22 +74,25 @@ const countOf = (r: StoredRecipe): number => r.rating?.count ?? 0;
  */
 export function shortlist(pool: readonly StoredRecipe[], n: Need, random: () => number, size = shortlistSize(), avoid: ReadonlySet<string> = new Set(), favs?: Favourites): StoredRecipe[] {
   // The cheap checks first, so the word checks run only on what could win.
-  const scored: { r: StoredRecipe; bucket: number }[] = [];
+  const allowed = ruleNumber('meals.season-preference');
+  const scored: { r: StoredRecipe; bucket: number; clean: boolean }[] = [];
   for (const r of pool) {
     if (avoid.has(r.id) || !fitsCheap(r, n)) continue;
     const liked = likedBy(r, n, favs);
-    scored.push({ r, bucket: Math.floor(random() * 4) + (n.training && r.proteinG >= 24 ? 1 : 0) + liked * favouriteBoost() + (r.ausgewogen === 'gut' ? planGutBoost() : 0) });
+    scored.push({ r, clean: !n.avail || problems(r.ingredients, n.avail).length <= allowed, bucket: Math.floor(random() * 4) + (n.training && r.proteinG >= 24 ? 1 : 0) + liked * favouriteBoost() + (r.ausgewogen === 'gut' ? planGutBoost() : 0) });
   }
-  scored.sort((a, b) => b.bucket - a.bucket || ratingOf(b.r) - ratingOf(a.r) || countOf(b.r) - countOf(a.r) || (a.r.id < b.r.id ? -1 : 1));
+  scored.sort((a, b) => Number(b.clean) - Number(a.clean) || b.bucket - a.bucket || ratingOf(b.r) - ratingOf(a.r) || countOf(b.r) - countOf(a.r) || (a.r.id < b.r.id ? -1 : 1));
   const out: StoredRecipe[] = [];
+  const outClean = new Set<string>();
   let treats = 0;
-  for (const { r } of scored) {
+  for (const { r, clean } of scored) {
     if (out.length >= size) break;
     // A treat is planned at most `meals.treat-per-week` times a week: a few in the list are enough to choose from.
     if (r.ausgewogen === 'wenig' && treats >= TREAT_CANDIDATES) continue;
-    if (fitsEveryone(r, n.eaters.map((e) => e.settings))) { out.push(r); if (r.ausgewogen === 'wenig') treats++; }
+    if (fitsEveryone(r, n.eaters.map((e) => e.settings))) { out.push(r); if (clean) outClean.add(r.id); if (r.ausgewogen === 'wenig') treats++; }
   }
-  return out;
+  // With an alternative at hand, a recipe out of season or range is not offered at all.
+  return outClean.size > 0 ? out.filter((r) => outClean.has(r.id)) : out;
 }
 
 // ---- The AI chooses from the shortlists ----
@@ -133,6 +137,8 @@ export type PlanInput = {
   stock?: readonly string[];
   /** Ask the AI to choose from the shortlists; without it, or when it fails, the first shortlisted recipe is taken. */
   aiChoice: boolean; timeoutMs?: number;
+  /** Month and shop of the household. */
+  avail?: Availability;
 };
 
 /**
@@ -146,7 +152,7 @@ export async function planFromRecipes(p: PlanInput): Promise<Meal[]> {
   const need = (s: Slotted): Need => {
     const reuses = p.slots.filter((x) => x.reuseOf === mealKey(s.day, s.slot));
     const eaters = constraintsFor(p.members, [...new Set([...s.eaters, ...reuses.flatMap((x) => x.eaters)])]);
-    return { slot: s.slot, day: s.day, eaters, takeAlong: s.takeAlong, training: p.trainingDays.includes(s.day), keepDays: Math.max(0, ...reuses.map((x) => x.day - s.day)) };
+    return { slot: s.slot, day: s.day, eaters, takeAlong: s.takeAlong, training: p.trainingDays.includes(s.day), keepDays: Math.max(0, ...reuses.map((x) => x.day - s.day)), ...(p.avail ? { avail: p.avail } : {}) };
   };
   // The sources first (rests follow them).
   const sources = p.slots.filter((s) => !s.reuseOf);
