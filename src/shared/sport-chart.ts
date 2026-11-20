@@ -62,12 +62,12 @@ export function sportVerdicts(c: SportChart): Partial<Record<SportKey, SportVerd
   }));
 }
 
-const NAME: Record<SportKey, string> = { gym: 'Kraft', bike: 'Rad', run: 'Laufen und Ausdauer' };
+const NAME: Record<SportKey, string> = { gym: 'Kraft', bike: 'Rad', run: 'Laufen & Co.' };
 /** The sport in the two sentences: too little time ("Fürs ...") and too much time (subject and verb). */
 const PHRASE: Record<SportKey, { less: string; more: string }> = {
   gym: { less: 'Fürs Krafttraining war', more: 'Das Krafttraining nahm' },
   bike: { less: 'Fürs Radfahren war', more: 'Das Radfahren nahm' },
-  run: { less: 'Für Laufen und Ausdauer war', more: 'Laufen und Ausdauer nahmen' },
+  run: { less: 'Für Laufen & Co. war', more: 'Laufen & Co. nahm' },
 };
 const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} und ${xs[xs.length - 1]}`);
 
