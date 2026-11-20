@@ -98,3 +98,13 @@ export function preferAvailable<T>(items: readonly T[], linesOf: (t: T) => reado
   const clean = items.filter((t) => isClean(linesOf(t), av));
   return clean.length > 0 ? clean : [...items];
 }
+
+/** A short hint for a shopping row: a rare ingredient with its substitute, an out-of-season one, or null. */
+export function shopHint(name: string, section: Section, av: Availability): string | null {
+  const sub = rareSubstitute(name, av.store);
+  const parts = [
+    ...(sub ? [`Gibt es beim Discounter selten. Ersatz: ${sub}.`] : []),
+    ...(seasonProblem(name, section, av.month) ? ['Hat gerade keine Saison.'] : []),
+  ];
+  return parts.length > 0 ? parts.join(' ') : null;
+}

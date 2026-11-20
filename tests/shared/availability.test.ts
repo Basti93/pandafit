@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RECIPES } from '../../src/coach/meals/recipes';
 import { pickRecipe } from '../../src/coach/meals/rules';
-import { monthOf, outOfSeasonNames, preferAvailable, rareSubstitute, seasonProblem } from '../../src/shared/availability';
+import { monthOf, outOfSeasonNames, preferAvailable, rareSubstitute, seasonProblem, shopHint } from '../../src/shared/availability';
 import { DEFAULT_MEAL_SETTINGS } from '../../src/shared/meals';
 import { policyRule } from '../../src/shared/training-policy';
 
@@ -89,5 +89,19 @@ describe('Discounter-Sortiment', () => {
     const member = { id: 'max', settings: { ...DEFAULT_MEAL_SETTINGS, on: true } };
     const r = pickRecipe({ slot: 'abend', eaters: [member], takeAlong: false, training: false, keepDays: 0, used: new Set(), random: () => 0.4, avail: { month: 7, store: 'discounter' } })!;
     expect(r.ingredients.some((i) => rareSubstitute(i.name, 'discounter') !== null)).toBe(false);
+  });
+});
+
+describe('Hinweis auf der Einkaufsliste', () => {
+  const av = (store: 'discounter' | 'supermarkt', month: number) => ({ month, store });
+  it('nennt beim Discounter den Ersatz', () => {
+    expect(shopHint('Austernpilze', 'Obst und Gemüse', av('discounter', 7))).toBe('Gibt es beim Discounter selten. Ersatz: braune Champignons.');
+  });
+  it('sagt bei fehlender Saison, dass es keine hat', () => {
+    expect(shopHint('Spargel', 'Obst und Gemüse', av('supermarkt', 11))).toBe('Hat gerade keine Saison.');
+  });
+  it('schweigt, wenn alles passt', () => {
+    expect(shopHint('Kartoffeln', 'Obst und Gemüse', av('discounter', 11))).toBeNull();
+    expect(shopHint('Austernpilze', 'Obst und Gemüse', av('supermarkt', 7))).toBeNull();
   });
 });

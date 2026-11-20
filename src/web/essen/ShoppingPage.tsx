@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { monthOf, shopHint, type Availability } from '../../shared/availability';
 import { ownWeekOf, tickWrites, windowShoppingList, type WindowList } from '../../shared/meal-list';
 import {
   changeOwn, isOwnKey, newOwnKey, OWN_AMOUNT_MAX, OWN_NAME_MAX, withItem, withOwn,
-  type ItemState, type MealState, type ShopItem,
+  type ItemState, type MealState, type Section, type ShopItem,
 } from '../../shared/meals';
 import { Card, ConfirmLink } from '../../tracking/ui/kit';
 import type { MealData } from '../MealsScreen';
@@ -15,13 +16,14 @@ const NEXT: Record<ItemState, ItemState> = { offen: 'gekauft', gekauft: 'offen',
 const SECTION_LABEL: Record<string, string> = { Sonstiges: 'Weiteres', Vorrat: 'Trockenware' };
 
 /** One list of calm cards. Tick to buy; "Haben wir" sits at the right of each open row, an own item has a confirmed "Entfernen". Items already at home have no box. Bought items sink to the end of their group. */
-function Shopping({ list, onSet, onOwn, onAdd }: { list: WindowList; onSet: (item: string, state: ItemState) => void; onOwn: (week: string | undefined, f: (s: MealState, at: number) => MealState) => void; onAdd: (f: (s: MealState, at: number) => MealState) => void }) {
+function Shopping({ list, av, onSet, onOwn, onAdd }: { list: WindowList; av: Availability; onSet: (item: string, state: ItemState) => void; onOwn: (week: string | undefined, f: (s: MealState, at: number) => MealState) => void; onAdd: (f: (s: MealState, at: number) => MealState) => void }) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
-  const row = (i: ShopItem) => {
+  const row = (section: Section | null) => (i: ShopItem) => {
     const own = isOwnKey(i.key);
     const bought = i.state === 'gekauft';
     const home = i.state === 'da';
+    const hint = home || bought || own ? null : shopHint(i.name, section ?? 'Sonstiges', av);
     return (
       <li key={i.key} className={`pm-item ${i.state}`}>
         <div className={`pm-itemline${home ? ' nobox' : ''}`}>
@@ -34,16 +36,17 @@ function Shopping({ list, onSet, onOwn, onAdd }: { list: WindowList; onSet: (ite
             ? <ConfirmLink label="Entfernen" question="Wirklich entfernen?" onConfirm={() => onOwn(i.week, (s, at) => changeOwn(s, i.key, { removed: true }, at))} />
             : !bought && <button type="button" className="link pm-have" onClick={() => onSet(i.key, home ? 'offen' : 'da')}>{home ? 'Doch kaufen' : 'Haben wir'}</button>}
         </div>
+        {hint && <small className="muted">{hint}</small>}
       </li>
     );
   };
-  const group = (title: string, items: ShopItem[], cls = '') => {
+  const group = (title: string, items: ShopItem[], cls = '', section: Section | null = null) => {
     // Bought items go to the end of their group.
     const sorted = [...items.filter((i) => i.state !== 'gekauft'), ...items.filter((i) => i.state === 'gekauft')];
     return items.length === 0 ? null : (
       <Card soft label={title} key={title}>
         <h2 className="tk-section">{title}</h2>
-        <ul className={`pm-list ${cls}`}>{sorted.map(row)}</ul>
+        <ul className={`pm-list ${cls}`}>{sorted.map(row(section))}</ul>
       </Card>
     );
   };
@@ -66,8 +69,8 @@ function Shopping({ list, onSet, onOwn, onAdd }: { list: WindowList; onSet: (ite
         </form>
       </Card>
       {list.total === 0 && list.own.length === 0 && <p className="muted">Für die nächsten Tage gibt es nichts einzukaufen.</p>}
-      {list.sections.map((s) => group(SECTION_LABEL[s.section] ?? s.section, s.items))}
-      {group('Kleine Mengen, schau kurz nach', list.pantry)}
+      {list.sections.map((s) => group(SECTION_LABEL[s.section] ?? s.section, s.items, '', s.section))}
+      {group('Kleine Mengen, schau kurz nach', list.pantry, '', 'Vorrat')}
       {group('Eigenes', list.own)}
       {group('Schon da', list.have, 'pm-have-list')}
     </>
@@ -87,7 +90,7 @@ export function ShoppingPage({ weeks, nowMs, change, onBack }: { weeks: Week[]; 
         {weeks.length > 0 ? (
           <>
             {sentence && <p className="muted pm-meta">{sentence}</p>}
-            <Shopping list={list} onSet={set} onOwn={own} onAdd={add} />
+            <Shopping list={list} av={{ month: monthOf(nowMs), store: weeks.find((w) => w.plan.store)?.plan.store ?? 'supermarkt' }} onSet={set} onOwn={own} onAdd={add} />
           </>
         ) : <p className="muted">Es gibt noch keinen Plan, also auch keine Liste.</p>}
       </div>
