@@ -1,4 +1,4 @@
-import { CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT, ChatCoach } from '../../../src/coach/chat/chat-coach';
+import { CHAT_SYSTEM_PROMPT, WORKOUT_SYSTEM_PROMPT, ChatCoach, answerSchema } from '../../../src/coach/chat/chat-coach';
 import { ClaudeError } from '../../../src/coach/claude-client';
 import { chatThread } from '../../../src/shared/chat';
 import type { RecordKind, TrackedRecord } from '../../../src/shared/records';
@@ -590,5 +590,43 @@ describe('a rule draft that is too long', () => {
   test('the prompt names the length limit and never claims a rule already applies', () => {
     expect(CHAT_SYSTEM_PROMPT).toContain('text als kurzer Satz mit höchstens 120 Zeichen');
     expect(CHAT_SYSTEM_PROMPT).toContain('Schreib nie, dass eine Regel schon gilt oder eingetragen ist');
+  });
+});
+
+describe('Muskel-Spinnennetz im Chat', () => {
+  const chart = { kind: 'muskeln' as const, fromMs: 1, toMs: 2, axes: [{ group: 'chest' as const, sets: 3, min: 1, max: 2 }, { group: 'back' as const, sets: 0, min: 1, max: 2 }, { group: 'abs' as const, sets: 1, min: 0, max: 2 }] };
+  const run = async (answer: object, muscleChart?: (id: string, from: number, to: number) => unknown) => {
+    const s = store([rider('r1', 'Wie ausgewogen trainiere ich?')]);
+    const c = new ChatCoach({ store: s as never, ask: (async () => ({ text: 'Schau mal.', proposal: null, riderAskedForMore: false, ...answer })) as never, nowMs: () => NOW, newId: () => `c${++n}`, ...(muscleChart ? { muscleChart: muscleChart as never } : {}) });
+    await c.tick('p');
+    return replies(s)[0]!;
+  };
+  it('bietet Bo das Diagramm nur mit bekannten Zeiträumen an', () => {
+    const props = ((answerSchema as { properties: Record<string, unknown> }).properties.chart) as { anyOf: { properties?: { period: { enum: string[] } } }[] };
+    expect(props.anyOf.find((x) => x.properties)!.properties!.period.enum).toEqual(['month', 'weeks4', 'months3']);
+  });
+  it('hängt das vom Code berechnete Diagramm an, mit dem Zeitraum aus dem Register', async () => {
+    const seen: number[][] = [];
+    const m = await run({ chart: { kind: 'muskeln', period: 'weeks4' } }, (_id, from, to) => { seen.push([from, to]); return chart; });
+    expect(m.chart).toEqual(chart);
+    expect(seen).toEqual([[NOW - 28 * 86_400_000, NOW]]);
+  });
+  it('lässt unbekannte Arten und Zeiträume weg', async () => {
+    const calls: unknown[] = [];
+    const f = (...a: unknown[]) => { calls.push(a); return chart; };
+    expect((await run({ chart: { kind: 'herz', period: 'weeks4' } }, f)).chart).toBeUndefined();
+    expect((await run({ chart: { kind: 'muskeln', period: 'jahr' } }, f)).chart).toBeUndefined();
+    expect((await run({ chart: 'muskeln' }, f)).chart).toBeUndefined();
+    expect(calls).toHaveLength(0);
+  });
+  it('lässt das Diagramm weg ohne Daten, ohne Quelle oder wenn die Berechnung scheitert', async () => {
+    expect((await run({ chart: { kind: 'muskeln', period: 'month' } }, () => null)).chart).toBeUndefined();
+    expect((await run({ chart: { kind: 'muskeln', period: 'month' } })).chart).toBeUndefined();
+    const m = await run({ chart: { kind: 'muskeln', period: 'month' } }, () => { throw new Error('x'); });
+    expect(m).toMatchObject({ text: 'Schau mal.' });
+    expect(m.chart).toBeUndefined();
+  });
+  it('ohne Wunsch kein Diagramm', async () => {
+    expect((await run({ chart: null }, () => chart)).chart).toBeUndefined();
   });
 });

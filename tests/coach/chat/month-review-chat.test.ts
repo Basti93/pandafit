@@ -319,3 +319,26 @@ describe('Abschnitt im Rückblick', () => {
     expect(openProposals(thread, [], [], [], '2026-11-23').map((m) => m.id)).toEqual([question!.id]);
   });
 });
+
+describe('Spinnennetz im Rückblick', () => {
+  const chart = { kind: 'muskeln' as const, fromMs: 1, toMs: 2, axes: [{ group: 'chest' as const, sets: 3, min: 1, max: 2 }, { group: 'back' as const, sets: 0, min: 1, max: 2 }, { group: 'abs' as const, sets: 1, min: 0, max: 2 }] };
+  const withChart = (s: ReturnType<typeof store>, muscleChart: (id: string, from: number, to: number) => unknown) =>
+    new ChatCoach({ store: s as never, ask: (async () => answer()) as never, nowMs: () => NOW, newId: () => `m${++n}`, strengthFacts: () => ({ wochen: [], uebungen: [], untenDauerhaft: [] }), muscleChart: muscleChart as never });
+  it('hängt das Diagramm des Monats an, wenn es Krafttraining gab', async () => {
+    const s = store();
+    const seen: number[][] = [];
+    expect(await withChart(s, (_id, from, to) => { seen.push([from, to]); return chart; }).openReview('p', 'month')).toBe('written');
+    expect(messages(s)[0]!.chart).toEqual(chart);
+    expect(seen).toEqual([[new Date(2026, 10, 1).getTime(), NOW]]);
+  });
+  it('lässt es ohne Krafttraining weg', async () => {
+    const s = store();
+    expect(await withChart(s, () => null).openReview('p', 'month')).toBe('written');
+    expect(messages(s)[0]!.chart).toBeUndefined();
+  });
+  it('der Rückblick gelingt auch, wenn die Berechnung scheitert', async () => {
+    const s = store();
+    expect(await withChart(s, () => { throw new Error('x'); }).openReview('p', 'month')).toBe('written');
+    expect(messages(s)[0]!.chart).toBeUndefined();
+  });
+});

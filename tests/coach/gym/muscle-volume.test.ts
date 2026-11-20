@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { muscleGroupOf, weeklySetRange, MUSCLE_TARGETS } from '../../../src/shared/muscle-targets';
-import { muscleVolume } from '../../../src/coach/gym/muscle-volume';
+import { muscleVolume, muscleChartOf } from '../../../src/coach/gym/muscle-volume';
 import { buildGymPrompt, GYM_SYSTEM_PROMPT } from '../../../src/coach/gym/prompt';
 import { initialGymState } from '../../../src/coach/gym/state';
 import type { StrengthWorkout } from '../../../src/coach/hevy';
@@ -131,5 +131,17 @@ describe('the muscle pairs in the gym prompt', () => {
     expect(p).toContain('\nStudio: Invented Gym\n');
     expect(p).toMatch(/"wiederholungen":\{"min":6,"max":12\},"schritt":"in [\d,]+-kg-Stufen"/);
     expect(buildGymPrompt(base)).not.toContain('Studio:');
+  });
+});
+
+describe('muscleChartOf', () => {
+  const bp = { templateId: 'BP', title: 'Bench Press (Barbell)', sets: 4, warmups: 2 };
+  it('zählt nur Arbeitssätze der Trainings im Zeitraum', () => {
+    const ws = [workout(2, [bp]), workout(20, [{ ...bp, sets: 8 }]), workout(40, [{ ...bp, sets: 50 }])];
+    const c = muscleChartOf(ws, templates, [], NOW - 28 * DAY, NOW, 'muscle', [])!;
+    expect(c.axes.find((a) => a.group === 'chest')!.sets).toBe(12);
+  });
+  it('gibt kein Diagramm ohne Krafttraining im Zeitraum', () => {
+    expect(muscleChartOf([workout(40, [bp])], templates, [], NOW - 28 * DAY, NOW, 'muscle', [])).toBeNull();
   });
 });

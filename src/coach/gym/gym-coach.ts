@@ -5,6 +5,8 @@ import { hardSetsOf, musclesOfFrom } from './pre-fatigue';
 import { activeBlock, blockWeek } from '../../shared/block';
 import { addDays } from '../../shared/week-plan';
 import { strengthFacts, type StrengthFacts } from './review-facts';
+import { muscleChartOf } from './muscle-volume';
+import type { MuscleChart } from '../../shared/muscle-chart';
 import { addNote, type ChangeNote } from '../../shared/change-notes';
 import type { NextStep } from '../../shared/stats';
 import type { RideSummary } from '../metrics';
@@ -396,6 +398,13 @@ export class GymCoach {
     const real = this.history(id);
     // The level goes along, so the review does not call a beginner's lower volume low.
     return strengthFacts(real, [...listed.values()], this.catalog(id), { strength: goal.strength, focus: goal.focus }, now, this.experience(id, real.filter((w) => w.startMs <= now), now));
+  }
+  /** The muscle chart of the stored workouts in a period, for the chat. Null without workouts in it. */
+  muscleChart(id: string, fromMs: number, toMs: number): MuscleChart | null {
+    const now = this.deps.nowMs();
+    const goal = this.deps.store ? goalOfProfile(this.deps.store, id, dateKey(now)) : goalOf([], dateKey(now));
+    const real = this.history(id);
+    return muscleChartOf(real, [...(this.listed.get(id)?.values() ?? [])], this.catalog(id), fromMs, toMs, goal.strength, goal.focus, this.experience(id, real.filter((w) => w.startMs <= now), now));
   }
   /** What the coach changed on exercises, newest last: the notes of the plans, kept up to 20 and 60 days. */
   changeNotes(id: string): ChangeNote[] { return this.state(id).changeNotes.map(({ key: _k, ...n }) => n); }

@@ -3,6 +3,7 @@ import { PUSHES, type Push } from './personal';
 import { isExperience, type Experience } from './experience';
 import { ruleNumber } from './training-policy';
 import { parseProposal, type WeekProposal } from './week-plan';
+import { readMuscleChart, type MuscleChart } from './muscle-chart';
 
 /**
  * One chat thread per profile, one `chat` record per message. The rider's messages are written by any of their devices,
@@ -40,6 +41,8 @@ export type ChatMessage = {
   nextChange?: string;
   /** The id of the `rule` record (a rule or goal change) this message proposes. */
   rule?: string;
+  /** A chart card: the training distribution per muscle group, counted by code from the recorded workouts (never by the model). */
+  chart?: MuscleChart;
   /** The id of the `block` record (a fixed section) the monthly review proposes. */
   block?: string;
   /** The monthly review: the observations Bo made, each with its reason (also in `text`). */
@@ -93,6 +96,8 @@ export function readChat(x: unknown): ChatMessage | null {
   if (x.proposal !== undefined) { const p = parseProposal(x.proposal); if (!p) return null; m.proposal = p; }
   if (x.warnings !== undefined) { if (!strings(x.warnings)) return null; m.warnings = x.warnings; }
   if (x.review !== undefined) { const r = readReview(x.review); if (!r) return null; m.review = r; }
+  // A chart of an unknown kind (or unusable data) is left out; the message still reads.
+  if (x.chart !== undefined) { const c = readMuscleChart(x.chart); if (c) m.chart = c; }
   return m;
 }
 
