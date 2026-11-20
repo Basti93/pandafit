@@ -585,7 +585,8 @@ export class ChatCoach {
       const ask = askPush && complaints.length === 0 && goalOfProfile(this.deps.store, id, dateKey(now)).push === undefined;
       const block = this.blockOf(id, raw.block, now);
       // One card per message: with a section proposed, the push question follows as its own message, so both stay open to answer.
-      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...(ask && !block ? { askPush: true as const } : {}) }, null, null, block);
+      const chart = this.chartOf(id, { kind: 'muskeln', period: 'month' }, now);
+      this.put(id, { role: 'coach', text, atMs: now, push: true, review: { observations }, ...(chart ? { chart } : {}), ...(ask && !block ? { askPush: true as const } : {}) }, null, null, block);
       if (ask && block) {
         // The review is written: a question that cannot be stored now does not make it count as failed; it is asked later.
         try { this.put(id, { role: 'coach', text: PUSH_QUESTION, atMs: now + 1, askPush: true }); } catch { return 'written'; }
