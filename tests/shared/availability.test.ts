@@ -6,6 +6,10 @@ import { DEFAULT_MEAL_SETTINGS } from '../../src/shared/meals';
 import { policyRule } from '../../src/shared/training-policy';
 
 describe('Saison frischer Zutaten', () => {
+  it('lässt ganzjährig erhältliches Gemüse im Winter zu, nur hart saisonale Zutaten fallen weg', () => {
+    for (const name of ['Tomate', 'Gurke', 'Rote Paprika', 'Zucchini', 'Brokkoli']) expect(seasonProblem(name, 'Obst und Gemüse', 11)).toBe(false);
+    expect(seasonProblem('Spargel', 'Obst und Gemüse', 1)).toBe(true);
+  });
   it('erkennt Zutaten außerhalb ihrer Freilandzeit über den Schlüsselnamen', () => {
     expect(seasonProblem('Spargel', 'Obst und Gemüse', 11)).toBe(true);
     expect(seasonProblem('grüner Spargel', 'Obst und Gemüse', 5)).toBe(false);

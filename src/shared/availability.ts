@@ -8,22 +8,17 @@ import { ruleNumber } from './training-policy';
 
 /** Months, 1 to 12. A range may wrap over the new year (11 to 2). */
 type Months = readonly (readonly [number, number])[];
-const ALL: Months = [[1, 12]];
 
-/** Fresh produce with the months of its outdoor season (or its storage time). What is not in the table has no limit. Imported staples and storage crops are all year. */
+/**
+ * Only produce that is really hard to get out of its season in a German supermarket, with those months. Everything else
+ * (tomato, cucumber, pepper, courgette, broccoli, berries from abroad …) is on the shelf all year and has no limit.
+ */
 const SEASON: readonly (readonly [string, Months])[] = [
-  ['Spargel', [[4, 6]]], ['Rhabarber', [[4, 6]]], ['Erdbeere', [[5, 7]]], ['Kirsche', [[6, 8]]], ['Himbeere', [[6, 8]]], ['Johannisbeere', [[6, 7]]],
-  ['Stachelbeere', [[6, 7]]], ['Heidelbeere', [[7, 9]]], ['Brombeere', [[7, 9]]], ['Aprikose', [[7, 8]]], ['Pfirsich', [[7, 9]]], ['Nektarine', [[7, 9]]], ['Melone', [[7, 9]]],
-  ['Pflaume', [[8, 9]]], ['Zwetschge', [[8, 10]]], ['Birne', [[8, 11]]], ['Weintraube', [[8, 10]]], ['Feige', [[8, 10]]], ['Quitte', [[9, 11]]],
-  ['Zucchini', [[6, 10]]], ['Aubergine', [[7, 10]]], ['Gurke', [[6, 9]]], ['Tomate', [[6, 10]]], ['Paprika', [[7, 10]]], ['Mais', [[7, 10]]],
-  ['Brokkoli', [[6, 11]]], ['Blumenkohl', [[6, 11]]], ['Kohlrabi', [[5, 10]]], ['Radieschen', [[4, 10]]], ['Frühlingszwiebel', [[4, 9]]], ['Salat', [[5, 10]]],
-  ['Mangold', [[6, 10]]], ['Erbse', [[6, 7]]], ['Bohne', [[7, 10]]], ['Spinat', [[3, 6], [9, 11]]], ['Pfifferling', [[6, 10]]], ['Steinpilz', [[7, 10]]],
-  ['Kürbis', [[9, 12]]], ['Rote Bete', [[1, 3], [6, 12]]], ['Grünkohl', [[10, 2]]], ['Rosenkohl', [[10, 2]]], ['Wirsing', [[9, 3]]], ['Rotkohl', [[9, 3]]],
-  ['Feldsalat', [[10, 3]]], ['Chicorée', [[11, 3]]], ['Pastinake', [[10, 3]]], ['Steckrübe', [[10, 3]]], ['Schwarzwurzel', [[10, 3]]],
-  ['Mandarine', [[11, 2]]], ['Clementine', [[11, 2]]],
-  // Storage crops and imported staples.
-  ['Kartoffel', ALL], ['Zwiebel', ALL], ['Karotte', ALL], ['Apfel', ALL], ['Weißkohl', ALL], ['Sellerie', ALL], ['Lauch', ALL], ['Champignon', ALL],
-  ['Banane', ALL], ['Zitrone', ALL], ['Limette', ALL], ['Orange', ALL], ['Avocado', ALL], ['Ingwer', ALL], ['Knoblauch', ALL],
+  ['Spargel', [[4, 6]]], ['Rhabarber', [[4, 6]]], ['Bärlauch', [[3, 5]]], ['Erdbeere', [[4, 7]]], ['Kirsche', [[5, 8]]],
+  ['Johannisbeere', [[6, 8]]], ['Stachelbeere', [[6, 8]]], ['Aprikose', [[6, 8]]], ['Pfirsich', [[6, 9]]], ['Nektarine', [[6, 9]]],
+  ['Pflaume', [[7, 10]]], ['Zwetschge', [[7, 10]]], ['Quitte', [[9, 12]]], ['Pfifferling', [[6, 10]]], ['Steinpilz', [[8, 10]]],
+  ['Kürbis', [[9, 2]]], ['Maronen', [[10, 1]]], ['Grünkohl', [[10, 3]]], ['Rosenkohl', [[9, 3]]], ['Schwarzwurzel', [[10, 3]]],
+  ['Steckrübe', [[10, 3]]], ['Topinambur', [[10, 3]]], ['Mandarine', [[10, 3]]], ['Clementine', [[10, 3]]],
 ];
 
 const words = (canon: string): string[] => canon.split(' ');
