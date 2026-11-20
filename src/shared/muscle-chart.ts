@@ -56,6 +56,13 @@ export function readMuscleChart(x: unknown): MuscleChart | null {
 }
 
 const label = (a: MuscleChartAxis) => MUSCLE_TARGETS[a.group].label;
+/** The group as the subject of a sentence: article and noun, and whether it is plural. */
+const SUBJECT: Record<MuscleGroup, { np: string; plural?: true }> = {
+  chest: { np: 'die Brust' }, back: { np: 'der Rücken' }, front_delts: { np: 'die vordere Schulter' }, side_delts: { np: 'die seitliche Schulter' }, rear_delts: { np: 'die hintere Schulter' },
+  biceps: { np: 'der Bizeps' }, triceps: { np: 'der Trizeps' }, quads: { np: 'der vordere Oberschenkel' }, hamstrings: { np: 'der hintere Oberschenkel' },
+  glutes: { np: 'das Gesäß' }, calves: { np: 'die Waden', plural: true }, abs: { np: 'der Bauch' }, traps: { np: 'der Nacken' }, forearms: { np: 'die Unterarme', plural: true }, other: { np: 'das Übrige' },
+};
+const subject = (a: MuscleChartAxis) => { const s = SUBJECT[a.group]; return { np: s.np.charAt(0).toUpperCase() + s.np.slice(1), plural: !!s.plural }; };
 /** How far a group sits below its range (share of the lower bound missing) or above it (share over the upper bound), else 0. */
 const gapOf = (a: MuscleChartAxis) => (a.min > 0 && a.sets < a.min ? 1 - a.sets / a.min : 0);
 const excessOf = (a: MuscleChartAxis) => (a.max > 0 && a.sets > a.max ? a.sets / a.max - 1 : 0);
@@ -64,8 +71,8 @@ const biggest = (axes: MuscleChartAxis[], f: (a: MuscleChartAxis) => number) => 
 /** One calm sentence in words: the clearest gap or excess, or that all is in range. No numbers. */
 export function chartSentence(c: MuscleChart): string {
   const gap = biggest(c.axes, gapOf), excess = biggest(c.axes, excessOf);
-  if (gap && (!excess || gap.v >= excess.v)) return `Bei dir kam ${label(gap.a)} zuletzt am wenigsten dran, da ist noch Platz.`;
-  if (excess) return `Bei dir stand ${label(excess.a)} zuletzt im Vordergrund, du darfst gern etwas ausgleichen.`;
+  if (gap && (!excess || gap.v >= excess.v)) { const s = subject(gap.a); return `${s.np} ${s.plural ? 'kamen' : 'kam'} bei dir zuletzt am wenigsten dran, da ist noch Platz.`; }
+  if (excess) { const s = subject(excess.a); return `${s.np} ${s.plural ? 'standen' : 'stand'} bei dir zuletzt im Vordergrund, du darfst gern etwas ausgleichen.`; }
   return 'Dein Training ist gut verteilt, alle Muskelgruppen liegen im Zielbereich.';
 }
 

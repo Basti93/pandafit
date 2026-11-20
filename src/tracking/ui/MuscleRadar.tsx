@@ -7,11 +7,11 @@ const SHORT: Record<MuscleGroup, string> = {
   biceps: 'Bizeps', triceps: 'Trizeps', quads: 'Bein vorn', hamstrings: 'Bein hinten', glutes: 'Gesäß', calves: 'Waden', abs: 'Bauch', traps: 'Nacken', forearms: 'Unterarme', other: 'Sonstiges',
 };
 
-const W = 460, H = 320, CX = W / 2, CY = H / 2;
-/** The upper end of the target range sits on this ring; a group may reach 1.4 times that before it sits at the rim. */
-const RING = 70;
-const OVER = 1.4;
-const LABEL_R = RING * OVER + 14;
+const W = 360, H = 310, CX = W / 2, CY = H / 2;
+/** The upper end of the target range sits on this ring; a group may reach 1.25 times that before it sits at the rim. */
+const RING = 84;
+const OVER = 1.25;
+const RIM = RING * OVER;
 const num = (n: number) => Math.round(n * 10) / 10;
 
 /**
@@ -34,13 +34,18 @@ export function MuscleRadar({ chart }: { chart: MuscleChart }) {
     <figure className="tk-radar">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={chartSummary(chart)} focusable="false">
         <path className="tk-radar-band" d={`${poly(outer)}${poly(inner)}`} fillRule="evenodd" />
-        {chart.axes.map((a, i) => <line key={a.group} className="tk-radar-spoke" x1={CX} y1={CY} x2={at(i, RING * OVER)[0]} y2={at(i, RING * OVER)[1]} />)}
+        {chart.axes.map((a, i) => <line key={a.group} className="tk-radar-spoke" x1={CX} y1={CY} x2={at(i, RIM)[0]} y2={at(i, RIM)[1]} />)}
         <polygon className="tk-radar-ring" points={points(outer)} />
         <polygon className="tk-radar-shape" points={points(shape)} />
         {chart.axes.map((a, i) => {
-          const [x, y] = at(i, LABEL_R);
-          const c = Math.cos(angle(i));
-          return <text key={a.group} className="tk-radar-label" x={x} y={y} textAnchor={Math.abs(c) < 0.2 ? 'middle' : c > 0 ? 'start' : 'end'} dominantBaseline="central">{SHORT[a.group]}</text>;
+          const lines = SHORT[a.group].split(' ');
+          const c = Math.cos(angle(i)), sn = Math.sin(angle(i));
+          const [x, y] = at(i, RIM + 9 + (lines.length - 1) * 9 * Math.abs(sn));
+          return (
+            <text key={a.group} className="tk-radar-label" x={x} y={y} textAnchor={Math.abs(c) < 0.2 ? 'middle' : c > 0 ? 'start' : 'end'} dominantBaseline="central">
+              {lines.map((l, k) => <tspan key={l} x={x} dy={k === 0 ? `${-0.55 * (lines.length - 1)}em` : '1.1em'}>{l}</tspan>)}
+            </text>
+          );
         })}
       </svg>
       <figcaption className="tk-radar-note">{chartSentence(chart)}</figcaption>

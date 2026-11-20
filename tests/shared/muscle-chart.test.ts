@@ -78,6 +78,17 @@ describe('chartSentence', () => {
   it('spricht den Menschen mit du an', () => {
     expect(chartSentence(mk([['back', 1, 32, 40]]))).toMatch(/\b(du|dir|dein|deine|deinem)\b/i);
   });
+  it('baut ganze Sätze mit Artikel und passender Verbform', () => {
+    const gap = (g: string) => chartSentence(mk([[g, 1, 32, 40]]));
+    const over = (g: string) => chartSentence(mk([[g, 99, 32, 40]]));
+    expect(gap('calves')).toBe('Die Waden kamen bei dir zuletzt am wenigsten dran, da ist noch Platz.');
+    expect(gap('biceps')).toBe('Der Bizeps kam bei dir zuletzt am wenigsten dran, da ist noch Platz.');
+    expect(gap('abs')).toBe('Der Bauch kam bei dir zuletzt am wenigsten dran, da ist noch Platz.');
+    expect(gap('glutes')).toBe('Das Gesäß kam bei dir zuletzt am wenigsten dran, da ist noch Platz.');
+    expect(gap('chest')).toBe('Die Brust kam bei dir zuletzt am wenigsten dran, da ist noch Platz.');
+    expect(over('calves')).toBe('Die Waden standen bei dir zuletzt im Vordergrund, du darfst gern etwas ausgleichen.');
+    expect(over('back')).toBe('Der Rücken stand bei dir zuletzt im Vordergrund, du darfst gern etwas ausgleichen.');
+  });
   it('fasst für Screenreader in Worten zusammen', () => {
     const t = chartSummary(mk([['chest', 60, 48, 72], ['back', 10, 32, 40], ['biceps', 90, 40, 56]]));
     expect(t).toMatch(/Spinnennetz/);

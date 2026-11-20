@@ -39,12 +39,12 @@ describe('MuscleRadar', () => {
     const c: MuscleChart = { ...chart, axes: chart.axes.map((a) => (a.group === 'back' ? { ...a, sets: 0 } : a.group === 'chest' ? { ...a, sets: 9999 } : a)) };
     const { container } = render(<MuscleRadar chart={c} />);
     const pts = container.querySelector('.tk-radar-shape')!.getAttribute('points')!.trim().split(/\s+/).map((p) => p.split(',').map(Number) as [number, number]);
-    const [cx, cy] = [230, 160];
+    const [cx, cy] = [180, 155];
     const dist = (p: [number, number]) => Math.hypot(p[0] - cx, p[1] - cy);
     expect(dist(pts[1]!)).toBeCloseTo(0, 1);
     const target = Math.max(...pts.map(dist));
     expect(dist(pts[0]!)).toBeCloseTo(target, 1);
-    expect(target).toBeLessThanOrEqual(100);
+    expect(target).toBeLessThanOrEqual(111);
   });
   it('schreibt einen ruhigen Satz darunter', () => {
     render(<MuscleRadar chart={chart} />);
