@@ -139,3 +139,10 @@ describe('rides from before these values existed', () => {
     expect(s.summaries).toHaveLength(1);
   });
 });
+
+describe('intensity classes of a ride', () => {
+  test('are counted from watts (50 % moderate, 80 % and 115 % vigorous) against the FTP and stored on the summary', () => {
+    const { intensity } = summarize(samples([...Array(100).fill(100), ...Array(50).fill(160), ...Array(30).fill(230)]));
+    expect(intensity).toEqual({ moderateS: 100, vigorousS: 80, peakS: 30 });
+  });
+});
