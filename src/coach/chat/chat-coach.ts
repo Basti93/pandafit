@@ -26,6 +26,7 @@ import { activeBlock, blockDates, blockId, blockRecord, blockWeek, readBlock, ty
 import { resolveCatalogEntry } from '../../shared/excluded';
 import { executionKey } from '../../shared/execution';
 import type { ReviewOpened, ReviewReason } from './month-review';
+import { CHART_PERIODS, chartPeriodRange, isChartPeriod, type MuscleChart } from '../../shared/muscle-chart';
 import { DRIFT_QUESTION } from './block-watch';
 
 const EXCLUDABLE = FAMILY_IDS.filter((f) => f !== 'other');
@@ -56,6 +57,8 @@ type Deps = {
   giveTask?: (profileId: string, task: GivenTask) => void;
   /** The strength facts of the last weeks for the monthly review; null when the gym coach cannot tell them yet. */
   strengthFacts?: (profileId: string) => StrengthFacts | null;
+  /** The muscle chart of the recorded workouts in a period, counted by code; null without strength workouts in it. */
+  muscleChart?: (profileId: string, fromMs: number, toMs: number) => MuscleChart | null;
 };
 
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
@@ -73,6 +76,7 @@ Die einzelnen Einheiten (Übungen, Sätze, Watt, Laufminuten) plant jeweils eine
 Will die Person an einer Einheit etwas ändern (etwa "nur eine Trizepsübung", "mehr Beine", "Samstag kürzer"), gib der zuständigen Planung in tasks einen Auftrag: coach, text als klare Anweisung in ihren Worten, lasting true, wenn es ein Wunsch für länger ist, sonst false, forDate (JJJJ-MM-TT), wenn die Person einen Tag nennt ("am Montag"), sonst null ("das nächste Training"). Die Planung plant dann sofort neu. Sag in text kurz, was du weitergegeben hast. Ohne Änderungswunsch ist tasks leer.
 Will die Person etwas fürs nächste Training ändern (etwa "nächstes Mal ohne Kniebeugen"), setze nextChange: ops mit exerciseId aus einheiten, und reason als kurze Wendung aus Sicht der Person, die nur sagt, was sich ändert (höchstens acht Wörter, ohne Begründung), weil sie nach „Berücksichtigt:“ angezeigt wird. Für Tausch fürs nächste Training: nenne toId aus katalog oder toTitle; kennst du die id nicht, nenne toTitle. Ohne so einen Wunsch ist nextChange null. Es gilt erst, wenn die Person es übernimmt.
 Sagt die Person "künftig", "immer" oder "nie" ("künftig keine Kniebeugen", "ich will lieber kurze Pausen"), ist das keine einmalige Änderung, sondern eine Regel: setze ruleDraft mit kind exclude (bestimmte Übungen fallen dauerhaft weg; exerciseIds aus katalog, alle Varianten dieser Übung. Will die Person eine Bewegung ganz meiden ("keine Kniebeugen"), nenne families (${EXCLUDABLE.join(', ')}); sonst exerciseIds), wish (ein allgemeiner Wunsch) oder goal (das Trainingsziel ändert sich: goal mit strength muscle, strength oder fitness, focus bis zu drei Muskelgruppen, sports mit gym, bike, run als focus, equal oder keep, nur was sich ändert; weeks von 1 bis 12 nur, wenn Schwerpunkt oder Sportarten bloß für einige Wochen gelten sollen; push gentle, normal oder hard, wenn die Person sagt, wie sehr du sie fordern sollst; das gilt dauerhaft, also ohne weeks), text als kurzer Satz mit höchstens ${RULE_TEXT_MAX} Zeichen in der Sicht der Person, sport gym, bike, run oder all. Sonst ist ruleDraft null. Bei einer Regel bleiben nextChange null und tasks ohne lasting-Auftrag dafür. Es gilt erst, wenn die Person es übernimmt. Schreib nie, dass eine Regel schon gilt oder eingetragen ist; das bestätigt die App unter deiner Antwort. Bestätigt die Person einen offenen Regelentwurf oder einen offenen festen Abschnitt ausdrücklich („trag ein“, „ja, übernehmen“, „machen wir“), setze acceptsRule true und ruleDraft null; sonst ist acceptsRule false. Will die Person den laufenden festen Abschnitt (abschnitt) ausdrücklich beenden, setze endsBlock true; er endet erst, wenn sie auf der Karte „Abschnitt beenden“ tippt. Sonst ist endsBlock false.
+Fragt die Person, wie ausgewogen oder wie verteilt ihr Krafttraining auf die Muskelgruppen ist, oder passt ein Blick darauf gut zum Gespräch, setze chart mit kind muskeln und period month (dieser Monat), weeks4 (letzte 4 Wochen) oder months3 (letzte 3 Monate); sonst ist chart null. Die App zeichnet das Spinnennetz aus den gespeicherten Trainings und schreibt einen Satz dazu. Nenne in text keine Zahlen daraus, sag nur kurz, worauf die Person schauen kann.
 Die Person kann Mengen nennen ("2× Kraft, 3× Rad"), feste Tage ("Freitag Studio") oder dich vorschlagen lassen; oft eine Mischung. Feste Wünsche der Person markierst du mit fixed true.
 Stelle höchstens eine Frage auf einmal und nur, wenn die Antwort den Plan ändert. Wenn du genug weißt, mach einen Vorschlag.
 Ein Vorschlag (proposal) ist immer eine ganze Woche von Montag bis Sonntag (sieben Tage, date im Format JJJJ-MM-TT, aus wocheJetzt oder wocheNaechste) mit sport bike, gym, run, mobility oder rest und hardness easy, moderate oder hard. Bei Krafttagen sagt legs, ob Beine trainiert werden; long markiert die lange Rad- oder Laufeinheit. note ist optional und kurz. Zwei Einheiten an einem Tag (also mit sport und hardness, optional minutes) setzt du nur, wenn die Person eine Kombination ausdrücklich will, und höchstens eine davon ist hart; sonst ist ein Tag eine Einheit. Ein Wunsch wie „15–20 Min. Ausdauer im Gym“ ist also mit minutes (der kleinere Wert, ganze Minuten von 5 bis 90), keine Notiz. Ohne Vorschlag ist proposal null. Du änderst nie etwas still: Ein Vorschlag gilt erst, wenn die Person ihn übernimmt.
@@ -126,6 +130,12 @@ const REVIEW_REASON: Record<ReviewReason, string> = {
   pause: 'Die Person trainiert nach einer längeren Pause wieder Kraft.',
 };
 
+/** Bo may ask for the muscle chart of a period (null: no chart); the code counts the numbers. */
+const chartSchema = { anyOf: [{ type: 'null' }, {
+  type: 'object', additionalProperties: false, required: ['kind', 'period'],
+  properties: { kind: { enum: ['muskeln'] }, period: { enum: [...CHART_PERIODS] } },
+}] };
+
 const nextChangeSchema = { anyOf: [{ type: 'null' }, {
   type: 'object', additionalProperties: false, required: ['ops', 'reason'],
   properties: { reason: { type: 'string' }, ops: { type: 'array', items: {
@@ -170,10 +180,11 @@ const workoutSchema = {
   },
 };
 
-const answerSchema = {
-  type: 'object', additionalProperties: false, required: ['text', 'proposal', 'riderAskedForMore', 'newComplaint', 'complaintsOver', 'complaintsHealing', 'tasks', 'nextChange', 'ruleDraft', 'acceptsRule', 'endsBlock'],
+export const answerSchema = {
+  type: 'object', additionalProperties: false, required: ['text', 'proposal', 'riderAskedForMore', 'newComplaint', 'complaintsOver', 'complaintsHealing', 'tasks', 'nextChange', 'ruleDraft', 'acceptsRule', 'endsBlock', 'chart'],
   properties: {
     text: { type: 'string' },
+    chart: chartSchema,
     acceptsRule: { type: 'boolean' },
     endsBlock: { type: 'boolean' },
     nextChange: nextChangeSchema,
@@ -297,6 +308,7 @@ export class ChatCoach {
         ruleRaw: raw.ruleDraft,
         accepts: raw.acceptsRule === true,
         ends: raw.endsBlock === true,
+        chartRaw: raw.chart,
       };
     };
     let a = await ask(prompt);
@@ -329,12 +341,20 @@ export class ChatCoach {
       if (line) msg.text += `\n${line}`;
       if (a.draft.ops.length) msg.draft = { ops: a.draft.ops, reason: a.draft.reason };
     }
+    // Only the rider's own words ask for a chart.
+    if (fromRider) { const chart = this.chartOf(id, a.chartRaw, now); if (chart) msg.chart = chart; }
     // Only the rider's own words propose a rule or a goal.
     if (fromRider) this.addRule(msg, id, a.ruleRaw);
     if (a.proposal && broken.length === 0) msg.proposal = a.proposal;
     else if (a.proposal && a.more && !careful) { msg.proposal = a.proposal; msg.warnings = broken; }
     else if (a.proposal) msg.text += `\n\nMein Vorschlag passte nicht zu unseren Regeln für Erholung (${broken.map((b) => b.replace(/\.$/, '')).join('; ')}), deshalb lasse ich ihn weg. Sag mir, was dir wichtig ist, dann versuche ich es anders.`;
     return msg;
+  }
+
+  /** The chart Bo asked for: only the known kind and periods; the numbers come from the recorded workouts. Null when not asked, unknown, without data or on error. */
+  private chartOf(id: string, raw: unknown, now: number): MuscleChart | null {
+    if (!isObj(raw) || raw.kind !== 'muskeln' || !isChartPeriod(raw.period)) return null;
+    try { const { fromMs, toMs } = chartPeriodRange(raw.period, now); return this.deps.muscleChart?.(id, fromMs, toMs) ?? null; } catch { return null; }
   }
 
   /** The rider's lasting wish for a coach, as a proposed wish rule (the rider confirms it in the rules). */

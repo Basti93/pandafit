@@ -230,6 +230,7 @@ export const createCoachRuntime = (opts: RuntimeOptions): CoachRuntime => {
     sessions: (id) => sessionsOf(id),
     giveTask: (id, t) => giveTask(id, 'chat', t),
     strengthFacts: (id) => gym.reviewFacts(id),
+    muscleChart: (id, fromMs, toMs) => gym.muscleChart(id, fromMs, toMs),
   });
   /** What the three coaches have planned next, short, for the week chat. */
   const sessionsOf = (id: string): object => {
