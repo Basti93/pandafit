@@ -148,7 +148,7 @@ describe('the focus card', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Jetzt diese Übung machen' }));
     expect(focusOf('Rudern').getByText('Nächster Satz · 2 von 2')).toBeTruthy();
     doneNow();
-    await waitFor(() => expect(sets(map, 1)[1]!.doneMs).toBe(100_000));
+    await waitFor(() => expect(sets(map, 0)[1]!.doneMs).toBe(100_000));
     expect(await screen.findByRole('region', { name: 'Bankdrücken' })).toBeTruthy();
     expect(focusOf('Bankdrücken').getByText('Nächster Satz · 1 von 2')).toBeTruthy();
     expect(screen.queryByText('Alle Sätze geschafft')).toBeNull();

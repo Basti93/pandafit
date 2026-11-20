@@ -15,7 +15,7 @@ import { EffortQuestion } from '../EffortQuestion';
 import { Band, BrushTitle, Card, ConfirmLink, Icon, Kicker, RoundButton, Row, RowList, Sheet, TimerCard } from '../kit';
 import { clock } from '../labels';
 import { FocusCard } from './FocusCard';
-import { doneSentence, effortAsk, focusExercise, isDoneExercise, progressOf, upNext } from './live-view';
+import { doneSentence, effortAsk, focusExercise, isDoneExercise, makeCurrent, progressOf, setLine, upNext } from './live-view';
 import { SetsSheet } from './SetsSheet';
 import { sinceLabel } from './markUsed';
 import { useNow } from '../hooks';
@@ -113,7 +113,21 @@ export function ActiveWorkout({ onMinimize, ...props }: ActiveWorkoutProps & { /
           {next.length > 0 && <Kicker>Danach</Kicker>}
           {next.length > 0 && (
             <RowList label="Danach">
-              {next.map((r) => <Row key={r.rid} title={r.title} value={r.sub} press={a.holdProps(r.rid)} onClick={() => { if (!a.wasHeld()) set({ openRid: r.rid }); }} />)}
+              {next.map((r) => {
+                const open = ui.peekRid === r.rid;
+                const members = w.exercises.filter((e) => e.rid === r.rid || (e.supersetId !== null && e.supersetId === w.exercises.find((x) => x.rid === r.rid)?.supersetId));
+                return (
+                  <Row key={r.rid} title={r.title} value={r.sub} press={a.holdProps(r.rid)} expanded={open} onClick={() => { if (!a.wasHeld()) set({ peekRid: open ? null : r.rid }); }}>
+                    {members.map((e) => (
+                      <div key={e.rid}>
+                        {members.length > 1 && <p className="tk-maintext"><b>{e.title}</b></p>}
+                        <ul className="tk-peek">{e.sets.map((s, i) => <li key={s.rid}>{setLine(e, i)}</li>)}</ul>
+                      </div>
+                    ))}
+                    <button type="button" className="secondary" onClick={() => { set({ openRid: r.rid, peekRid: null }); act((x) => moved(makeCurrent(x, r.rid, a.currentRid))); }}>Jetzt diese Übung machen</button>
+                  </Row>
+                );
+              })}
             </RowList>
           )}
           <button type="button" className="secondary tk-iconbtn" onClick={() => set({ picker: { mode: 'add' } })}><Icon name="plus" size={18} /><span>Übung hinzufügen</span></button>

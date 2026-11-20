@@ -40,6 +40,8 @@ export type UiState = {
   notice: string | null; effortOn: boolean;
   /** The focus exercise: it follows the next open set; a row under "Danach" makes another one the focus. */
   openRid: string | null;
+  /** The one other exercise expanded under "Danach" for a look; it never becomes the focus by itself. */
+  peekRid: string | null;
   /** The set confirmed last: its circle pops once. */
   justDone: string | null;
   /** The weight just typed into an open work set, with the one before: it asks whether the following sets with the old weight follow. */
@@ -83,7 +85,7 @@ export function useActiveWorkout({ port, store, history, now, newId, autoEnd, st
   const currentRid = current?.ex ?? null;
   const [ui, dispatch] = useReducer(uiReducer, undefined, (): UiState => ({
     picker: null, ask: null, menu: null, topMenu: false, studioOpen: false, coachAsk: 0, reorder: null,
-    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, justDone: null, weightOffer: null, weightOfferNo: new Set(), weightTaken: null, estimateTaken: null,
+    notesOpen: new Set(), infoRid: null, setsRid: null, doneOpen: false, thanked: null, notice: startNotice ?? null, effortOn: effortQuestionsOn(), openRid: currentRid, peekRid: null, justDone: null, weightOffer: null, weightOfferNo: new Set(), weightTaken: null, estimateTaken: null,
   }));
   const set = useCallback((patch: Partial<UiState>) => dispatch({ t: 'set', patch }), []);
   const toggleNote = useCallback((rid: string) => dispatch({ t: 'toggleNote', rid }), []);
