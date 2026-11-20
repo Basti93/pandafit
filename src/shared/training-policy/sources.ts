@@ -8,6 +8,8 @@ const s = (id: string, citation: string, url: string, studyType: string, depth: 
   ({ id, citation, url, studyType, depth, population, endpoint, limits, checkedOn: '2026-11-06' });
 const b = (...a: Parameters<typeof s>): PolicySource => ({ ...s(...a), checkedOn: '2026-11-14' });
 
+const c = (...a: Parameters<typeof s>): PolicySource => ({ ...s(...a), checkedOn: '2026-11-20' });
+
 export const SOURCES: PolicySource[] = [
   s('S01', 'Currier et al., ACSM-Positionsstand 2026, DOI 10.1249/MSS.0000000000003897', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/', 'Positionsstand / Review-Überblick über 137 systematische Reviews', 'fulltext-excerpts',
     'Erwachsene, großer Anteil wenig Trainierter', 'Kraft und Hypertrophie', 'Ausgangspunkte für die Zielrichtung, keine persönliche Optimierungsfunktion.'),
@@ -96,4 +98,25 @@ export const SOURCES: PolicySource[] = [
     'Krafttrainingsstudien mit und ohne Muskelversagen', 'Kraft und Hypertrophie bei Training bis zum Versagen', 'Kein klarer Vorteil des Versagens; kleiner Hypertrophievorteil nur bei Trainierten in wenigen Studien.'),
   b('S43', 'Iversen et al. 2021, Sports Med 51:2079, PMC8449772', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8449772/', 'Narrativer Review', 'abstract',
     'Erwachsene, besonders Einsteiger und Ältere', 'Wirksamkeit von wenig Zeit und wenigen Sätzen', 'Narrativ; einzelne Sätze 2–3 Mal pro Woche wirken, keine genaue Grenze.'),
+  // Intensity sources of docs/research/2026-11-20-kraft-ausdauer-hiit.md.
+  c('S44', 'Momma et al. 2022, Br J Sports Med 56:755, DOI 10.1136/bjsports-2021-105061 (PMC9209691)', 'https://pmc.ncbi.nlm.nih.gov/articles/PMC9209691/', 'Metaanalyse von Kohortenstudien', 'fulltext-excerpts',
+    'Erwachsene in 16 prospektiven Kohorten', 'Sterblichkeit und Krankheitsrisiko nach Minuten Muskelkräftigung pro Woche (niedrigstes Risiko etwa 30–60 min)', 'Beobachtung, Selbstauskunft, wenige Studien; keine Obergrenze für Muskelaufbau oder Kraftziele.'),
+  c('S45', 'Wilson et al. 2012, J Strength Cond Res 26:2293, DOI 10.1519/JSC.0b013e31823a3e2d', 'https://doi.org/10.1519/JSC.0b013e31823a3e2d', 'Metaanalyse, 21 Studien', 'abstract',
+    'Erwachsene in Studien zu Kraft plus Ausdauer', 'Interferenz auf Hypertrophie, Kraft und Explosivkraft', 'Älter; Laufen schlechter als Radfahren, was die neuere Analyse (S46) nicht bestätigt.'),
+  c('S46', 'Schumann et al. 2022, Sports Med 52:601, DOI 10.1007/s40279-021-01587-7', 'https://doi.org/10.1007/s40279-021-01587-7', 'Metaanalyse, 43 Studien', 'abstract',
+    'Erwachsene in Studien zu Kraft plus Ausdauer', 'Interferenz auf Maximalkraft, Hypertrophie und Explosivkraft', 'Explosivkraft etwas geringer, vor allem in derselben Einheit; kein Unterschied zwischen Radfahren und Laufen.'),
+  c('S47', 'Milanović et al. 2015, Sports Med 45:1469, DOI 10.1007/s40279-015-0365-0', 'https://doi.org/10.1007/s40279-015-0365-0', 'Metaanalyse, 28 Studien', 'abstract',
+    'Gesunde Erwachsene von 18 bis 45 Jahren', 'VO₂max nach HIIT gegenüber Ausdauertraining', 'Kleiner Vorteil für HIIT; sagt nichts über die Wochenhäufigkeit.'),
+  c('S48', 'Seiler 2010, Int J Sports Physiol Perform 5:276, DOI 10.1123/ijspp.5.3.276', 'https://doi.org/10.1123/ijspp.5.3.276', 'Beschreibende Übersicht', 'abstract',
+    'Spitzenathleten mit 10–13 Einheiten pro Woche', 'Verteilung der Einheiten nach Intensität (etwa 80 % locker)', 'Zählung nach Einheiten bei Leistungssportlern, keine Zeit-in-Zone-Quote und kein Versuch mit Freizeitsportlern.'),
+  c('S49', 'Muñoz et al. 2014, Int J Sports Physiol Perform 9:265, DOI 10.1123/ijspp.2012-0350', 'https://doi.org/10.1123/ijspp.2012-0350', 'Einzelstudie', 'abstract',
+    '30 Freizeitläufer, 10 Wochen', 'Zehn-Kilometer-Zeit bei polarisiertem Training gegenüber Training zwischen den Schwellen', 'Klein; der Unterschied war nicht signifikant.'),
+  c('S50', 'Lenk et al. 2025, Physiol Rep, DOI 10.14814/phy2.70573', 'https://doi.org/10.14814/phy2.70573', 'Einzelstudie, explorativ', 'abstract',
+    '26 Freizeitläufer, 6 Wochen 4 × 4 min', 'Wirkung von 1, 2 oder 3 HIIT-Einheiten pro Woche', 'Klein; größte Effekte bei 2 und 3, kein klarer Zusatznutzen von 3.'),
+  c('S51', 'Schoenfeld et al. 2016, Sports Med 46:1689, DOI 10.1007/s40279-016-0543-8', 'https://doi.org/10.1007/s40279-016-0543-8', 'Metaanalyse', 'abstract',
+    'Erwachsene in Krafttrainingsstudien', 'Hypertrophie nach Trainingshäufigkeit je Muskel', 'Bei gleichem Volumen bringt 2× pro Woche mehr als 1×; ob 3× besser ist als 2×, ist offen.'),
+  c('S52', 'Grgic et al. 2018, Sports Med 48:1207, DOI 10.1007/s40279-018-0872-x', 'https://doi.org/10.1007/s40279-018-0872-x', 'Metaanalyse', 'abstract',
+    'Erwachsene in Krafttrainingsstudien', 'Kraftzuwachs nach Trainingshäufigkeit', 'Die Häufigkeit wirkt vor allem über das Volumen; bei gleichem Volumen verschwindet der Unterschied.'),
+  c('S53', 'CDC, Target heart rate (zitiert über HPRC)', 'https://www.hprc-online.org/physical-fitness/training-performance/how-train-using-heart-rate-zones', 'Behördenangabe über Zweitquelle', 'guideline-summary',
+    'Erwachsene allgemein', 'Moderat 64–76 % und intensiv 77–93 % der maximalen Herzfrequenz', 'Aus zweiter Hand; die maximale Herzfrequenz ist geschätzt (etwa ±10 Schläge).'),
 ];
