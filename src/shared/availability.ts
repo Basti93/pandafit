@@ -1,5 +1,5 @@
 /**
- * What the household can get at the moment: the outdoor season of fresh produce in Germany, and (later) what a discounter usually lacks.
+ * What the household can get at the moment: the outdoor season of fresh produce in Germany, and what a discounter usually lacks.
  * Both are data tables; ingredients are matched by their canonical name, so spelling and plural do not matter.
  */
 import { canonName } from './ingredient-key';
@@ -49,20 +49,52 @@ export const outOfSeasonNames = (month: number): string[] => SEASON_KEYED.filter
 /** The month (1 to 12) of a time. */
 export const monthOf = (ms: number): number => new Date(ms).getMonth() + 1;
 
+/** What a German discounter usually does not carry (any section), with a common substitute. A name may be spelled several ways. Not the shop's own range, only the usual one. */
+const RARE_AT_DISCOUNTER: readonly { names: readonly string[]; substitute: string }[] = [
+  { names: ['Austernpilz', 'Austernpilze', 'Kräuterseitling'], substitute: 'braune Champignons' },
+  { names: ['Shiitake'], substitute: 'braune Champignons' },
+  { names: ['Pak Choi', 'Pak-Choi'], substitute: 'Chinakohl' },
+  { names: ['Tahin', 'Tahini', 'Sesampaste'], substitute: 'Erdnussmus' },
+  { names: ['Harissa'], substitute: 'Tomatenmark mit etwas Chili' },
+  { names: ['Rote-Linsen-Nudeln', 'Rote Linsen Nudeln', 'Linsennudeln'], substitute: 'Vollkornnudeln' },
+  { names: ['Sojagranulat', 'Sojaschnetzel'], substitute: 'Linsen' },
+  { names: ['Thai-Basilikum', 'Zitronengras', 'Kaffirlimettenblätter', 'Galgant'], substitute: 'Ingwer und Limettenschale' },
+  { names: ['Miso', 'Misopaste'], substitute: 'Sojasauce' },
+  { names: ['Tempeh', 'Seitan'], substitute: 'Tofu' },
+];
+const RARE_KEYED = RARE_AT_DISCOUNTER.flatMap((r) => r.names.map((n) => ({ key: canonName(n), substitute: r.substitute, name: r.names[0]! })));
+
+/** The usual substitute of an ingredient that a discounter rarely carries, or null: only for the discounter, for any other shop and for an ingredient that is there. */
+export function rareSubstitute(name: string, store: Store): string | null {
+  if (store !== 'discounter') return null;
+  const c = canonName(name);
+  return RARE_KEYED.find((r) => hasAll(c, r.key))?.substitute ?? null;
+}
+
+/** The names a discounter rarely carries, for the AI prompt. */
+export const rareNames = (): string[] => RARE_AT_DISCOUNTER.map((r) => r.names[0]!);
+
 /** The moment and the shop a plan is made for. */
 export type Availability = { month: number; store: Store };
 type Line = { name: string; section: Section };
 
-/** Ingredients that are out of season or (later) not in the shop's range. */
-export const problems = (lines: readonly Line[], av: Availability): Line[] => lines.filter((l) => seasonProblem(l.name, l.section, av.month));
+/** The ingredients that are out of season, and those a discounter rarely carries. */
+export const problems = (lines: readonly Line[], av: Availability): { season: Line[]; rare: Line[] } => ({
+  season: lines.filter((l) => seasonProblem(l.name, l.section, av.month)),
+  rare: lines.filter((l) => rareSubstitute(l.name, av.store) !== null),
+});
+
+/** Whether a recipe is clean: no more problem ingredients than `meals.season-preference` and `meals.discounter-range` allow. */
+export function isClean(lines: readonly Line[], av: Availability): boolean {
+  const p = problems(lines, av);
+  return p.season.length <= ruleNumber('meals.season-preference') && p.rare.length <= ruleNumber('meals.discounter-range');
+}
 
 /**
- * Of some candidates, the ones without a problem ingredient (up to what `meals.season-preference` allows), when there is at least one;
- * otherwise all of them, because a plan with a problem is better than no plan.
+ * Of some candidates, the clean ones when there is at least one; otherwise all of them, because a plan with a problem is better than no plan.
  */
 export function preferAvailable<T>(items: readonly T[], linesOf: (t: T) => readonly Line[], av?: Availability): T[] {
   if (!av) return [...items];
-  const allowed = ruleNumber('meals.season-preference');
-  const clean = items.filter((t) => problems(linesOf(t), av).length <= allowed);
+  const clean = items.filter((t) => isClean(linesOf(t), av));
   return clean.length > 0 ? clean : [...items];
 }

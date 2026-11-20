@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DAY_LONG, mealKey, parseMealKey, SECTIONS, SLOT_LABEL, SLOT_TIME, SLOTS, UNITS, type Dish, type Ingredient, type Meal } from '../../shared/meals';
-import { outOfSeasonNames, type Availability } from '../../shared/availability';
+import { outOfSeasonNames, rareNames, type Availability } from '../../shared/availability';
 import { fitsEveryone } from './check';
 import { constraintsFor, type Member, type Slotted } from './rules';
 
@@ -40,9 +40,10 @@ const MONTH_NAME = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli'
 /** The month and the produce without season, as the planning prompts tell it: a sentence for the end and the data block. */
 export function availabilityPrompt(av?: Availability): { blocks: string[]; sentence: string } {
   if (!av) return { blocks: [], sentence: '' };
+  const discounter = av.store === 'discounter';
   return {
-    blocks: [dataBlock('ausser-saison', outOfSeasonNames(av.month))],
-    sentence: ` Aktueller Monat: ${MONTH_NAME[av.month - 1]}. Nimm frisches Obst und Gemüse nur, wenn es jetzt im deutschen Freiland Saison hat oder gut lagert; meide die Zutaten aus ausser-saison-nur-daten.`,
+    blocks: [dataBlock('ausser-saison', outOfSeasonNames(av.month)), ...(discounter ? [dataBlock('nicht-beim-discounter', rareNames())] : [])],
+    sentence: `${discounter ? ' Der Haushalt kauft meistens beim Discounter ein: meide die Zutaten aus nicht-beim-discounter-nur-daten und nimm lieber Zutaten, die es dort gibt.' : ''} Aktueller Monat: ${MONTH_NAME[av.month - 1]}. Nimm frisches Obst und Gemüse nur, wenn es jetzt im deutschen Freiland Saison hat oder gut lagert; meide die Zutaten aus ausser-saison-nur-daten.`,
   };
 }
 

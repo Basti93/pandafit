@@ -32,3 +32,26 @@ describe('Saison in der Rezeptauswahl und im Prompt', () => {
     expect(buildSwapPrompt({ members: [eater], slot: slots[0]!, training: false, avoid: [], avail: { month: 11, store: 'supermarkt' } })).toContain('Aktueller Monat: November.');
   });
 });
+
+describe('Discounter in der Rezeptauswahl und im Prompt', () => {
+  const dis = (month = 7): Need => ({ ...need(), avail: { month, store: 'discounter' } });
+  const sup = (month = 7): Need => ({ ...need(), avail: { month, store: 'supermarkt' } });
+  const pool = [rec('a', ['Shiitake', 'Reis']), rec('b', ['Champignons', 'Reis']), rec('c', ['Harissa'])];
+  it('meidet beim Discounter seltene Zutaten, wenn es Alternativen gibt', () => {
+    expect(shortlist(pool, dis(), () => 0.3).map((r) => r.id)).toEqual(['b']);
+  });
+  it('lässt sie zu, wenn nichts anderes passt', () => {
+    expect(shortlist([pool[0]!, pool[2]!], dis(), () => 0.3)).toHaveLength(2);
+  });
+  it('beschränkt Supermarkt und Bioladen nicht', () => {
+    expect(shortlist(pool, sup(), () => 0.3)).toHaveLength(3);
+    expect(shortlist(pool, { ...need(), avail: { month: 7, store: 'bioladen' } }, () => 0.3)).toHaveLength(3);
+  });
+  it('sagt der KI beim Discounter, was es dort selten gibt', () => {
+    const slots = [{ day: 0, slot: 'mittag' as const, eaters: ['max'], takeAlong: false, reuseOf: null }];
+    const p = buildMealPrompt({ members: [eater], slots, trainingDays: [], lastWeek: [], avail: { month: 7, store: 'discounter' } });
+    expect(p).toMatch(/nicht-beim-discounter-nur-daten[\s\S]*Shiitake/);
+    expect(p).toContain('beim Discounter');
+    expect(buildMealPrompt({ members: [eater], slots, trainingDays: [], lastWeek: [], avail: { month: 7, store: 'supermarkt' } })).not.toContain('Discounter');
+  });
+});

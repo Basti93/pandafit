@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RECIPES } from '../../src/coach/meals/recipes';
 import { pickRecipe } from '../../src/coach/meals/rules';
-import { monthOf, outOfSeasonNames, preferAvailable, seasonProblem } from '../../src/shared/availability';
+import { monthOf, outOfSeasonNames, preferAvailable, rareSubstitute, seasonProblem } from '../../src/shared/availability';
 import { DEFAULT_MEAL_SETTINGS } from '../../src/shared/meals';
 import { policyRule } from '../../src/shared/training-policy';
 
@@ -68,5 +68,26 @@ describe('Saison im Plan', () => {
         expect(r.ingredients.some((i) => seasonProblem(i.name, i.section, month))).toBe(false);
       }
     }
+  });
+});
+
+describe('Discounter-Sortiment', () => {
+  it('nennt ein übliches Ersatzprodukt, nur beim Discounter', () => {
+    expect(rareSubstitute('Austernpilze', 'discounter')).toBe('braune Champignons');
+    expect(rareSubstitute('Rote-Linsen-Nudeln', 'discounter')).toBe('Vollkornnudeln');
+    expect(rareSubstitute('rote Linsen Nudeln', 'discounter')).toBe('Vollkornnudeln');
+    expect(rareSubstitute('Austernpilze', 'supermarkt')).toBeNull();
+    expect(rareSubstitute('Austernpilze', 'bioladen')).toBeNull();
+    expect(rareSubstitute('Champignons', 'discounter')).toBeNull();
+  });
+  it('hat eine allgemeine Regel mit Wert und Fundort', () => {
+    const rule = policyRule('meals.discounter-range');
+    expect(rule.value).toBe(0);
+    expect(rule.where.length).toBeGreaterThan(0);
+  });
+  it('pickRecipe meidet beim Discounter seltene Zutaten', () => {
+    const member = { id: 'max', settings: { ...DEFAULT_MEAL_SETTINGS, on: true } };
+    const r = pickRecipe({ slot: 'abend', eaters: [member], takeAlong: false, training: false, keepDays: 0, used: new Set(), random: () => 0.4, avail: { month: 7, store: 'discounter' } })!;
+    expect(r.ingredients.some((i) => rareSubstitute(i.name, 'discounter') !== null)).toBe(false);
   });
 });
